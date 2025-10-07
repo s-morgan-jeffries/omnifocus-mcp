@@ -702,6 +702,103 @@ class TestGetTasks:
             assert "skip completed task" not in call_args
             assert "skip non-flagged task" in call_args
 
+    def test_get_tasks_available_only(self, client):
+        """Test getting only available tasks (not deferred or blocked)."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Available Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": "",
+                "dropped": False,
+                "blocked": False
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks(available_only=True)
+            assert len(tasks) == 1
+            # Verify the filter is in the script
+            call_args = mock_run.call_args[0][0]
+            assert "skip unavailable task" in call_args or "dropped" in call_args
+
+    def test_get_tasks_overdue(self, client):
+        """Test getting only overdue tasks."""
+        overdue_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Overdue Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "2025-10-01T17:00:00",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = overdue_json
+            tasks = client.get_tasks(overdue=True)
+            assert len(tasks) == 1
+            # Verify the filter is in the script
+            call_args = mock_run.call_args[0][0]
+            assert "overdue" in call_args.lower() or "current date" in call_args
+
+    def test_get_tasks_tag_filter_single(self, client):
+        """Test filtering tasks by a single tag."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Tagged Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": "urgent, work"
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks(tag_filter=["urgent"])
+            assert len(tasks) == 1
+            assert "urgent" in tasks[0]["tags"]
+
+    def test_get_tasks_tag_filter_multiple(self, client):
+        """Test filtering tasks by multiple tags (AND logic)."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Multi-Tagged Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": "urgent, work, priority"
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks(tag_filter=["urgent", "work"])
+            assert len(tasks) == 1
+
 
 class TestCompleteTask:
     """Tests for complete_task functionality."""
@@ -1073,3 +1170,536 @@ class TestTagOperations:
             with pytest.raises(Exception) as exc_info:
                 client.add_tag_to_task("task-001", "urgent")
             assert "Error adding tag to task" in str(exc_info.value)
+
+
+class TestDeleteTask:
+    """Tests for delete_task method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_delete_task_success(self, client):
+        """Test successful task deletion."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.delete_task("task-001")
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_delete_task_not_found(self, client):
+        """Test deleting non-existent task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false"
+            with pytest.raises(Exception) as exc_info:
+                client.delete_task("nonexistent")
+            assert "Task not found" in str(exc_info.value)
+
+    def test_delete_task_error(self, client):
+        """Test handling of deletion errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.delete_task("task-001")
+            assert "Error deleting task" in str(exc_info.value)
+
+
+class TestDeleteProject:
+    """Tests for delete_project method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_delete_project_success(self, client):
+        """Test successful project deletion."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.delete_project("proj-001")
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_delete_project_not_found(self, client):
+        """Test deleting non-existent project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false"
+            with pytest.raises(Exception) as exc_info:
+                client.delete_project("nonexistent")
+            assert "Project not found" in str(exc_info.value)
+
+    def test_delete_project_error(self, client):
+        """Test handling of deletion errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.delete_project("proj-001")
+            assert "Error deleting project" in str(exc_info.value)
+
+
+class TestMoveTask:
+    """Tests for move_task method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_move_task_to_project_success(self, client):
+        """Test successfully moving task to a project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.move_task("task-001", "proj-002")
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_move_task_to_inbox_success(self, client):
+        """Test successfully moving task to inbox."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.move_task("task-001", None)  # None means inbox
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_move_task_not_found(self, client):
+        """Test moving non-existent task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false: Task not found"
+            with pytest.raises(Exception) as exc_info:
+                client.move_task("nonexistent", "proj-001")
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_move_task_project_not_found(self, client):
+        """Test moving task to non-existent project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false: Project not found"
+            with pytest.raises(Exception) as exc_info:
+                client.move_task("task-001", "nonexistent")
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_move_task_error(self, client):
+        """Test handling of move errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.move_task("task-001", "proj-001")
+            assert "Error moving task" in str(exc_info.value)
+
+
+class TestGetFolders:
+    """Tests for get_folders method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    @pytest.fixture
+    def sample_folders_json(self):
+        """Sample folder data."""
+        return json.dumps([
+            {"id": "folder-001", "name": "Work", "path": "Work"},
+            {"id": "folder-002", "name": "Personal", "path": "Personal"},
+            {"id": "folder-003", "name": "Clients", "path": "Work > Clients"}
+        ])
+
+    def test_get_folders_success(self, client, sample_folders_json):
+        """Test successfully retrieving folders."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = sample_folders_json
+            folders = client.get_folders()
+            assert len(folders) == 3
+            assert folders[0]["name"] == "Work"
+            assert folders[2]["path"] == "Work > Clients"
+
+    def test_get_folders_empty(self, client):
+        """Test retrieving folders when none exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "[]"
+            folders = client.get_folders()
+            assert folders == []
+
+    def test_get_folders_error(self, client):
+        """Test handling of AppleScript errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.get_folders()
+            assert "Error retrieving folders" in str(exc_info.value)
+
+
+class TestDropTask:
+    """Tests for drop_task method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_drop_task_success(self, client):
+        """Test successfully dropping a task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.drop_task("task-001")
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_drop_task_not_found(self, client):
+        """Test dropping non-existent task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false"
+            with pytest.raises(Exception) as exc_info:
+                client.drop_task("nonexistent")
+            assert "Task not found" in str(exc_info.value)
+
+    def test_drop_task_error(self, client):
+        """Test handling of drop errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.drop_task("task-001")
+            assert "Error dropping task" in str(exc_info.value)
+
+
+class TestCreateFolder:
+    """Tests for create_folder method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_create_folder_root_level(self, client):
+        """Test creating a folder at root level."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "folder-new-001"
+            folder_id = client.create_folder("New Folder")
+            assert folder_id == "folder-new-001"
+            mock_run.assert_called_once()
+
+    def test_create_folder_with_parent_path(self, client):
+        """Test creating a folder with parent path."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "folder-new-002"
+            folder_id = client.create_folder("Clients", parent_path="Work")
+            assert folder_id == "folder-new-002"
+            mock_run.assert_called_once()
+
+    def test_create_folder_nested_parent_path(self, client):
+        """Test creating a folder with nested parent path."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "folder-new-003"
+            folder_id = client.create_folder("Active", parent_path="Work > Clients")
+            assert folder_id == "folder-new-003"
+            mock_run.assert_called_once()
+
+    def test_create_folder_with_special_characters(self, client):
+        """Test creating a folder with special characters in name."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "folder-new-004"
+            folder_id = client.create_folder("Work & Life")
+            assert folder_id == "folder-new-004"
+
+    def test_create_folder_parent_not_found(self, client):
+        """Test creating folder with non-existent parent."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false: Parent folder not found"
+            with pytest.raises(Exception) as exc_info:
+                client.create_folder("New Folder", parent_path="Nonexistent")
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_create_folder_error(self, client):
+        """Test handling of folder creation errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.create_folder("New Folder")
+            assert "Error creating folder" in str(exc_info.value)
+
+
+class TestSetParentTask:
+    """Tests for set_parent_task method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_set_parent_task_success(self, client):
+        """Test successfully making a task a subtask."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.set_parent_task("task-002", "task-001")
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_set_parent_task_to_none(self, client):
+        """Test making a subtask into a root-level task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.set_parent_task("task-002", None)
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_set_parent_task_task_not_found(self, client):
+        """Test with non-existent task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false: Task not found"
+            with pytest.raises(Exception) as exc_info:
+                client.set_parent_task("nonexistent", "task-001")
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_set_parent_task_parent_not_found(self, client):
+        """Test with non-existent parent task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false: Parent task not found"
+            with pytest.raises(Exception) as exc_info:
+                client.set_parent_task("task-002", "nonexistent")
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_set_parent_task_circular_reference(self, client):
+        """Test preventing circular references (task being its own parent)."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false: Cannot set task as its own parent"
+            with pytest.raises(Exception) as exc_info:
+                client.set_parent_task("task-001", "task-001")
+            assert "cannot" in str(exc_info.value).lower()
+
+    def test_set_parent_task_error(self, client):
+        """Test handling of set parent errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.set_parent_task("task-002", "task-001")
+            assert "Error setting parent task" in str(exc_info.value)
+
+
+class TestSetReviewInterval:
+    """Tests for set_review_interval method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_set_review_interval_weekly(self, client):
+        """Test setting weekly review interval."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.set_review_interval("proj-001", interval_weeks=1)
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_set_review_interval_monthly(self, client):
+        """Test setting monthly review interval."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.set_review_interval("proj-001", interval_weeks=4)
+            assert result is True
+
+    def test_set_review_interval_project_not_found(self, client):
+        """Test with non-existent project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false"
+            with pytest.raises(Exception) as exc_info:
+                client.set_review_interval("nonexistent", interval_weeks=1)
+            assert "Project not found" in str(exc_info.value)
+
+    def test_set_review_interval_error(self, client):
+        """Test handling of errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.set_review_interval("proj-001", interval_weeks=1)
+            assert "Error setting review interval" in str(exc_info.value)
+
+
+class TestMarkProjectReviewed:
+    """Tests for mark_project_reviewed method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_mark_project_reviewed_success(self, client):
+        """Test successfully marking project as reviewed."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.mark_project_reviewed("proj-001")
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_mark_project_reviewed_not_found(self, client):
+        """Test with non-existent project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false"
+            with pytest.raises(Exception) as exc_info:
+                client.mark_project_reviewed("nonexistent")
+            assert "Project not found" in str(exc_info.value)
+
+    def test_mark_project_reviewed_error(self, client):
+        """Test handling of errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.mark_project_reviewed("proj-001")
+            assert "Error marking project as reviewed" in str(exc_info.value)
+
+
+class TestGetProjectsDueForReview:
+    """Tests for get_projects_due_for_review method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    @pytest.fixture
+    def sample_review_projects_json(self):
+        """Sample projects due for review."""
+        return json.dumps([
+            {
+                "id": "proj-001",
+                "name": "Project Needing Review",
+                "nextReviewDate": "2025-10-01T00:00:00",
+                "lastReviewDate": "2025-09-24T00:00:00"
+            },
+            {
+                "id": "proj-002",
+                "name": "Another Project",
+                "nextReviewDate": "2025-10-05T00:00:00",
+                "lastReviewDate": "2025-09-28T00:00:00"
+            }
+        ])
+
+    def test_get_projects_due_for_review_success(self, client, sample_review_projects_json):
+        """Test getting projects due for review."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = sample_review_projects_json
+            projects = client.get_projects_due_for_review()
+            assert len(projects) == 2
+            assert projects[0]["id"] == "proj-001"
+            assert "nextReviewDate" in projects[0]
+
+    def test_get_projects_due_for_review_empty(self, client):
+        """Test when no projects are due for review."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "[]"
+            projects = client.get_projects_due_for_review()
+            assert projects == []
+
+    def test_get_projects_due_for_review_error(self, client):
+        """Test handling of errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.get_projects_due_for_review()
+            assert "Error retrieving projects due for review" in str(exc_info.value)
+
+
+class TestSetEstimatedMinutes:
+    """Tests for set_estimated_minutes method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_set_estimated_minutes_success(self, client):
+        """Test successfully setting estimated time."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.set_estimated_minutes("task-001", 60)
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_set_estimated_minutes_zero(self, client):
+        """Test setting estimated time to zero (clear estimate)."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.set_estimated_minutes("task-001", 0)
+            assert result is True
+
+    def test_set_estimated_minutes_task_not_found(self, client):
+        """Test with non-existent task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false"
+            with pytest.raises(Exception) as exc_info:
+                client.set_estimated_minutes("nonexistent", 30)
+            assert "Task not found" in str(exc_info.value)
+
+    def test_set_estimated_minutes_error(self, client):
+        """Test handling of errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.set_estimated_minutes("task-001", 45)
+            assert "Error setting estimated minutes" in str(exc_info.value)
+
+
+class TestGetPerspectives:
+    """Tests for get_perspectives method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_get_perspectives_success(self, client):
+        """Test getting perspective names."""
+        perspectives_str = "Inbox, Projects, Tags, Forecast, Daily Worklist"
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = perspectives_str
+            perspectives = client.get_perspectives()
+            assert len(perspectives) == 5
+            assert "Inbox" in perspectives
+            assert "Daily Worklist" in perspectives
+
+    def test_get_perspectives_empty(self, client):
+        """Test when no custom perspectives exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "Inbox, Projects"
+            perspectives = client.get_perspectives()
+            assert len(perspectives) == 2
+
+    def test_get_perspectives_error(self, client):
+        """Test handling of errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.get_perspectives()
+            assert "Error retrieving perspectives" in str(exc_info.value)
+
+
+class TestSwitchPerspective:
+    """Tests for switch_perspective method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_switch_perspective_success(self, client):
+        """Test successfully switching perspective."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "Daily Worklist"
+            result = client.switch_perspective("Daily Worklist")
+            assert result == "Daily Worklist"
+            mock_run.assert_called_once()
+
+    def test_switch_perspective_builtin(self, client):
+        """Test switching to built-in perspective."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "Inbox"
+            result = client.switch_perspective("Inbox")
+            assert result == "Inbox"
+
+    def test_switch_perspective_error(self, client):
+        """Test handling of errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.switch_perspective("Invalid")
+            assert "Error switching perspective" in str(exc_info.value)

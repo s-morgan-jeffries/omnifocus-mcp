@@ -61,6 +61,69 @@ class TestSafetyGuardsEnabled:
 
         assert "Cannot perform destructive operation 'add_tag_to_task'" in str(exc_info.value)
 
+    def test_delete_task_blocked_without_test_mode(self, client_with_safety):
+        """Test that delete_task is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.delete_task("task-001")
+
+        assert "Cannot perform destructive operation 'delete_task'" in str(exc_info.value)
+
+    def test_delete_project_blocked_without_test_mode(self, client_with_safety):
+        """Test that delete_project is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.delete_project("proj-001")
+
+        assert "Cannot perform destructive operation 'delete_project'" in str(exc_info.value)
+
+    def test_move_task_blocked_without_test_mode(self, client_with_safety):
+        """Test that move_task is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.move_task("task-001", "proj-002")
+
+        assert "Cannot perform destructive operation 'move_task'" in str(exc_info.value)
+
+    def test_drop_task_blocked_without_test_mode(self, client_with_safety):
+        """Test that drop_task is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.drop_task("task-001")
+
+        assert "Cannot perform destructive operation 'drop_task'" in str(exc_info.value)
+
+    def test_create_folder_blocked_without_test_mode(self, client_with_safety):
+        """Test that create_folder is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.create_folder("New Folder")
+
+        assert "Cannot perform destructive operation 'create_folder'" in str(exc_info.value)
+
+    def test_set_parent_task_blocked_without_test_mode(self, client_with_safety):
+        """Test that set_parent_task is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.set_parent_task("task-002", "task-001")
+
+        assert "Cannot perform destructive operation 'set_parent_task'" in str(exc_info.value)
+
+    def test_set_review_interval_blocked_without_test_mode(self, client_with_safety):
+        """Test that set_review_interval is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.set_review_interval("proj-001", interval_weeks=1)
+
+        assert "Cannot perform destructive operation 'set_review_interval'" in str(exc_info.value)
+
+    def test_mark_project_reviewed_blocked_without_test_mode(self, client_with_safety):
+        """Test that mark_project_reviewed is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.mark_project_reviewed("proj-001")
+
+        assert "Cannot perform destructive operation 'mark_project_reviewed'" in str(exc_info.value)
+
+    def test_set_estimated_minutes_blocked_without_test_mode(self, client_with_safety):
+        """Test that set_estimated_minutes is blocked without test mode."""
+        with pytest.raises(DatabaseSafetyError) as exc_info:
+            client_with_safety.set_estimated_minutes("task-001", 60)
+
+        assert "Cannot perform destructive operation 'set_estimated_minutes'" in str(exc_info.value)
+
     def test_read_operations_allowed_without_test_mode(self, client_with_safety):
         """Test that read operations are allowed without test mode."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
@@ -205,4 +268,30 @@ class TestSafetyGuardsDisabled:
             assert result is True
 
             result = client_without_safety.add_tag_to_task("task-001", "tag")
+            assert result is True
+
+            result = client_without_safety.delete_task("task-001")
+            assert result is True
+
+            result = client_without_safety.delete_project("proj-001")
+            assert result is True
+
+            result = client_without_safety.move_task("task-001", "proj-002")
+            assert result is True
+
+            result = client_without_safety.drop_task("task-001")
+            assert result is True
+
+            client_without_safety.create_folder("Test Folder")
+
+            result = client_without_safety.set_parent_task("task-001", "task-002")
+            assert result is True
+
+            result = client_without_safety.set_review_interval("proj-001", interval_weeks=1)
+            assert result is True
+
+            result = client_without_safety.mark_project_reviewed("proj-001")
+            assert result is True
+
+            result = client_without_safety.set_estimated_minutes("task-001", 60)
             assert result is True

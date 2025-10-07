@@ -4,12 +4,48 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides the following tools:
+This server provides **25 comprehensive tools** for managing OmniFocus:
 
-- **get_projects** - Get all active projects from OmniFocus with their folder hierarchy, names, notes, and status
+### Project Management
+- **get_projects** - Get all active projects with folder hierarchy, names, notes, and status
 - **search_projects** - Search projects by name, note content, or folder path
-- **add_task** - Add a new task to a specific project
-- **add_note** - Append a note to an existing project
+- **create_project** - Create new projects with optional folder placement and sequential mode
+- **delete_project** - Delete a project and all its tasks
+
+### Task Management
+- **get_tasks** - Get tasks with advanced filtering (flagged, available, overdue, by tag)
+- **add_task** - Add new tasks with due dates, defer dates, flags, tags, and estimated time
+- **update_task** - Update any task properties (name, dates, flags, notes)
+- **complete_task** - Mark tasks as completed
+- **delete_task** - Delete tasks
+- **move_task** - Move tasks between projects or to inbox
+- **drop_task** - Remove task from project (make it independent)
+- **set_parent_task** - Create task hierarchies with parent/child relationships
+- **set_estimated_minutes** - Set time estimates for tasks
+
+### Inbox Operations
+- **get_inbox_tasks** - Get all inbox tasks (tasks not in any project)
+- **create_inbox_task** - Quickly capture tasks to inbox
+
+### Folder & Organization
+- **get_folders** - Get all folders and their hierarchy
+- **create_folder** - Create new folders with optional parent folders
+
+### Tags
+- **get_tags** - Get all available tags
+- **add_tag_to_task** - Add tags to tasks for better organization
+
+### Project Review (GTD)
+- **set_review_interval** - Set how often projects should be reviewed
+- **mark_project_reviewed** - Mark a project as reviewed (resets review timer)
+- **get_projects_due_for_review** - Find projects that need review
+
+### Perspectives (OmniFocus Pro)
+- **get_perspectives** - List all custom perspectives
+- **switch_perspective** - Switch to a different perspective view
+
+### Notes
+- **add_note** - Append notes to projects or tasks
 
 ## Prerequisites
 
@@ -81,7 +117,8 @@ Or if using a virtual environment directly:
     "omnifocus": {
       "command": "/absolute/path/to/omnifocus-mcp/venv/bin/python",
       "args": [
-        "/absolute/path/to/omnifocus-mcp/server.py"
+        "-m",
+        "omnifocus_mcp.server_fastmcp"
       ]
     }
   }
@@ -104,29 +141,64 @@ The server communicates via stdin/stdout using the MCP protocol.
 
 Once configured, you can ask Claude (or any MCP client) to interact with OmniFocus:
 
+**Project Management:**
 - "Show me all my OmniFocus projects"
 - "Search for projects related to 'budget'"
-- "Add a task 'Review Q4 numbers' to project proj-001"
-- "Add a note to my project about the meeting outcome"
+- "Create a new project called 'Q1 Planning' in my Work folder"
+- "What projects are due for review?"
+
+**Task Management:**
+- "Add a task 'Review Q4 numbers' with a due date next Friday, flagged as important"
+- "Show me all available tasks that are overdue"
+- "Mark task task-001 as complete"
+- "Move this task to my Personal project"
+- "Set time estimate for task-001 to 90 minutes"
+
+**Inbox & Quick Capture:**
+- "Add 'Call dentist' to my inbox"
+- "Show me what's in my inbox"
+
+**Organization:**
+- "Add the 'urgent' tag to task-001"
+- "Create a new folder called 'Personal Goals' inside 'Life'"
+- "Make task-002 a subtask of task-001"
+
+**GTD Review:**
+- "Set the review interval for this project to 2 weeks"
+- "Mark project proj-001 as reviewed"
+
+**Perspectives (Pro):**
+- "Switch to my 'Daily Worklist' perspective"
+- "What perspectives do I have available?"
 
 ## Development
 
 ### Running Tests
 
-The project has comprehensive test coverage with 67 tests covering all functionality:
+The project has comprehensive test coverage with **302 tests** and **88% code coverage**:
 
 ```bash
+# Activate virtual environment
+source venv/bin/activate
+
 # Run all tests
-make test
+pytest tests/
 
-# Or using pytest directly
-./venv/bin/pytest
+# Run with coverage report
+pytest tests/ --cov=src/omnifocus_mcp --cov-report=term-missing
 
-# Run with verbose output
-make test-verbose
+# Run specific test file
+pytest tests/test_omnifocus_client.py -v
 ```
 
-See [TESTING.md](TESTING.md) for detailed testing documentation.
+**Test Suite Breakdown:**
+- 143 unit tests for OmniFocus client operations
+- 79 unit tests for MCP server tools
+- 40 integration tests for end-to-end workflows
+- 30 unit tests for FastMCP server
+- 13 safety guard tests
+
+See [docs/TESTING.md](docs/TESTING.md) for detailed testing documentation.
 
 ### Testing the Server
 

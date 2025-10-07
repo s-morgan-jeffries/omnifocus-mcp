@@ -41,7 +41,10 @@ class OmniFocusClient:
     # Operations that modify data (require safety checks)
     DESTRUCTIVE_OPERATIONS = {
         'add_task', 'add_note', 'complete_task', 'update_task',
-        'create_inbox_task', 'add_tag_to_task', 'create_project'
+        'create_inbox_task', 'add_tag_to_task', 'create_project',
+        'delete_task', 'delete_project', 'move_task', 'drop_task',
+        'create_folder', 'set_parent_task', 'set_review_interval',
+        'mark_project_reviewed', 'set_estimated_minutes'
     }
 
     def __init__(self, enable_safety_checks: bool = True):
@@ -521,7 +524,10 @@ class OmniFocusClient:
         self,
         project_id: Optional[str] = None,
         include_completed: bool = False,
-        flagged_only: bool = False
+        flagged_only: bool = False,
+        available_only: bool = False,
+        overdue: bool = False,
+        tag_filter: Optional[list[str]] = None
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
 
@@ -529,6 +535,9 @@ class OmniFocusClient:
             project_id: Optional project ID to filter tasks. If None, returns all tasks.
             include_completed: Whether to include completed tasks (default: False)
             flagged_only: Only return flagged tasks (default: False)
+            available_only: Only return available tasks (not blocked or deferred) (default: False)
+            overdue: Only return overdue tasks (default: False)
+            tag_filter: List of tag names to filter by (AND logic - task must have all tags)
 
         Returns:
             list: List of task dictionaries with id, name, note, status, project info, dates, flagged status, and tags
@@ -554,6 +563,60 @@ class OmniFocusClient:
                             error "skip non-flagged task"
                         end if"""
 
+        # Build available filter (not dropped, not blocked, not deferred)
+        available_check = "" if not available_only else """
+                        -- Skip unavailable tasks
+                        if dropped of t then
+                            error "skip unavailable task"
+                        end if
+                        if blocked of t then
+                            error "skip unavailable task"
+                        end if
+                        -- Check if deferred
+                        try
+                            set taskDeferDate to defer date of t
+                            if taskDeferDate is not missing value then
+                                if taskDeferDate > (current date) then
+                                    error "skip unavailable task"
+                                end if
+                            end if
+                        end try"""
+
+        # Build overdue filter
+        overdue_check = "" if not overdue else """
+                        -- Skip non-overdue tasks
+                        try
+                            set taskDueDate to due date of t
+                            if taskDueDate is missing value then
+                                error "skip non-overdue task"
+                            else if taskDueDate >= (current date) then
+                                error "skip non-overdue task"
+                            end if
+                        on error
+                            error "skip non-overdue task"
+                        end try"""
+
+        # Build tag filter
+        tag_check = ""
+        if tag_filter and len(tag_filter) > 0:
+            # Build AppleScript to check for all required tags
+            tag_checks = []
+            for tag_name in tag_filter:
+                tag_escaped = tag_name.replace('"', '\\"')
+                tag_checks.append(f'''
+                        -- Check for tag: {tag_escaped}
+                        set hasTag to false
+                        repeat with tg in tags of t
+                            if name of tg is "{tag_escaped}" then
+                                set hasTag to true
+                                exit repeat
+                            end if
+                        end repeat
+                        if not hasTag then
+                            error "skip task without required tag"
+                        end if''')
+            tag_check = "".join(tag_checks)
+
         script = f'''
         use AppleScript version "2.4"
         use scripting additions
@@ -574,6 +637,9 @@ class OmniFocusClient:
 
                         {completion_check}
                         {flagged_check}
+                        {available_check}
+                        {overdue_check}
+                        {tag_check}
 
                         -- Get project info
                         set projectId to ""
@@ -1110,3 +1176,640 @@ class OmniFocusClient:
                 raise Exception(f"Error adding tag to task: {result}")
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error adding tag to task: {e.stderr}")
+
+    def delete_task(self, task_id: str) -> bool:
+        """Delete a task from OmniFocus.
+
+        Args:
+            task_id: The ID of the task to delete
+
+        Returns:
+            True if deletion was successful
+
+        Raises:
+            Exception: If task not found or deletion fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('delete_task')
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theTask to first flattened task whose id is "{task_id}"
+                    delete theTask
+                    return "true"
+                on error
+                    return "false"
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Task not found: {task_id}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error deleting task: {e.stderr}")
+
+    def delete_project(self, project_id: str) -> bool:
+        """Delete a project from OmniFocus.
+
+        Args:
+            project_id: The ID of the project to delete
+
+        Returns:
+            True if deletion was successful
+
+        Raises:
+            Exception: If project not found or deletion fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('delete_project')
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theProject to first flattened project whose id is "{project_id}"
+                    delete theProject
+                    return "true"
+                on error
+                    return "false"
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Project not found: {project_id}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error deleting project: {e.stderr}")
+
+    def move_task(self, task_id: str, project_id: Optional[str]) -> bool:
+        """Move a task to a different project or to inbox.
+
+        Args:
+            task_id: The ID of the task to move
+            project_id: The ID of the destination project, or None for inbox
+
+        Returns:
+            True if move was successful
+
+        Raises:
+            Exception: If task or project not found, or move fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('move_task')
+
+        if project_id is None:
+            # Move to inbox
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set theTask to first flattened task whose id is "{task_id}"
+                        move theTask to end of tasks of front document
+                        return "true"
+                    on error errMsg
+                        return "false: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+        else:
+            # Move to project
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set theTask to first flattened task whose id is "{task_id}"
+                        set theProject to first flattened project whose id is "{project_id}"
+                        move theTask to end of tasks of theProject
+                        return "true"
+                    on error errMsg
+                        return "false: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Error moving task: {result}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error moving task: {e.stderr}")
+
+    def get_folders(self) -> list[dict]:
+        """Get all folders from OmniFocus.
+
+        Returns:
+            List of folder dictionaries with id, name, and path
+        """
+        script = '''
+        tell application "OmniFocus"
+            tell front document
+                set folderList to {}
+
+                -- Helper function to build folder path
+                on getFolderPath(f)
+                    set pathParts to {name of f}
+                    set currentFolder to f
+                    repeat
+                        try
+                            set parentFolder to container of currentFolder
+                            if class of parentFolder is folder then
+                                set pathParts to {name of parentFolder} & pathParts
+                                set currentFolder to parentFolder
+                            else
+                                exit repeat
+                            end if
+                        on error
+                            exit repeat
+                        end try
+                    end repeat
+
+                    set AppleScript's text item delimiters to " > "
+                    set folderPath to pathParts as text
+                    set AppleScript's text item delimiters to ""
+                    return folderPath
+                end getFolderPath
+
+                -- Get all folders recursively
+                on processFolders(folderContainer, folderResults)
+                    repeat with f in folders of folderContainer
+                        set folderPath to my getFolderPath(f)
+                        set folderInfo to "{" & quote & "id" & quote & ":" & quote & (id of f) & quote & "," & quote & "name" & quote & ":" & quote & (name of f) & quote & "," & quote & "path" & quote & ":" & quote & folderPath & quote & "}"
+                        set end of folderResults to folderInfo
+                        my processFolders(f, folderResults)
+                    end repeat
+                    return folderResults
+                end processFolders
+
+                set folderList to my processFolders(front document, {})
+
+                set AppleScript's text item delimiters to ","
+                return "[" & (folderList as text) & "]"
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return json.loads(result)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error retrieving folders: {e.stderr}")
+        except json.JSONDecodeError as e:
+            raise Exception(f"Error parsing folder data: {e}")
+
+    def drop_task(self, task_id: str) -> bool:
+        """Drop a task (mark as on hold indefinitely).
+
+        Args:
+            task_id: The ID of the task to drop
+
+        Returns:
+            True if drop was successful
+
+        Raises:
+            Exception: If task not found or drop fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('drop_task')
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theTask to first flattened task whose id is "{task_id}"
+                    set dropped of theTask to true
+                    return "true"
+                on error
+                    return "false"
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Task not found: {task_id}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error dropping task: {e.stderr}")
+
+    def create_folder(self, name: str, parent_path: Optional[str] = None) -> str:
+        """Create a new folder in OmniFocus.
+
+        Args:
+            name: The name of the folder to create
+            parent_path: Optional parent folder path (e.g., "Work" or "Work > Clients")
+
+        Returns:
+            The ID of the created folder
+
+        Raises:
+            Exception: If parent folder not found or creation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('create_folder')
+
+        # Escape quotes in name
+        name_escaped = name.replace('"', '\\"')
+
+        if parent_path is None:
+            # Create at root level
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set newFolder to make new folder with properties {{name:"{name_escaped}"}}
+                        return id of newFolder
+                    on error errMsg
+                        return "false: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+        else:
+            # Create in parent folder - need to find the parent first
+            parts = [p.strip() for p in parent_path.split('>')]
+
+            # Build AppleScript to navigate folder hierarchy
+            if len(parts) == 1:
+                # Single level parent
+                script = f'''
+                tell application "OmniFocus"
+                    tell front document
+                        try
+                            set parentFolder to first folder whose name is "{parts[0]}"
+                            set newFolder to make new folder at end of folders of parentFolder with properties {{name:"{name_escaped}"}}
+                            return id of newFolder
+                        on error errMsg
+                            return "false: " & errMsg
+                        end try
+                    end tell
+                end tell
+                '''
+            else:
+                # Nested parent path
+                folder_navigation = f'first folder whose name is "{parts[0]}"'
+                for part in parts[1:]:
+                    folder_navigation = f'first folder of ({folder_navigation}) whose name is "{part}"'
+
+                script = f'''
+                tell application "OmniFocus"
+                    tell front document
+                        try
+                            set parentFolder to {folder_navigation}
+                            set newFolder to make new folder at end of folders of parentFolder with properties {{name:"{name_escaped}"}}
+                            return id of newFolder
+                        on error errMsg
+                            return "false: " & errMsg
+                        end try
+                    end tell
+                end tell
+                '''
+
+        try:
+            result = run_applescript(script)
+            if result.startswith("false:"):
+                raise Exception(f"Error creating folder: {result}")
+            return result.strip()
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error creating folder: {e.stderr}")
+
+    def set_parent_task(self, task_id: str, parent_task_id: Optional[str]) -> bool:
+        """Set the parent task of a task (make it a subtask) or make it root-level.
+
+        Args:
+            task_id: The ID of the task to modify
+            parent_task_id: The ID of the parent task, or None to make it root-level
+
+        Returns:
+            True if operation was successful
+
+        Raises:
+            Exception: If task or parent not found, or operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('set_parent_task')
+
+        if parent_task_id is None:
+            # Make task root-level (remove parent)
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set theTask to first flattened task whose id is "{task_id}"
+                        -- Get the task's containing project
+                        set taskProject to containing project of theTask
+                        if taskProject is not missing value then
+                            -- Move to root of project
+                            move theTask to end of tasks of taskProject
+                        else
+                            -- Move to inbox
+                            move theTask to end of tasks of front document
+                        end if
+                        return "true"
+                    on error errMsg
+                        return "false: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+        else:
+            # Set parent task
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set theTask to first flattened task whose id is "{task_id}"
+                        set theParent to first flattened task whose id is "{parent_task_id}"
+
+                        -- Check for circular reference
+                        if id of theTask is id of theParent then
+                            return "false: Cannot set task as its own parent"
+                        end if
+
+                        -- Move task to be child of parent
+                        move theTask to end of tasks of theParent
+                        return "true"
+                    on error errMsg
+                        return "false: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Error setting parent task: {result}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error setting parent task: {e.stderr}")
+
+    def set_review_interval(self, project_id: str, interval_weeks: int) -> bool:
+        """Set the review interval for a project.
+
+        Args:
+            project_id: The ID of the project
+            interval_weeks: Review interval in weeks (e.g., 1 for weekly, 4 for monthly)
+
+        Returns:
+            True if operation was successful
+
+        Raises:
+            Exception: If project not found or operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('set_review_interval')
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theProject to first flattened project whose id is "{project_id}"
+                    set review interval of theProject to {{unit:week, steps:{interval_weeks}, fixed:true}}
+                    return "true"
+                on error
+                    return "false"
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Project not found: {project_id}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error setting review interval: {e.stderr}")
+
+    def mark_project_reviewed(self, project_id: str) -> bool:
+        """Mark a project as reviewed (updates last review date and calculates next review date).
+
+        Args:
+            project_id: The ID of the project
+
+        Returns:
+            True if operation was successful
+
+        Raises:
+            Exception: If project not found or operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('mark_project_reviewed')
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theProject to first flattened project whose id is "{project_id}"
+                    mark theProject reviewed
+                    return "true"
+                on error
+                    return "false"
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Project not found: {project_id}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error marking project as reviewed: {e.stderr}")
+
+    def get_projects_due_for_review(self) -> list[dict]:
+        """Get all projects that are due for review.
+
+        Returns:
+            List of project dictionaries with id, name, nextReviewDate, lastReviewDate
+        """
+        script = '''
+        tell application "OmniFocus"
+            tell front document
+                set output to ""
+                set projectList to flattened projects
+
+                repeat with p in projectList
+                    try
+                        set nextDate to next review date of p
+                        if nextDate is not missing value then
+                            -- Check if due for review (next review date is in the past or today)
+                            if nextDate <= (current date) then
+                                set projId to id of p
+                                set projName to name of p
+
+                                -- Format next review date
+                                set nextDateStr to ""
+                                try
+                                    set nextDateStr to nextDate as «class isot» as string
+                                end try
+
+                                -- Format last review date
+                                set lastDateStr to ""
+                                try
+                                    set lastDate to last review date of p
+                                    if lastDate is not missing value then
+                                        set lastDateStr to lastDate as «class isot» as string
+                                    end if
+                                end try
+
+                                -- Build JSON manually
+                                set jsonLine to "{" & quote & "id" & quote & ":" & quote & projId & quote & "," & quote & "name" & quote & ":" & quote & my escapeJSON(projName) & quote & "," & quote & "nextReviewDate" & quote & ":" & quote & nextDateStr & quote & "," & quote & "lastReviewDate" & quote & ":" & quote & lastDateStr & quote & "}"
+
+                                if output is not "" then
+                                    set output to output & "," & linefeed
+                                end if
+                                set output to output & jsonLine
+                            end if
+                        end if
+                    end try
+                end repeat
+
+                return "[" & linefeed & output & linefeed & "]"
+            end tell
+        end tell
+
+        -- Helper to escape JSON strings
+        on escapeJSON(txt)
+            set txt to my replaceText(txt, "\\\\", "\\\\\\\\")
+            set txt to my replaceText(txt, "\\"", "\\\\\\"")
+            set txt to my replaceText(txt, linefeed, "\\\\n")
+            set txt to my replaceText(txt, return, "\\\\r")
+            set txt to my replaceText(txt, tab, "\\\\t")
+            return txt
+        end escapeJSON
+
+        -- Helper to replace text
+        on replaceText(sourceText, oldText, newText)
+            set AppleScript's text item delimiters to oldText
+            set textItems to text items of sourceText
+            set AppleScript's text item delimiters to newText
+            set resultText to textItems as text
+            set AppleScript's text item delimiters to ""
+            return resultText
+        end replaceText
+        '''
+
+        try:
+            result = run_applescript(script)
+            return json.loads(result)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error retrieving projects due for review: {e.stderr}")
+        except json.JSONDecodeError as e:
+            raise Exception(f"Error parsing review project data: {e}")
+
+    def set_estimated_minutes(self, task_id: str, minutes: int) -> bool:
+        """Set the estimated time for a task.
+
+        Args:
+            task_id: The ID of the task
+            minutes: Estimated time in minutes (0 to clear estimate)
+
+        Returns:
+            True if operation was successful
+
+        Raises:
+            Exception: If task not found or operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('set_estimated_minutes')
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theTask to first flattened task whose id is "{task_id}"
+                    set estimated minutes of theTask to {minutes}
+                    return "true"
+                on error
+                    return "false"
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Task not found: {task_id}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error setting estimated minutes: {e.stderr}")
+
+    def get_perspectives(self) -> list[str]:
+        """Get all perspective names from OmniFocus.
+
+        Returns:
+            List of perspective names (both built-in and custom)
+        """
+        script = '''
+        tell application "OmniFocus"
+            tell default document
+                get perspective names
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            # Result is comma-separated list like "Inbox, Projects, Tags, ..."
+            perspectives = [p.strip() for p in result.split(',') if p.strip()]
+            return perspectives
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error retrieving perspectives: {e.stderr}")
+
+    def switch_perspective(self, perspective_name: str) -> str:
+        """Switch the front window to a different perspective.
+
+        Args:
+            perspective_name: Name of the perspective to switch to
+
+        Returns:
+            The name of the perspective that was switched to
+
+        Raises:
+            Exception: If perspective not found or switch fails
+        """
+        # Escape quotes in perspective name
+        perspective_escaped = perspective_name.replace('"', '\\"')
+
+        script = f'''
+        tell application "OmniFocus"
+            tell default document
+                tell front document window
+                    set perspective name to "{perspective_escaped}"
+                    return perspective name
+                end tell
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return result.strip()
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error switching perspective: {e.stderr}")

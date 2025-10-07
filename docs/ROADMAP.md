@@ -1,8 +1,10 @@
 # OmniFocus MCP Server: Development Roadmap
 
-## Status: Phase 1 Complete ✅
+## Status: Phase 1 & 2 Complete ✅
 
-**Note**: This roadmap has been revised. The original vision included email forwarding, calendar integration, and other application-layer features. However, these don't belong in an MCP server - they should be separate services or applications that *use* the MCP server. See [MCP_ROADMAP.md](MCP_ROADMAP.md) for the focused MCP server roadmap going forward.
+**Note**: This roadmap has been revised. The original vision included email forwarding, calendar integration, and other application-layer features. However, these don't belong in an MCP server - they should be separate services or applications that *use* the MCP server.
+
+**Phase 2 (Additional Primitives) is now COMPLETE**, bringing the server to **25 comprehensive MCP tools** covering all core OmniFocus functionality.
 
 ---
 
@@ -166,20 +168,58 @@ The MCP server provides the primitives (`add_task`, `create_inbox_task`, etc.) b
 
 ---
 
+## Phase 2: Additional Primitives - ✅ COMPLETE
+
+### Goal
+Expand MCP server to cover all essential OmniFocus primitives beyond the Phase 1 basics.
+
+### Status: **COMPLETE** (v0.3.0)
+
+All Phase 2 deliverables have been implemented and tested.
+
+**What We Built:**
+- ✅ Task deletion and management (delete, move, drop)
+- ✅ Advanced task queries (available_only, overdue, tag filtering)
+- ✅ Folder management (get, create)
+- ✅ Task hierarchy (parent/child relationships)
+- ✅ Project review system (GTD methodology)
+- ✅ Time estimation
+- ✅ Perspectives (OmniFocus Pro feature)
+
+**Deliverables:**
+- ✅ 13 new primitives implemented in omnifocus_client.py
+- ✅ Enhanced existing tools (get_tasks with advanced filtering)
+- ✅ 64 additional tests (143 total client tests)
+- ✅ 30 FastMCP server tests (0% → 73% coverage)
+- ✅ Updated all documentation
+
+**Success Criteria:**
+- ✅ All tier 1 & 2 primitives covered
+- ✅ 88% overall code coverage
+- ✅ Production-ready test suite (302 passing tests)
+
+---
+
 ## Current State Summary
 
-### Implemented (12 MCP Tools):
+### Implemented (25 MCP Tools):
 
-**Projects (3 tools):**
+**Projects (4 tools):**
 - ✅ `get_projects` - List all active projects
 - ✅ `search_projects` - Search by name/note/folder
 - ✅ `create_project` - Create new project with folder placement
+- ✅ `delete_project` - Delete a project
 
-**Tasks (4 tools):**
-- ✅ `get_tasks` - Query tasks with filtering
+**Tasks (9 tools):**
+- ✅ `get_tasks` - Query tasks with advanced filtering (available, overdue, by tag)
 - ✅ `add_task` - Create task with full properties
 - ✅ `update_task` - Modify existing task
 - ✅ `complete_task` - Mark task complete
+- ✅ `delete_task` - Delete a task
+- ✅ `move_task` - Move task between projects or to inbox
+- ✅ `drop_task` - Remove task from project
+- ✅ `set_parent_task` - Create task hierarchies
+- ✅ `set_estimated_minutes` - Set time estimates
 
 **Inbox (2 tools):**
 - ✅ `get_inbox_tasks` - List inbox items
@@ -189,18 +229,36 @@ The MCP server provides the primitives (`add_task`, `create_inbox_task`, etc.) b
 - ✅ `get_tags` - List all tags
 - ✅ `add_tag_to_task` - Tag a task
 
+**Folders (2 tools):**
+- ✅ `get_folders` - List folder hierarchy
+- ✅ `create_folder` - Create folders with parent paths
+
+**Project Review (3 tools):**
+- ✅ `set_review_interval` - Configure review frequency
+- ✅ `mark_project_reviewed` - Mark as reviewed
+- ✅ `get_projects_due_for_review` - Find projects needing review
+
+**Perspectives (2 tools):**
+- ✅ `get_perspectives` - List custom perspectives
+- ✅ `switch_perspective` - Change active perspective
+
 **Notes (1 tool):**
 - ✅ `add_note` - Append to project notes
 
 ### Test Coverage:
 
-- **210 passing tests**
-- 79 unit tests (omnifocus_client.py)
-- 79 unit tests (server.py)
+- **302 passing tests**
+- 143 unit tests (omnifocus_client.py)
+- 79 unit tests (legacy server.py)
+- 30 unit tests (FastMCP server_fastmcp.py)
 - 40 integration tests (end-to-end workflows)
 - 13 safety guard tests
 - 13 real OmniFocus tests (optional, require setup)
-- **Execution time**: ~0.47s
+- **Execution time**: ~1.01s
+- **Code coverage**: 88% (970 statements)
+  - omnifocus_client.py: 97%
+  - server_fastmcp.py: 73%
+  - server.py: 96%
 
 ### Database Safety:
 
@@ -238,10 +296,17 @@ The MCP server provides the primitives (`add_task`, `create_inbox_task`, etc.) b
 
 ### Phase 1 (Foundation) - ✅ COMPLETE
 - ✅ 100% GTD task properties supported
-- ✅ All OmniFocus primitives available as MCP tools
-- ✅ Comprehensive test coverage (210 tests)
-- ✅ Production-ready code quality
+- ✅ Core OmniFocus primitives (12 tools)
 - ✅ Database safety system
+- ✅ Migrated to FastMCP
+
+### Phase 2 (Additional Primitives) - ✅ COMPLETE
+- ✅ All essential OmniFocus primitives (25 tools total)
+- ✅ Advanced filtering and queries
+- ✅ Project review (GTD)
+- ✅ Perspectives support
+- ✅ Comprehensive test coverage (302 tests, 88% coverage)
+- ✅ FastMCP server tests (73% coverage)
 
 ### Future Phases - ⚠️ RECONSIDERED
 These belong in separate services/servers, not the OmniFocus MCP server.

@@ -137,16 +137,20 @@ def create_project(
 def get_tasks(
     project_id: Optional[str] = None,
     flagged_only: bool = False,
-    due_soon: bool = False,
-    include_completed: bool = False
+    include_completed: bool = False,
+    available_only: bool = False,
+    overdue: bool = False,
+    tag_filter: Optional[list[str]] = None
 ) -> str:
     """Get tasks from OmniFocus with optional filtering.
 
     Args:
         project_id: Optional project ID to filter tasks
         flagged_only: If True, only return flagged tasks
-        due_soon: If True, only return tasks due within 7 days
         include_completed: If True, include completed tasks (default: False)
+        available_only: If True, only return available tasks (not blocked or deferred)
+        overdue: If True, only return overdue tasks
+        tag_filter: List of tag names to filter by (task must have all tags)
 
     Returns a formatted list of tasks.
     """
@@ -154,8 +158,10 @@ def get_tasks(
     tasks = client.get_tasks(
         project_id=project_id,
         flagged_only=flagged_only,
-        due_soon=due_soon,
-        include_completed=include_completed
+        include_completed=include_completed,
+        available_only=available_only,
+        overdue=overdue,
+        tag_filter=tag_filter
     )
 
     if not tasks:
@@ -426,6 +432,319 @@ def add_note(project_id: str, note_text: str) -> str:
         return f"Successfully added note to project {project_id}"
     else:
         return f"Error: Failed to add note to project {project_id}"
+
+
+# ============================================================================
+# Deletion Tools
+# ============================================================================
+
+@mcp.tool()
+def delete_task(task_id: str) -> str:
+    """Delete a task from OmniFocus.
+
+    WARNING: This permanently deletes the task and cannot be undone.
+
+    Args:
+        task_id: The ID of the task to delete
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.delete_task(task_id)
+        if success:
+            return f"Successfully deleted task {task_id}"
+        else:
+            return f"Error: Failed to delete task {task_id}"
+    except Exception as e:
+        return f"Error deleting task: {str(e)}"
+
+
+@mcp.tool()
+def delete_project(project_id: str) -> str:
+    """Delete a project from OmniFocus.
+
+    WARNING: This permanently deletes the project and all its tasks. Cannot be undone.
+
+    Args:
+        project_id: The ID of the project to delete
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.delete_project(project_id)
+        if success:
+            return f"Successfully deleted project {project_id}"
+        else:
+            return f"Error: Failed to delete project {project_id}"
+    except Exception as e:
+        return f"Error deleting project: {str(e)}"
+
+
+# ============================================================================
+# Task Movement Tools
+# ============================================================================
+
+@mcp.tool()
+def move_task(task_id: str, project_id: Optional[str] = None) -> str:
+    """Move a task to a different project or to inbox.
+
+    Args:
+        task_id: The ID of the task to move
+        project_id: The ID of the destination project, or omit/null to move to inbox
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.move_task(task_id, project_id)
+        if success:
+            if project_id:
+                return f"Successfully moved task {task_id} to project {project_id}"
+            else:
+                return f"Successfully moved task {task_id} to inbox"
+        else:
+            return f"Error: Failed to move task {task_id}"
+    except Exception as e:
+        return f"Error moving task: {str(e)}"
+
+
+@mcp.tool()
+def drop_task(task_id: str) -> str:
+    """Drop a task (mark as on hold indefinitely).
+
+    Dropping a task is different from deleting it - the task remains in OmniFocus
+    but is marked as on hold and won't appear in available task lists.
+
+    Args:
+        task_id: The ID of the task to drop
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.drop_task(task_id)
+        if success:
+            return f"Successfully dropped task {task_id}"
+        else:
+            return f"Error: Failed to drop task {task_id}"
+    except Exception as e:
+        return f"Error dropping task: {str(e)}"
+
+
+# ============================================================================
+# Folder Tools
+# ============================================================================
+
+@mcp.tool()
+def get_folders() -> str:
+    """Get all folders from OmniFocus with their hierarchy.
+
+    Returns a formatted list of all folders with their paths.
+    """
+    client = get_client()
+    folders = client.get_folders()
+
+    if not folders:
+        return "Found 0 folders"
+
+    # Format folders for display
+    result = f"Found {len(folders)} folders:\n\n"
+    for folder in folders:
+        result += f"ID: {folder['id']}\n"
+        result += f"Name: {folder['name']}\n"
+        result += f"Path: {folder['path']}\n"
+        result += "---\n"
+
+    return result
+
+
+@mcp.tool()
+def create_folder(name: str, parent_path: Optional[str] = None) -> str:
+    """Create a new folder in OmniFocus.
+
+    Args:
+        name: The name of the folder to create
+        parent_path: Optional parent folder path (e.g., "Work" or "Work > Clients")
+
+    Returns a success message with the folder ID.
+    """
+    client = get_client()
+    try:
+        folder_id = client.create_folder(name, parent_path)
+        if parent_path:
+            return f"Successfully created folder '{name}' in '{parent_path}' (ID: {folder_id})"
+        else:
+            return f"Successfully created folder '{name}' at root level (ID: {folder_id})"
+    except Exception as e:
+        return f"Error creating folder: {str(e)}"
+
+
+# ============================================================================
+# Task Hierarchy Tools
+# ============================================================================
+
+@mcp.tool()
+def set_parent_task(task_id: str, parent_task_id: Optional[str] = None) -> str:
+    """Set the parent task of a task (make it a subtask) or make it root-level.
+
+    Args:
+        task_id: The ID of the task to modify
+        parent_task_id: The ID of the parent task, or omit/null to make it root-level
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.set_parent_task(task_id, parent_task_id)
+        if success:
+            if parent_task_id:
+                return f"Successfully made task {task_id} a subtask of {parent_task_id}"
+            else:
+                return f"Successfully made task {task_id} a root-level task"
+        else:
+            return f"Error: Failed to set parent task for {task_id}"
+    except Exception as e:
+        return f"Error setting parent task: {str(e)}"
+
+
+# ============================================================================
+# Project Review Tools
+# ============================================================================
+
+@mcp.tool()
+def set_review_interval(project_id: str, interval_weeks: int) -> str:
+    """Set the review interval for a project.
+
+    Args:
+        project_id: The ID of the project
+        interval_weeks: Review interval in weeks (e.g., 1 for weekly, 4 for monthly)
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.set_review_interval(project_id, interval_weeks)
+        if success:
+            return f"Successfully set review interval to {interval_weeks} week(s) for project {project_id}"
+        else:
+            return f"Error: Failed to set review interval for project {project_id}"
+    except Exception as e:
+        return f"Error setting review interval: {str(e)}"
+
+
+@mcp.tool()
+def mark_project_reviewed(project_id: str) -> str:
+    """Mark a project as reviewed (updates last review date and calculates next review date).
+
+    Args:
+        project_id: The ID of the project
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.mark_project_reviewed(project_id)
+        if success:
+            return f"Successfully marked project {project_id} as reviewed"
+        else:
+            return f"Error: Failed to mark project {project_id} as reviewed"
+    except Exception as e:
+        return f"Error marking project as reviewed: {str(e)}"
+
+
+@mcp.tool()
+def get_projects_due_for_review() -> str:
+    """Get all projects that are due for review.
+
+    Returns a formatted list of projects needing review.
+    """
+    client = get_client()
+    projects = client.get_projects_due_for_review()
+
+    if not projects:
+        return "Found 0 projects due for review"
+
+    result = f"Found {len(projects)} projects due for review:\n\n"
+    for project in projects:
+        result += f"ID: {project['id']}\n"
+        result += f"Name: {project['name']}\n"
+        if project.get('nextReviewDate'):
+            result += f"Next Review: {project['nextReviewDate']}\n"
+        if project.get('lastReviewDate'):
+            result += f"Last Reviewed: {project['lastReviewDate']}\n"
+        result += "---\n"
+
+    return result
+
+
+# ============================================================================
+# Time Estimation Tools
+# ============================================================================
+
+@mcp.tool()
+def set_estimated_minutes(task_id: str, minutes: int) -> str:
+    """Set the estimated time for a task.
+
+    Args:
+        task_id: The ID of the task
+        minutes: Estimated time in minutes (0 to clear estimate)
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        success = client.set_estimated_minutes(task_id, minutes)
+        if success:
+            if minutes == 0:
+                return f"Successfully cleared time estimate for task {task_id}"
+            else:
+                return f"Successfully set time estimate to {minutes} minute(s) for task {task_id}"
+        else:
+            return f"Error: Failed to set time estimate for task {task_id}"
+    except Exception as e:
+        return f"Error setting time estimate: {str(e)}"
+
+
+# ============================================================================
+# Perspective Tools
+# ============================================================================
+
+@mcp.tool()
+def get_perspectives() -> str:
+    """Get all perspective names from OmniFocus.
+
+    Returns a formatted list of perspectives (both built-in and custom).
+    """
+    client = get_client()
+    perspectives = client.get_perspectives()
+
+    if not perspectives:
+        return "Found 0 perspectives"
+
+    result = f"Found {len(perspectives)} perspectives:\n\n"
+    for perspective in perspectives:
+        result += f"- {perspective}\n"
+
+    return result
+
+
+@mcp.tool()
+def switch_perspective(perspective_name: str) -> str:
+    """Switch the front window to a different perspective.
+
+    Args:
+        perspective_name: Name of the perspective to switch to
+
+    Returns a success or error message.
+    """
+    client = get_client()
+    try:
+        result = client.switch_perspective(perspective_name)
+        return f"Successfully switched to perspective: {result}"
+    except Exception as e:
+        return f"Error switching perspective: {str(e)}"
 
 
 # ============================================================================
