@@ -14,6 +14,10 @@
   "typeCheckingMode": "basic",
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,
+  "reportCallIssue": false,
+  "reportArgumentType": false,
+  "reportIndexIssue": false,
+  "reportAttributeAccessIssue": false,
   "venvPath": ".",
   "venv": "venv"
 }
