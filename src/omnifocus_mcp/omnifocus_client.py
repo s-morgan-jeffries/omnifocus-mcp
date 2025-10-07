@@ -506,6 +506,66 @@ class OmniFocusClient:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error adding note: {e.stderr}")
 
+    def get_note(self, item_id: str, item_type: str = "project") -> str:
+        """Get the full note content from a project or task.
+
+        Args:
+            item_id: The ID of the project or task
+            item_type: Either "project" or "task" (default: "project")
+
+        Returns:
+            The full note content as a string (empty string if no note exists)
+
+        Raises:
+            ValueError: If item_type is not "project" or "task"
+            Exception: If the item is not found or AppleScript fails
+        """
+        if item_type not in ["project", "task"]:
+            raise ValueError(f"item_type must be 'project' or 'task', got: {item_type}")
+
+        if item_type == "project":
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set targetProject to first flattened project whose id is "{item_id}"
+                        set noteContent to note of targetProject
+                        if noteContent is missing value then
+                            return ""
+                        else
+                            return noteContent
+                        end if
+                    on error errMsg
+                        error "Project not found: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+        else:  # task
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set targetTask to first flattened task whose id is "{item_id}"
+                        set noteContent to note of targetTask
+                        if noteContent is missing value then
+                            return ""
+                        else
+                            return noteContent
+                        end if
+                    on error errMsg
+                        error "Task not found: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            return result.strip()
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error getting note: {e.stderr}")
+
     def search_projects(self, query: str) -> list[dict[str, Any]]:
         """Search projects by name or note content."""
         all_projects = self.get_projects()

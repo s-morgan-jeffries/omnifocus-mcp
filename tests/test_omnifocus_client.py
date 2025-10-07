@@ -343,6 +343,59 @@ class TestOmniFocusClient:
                 client.add_note("proj-001", "Note")
             assert "Error adding note" in str(exc_info.value)
 
+    def test_get_note_project_success(self, client):
+        """Test successfully getting a note from a project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "This is a long project note with multiple lines\nand lots of content"
+            result = client.get_note("proj-001", "project")
+            assert result == "This is a long project note with multiple lines\nand lots of content"
+            # Verify AppleScript was called for project
+            call_args = mock_run.call_args[0][0]
+            assert "flattened project" in call_args
+            assert "proj-001" in call_args
+
+    def test_get_note_task_success(self, client):
+        """Test successfully getting a note from a task."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "Task note with details"
+            result = client.get_note("task-001", "task")
+            assert result == "Task note with details"
+            # Verify AppleScript was called for task
+            call_args = mock_run.call_args[0][0]
+            assert "flattened task" in call_args
+            assert "task-001" in call_args
+
+    def test_get_note_empty_note(self, client):
+        """Test getting a note when item has no note."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = ""
+            result = client.get_note("proj-001", "project")
+            assert result == ""
+
+    def test_get_note_default_item_type(self, client):
+        """Test that item_type defaults to 'project'."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "Default project note"
+            result = client.get_note("proj-001")  # No item_type specified
+            assert result == "Default project note"
+            # Verify it used project script
+            call_args = mock_run.call_args[0][0]
+            assert "flattened project" in call_args
+
+    def test_get_note_invalid_item_type(self, client):
+        """Test that invalid item_type raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            client.get_note("proj-001", "folder")
+        assert "must be 'project' or 'task'" in str(exc_info.value)
+
+    def test_get_note_item_not_found(self, client):
+        """Test error handling when item is not found."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="Project not found")
+            with pytest.raises(Exception) as exc_info:
+                client.get_note("invalid-id", "project")
+            assert "Error getting note" in str(exc_info.value)
+
     def test_search_projects_by_name(self, client, sample_projects_json):
         """Test searching projects by name."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:

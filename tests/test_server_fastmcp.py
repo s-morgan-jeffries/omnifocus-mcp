@@ -23,6 +23,7 @@ create_inbox_task = server.create_inbox_task.fn
 get_tags = server.get_tags.fn
 add_tag_to_task = server.add_tag_to_task.fn
 add_note = server.add_note.fn
+get_note = server.get_note.fn
 get_folders = server.get_folders.fn
 create_folder = server.create_folder.fn
 set_parent_task = server.set_parent_task.fn
@@ -460,3 +461,41 @@ class TestNoteTools:
             result = add_note("proj-001", "Meeting notes")
 
             assert "Successfully added note to project proj-001" in result
+
+    def test_get_note_project_success(self):
+        """Test get_note for a project with full note content."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            long_note = "This is a very long note with lots of content\n" * 10
+            mock_client.get_note.return_value = long_note
+            mock_get_client.return_value = mock_client
+
+            result = get_note("proj-001", "project")
+
+            assert long_note in result
+            assert "Note for project proj-001" in result
+            mock_client.get_note.assert_called_once_with("proj-001", "project")
+
+    def test_get_note_task_success(self):
+        """Test get_note for a task."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_note.return_value = "Task note content"
+            mock_get_client.return_value = mock_client
+
+            result = get_note("task-001", "task")
+
+            assert "Task note content" in result
+            assert "Note for task task-001" in result
+            mock_client.get_note.assert_called_once_with("task-001", "task")
+
+    def test_get_note_empty(self):
+        """Test get_note when item has no note."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_note.return_value = ""
+            mock_get_client.return_value = mock_client
+
+            result = get_note("proj-001", "project")
+
+            assert "no note" in result.lower() or "empty" in result.lower()

@@ -434,6 +434,28 @@ def add_note(project_id: str, note_text: str) -> str:
         return f"Error: Failed to add note to project {project_id}"
 
 
+@mcp.tool()
+def get_note(item_id: str, item_type: str = "project") -> str:
+    """Get the full note content from a project or task.
+
+    This tool retrieves the complete note without truncation, unlike get_projects
+    or get_tasks which truncate notes to 100 characters.
+
+    Args:
+        item_id: The ID of the project or task
+        item_type: Either "project" or "task" (default: "project")
+
+    Returns the full note content or a message if no note exists.
+    """
+    client = get_client()
+    note_content = client.get_note(item_id, item_type)
+
+    if note_content:
+        return f"Note for {item_type} {item_id}:\n\n{note_content}"
+    else:
+        return f"No note found for {item_type} {item_id} (note is empty)"
+
+
 # ============================================================================
 # Deletion Tools
 # ============================================================================
