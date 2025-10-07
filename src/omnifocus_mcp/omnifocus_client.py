@@ -1,6 +1,7 @@
 """Client for interacting with OmniFocus app."""
 import subprocess
 import json
+import os
 from typing import Any, Optional
 
 
@@ -15,8 +16,107 @@ def run_applescript(script: str) -> str:
     return result.stdout.strip()
 
 
+class DatabaseSafetyError(Exception):
+    """Raised when database safety checks fail."""
+    pass
+
+
 class OmniFocusClient:
-    """Client for OmniFocus app operations using AppleScript."""
+    """Client for OmniFocus app operations using AppleScript.
+
+    SAFETY: For integration testing with real OmniFocus, set environment variables:
+        OMNIFOCUS_TEST_MODE=true
+        OMNIFOCUS_TEST_DATABASE=OmniFocus-TEST.ofocus
+
+    Without these, destructive operations will be blocked to protect your production database.
+    """
+
+    # Allowed test database names
+    ALLOWED_TEST_DATABASES = {
+        "OmniFocus-TEST.ofocus",
+        "OmniFocus-Dev.ofocus",
+        "OmniFocus-Staging.ofocus",
+    }
+
+    # Operations that modify data (require safety checks)
+    DESTRUCTIVE_OPERATIONS = {
+        'add_task', 'add_note', 'complete_task', 'update_task',
+        'create_inbox_task', 'add_tag_to_task'
+    }
+
+    def __init__(self, enable_safety_checks: bool = True):
+        """Initialize the OmniFocus client.
+
+        Args:
+            enable_safety_checks: If True (default), verify database before destructive operations.
+                                 Set to False only for unit tests with mocked AppleScript.
+        """
+        self._safety_checks_enabled = enable_safety_checks
+        self._test_mode = os.environ.get('OMNIFOCUS_TEST_MODE', '').lower() == 'true'
+        self._test_database = os.environ.get('OMNIFOCUS_TEST_DATABASE', '')
+
+        # If safety checks are enabled and we're in test mode, verify configuration
+        if self._safety_checks_enabled and self._test_mode:
+            if not self._test_database:
+                raise DatabaseSafetyError(
+                    "OMNIFOCUS_TEST_MODE is enabled but OMNIFOCUS_TEST_DATABASE is not set. "
+                    "Set OMNIFOCUS_TEST_DATABASE to one of: " +
+                    ", ".join(self.ALLOWED_TEST_DATABASES)
+                )
+            if self._test_database not in self.ALLOWED_TEST_DATABASES:
+                raise DatabaseSafetyError(
+                    f"Database '{self._test_database}' is not in the allowed test databases list. "
+                    "Allowed: " + ", ".join(self.ALLOWED_TEST_DATABASES)
+                )
+
+    def _verify_database_safety(self, operation_name: str) -> None:
+        """Verify we're not accidentally modifying production database.
+
+        Args:
+            operation_name: Name of the operation being performed
+
+        Raises:
+            DatabaseSafetyError: If safety checks fail
+        """
+        # Skip if safety checks are disabled (for unit tests)
+        if not self._safety_checks_enabled:
+            return
+
+        # Read-only operations are always safe
+        if operation_name not in self.DESTRUCTIVE_OPERATIONS:
+            return
+
+        # For destructive operations, test mode must be enabled
+        if not self._test_mode:
+            raise DatabaseSafetyError(
+                f"Cannot perform destructive operation '{operation_name}' without test mode. "
+                "Set OMNIFOCUS_TEST_MODE=true to enable testing with OmniFocus. "
+                "WARNING: Only use with a test database!"
+            )
+
+        # Verify we're using the correct test database via AppleScript
+        try:
+            script = '''
+            tell application "OmniFocus"
+                tell front document
+                    return name of it
+                end tell
+            end tell
+            '''
+            result = run_applescript(script)
+
+            # Check if the database name matches what we expect
+            if self._test_database not in result:
+                raise DatabaseSafetyError(
+                    f"Database safety check FAILED! Expected '{self._test_database}' but got '{result}'. "
+                    "This could mean you're about to modify your PRODUCTION database! "
+                    "Operation blocked for safety."
+                )
+        except subprocess.CalledProcessError as e:
+            raise DatabaseSafetyError(
+                f"Could not verify database name before operation '{operation_name}'. "
+                f"Blocking operation for safety. Error: {e.stderr}"
+            )
 
     def _escape_applescript_string(self, text: str) -> str:
         """Escape quotes and backslashes for AppleScript strings."""
@@ -151,6 +251,9 @@ class OmniFocusClient:
         Returns:
             bool: True if task was created successfully
         """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('add_task')
+
         # Escape quotes and backslashes for AppleScript
         def escape_applescript(text: str) -> str:
             if not text:
@@ -253,6 +356,9 @@ class OmniFocusClient:
 
     def add_note(self, project_id: str, note_text: str) -> bool:
         """Append a note to a project's existing notes using AppleScript."""
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('add_note')
+
         # Escape quotes and backslashes for AppleScript
         def escape_applescript(text: str) -> str:
             if not text:
@@ -486,6 +592,9 @@ class OmniFocusClient:
             ValueError: If task_id is empty
             Exception: If the task cannot be completed
         """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('complete_task')
+
         if not task_id:
             raise ValueError("task_id is required")
 
@@ -534,6 +643,9 @@ class OmniFocusClient:
             ValueError: If task_id is empty or no fields are provided
             Exception: If the task cannot be updated
         """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('update_task')
+
         if not task_id:
             raise ValueError("task_id is required")
 
@@ -734,6 +846,9 @@ class OmniFocusClient:
             ValueError: If task_name is empty
             Exception: If the task cannot be created
         """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('create_inbox_task')
+
         if not task_name:
             raise ValueError("task_name is required")
 
@@ -863,6 +978,9 @@ class OmniFocusClient:
             ValueError: If task_id or tag_name is empty
             Exception: If the tag cannot be added
         """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('add_tag_to_task')
+
         if not task_id:
             raise ValueError("task_id is required")
         if not tag_name:

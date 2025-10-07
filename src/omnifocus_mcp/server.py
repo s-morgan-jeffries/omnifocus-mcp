@@ -2,6 +2,7 @@
 """MCP Server for OmniFocus integration."""
 import asyncio
 import logging
+import os
 from typing import Any
 
 from mcp.server import Server
@@ -17,8 +18,23 @@ logger = logging.getLogger("omnifocus-mcp")
 # Create MCP server instance
 app = Server("omnifocus-mcp")
 
-# Initialize OmniFocus client
-client = OmniFocusClient()
+# Initialize OmniFocus client (lazy)
+class _ClientProxy:
+    """Proxy that lazily creates the client on first access."""
+    def __init__(self):
+        self._client = None
+
+    def _ensure_client(self):
+        if self._client is None:
+            # Disable safety checks if in pytest environment (for integration tests with mocked AppleScript)
+            _in_pytest = os.environ.get('PYTEST_CURRENT_TEST') is not None
+            self._client = OmniFocusClient(enable_safety_checks=not _in_pytest)
+        return self._client
+
+    def __getattr__(self, name):
+        return getattr(self._ensure_client(), name)
+
+client = _ClientProxy()
 
 
 @app.list_tools()

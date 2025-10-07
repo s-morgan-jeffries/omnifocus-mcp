@@ -32,7 +32,7 @@ class TestOmniFocusClient:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient()
+        return OmniFocusClient(enable_safety_checks=False)
 
     @pytest.fixture
     def sample_projects_json(self):
@@ -396,7 +396,7 @@ class TestEdgeCases:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient()
+        return OmniFocusClient(enable_safety_checks=False)
 
     def test_very_long_note(self, client):
         """Test handling of very long notes."""
@@ -446,7 +446,7 @@ class TestGetTasks:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient()
+        return OmniFocusClient(enable_safety_checks=False)
 
     @pytest.fixture
     def sample_tasks_json(self):
@@ -589,7 +589,7 @@ class TestCompleteTask:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient()
+        return OmniFocusClient(enable_safety_checks=False)
 
     def test_complete_task_success(self, client):
         """Test successfully completing a task."""
@@ -639,7 +639,7 @@ class TestUpdateTask:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient()
+        return OmniFocusClient(enable_safety_checks=False)
 
     def test_update_task_name(self, client):
         """Test updating task name."""
@@ -749,7 +749,7 @@ class TestInboxOperations:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient()
+        return OmniFocusClient(enable_safety_checks=False)
 
     @pytest.fixture
     def sample_inbox_tasks_json(self):
@@ -868,7 +868,7 @@ class TestTagOperations:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient()
+        return OmniFocusClient(enable_safety_checks=False)
 
     @pytest.fixture
     def sample_tags_json(self):

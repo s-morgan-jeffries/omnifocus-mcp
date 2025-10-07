@@ -1,150 +1,343 @@
-# Testing Documentation
+# Testing Guide
+
+This document describes the testing strategy and procedures for the OmniFocus MCP server.
+
+## Table of Contents
+
+- [Test Suite Overview](#test-suite-overview)
+- [Database Safety](#database-safety)
+- [Running Tests](#running-tests)
+- [Test Types](#test-types)
+- [Setting Up Real OmniFocus Testing](#setting-up-real-omnifocus-testing)
+- [Test Coverage Details](#test-coverage-details)
 
 ## Test Suite Overview
 
-The OmniFocus MCP server has comprehensive test coverage with **67 tests** across 3 test files, all passing.
+The project has three types of tests:
 
-### Test Files
+1. **Unit Tests** - Test individual components with mocked dependencies
+2. **Integration Tests (Mocked)** - Test full workflows with mocked AppleScript
+3. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-1. **[test_omnifocus_client.py](test_omnifocus_client.py)** - 26 tests
-   - Unit tests for the OmniFocusClient class
-   - Tests for AppleScript execution and error handling
-   - Tests for all client methods (get_projects, add_task, add_note, search_projects)
+**Total Test Coverage**: 184 tests
+- 158 unit/integration tests (with mocks) ✅ All passing
+- 13 safety guard tests ✅ All passing
+- 13 real OmniFocus integration tests ⏭️ Skipped by default
 
-2. **[test_server.py](test_server.py)** - 29 tests
-   - Unit tests for MCP server handlers
-   - Tests for all 4 MCP tools
-   - Schema validation tests
-   - Error handling and edge cases
+## Database Safety
 
-3. **[test_integration.py](test_integration.py)** - 12 tests
-   - End-to-end integration tests
-   - Real-world usage scenarios
-   - Multi-step workflows
-   - Client state management
+### ⚠️ CRITICAL: Production Database Protection
+
+The OmniFocus client includes multi-layer safety guards to prevent accidental corruption of your production database:
+
+**Safety Layers:**
+
+1. **Environment Variable Checks**
+   - `OMNIFOCUS_TEST_MODE` must be set to `true`
+   - `OMNIFOCUS_TEST_DATABASE` must specify the test database name
+
+2. **Database Name Whitelist**
+   - Only these database names are allowed:
+     - `OmniFocus-TEST.ofocus`
+     - `OmniFocus-Dev.ofocus`
+     - `OmniFocus-Staging.ofocus`
+
+3. **Runtime Verification**
+   - Before each destructive operation, AppleScript verifies the active database name
+   - Operations are blocked if the name doesn't match expectations
+
+**Protected Operations:**
+- `add_task`
+- `add_note`
+- `complete_task`
+- `update_task`
+- `create_inbox_task`
+- `add_tag_to_task`
+
+**Read-Only Operations** (always allowed):
+- `get_projects`
+- `search_projects`
+- `get_tasks`
+- `get_inbox_tasks`
+- `get_tags`
+
+### How Safety Guards Work
+
+```python
+# WITHOUT test mode - operations are blocked
+client = OmniFocusClient(enable_safety_checks=True)
+client.add_task(...)  # ❌ Raises DatabaseSafetyError
+
+# WITH test mode - operations verify database name
+export OMNIFOCUS_TEST_MODE=true
+export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
+client = OmniFocusClient(enable_safety_checks=True)
+client.add_task(...)  # ✅ Verifies database, then proceeds
+
+# For unit tests with mocked AppleScript
+client = OmniFocusClient(enable_safety_checks=False)
+client.add_task(...)  # ✅ No safety checks (for testing only!)
+```
 
 ## Running Tests
 
-### Run All Tests
+### Quick Test (Unit + Integration with Mocks)
+
 ```bash
-./venv/bin/pytest
+# Run all fast tests (no OmniFocus required)
+pytest tests/
+
+# Run with coverage
+pytest tests/ --cov=src/omnifocus_mcp --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_omnifocus_client.py -v
+
+# Run specific test
+pytest tests/test_omnifocus_client.py::TestOmniFocusClient::test_add_task_success -v
 ```
 
-### Run Specific Test File
+### Safety Guard Tests
+
 ```bash
-./venv/bin/pytest test_omnifocus_client.py
-./venv/bin/pytest test_server.py
-./venv/bin/pytest test_integration.py
+# Test that safety guards work correctly
+pytest tests/test_safety_guards.py -v
 ```
 
-### Run with Verbose Output
+These tests verify:
+- Destructive operations are blocked without test mode ✅
+- Database name verification works ✅
+- Configuration validation is correct ✅
+- Safety checks can be disabled for unit tests ✅
+- Read-only operations always allowed ✅
+
+### Real OmniFocus Integration Tests
+
+**⚠️ WARNING**: These tests interact with a REAL OmniFocus database!
+
 ```bash
-./venv/bin/pytest -v
+# Setup (one time)
+./scripts/setup_test_database.sh
+
+# Configure environment
+export OMNIFOCUS_TEST_MODE=true
+export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
+
+# Run real integration tests
+pytest tests/test_integration_real.py -v
 ```
 
-### Run Specific Test
-```bash
-./venv/bin/pytest test_server.py::TestCallToolGetProjects::test_get_projects_success
+**Prerequisites:**
+1. OmniFocus 4.x must be installed
+2. OmniFocus must be running
+3. Test database must be created (via setup script)
+4. Test database must be the active database in OmniFocus
+5. Environment variables must be set
+
+## Test Types
+
+### Unit Tests (`test_omnifocus_client.py`)
+
+Tests individual client methods with mocked AppleScript execution.
+
+**Coverage**: 79 tests
+- AppleScript execution
+- Project operations (get, search)
+- Task operations (get, add, complete, update)
+- Inbox operations
+- Tag operations
+- Edge cases (Unicode, special characters, long strings)
+- Error handling
+
+**Example:**
+```python
+def test_add_task_success(self, client):
+    """Test successful task addition."""
+    with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        mock_run.return_value = "true"
+        result = client.add_task("proj-001", "New Task", "Task note")
+        assert result is True
 ```
 
-## Test Coverage
+### Integration Tests - Mocked (`test_integration.py`, `test_server.py`)
 
-### OmniFocusClient Coverage
+Tests full MCP server workflows with mocked AppleScript.
 
-#### `get_projects()`
-- ✅ Successful project retrieval
-- ✅ Empty projects list
-- ✅ No output from AppleScript
-- ✅ Invalid JSON parsing
-- ✅ Subprocess errors
-- ✅ Special characters in project data
+**Coverage**: 79 tests
+- MCP tool list generation
+- Tool call handling for all operations
+- End-to-end workflows
+- Error propagation
+- Special character handling
+- Client state management
 
-#### `add_task()`
-- ✅ Successful task addition
-- ✅ Task with special characters (quotes, backslashes, newlines)
-- ✅ Task without note
-- ✅ Task addition failure
-- ✅ Subprocess errors
-- ✅ Empty strings
+**Example:**
+```python
+async def test_full_flow_search_then_add_task(self):
+    """Test searching for a project and then adding a task to it."""
+    with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        # Search
+        mock_run.return_value = json.dumps([{"id": "proj-001", "name": "Project"}])
+        search_result = await server.call_tool("search_projects", {"query": "test"})
 
-#### `add_note()`
-- ✅ Successful note addition
-- ✅ Note with special characters
-- ✅ Note addition failure
-- ✅ Subprocess errors
-- ✅ Very long notes (10,000+ characters)
+        # Add task
+        mock_run.return_value = "true"
+        add_result = await server.call_tool("add_task", {
+            "project_id": "proj-001",
+            "task_name": "Test Task"
+        })
+        assert "Successfully added task" in add_result[0].text
+```
 
-#### `search_projects()`
-- ✅ Search by name
-- ✅ Search by note content
-- ✅ Search by folder path
-- ✅ Case-insensitive search
-- ✅ No results
-- ✅ Multiple matches
+### Safety Guard Tests (`test_safety_guards.py`)
 
-### MCP Server Coverage
+Tests that verify the database safety system works correctly.
 
-#### `list_tools()`
-- ✅ Returns all 4 tools
-- ✅ Schema validation for all tools
+**Coverage**: 13 tests
+- Operations blocked without test mode
+- Database name verification
+- Configuration validation
+- Safety checks can be disabled for unit tests
+- Read-only operations always allowed
 
-#### `call_tool("get_projects")`
-- ✅ Success with multiple projects
-- ✅ Empty projects list
-- ✅ Long note truncation (>100 chars)
-- ✅ Exception handling
-- ✅ Empty folder paths display as "(root)"
+**Example:**
+```python
+def test_add_task_blocked_without_test_mode(self, client_with_safety):
+    """Test that add_task is blocked without test mode."""
+    with pytest.raises(DatabaseSafetyError) as exc_info:
+        client_with_safety.add_task("proj-001", "Task Name")
+    assert "Cannot perform destructive operation" in str(exc_info.value)
+```
 
-#### `call_tool("search_projects")`
-- ✅ Successful search
-- ✅ No results
-- ✅ Missing query parameter
-- ✅ Empty query string
-- ✅ Exception handling
+### Real Integration Tests (`test_integration_real.py`)
 
-#### `call_tool("add_task")`
-- ✅ Success with note
-- ✅ Success without note
-- ✅ Missing project_id
-- ✅ Missing task_name
-- ✅ Special characters
-- ✅ Task addition failure
-- ✅ Exception handling
+Tests that interact with actual OmniFocus via AppleScript.
 
-#### `call_tool("add_note")`
-- ✅ Success
-- ✅ Missing project_id
-- ✅ Missing note_text
-- ✅ Very long note (5,000+ chars)
-- ✅ Note addition failure
-- ✅ Exception handling
+**Coverage**: 13 tests (skipped unless configured)
+- Real project/task/tag retrieval
+- Real task creation and modification
+- Real completion and updates
+- Real inbox operations
+- Real tag operations
+- Safety guard verification with real database
 
-#### Unknown Tool Handling
-- ✅ Returns appropriate error message
+**Example:**
+```python
+def test_add_task_real(self, client, test_project_id):
+    """Test adding a task to real OmniFocus."""
+    result = client.add_task(
+        test_project_id,
+        "Integration Test Task",
+        note="Created by integration test"
+    )
+    assert result is True
 
-### Integration Test Coverage
+    # Verify it was created
+    tasks = client.get_tasks(project_id=test_project_id)
+    task_names = [t['name'] for t in tasks]
+    assert "Integration Test Task" in task_names
+```
 
-#### Full Flow Tests
-- ✅ Get projects end-to-end
-- ✅ Search then add task workflow
-- ✅ Special characters throughout stack
-- ✅ Error propagation
-- ✅ Multiple concurrent operations
-- ✅ Empty database scenario
-- ✅ Large dataset (100 projects)
+## Setting Up Real OmniFocus Testing
 
-#### Real-World Scenarios
-- ✅ Project review workflow
-- ✅ Failed task creation handling
-- ✅ Unicode and emoji support (Japanese text, emojis)
+### Step 1: Create Test Database
 
-#### Client State Tests
-- ✅ Client instance reused across calls
-- ✅ Client survives errors
+Run the setup script:
 
-## Edge Cases Tested
+```bash
+./scripts/setup_test_database.sh
+```
 
-### String Handling
+This script will:
+1. Verify your production database exists
+2. Create a test database at the same location
+3. Populate it with test data (projects, tasks, tags)
+4. Provide instructions for environment variables
+
+**Test Database Location:**
+```
+~/Library/Containers/com.omnigroup.OmniFocus4/Data/Library/Application Support/OmniFocus/OmniFocus-TEST.ofocus
+```
+
+### Step 2: Configure Environment
+
+Add to your shell profile (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+export OMNIFOCUS_TEST_MODE=true
+export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
+```
+
+Or set for a single session:
+
+```bash
+export OMNIFOCUS_TEST_MODE=true
+export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
+```
+
+### Step 3: Switch to Test Database
+
+**IMPORTANT**: OmniFocus 4.8.3 does not have a "File > Open Database" menu option.
+
+To switch databases:
+
+1. Close OmniFocus completely
+2. Rename your production database temporarily:
+   ```bash
+   cd ~/Library/Containers/com.omnigroup.OmniFocus4/Data/Library/Application\ Support/OmniFocus/
+   mv OmniFocus.ofocus OmniFocus.ofocus.backup
+   mv OmniFocus-TEST.ofocus OmniFocus.ofocus
+   ```
+3. Launch OmniFocus (will open the test database)
+4. Run your tests
+5. When done, switch back:
+   ```bash
+   cd ~/Library/Containers/com.omnigroup.OmniFocus4/Data/Library/Application\ Support/OmniFocus/
+   mv OmniFocus.ofocus OmniFocus-TEST.ofocus
+   mv OmniFocus.ofocus.backup OmniFocus.ofocus
+   ```
+
+**Alternative**: Create an AppleScript or shell function to automate database switching.
+
+### Step 4: Run Tests
+
+```bash
+# Verify environment
+echo $OMNIFOCUS_TEST_MODE
+echo $OMNIFOCUS_TEST_DATABASE
+
+# Run tests
+pytest tests/test_integration_real.py -v
+```
+
+### Step 5: Verify Safety Guards
+
+After running tests, verify in OmniFocus:
+- Check that test tasks were created
+- Verify your production database was not modified
+- Confirm the test database name matches expectations
+
+## Test Coverage Details
+
+### Client Operations
+
+| Operation | Unit Tests | Integration | Real Tests |
+|-----------|:----------:|:-----------:|:----------:|
+| get_projects | ✅ 5 | ✅ 3 | ✅ 1 |
+| search_projects | ✅ 6 | ✅ 2 | ✅ 1 |
+| add_task | ✅ 15 | ✅ 5 | ✅ 2 |
+| add_note | ✅ 4 | ✅ 2 | - |
+| get_tasks | ✅ 9 | ✅ 2 | ✅ 1 |
+| complete_task | ✅ 4 | ✅ 2 | ✅ 1 |
+| update_task | ✅ 9 | ✅ 2 | ✅ 1 |
+| get_inbox_tasks | ✅ 3 | ✅ 2 | ✅ 2 |
+| create_inbox_task | ✅ 6 | ✅ 2 | ✅ 1 |
+| get_tags | ✅ 3 | ✅ 2 | ✅ 1 |
+| add_tag_to_task | ✅ 5 | ✅ 2 | ✅ 1 |
+
+### Edge Cases Tested
+
+**String Handling:**
 - ✅ Double quotes in strings
 - ✅ Backslashes in strings
 - ✅ Newlines and tabs
@@ -154,116 +347,148 @@ The OmniFocus MCP server has comprehensive test coverage with **67 tests** acros
 - ✅ Empty strings
 - ✅ Very long strings (5,000-10,000 chars)
 
-### Error Conditions
+**Error Conditions:**
 - ✅ AppleScript subprocess errors
 - ✅ JSON parsing errors
 - ✅ Empty output from AppleScript
-- ✅ Invalid project IDs
+- ✅ Invalid project/task IDs
 - ✅ Missing required parameters
-- ✅ OmniFocus not running
-- ✅ Permission denied errors
+- ✅ Database safety violations
 
-### Data Conditions
-- ✅ Empty projects list
-- ✅ Projects with empty notes
-- ✅ Projects with empty folder paths
-- ✅ Large datasets (100+ projects)
-- ✅ Projects with minimal data
+**Data Conditions:**
+- ✅ Empty result lists
+- ✅ Projects/tasks with empty fields
+- ✅ Large datasets (100+ items)
 - ✅ None as arguments
 
-## Test Strategy
+## Test Development Guidelines
 
-### Unit Tests
-Unit tests use mocking to isolate components:
-- Mock `run_applescript()` to test OmniFocusClient without AppleScript
-- Mock `client` methods to test MCP server handlers independently
-- Fast execution (<0.1s per file)
+### Adding New Tests
 
-### Integration Tests
-Integration tests mock only at the AppleScript boundary:
-- Test full flow from MCP tool call through client
-- Verify AppleScript commands are constructed correctly
-- Test realistic multi-step workflows
-- Still fast (<0.3s) due to AppleScript mocking
+1. **Unit tests** for new client methods go in `test_omnifocus_client.py`
+2. **Integration tests** (mocked) go in `test_integration.py` or `test_server.py`
+3. **Real integration tests** go in `test_integration_real.py`
+4. **Safety guard tests** go in `test_safety_guards.py`
 
-### Mocking Strategy
+### Test Naming Convention
+
+- Test files: `test_*.py`
+- Test classes: `Test*`
+- Test methods: `test_*`
+- Use descriptive names: `test_add_task_with_due_date_and_flags`
+
+### Fixtures
+
+Always disable safety checks for mocked tests:
+
 ```python
-# Client tests mock at AppleScript level
-with mock.patch('omnifocus_client.run_applescript') as mock_run:
-    mock_run.return_value = json.dumps([...])
-    result = client.get_projects()
-
-# Server tests mock at client method level
-with mock.patch.object(server.client, 'get_projects', return_value=[...]):
-    result = await server.call_tool("get_projects", {})
+@pytest.fixture
+def client(self):
+    """Create a client instance for testing."""
+    return OmniFocusClient(enable_safety_checks=False)
 ```
 
-## Failure Modes Covered
+Enable safety checks for real integration tests:
 
-1. **OmniFocus Application Issues**
-   - App not running → Error message returned
-   - Permission denied → Exception caught and returned as error
-   - App crashed during operation → Subprocess error caught
+```python
+@pytest.fixture
+def client(self):
+    """Create a client for real OmniFocus testing."""
+    return OmniFocusClient(enable_safety_checks=True)
+```
 
-2. **Data Issues**
-   - Malformed JSON from AppleScript → Exception caught, error message returned
-   - Empty results → Handled gracefully with "Found 0 projects"
-   - Special characters breaking AppleScript → Properly escaped before sending
+### Mocking AppleScript
 
-3. **Parameter Issues**
-   - Missing required parameters → Clear error messages
-   - Invalid project IDs → AppleScript error caught and returned
-   - Empty/None values → Handled appropriately
+Use `unittest.mock` to mock AppleScript execution:
 
-4. **Resource Issues**
-   - Very long notes/names → Handled without crashes
-   - Large datasets → Processed successfully
-   - Unicode/emoji → Full support
+```python
+from unittest import mock
 
-## Continuous Testing
+def test_something(self, client):
+    with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        mock_run.return_value = "expected output"
+        result = client.some_method()
+        assert result == expected
+```
 
-### Before Committing
+## Continuous Integration
+
+The test suite is designed to run in CI without requiring OmniFocus:
+
+```yaml
+# .github/workflows/test.yml
+- name: Run tests
+  run: |
+    pytest tests/ --cov=src/omnifocus_mcp --cov-report=xml
+```
+
+Real integration tests are skipped automatically when `OMNIFOCUS_TEST_MODE` is not set.
+
+## Troubleshooting
+
+### "Database safety check FAILED"
+
+**Cause**: You're trying to run destructive operations against the production database.
+
+**Solution**:
+1. Verify environment variables are set
+2. Switch to test database in OmniFocus
+3. Verify database name matches `OMNIFOCUS_TEST_DATABASE`
+
+### "Cannot perform destructive operation without test mode"
+
+**Cause**: `OMNIFOCUS_TEST_MODE` is not set to `true`.
+
+**Solution**:
 ```bash
-./venv/bin/pytest
+export OMNIFOCUS_TEST_MODE=true
+export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
 ```
 
-### Before Releasing
+### "No module named 'omnifocus_mcp'"
+
+**Cause**: Package not installed or wrong Python environment.
+
+**Solution**:
 ```bash
-./venv/bin/pytest -v --tb=long
+# Activate virtual environment
+source venv/bin/activate
+
+# Install in development mode
+pip install -e .
 ```
 
-### Testing with Real OmniFocus
-To test with the actual OmniFocus application (not mocked):
-1. Ensure OmniFocus is running
-2. Remove/disable mocks in test files
-3. Use test projects to avoid modifying real data
+### "OmniFocus error: Application isn't running"
 
-## Test Maintenance
+**Cause**: OmniFocus is not running.
 
-### Adding New Features
-When adding new features:
-1. Write unit tests for the client method
-2. Write unit tests for the server handler
-3. Write integration test for the full flow
-4. Test edge cases and error conditions
+**Solution**: Launch OmniFocus before running real integration tests.
 
-### Updating Tests
-When updating code:
-1. Run tests to ensure no regressions
-2. Update tests if behavior changes
-3. Add new tests for new edge cases discovered
+### Tests hang or timeout
 
-## Known Limitations
+**Cause**: AppleScript waiting for user interaction or OmniFocus is busy.
 
-- Tests use mocking and don't test actual AppleScript execution
-- Tests don't verify AppleScript syntax correctness (would need real OmniFocus)
-- Performance tests not included (all operations are I/O bound to OmniFocus)
-- No tests for macOS permission prompts (OS-level)
+**Solution**:
+1. Close any open OmniFocus dialogs
+2. Make sure OmniFocus is not syncing
+3. Try running tests one at a time with `-v` flag
 
-## Future Test Improvements
+## Safety Checklist
 
-- [ ] Add code coverage reporting (pytest-cov)
-- [ ] Add performance/benchmark tests
-- [ ] Add tests for concurrent MCP client connections
-- [ ] Add manual test scenarios for real OmniFocus testing
-- [ ] Add tests for AppleScript syntax validation
+Before running real integration tests:
+
+- [ ] Test database created (`./scripts/setup_test_database.sh`)
+- [ ] Environment variables set (`OMNIFOCUS_TEST_MODE`, `OMNIFOCUS_TEST_DATABASE`)
+- [ ] Test database is active in OmniFocus
+- [ ] Production database is backed up (optional but recommended)
+- [ ] You understand that tests will modify the active database
+
+**If in doubt, run with safety checks enabled. The system will block operations if configuration is incorrect.**
+
+## Test Metrics
+
+- **Total Tests**: 184
+- **Passing**: 171
+- **Skipped**: 13 (real OmniFocus tests)
+- **Execution Time**: ~0.35s (mocked tests only)
+- **Code Coverage**: Run `pytest --cov=src/omnifocus_mcp` for details
