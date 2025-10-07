@@ -176,7 +176,7 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 ### Running Tests
 
-The project has comprehensive test coverage with **217 tests (204 passing, 13 skipped)** and **89% code coverage**:
+The project has comprehensive test coverage with **218 tests (204 passing, 14 skipped)** and **89% code coverage**:
 
 ```bash
 # Activate virtual environment

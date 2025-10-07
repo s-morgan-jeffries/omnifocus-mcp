@@ -18,11 +18,11 @@ The project has two types of tests:
 1. **Unit Tests** - Test individual components with mocked dependencies
 2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 217 tests
+**Total Test Coverage**: 218 tests
 - 149 unit tests (client operations) ✅ All passing
 - 33 unit tests (FastMCP server) ✅ All passing
 - 22 safety guard tests ✅ All passing
-- 13 real OmniFocus integration tests ⏭️ Skipped by default
+- 14 real OmniFocus integration tests ⏭️ Skipped by default
 
 **Test Execution**: ~0.53 seconds for all passing tests
 **Code Coverage**: 89% overall
