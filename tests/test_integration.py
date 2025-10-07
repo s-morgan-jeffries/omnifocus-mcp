@@ -7,8 +7,8 @@ import json
 import pytest
 from unittest import mock
 
-import server
-from omnifocus_client import OmniFocusClient
+from omnifocus_mcp import server
+from omnifocus_mcp.omnifocus_client import OmniFocusClient
 
 
 class TestIntegration:
@@ -30,7 +30,7 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_full_flow_get_projects(self, mock_applescript_projects):
         """Test full flow from MCP call to AppleScript and back."""
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = mock_applescript_projects
 
             # Call through MCP server
@@ -48,7 +48,7 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_full_flow_search_then_add_task(self, mock_applescript_projects):
         """Test searching for a project and then adding a task to it."""
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # First call: search projects
             mock_run.return_value = mock_applescript_projects
             search_result = await server.call_tool("search_projects", {"query": "Integration"})
@@ -79,7 +79,7 @@ class TestIntegration:
             "folderPath": "Test > Special \"Chars\""
         }])
 
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # Get projects with special characters
             mock_run.return_value = special_projects
             result = await server.call_tool("get_projects", {})
@@ -97,7 +97,7 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_error_propagation(self):
         """Test that errors propagate correctly through the stack."""
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # Simulate AppleScript error
             mock_run.return_value = ""
 
@@ -109,7 +109,7 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_multiple_concurrent_operations(self, mock_applescript_projects):
         """Test handling multiple operations in sequence."""
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # Operation 1: Get projects
             mock_run.return_value = mock_applescript_projects
             result1 = await server.call_tool("get_projects", {})
@@ -142,7 +142,7 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_empty_database_scenario(self):
         """Test behavior when OmniFocus has no projects."""
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "[]"
 
             # Get projects should return empty
@@ -168,7 +168,7 @@ class TestIntegration:
             for i in range(100)
         ])
 
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = large_dataset
 
             result = await server.call_tool("get_projects", {})
@@ -201,7 +201,7 @@ class TestRealWorldScenarios:
             }
         ])
 
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # Step 1: Review all projects
             mock_run.return_value = projects
             result = await server.call_tool("get_projects", {})
@@ -230,7 +230,7 @@ class TestRealWorldScenarios:
     @pytest.mark.asyncio
     async def test_handling_failed_task_creation(self):
         """Test graceful handling when task creation fails."""
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # Simulate task creation failure
             mock_run.return_value = "false: Project not found"
 
@@ -252,7 +252,7 @@ class TestRealWorldScenarios:
             "folderPath": "フォルダ > サブフォルダ"
         }])
 
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = unicode_projects
 
             # Get projects with Unicode
@@ -284,7 +284,7 @@ class TestClientState:
     @pytest.mark.asyncio
     async def test_client_survives_errors(self):
         """Test that client remains functional after errors."""
-        with mock.patch('omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # First call fails
             mock_run.return_value = ""
             result1 = await server.call_tool("get_projects", {})

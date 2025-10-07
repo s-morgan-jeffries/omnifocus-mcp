@@ -13,4 +13,4 @@ dependencies = [
 ]
 
 [project.scripts]
-omnifocus-mcp = "server:main"
+omnifocus-mcp = "omnifocus_mcp.server:main"

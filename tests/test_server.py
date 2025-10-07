@@ -4,7 +4,7 @@ from unittest import mock
 from mcp.types import TextContent
 
 # Import server module
-import server
+from omnifocus_mcp import server
 
 
 class TestListTools:

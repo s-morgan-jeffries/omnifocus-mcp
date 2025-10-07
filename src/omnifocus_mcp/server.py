@@ -8,7 +8,7 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 from mcp.server.stdio import stdio_server
 
-from omnifocus_client import OmniFocusClient
+from .omnifocus_client import OmniFocusClient
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

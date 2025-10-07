@@ -3,7 +3,8 @@
     "omnifocus": {
       "command": "/Users/Morgan/Development/claude-code-test/omnifocus-mcp/venv/bin/python",
       "args": [
-        "/Users/Morgan/Development/claude-code-test/omnifocus-mcp/server.py"
+        "-m",
+        "omnifocus_mcp.server"
       ]
     }
   }
