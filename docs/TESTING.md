@@ -19,10 +19,14 @@ The project has three types of tests:
 2. **Integration Tests (Mocked)** - Test full workflows with mocked AppleScript
 3. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 184 tests
-- 158 unit/integration tests (with mocks) ✅ All passing
+**Total Test Coverage**: 212 tests
+- 79 unit tests (client operations) ✅ All passing
+- 79 unit tests (MCP server) ✅ All passing
+- 40 integration tests (mocked workflows) ✅ All passing
 - 13 safety guard tests ✅ All passing
 - 13 real OmniFocus integration tests ⏭️ Skipped by default
+
+**Test Execution**: ~0.38 seconds for all passing tests
 
 ## Database Safety
 
@@ -163,10 +167,20 @@ def test_add_task_success(self, client):
 
 Tests full MCP server workflows with mocked AppleScript.
 
-**Coverage**: 79 tests
+**Coverage**: 119 tests (79 server tests + 40 integration tests)
+
+**Server Tests** (`test_server.py` - 79 tests):
 - MCP tool list generation
 - Tool call handling for all operations
-- End-to-end workflows
+- Parameter validation
+- Error handling and edge cases
+
+**Integration Tests** (`test_integration.py` - 40 tests):
+- End-to-end workflows (get projects, search, add tasks)
+- Inbox operations (create, get, capture workflow)
+- Tag operations (get, add, organization workflow)
+- Task lifecycle (complete, update, review workflow)
+- Enhanced edge cases (dates, large datasets, rapid operations)
 - Error propagation
 - Special character handling
 - Client state management
@@ -321,19 +335,19 @@ After running tests, verify in OmniFocus:
 
 ### Client Operations
 
-| Operation | Unit Tests | Integration | Real Tests |
-|-----------|:----------:|:-----------:|:----------:|
-| get_projects | ✅ 5 | ✅ 3 | ✅ 1 |
-| search_projects | ✅ 6 | ✅ 2 | ✅ 1 |
-| add_task | ✅ 15 | ✅ 5 | ✅ 2 |
-| add_note | ✅ 4 | ✅ 2 | - |
-| get_tasks | ✅ 9 | ✅ 2 | ✅ 1 |
-| complete_task | ✅ 4 | ✅ 2 | ✅ 1 |
-| update_task | ✅ 9 | ✅ 2 | ✅ 1 |
-| get_inbox_tasks | ✅ 3 | ✅ 2 | ✅ 2 |
-| create_inbox_task | ✅ 6 | ✅ 2 | ✅ 1 |
-| get_tags | ✅ 3 | ✅ 2 | ✅ 1 |
-| add_tag_to_task | ✅ 5 | ✅ 2 | ✅ 1 |
+| Operation | Unit Tests | Integration | Real Tests | Total |
+|-----------|:----------:|:-----------:|:----------:|:-----:|
+| get_projects | ✅ 5 | ✅ 6 | ✅ 1 | **12** |
+| search_projects | ✅ 6 | ✅ 3 | ✅ 1 | **10** |
+| add_task | ✅ 15 | ✅ 8 | ✅ 2 | **25** |
+| add_note | ✅ 4 | ✅ 2 | - | **6** |
+| get_tasks | ✅ 9 | ✅ 4 | ✅ 1 | **14** |
+| complete_task | ✅ 4 | ✅ 3 | ✅ 1 | **8** |
+| update_task | ✅ 9 | ✅ 4 | ✅ 1 | **14** |
+| get_inbox_tasks | ✅ 3 | ✅ 4 | ✅ 2 | **9** |
+| create_inbox_task | ✅ 6 | ✅ 3 | ✅ 1 | **10** |
+| get_tags | ✅ 3 | ✅ 3 | ✅ 1 | **7** |
+| add_tag_to_task | ✅ 5 | ✅ 3 | ✅ 1 | **9** |
 
 ### Edge Cases Tested
 
@@ -358,8 +372,24 @@ After running tests, verify in OmniFocus:
 **Data Conditions:**
 - ✅ Empty result lists
 - ✅ Projects/tasks with empty fields
-- ✅ Large datasets (100+ items)
+- ✅ Large datasets (500 projects)
+- ✅ Deep folder hierarchies (5 levels)
 - ✅ None as arguments
+
+**Date/Time Edge Cases:**
+- ✅ Past dates (2020-01-01)
+- ✅ Far future dates (2030-12-31)
+- ✅ Defer date after due date (logically odd but valid)
+- ✅ Task with only defer date (no due date)
+- ✅ Clearing dates (update to empty string)
+
+**Task Property Edge Cases:**
+- ✅ Multiple tags on single task (4 tags)
+- ✅ Very long tag list (15 tags)
+- ✅ Extremely long notes (5000+ characters)
+- ✅ Task with all properties at maximum values
+- ✅ Rapid operations (10 tasks in sequence)
+- ✅ Mixed operation sequences (create → read → update → read → complete)
 
 ## Test Development Guidelines
 
@@ -487,8 +517,14 @@ Before running real integration tests:
 
 ## Test Metrics
 
-- **Total Tests**: 184
-- **Passing**: 171
-- **Skipped**: 13 (real OmniFocus tests)
-- **Execution Time**: ~0.35s (mocked tests only)
+- **Total Tests**: 212
+- **Passing**: 199 (all unit & integration tests with mocks)
+- **Skipped**: 13 (real OmniFocus tests, require setup)
+- **Execution Time**: ~0.38s (mocked tests only)
+- **Test Breakdown**:
+  - Unit tests (client): 79 tests
+  - Unit tests (server): 79 tests
+  - Integration tests: 40 tests
+  - Safety guard tests: 13 tests
+  - Real OmniFocus tests: 13 tests (skipped by default)
 - **Code Coverage**: Run `pytest --cov=src/omnifocus_mcp` for details
