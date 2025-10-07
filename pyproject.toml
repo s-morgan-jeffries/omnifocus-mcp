@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnifocus-mcp"
+version = "0.1.0"
+description = "MCP server for OmniFocus integration"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=0.1.0",
+]
+
+[project.scripts]
+omnifocus-mcp = "server:main"
