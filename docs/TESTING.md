@@ -13,22 +13,19 @@ This document describes the testing strategy and procedures for the OmniFocus MC
 
 ## Test Suite Overview
 
-The project has three types of tests:
+The project has two types of tests:
 
 1. **Unit Tests** - Test individual components with mocked dependencies
-2. **Integration Tests (Mocked)** - Test full workflows with mocked AppleScript
-3. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
+2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 315 tests
-- 143 unit tests (client operations) ✅ All passing
-- 79 unit tests (MCP server - legacy) ✅ All passing
-- 30 unit tests (FastMCP server) ✅ All passing
-- 40 integration tests (mocked workflows) ✅ All passing
-- 13 safety guard tests ✅ All passing
+**Total Test Coverage**: 217 tests
+- 149 unit tests (client operations) ✅ All passing
+- 33 unit tests (FastMCP server) ✅ All passing
+- 22 safety guard tests ✅ All passing
 - 13 real OmniFocus integration tests ⏭️ Skipped by default
 
-**Test Execution**: ~1.01 seconds for all passing tests
-**Code Coverage**: 88% overall (970 statements, 112 missed)
+**Test Execution**: ~0.53 seconds for all passing tests
+**Code Coverage**: 89% overall
 
 ## Database Safety
 
@@ -165,19 +162,11 @@ def test_add_task_success(self, client):
         assert result is True
 ```
 
-### Integration Tests - Mocked (`test_integration.py`, `test_server.py`, `test_server_fastmcp.py`)
+### FastMCP Server Tests (`test_server_fastmcp.py`)
 
-Tests full MCP server workflows with mocked AppleScript.
+Tests MCP tool functions with mocked client.
 
-**Coverage**: 149 tests (79 legacy server tests + 30 FastMCP server tests + 40 integration tests)
-
-**Legacy Server Tests** (`test_server.py` - 79 tests):
-- MCP tool list generation
-- Tool call handling for all operations
-- Parameter validation
-- Error handling and edge cases
-
-**FastMCP Server Tests** (`test_server_fastmcp.py` - 30 tests):
+**Coverage**: 33 tests
 - Get client singleton pattern (3 tests)
 - Project tools (5 tests): get, search, create with folder
 - Task tools (8 tests): get with filters, add, complete, delete, move
@@ -187,18 +176,8 @@ Tests full MCP server workflows with mocked AppleScript.
 - Time estimation (2 tests): set, clear
 - Perspective tools (2 tests): get, switch
 - Tag tools (2 tests): get, add to task
-- Note tools (1 test): add note
-- **Coverage**: 73% of server_fastmcp.py (was 0%)
-
-**Integration Tests** (`test_integration.py` - 40 tests):
-- End-to-end workflows (get projects, search, add tasks)
-- Inbox operations (create, get, capture workflow)
-- Tag operations (get, add, organization workflow)
-- Task lifecycle (complete, update, review workflow)
-- Enhanced edge cases (dates, large datasets, rapid operations)
-- Error propagation
-- Special character handling
-- Client state management
+- Note tools (4 tests): add note, get note (project/task/empty)
+- **Coverage**: 73% of server_fastmcp.py
 
 **Example:**
 ```python
@@ -434,7 +413,7 @@ After running tests, verify in OmniFocus:
 ### Adding New Tests
 
 1. **Unit tests** for new client methods go in `test_omnifocus_client.py`
-2. **Integration tests** (mocked) go in `test_integration.py` or `test_server.py`
+2. **FastMCP server tests** go in `test_server_fastmcp.py`
 3. **Real integration tests** go in `test_integration_real.py`
 4. **Safety guard tests** go in `test_safety_guards.py`
 
@@ -555,18 +534,15 @@ Before running real integration tests:
 
 ## Test Metrics
 
-- **Total Tests**: 315
-- **Passing**: 302 (all unit & integration tests with mocks)
+- **Total Tests**: 217
+- **Passing**: 204 (all unit tests with mocks)
 - **Skipped**: 13 (real OmniFocus tests, require setup)
-- **Execution Time**: ~1.01s (mocked tests only)
+- **Execution Time**: ~0.53s (mocked tests only)
 - **Test Breakdown**:
-  - Unit tests (client): 143 tests
-  - Unit tests (legacy server): 79 tests
-  - Unit tests (FastMCP server): 30 tests
-  - Integration tests: 40 tests
-  - Safety guard tests: 13 tests
+  - Unit tests (client): 149 tests
+  - Unit tests (FastMCP server): 33 tests
+  - Safety guard tests: 22 tests
   - Real OmniFocus tests: 13 tests (skipped by default)
-- **Code Coverage**: 88% (970 statements, 112 missed)
+- **Code Coverage**: 89% overall
   - `omnifocus_client.py`: 97%
   - `server_fastmcp.py`: 73%
-  - `server.py`: 96%

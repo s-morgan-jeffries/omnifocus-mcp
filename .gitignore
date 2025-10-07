@@ -12,6 +12,18 @@ dist/
 build/
 .pytest_cache/
 
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+
+# Type checking and linting
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+*.log
+
 # IDEs
 .vscode/*
 !.vscode/settings.json

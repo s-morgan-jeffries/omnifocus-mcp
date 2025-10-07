@@ -361,15 +361,8 @@ class OmniFocusClient:
         self._verify_database_safety('add_task')
 
         # Escape quotes and backslashes for AppleScript
-        def escape_applescript(text: str) -> str:
-            if not text:
-                return ""
-            text = text.replace("\\", "\\\\")
-            text = text.replace('"', '\\"')
-            return text
-
-        task_name_escaped = escape_applescript(task_name)
-        note_escaped = escape_applescript(note or "")
+        task_name_escaped = self._escape_applescript_string(task_name)
+        note_escaped = self._escape_applescript_string(note or "")
 
         # Build properties dictionary
         properties = [f'name:"{task_name_escaped}"']
@@ -390,7 +383,7 @@ class OmniFocusClient:
         tag_commands = []
         if tags:
             for tag in tags:
-                tag_escaped = escape_applescript(tag)
+                tag_escaped = self._escape_applescript_string(tag)
                 tag_commands.append(f'''
                     try
                         set tagObj to first flattened tag whose name is "{tag_escaped}"
@@ -466,14 +459,7 @@ class OmniFocusClient:
         self._verify_database_safety('add_note')
 
         # Escape quotes and backslashes for AppleScript
-        def escape_applescript(text: str) -> str:
-            if not text:
-                return ""
-            text = text.replace("\\", "\\\\")
-            text = text.replace('"', '\\"')
-            return text
-
-        note_escaped = escape_applescript(note_text)
+        note_escaped = self._escape_applescript_string(note_text)
 
         script = f'''
         tell application "OmniFocus"

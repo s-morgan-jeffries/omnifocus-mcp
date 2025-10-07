@@ -24,6 +24,21 @@ def get_client() -> OmniFocusClient:
     return _client
 
 
+def _truncate_note(note: str, max_length: int = 100) -> str:
+    """Truncate note with ellipsis if too long.
+
+    Args:
+        note: The note text to truncate
+        max_length: Maximum length before truncation (default: 100)
+
+    Returns:
+        Truncated note with "..." appended if it exceeds max_length
+    """
+    if len(note) > max_length:
+        return note[:max_length] + "..."
+    return note
+
+
 # ============================================================================
 # Project Tools
 # ============================================================================
@@ -49,10 +64,7 @@ def get_projects() -> str:
             result += f"Folder: {proj['folderPath']}\n"
         result += f"Status: {proj['status']}\n"
         if proj.get('note'):
-            note = proj['note']
-            if len(note) > 100:
-                note = note[:100] + "..."
-            result += f"Note: {note}\n"
+            result += f"Note: {_truncate_note(proj['note'])}\n"
         result += "\n"
 
     return result
@@ -81,10 +93,7 @@ def search_projects(query: str) -> str:
             result += f"Folder: {proj['folderPath']}\n"
         result += f"Status: {proj['status']}\n"
         if proj.get('note'):
-            note = proj['note']
-            if len(note) > 100:
-                note = note[:100] + "..."
-            result += f"Note: {note}\n"
+            result += f"Note: {_truncate_note(proj['note'])}\n"
         result += "\n"
 
     return result
@@ -124,7 +133,7 @@ def create_project(
     else:
         result += "\nType: Parallel (tasks can be done in any order)"
     if note:
-        result += f"\nNote: {note[:100]}{'...' if len(note) > 100 else ''}"
+        result += f"\nNote: {_truncate_note(note)}"
 
     return result
 
@@ -182,10 +191,7 @@ def get_tasks(
         if task.get('tags'):
             result += f"Tags: {task['tags']}\n"
         if task.get('note'):
-            note = task['note']
-            if len(note) > 100:
-                note = note[:100] + "..."
-            result += f"Note: {note}\n"
+            result += f"Note: {_truncate_note(task['note'])}\n"
         result += "\n"
 
     return result
@@ -321,10 +327,7 @@ def get_inbox_tasks() -> str:
         if task.get('dueDate'):
             result += f"Due: {task['dueDate']}\n"
         if task.get('note'):
-            note = task['note']
-            if len(note) > 100:
-                note = note[:100] + "..."
-            result += f"Note: {note}\n"
+            result += f"Note: {_truncate_note(task['note'])}\n"
         result += "\n"
 
     return result

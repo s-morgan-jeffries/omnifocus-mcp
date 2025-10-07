@@ -11,21 +11,21 @@ help:
 
 install:
 	python3 -m venv venv
-	./venv/bin/pip install -r requirements.txt
+	./venv/bin/pip install -e ".[dev]"
 
 test:
-	./venv/bin/pytest
+	./venv/bin/pytest tests/
 
 test-unit:
-	./venv/bin/pytest test_omnifocus_client.py test_server.py
+	./venv/bin/pytest tests/test_omnifocus_client.py tests/test_server_fastmcp.py
 
 test-integration:
-	./venv/bin/pytest test_integration.py
+	./venv/bin/pytest tests/test_integration.py
 
 test-verbose:
-	./venv/bin/pytest -v --tb=long
+	./venv/bin/pytest tests/ -v --tb=long
 
 clean:
-	rm -rf __pycache__ .pytest_cache
+	rm -rf __pycache__ .pytest_cache .coverage htmlcov/
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete

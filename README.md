@@ -102,7 +102,7 @@ Add this server to your Claude Desktop configuration file:
         "--directory",
         "/absolute/path/to/omnifocus-mcp",
         "run",
-        "server.py"
+        "omnifocus-mcp"
       ]
     }
   }
@@ -132,7 +132,7 @@ Or if using a virtual environment directly:
 Any MCP-compatible client can use this server by launching it with:
 
 ```bash
-python server.py
+python -m omnifocus_mcp.server_fastmcp
 ```
 
 The server communicates via stdin/stdout using the MCP protocol.
@@ -175,7 +175,7 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 ### Running Tests
 
-The project has comprehensive test coverage with **302 tests** and **88% code coverage**:
+The project has comprehensive test coverage with **204 tests** and **89% code coverage**:
 
 ```bash
 # Activate virtual environment
@@ -192,11 +192,10 @@ pytest tests/test_omnifocus_client.py -v
 ```
 
 **Test Suite Breakdown:**
-- 143 unit tests for OmniFocus client operations
-- 79 unit tests for MCP server tools
-- 40 integration tests for end-to-end workflows
-- 30 unit tests for FastMCP server
-- 13 safety guard tests
+- 149 unit tests for OmniFocus client operations
+- 33 unit tests for FastMCP server
+- 22 safety guard tests
+- 13 real OmniFocus integration tests (skipped by default)
 
 See [docs/TESTING.md](docs/TESTING.md) for detailed testing documentation.
 
@@ -206,7 +205,7 @@ You can test the server locally:
 
 ```bash
 # Run the server (it will wait for MCP protocol messages on stdin)
-python server.py
+python -m omnifocus_mcp.server_fastmcp
 ```
 
 ### Debugging
