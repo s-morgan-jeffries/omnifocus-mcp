@@ -41,7 +41,7 @@ class OmniFocusClient:
     # Operations that modify data (require safety checks)
     DESTRUCTIVE_OPERATIONS = {
         'add_task', 'add_note', 'complete_task', 'update_task',
-        'create_inbox_task', 'add_tag_to_task'
+        'create_inbox_task', 'add_tag_to_task', 'create_project'
     }
 
     def __init__(self, enable_safety_checks: bool = True):
@@ -226,6 +226,109 @@ class OmniFocusClient:
             raise Exception(f"Error querying OmniFocus: {e.stderr}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing OmniFocus output: {e}")
+
+    def create_project(
+        self,
+        name: str,
+        note: Optional[str] = None,
+        folder_path: Optional[str] = None,
+        sequential: bool = False
+    ) -> str:
+        """Create a new project in OmniFocus.
+
+        Args:
+            name: The name of the project
+            note: Optional note/description for the project
+            folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist
+            sequential: If True, tasks must be completed in order (default: False, parallel)
+
+        Returns:
+            str: The ID of the created project
+
+        Raises:
+            Exception: If project creation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('create_project')
+
+        # Escape strings for AppleScript
+        name_escaped = self._escape_applescript_string(name)
+        note_escaped = self._escape_applescript_string(note or "")
+
+        # Build properties
+        properties = [f'name:"{name_escaped}"']
+        if note:
+            properties.append(f'note:"{note_escaped}"')
+        if sequential:
+            properties.append('sequential:true')
+        else:
+            properties.append('sequential:false')
+
+        properties_str = ", ".join(properties)
+
+        # Build script with optional folder placement
+        if folder_path:
+            # Parse folder path and find folder
+            folder_parts = [part.strip() for part in folder_path.split('>')]
+            folder_escaped = self._escape_applescript_string(folder_parts[-1])
+
+            # Build folder finding logic
+            if len(folder_parts) == 1:
+                # Top-level folder
+                folder_finder = f'''
+                set targetFolder to first folder whose name is "{folder_escaped}"
+                '''
+            else:
+                # Nested folder - need to walk the hierarchy
+                folder_finder = f'''
+                -- Find folder by walking hierarchy
+                set folderNames to {{{', '.join(f'"{self._escape_applescript_string(p)}"' for p in folder_parts)}}}
+                set targetFolder to missing value
+                set currentContainers to folders of front document
+
+                repeat with folderName in folderNames
+                    repeat with possibleFolder in currentContainers
+                        if name of possibleFolder is folderName then
+                            set targetFolder to possibleFolder
+                            set currentContainers to folders of targetFolder
+                            exit repeat
+                        end if
+                    end repeat
+                end repeat
+
+                if targetFolder is missing value then
+                    error "Folder path not found: {folder_path}"
+                end if
+                '''
+
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    {folder_finder}
+                    set newProject to make new project at end of projects of targetFolder with properties {{{properties_str}}}
+                    return id of newProject
+                end tell
+            end tell
+            '''
+        else:
+            # Create at root level
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    set newProject to make new project with properties {{{properties_str}}}
+                    return id of newProject
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            if result and result.strip():
+                return result.strip()
+            else:
+                raise Exception("No project ID returned from OmniFocus")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error creating project: {e.stderr}")
 
     def add_task(
         self,

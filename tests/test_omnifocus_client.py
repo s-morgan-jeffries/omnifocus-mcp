@@ -390,6 +390,126 @@ class TestOmniFocusClient:
             assert len(results) == 2  # Both projects have "Project" in name
 
 
+class TestCreateProject:
+    """Tests for create_project functionality."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_create_project_basic(self, client):
+        """Test creating a basic project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project("New Project")
+            assert project_id == "proj-new-001"
+            # Verify AppleScript contains project name
+            call_args = mock_run.call_args[0][0]
+            assert "New Project" in call_args
+            assert "make new project" in call_args
+
+    def test_create_project_with_note(self, client):
+        """Test creating project with note."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project(
+                "New Project",
+                note="This is the project description"
+            )
+            assert project_id == "proj-new-001"
+            call_args = mock_run.call_args[0][0]
+            assert "This is the project description" in call_args
+
+    def test_create_project_sequential(self, client):
+        """Test creating sequential project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project("Sequential Project", sequential=True)
+            assert project_id == "proj-new-001"
+            call_args = mock_run.call_args[0][0]
+            assert "sequential:true" in call_args
+
+    def test_create_project_parallel(self, client):
+        """Test creating parallel project (default)."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project("Parallel Project", sequential=False)
+            assert project_id == "proj-new-001"
+            call_args = mock_run.call_args[0][0]
+            assert "sequential:false" in call_args
+
+    def test_create_project_in_folder(self, client):
+        """Test creating project in a folder."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project("New Project", folder_path="Work")
+            assert project_id == "proj-new-001"
+            call_args = mock_run.call_args[0][0]
+            assert 'whose name is "Work"' in call_args
+
+    def test_create_project_in_nested_folder(self, client):
+        """Test creating project in nested folder."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project("New Project", folder_path="Work > Clients")
+            assert project_id == "proj-new-001"
+            call_args = mock_run.call_args[0][0]
+            assert '"Work"' in call_args
+            assert '"Clients"' in call_args
+
+    def test_create_project_with_special_characters(self, client):
+        """Test creating project with special characters in name."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project('Project with "quotes" and \\backslashes')
+            assert project_id == "proj-new-001"
+            # Verify characters are escaped
+            call_args = mock_run.call_args[0][0]
+            assert '\\"quotes\\"' in call_args or 'quotes' in call_args
+            assert '\\\\backslashes' in call_args or 'backslashes' in call_args
+
+    def test_create_project_with_all_properties(self, client):
+        """Test creating project with all properties."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            project_id = client.create_project(
+                name="Full Featured Project",
+                note="Complete description with details",
+                folder_path="Work > Active",
+                sequential=True
+            )
+            assert project_id == "proj-new-001"
+            call_args = mock_run.call_args[0][0]
+            assert "Full Featured Project" in call_args
+            assert "Complete description with details" in call_args
+            assert "sequential:true" in call_args
+
+    def test_create_project_no_output(self, client):
+        """Test handling of no output from AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = ""
+            with pytest.raises(Exception) as exc_info:
+                client.create_project("New Project")
+            assert "No project ID returned" in str(exc_info.value)
+
+    def test_create_project_subprocess_error(self, client):
+        """Test handling of subprocess errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="permission denied")
+            with pytest.raises(Exception) as exc_info:
+                client.create_project("New Project")
+            assert "Error creating project" in str(exc_info.value)
+
+    def test_create_project_empty_name(self, client):
+        """Test creating project with empty name."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            # OmniFocus allows empty names, so this should work
+            project_id = client.create_project("")
+            assert project_id == "proj-new-001"
+
+
 class TestEdgeCases:
     """Test edge cases and unusual inputs."""
 

@@ -90,6 +90,45 @@ def search_projects(query: str) -> str:
     return result
 
 
+@mcp.tool()
+def create_project(
+    name: str,
+    note: Optional[str] = None,
+    folder_path: Optional[str] = None,
+    sequential: bool = False
+) -> str:
+    """Create a new project in OmniFocus.
+
+    Args:
+        name: The name of the project
+        note: Optional note/description for the project
+        folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
+        sequential: If True, tasks must be completed in order; if False, tasks can be done in parallel (default: False)
+
+    Returns the project ID of the newly created project.
+    """
+    client = get_client()
+    project_id = client.create_project(
+        name=name,
+        note=note,
+        folder_path=folder_path,
+        sequential=sequential
+    )
+
+    result = f"Successfully created project '{name}'"
+    result += f"\nProject ID: {project_id}"
+    if folder_path:
+        result += f"\nFolder: {folder_path}"
+    if sequential:
+        result += "\nType: Sequential (tasks completed in order)"
+    else:
+        result += "\nType: Parallel (tasks can be done in any order)"
+    if note:
+        result += f"\nNote: {note[:100]}{'...' if len(note) > 100 else ''}"
+
+    return result
+
+
 # ============================================================================
 # Task Tools
 # ============================================================================
