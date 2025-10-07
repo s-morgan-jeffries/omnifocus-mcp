@@ -1308,46 +1308,48 @@ class OmniFocusClient:
             List of folder dictionaries with id, name, and path
         """
         script = '''
+        -- Helper to build folder path
+        on getFolderPath(f)
+            tell application "OmniFocus"
+                set pathParts to {name of f}
+                set currentFolder to f
+                repeat
+                    try
+                        set parentFolder to container of currentFolder
+                        if class of parentFolder is folder then
+                            set pathParts to {name of parentFolder} & pathParts
+                            set currentFolder to parentFolder
+                        else
+                            exit repeat
+                        end if
+                    on error
+                        exit repeat
+                    end try
+                end repeat
+
+                set AppleScript's text item delimiters to " > "
+                set folderPath to pathParts as text
+                set AppleScript's text item delimiters to ""
+                return folderPath
+            end tell
+        end getFolderPath
+
+        -- Process folders recursively
+        on processFolders(foldersToProcess, folderResults)
+            tell application "OmniFocus"
+                repeat with f in foldersToProcess
+                    set folderPath to my getFolderPath(f)
+                    set folderInfo to "{" & quote & "id" & quote & ":" & quote & (id of f) & quote & "," & quote & "name" & quote & ":" & quote & (name of f) & quote & "," & quote & "path" & quote & ":" & quote & folderPath & quote & "}"
+                    set end of folderResults to folderInfo
+                    my processFolders(folders of f, folderResults)
+                end repeat
+                return folderResults
+            end tell
+        end processFolders
+
         tell application "OmniFocus"
             tell front document
-                set folderList to {}
-
-                -- Helper function to build folder path
-                on getFolderPath(f)
-                    set pathParts to {name of f}
-                    set currentFolder to f
-                    repeat
-                        try
-                            set parentFolder to container of currentFolder
-                            if class of parentFolder is folder then
-                                set pathParts to {name of parentFolder} & pathParts
-                                set currentFolder to parentFolder
-                            else
-                                exit repeat
-                            end if
-                        on error
-                            exit repeat
-                        end try
-                    end repeat
-
-                    set AppleScript's text item delimiters to " > "
-                    set folderPath to pathParts as text
-                    set AppleScript's text item delimiters to ""
-                    return folderPath
-                end getFolderPath
-
-                -- Get all folders recursively
-                on processFolders(folderContainer, folderResults)
-                    repeat with f in folders of folderContainer
-                        set folderPath to my getFolderPath(f)
-                        set folderInfo to "{" & quote & "id" & quote & ":" & quote & (id of f) & quote & "," & quote & "name" & quote & ":" & quote & (name of f) & quote & "," & quote & "path" & quote & ":" & quote & folderPath & quote & "}"
-                        set end of folderResults to folderInfo
-                        my processFolders(f, folderResults)
-                    end repeat
-                    return folderResults
-                end processFolders
-
-                set folderList to my processFolders(front document, {})
+                set folderList to my processFolders(folders, {})
 
                 set AppleScript's text item delimiters to ","
                 return "[" & (folderList as text) & "]"
