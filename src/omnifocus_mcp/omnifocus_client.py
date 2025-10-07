@@ -16,6 +16,31 @@ def run_applescript(script: str) -> str:
     return result.stdout.strip()
 
 
+# AppleScript helper functions for JSON escaping
+# These are duplicated in each AppleScript block since AppleScript doesn't support imports
+APPLESCRIPT_JSON_HELPERS = '''
+-- Helper to escape JSON strings
+on escapeJSON(txt)
+    set txt to my replaceText(txt, "\\\\", "\\\\\\\\")
+    set txt to my replaceText(txt, "\\"", "\\\\\\"")
+    set txt to my replaceText(txt, linefeed, "\\\\n")
+    set txt to my replaceText(txt, return, "\\\\r")
+    set txt to my replaceText(txt, tab, "\\\\t")
+    return txt
+end escapeJSON
+
+-- Helper to replace text
+on replaceText(sourceText, oldText, newText)
+    set AppleScript's text item delimiters to oldText
+    set textItems to text items of sourceText
+    set AppleScript's text item delimiters to newText
+    set resultText to textItems as text
+    set AppleScript's text item delimiters to ""
+    return resultText
+end replaceText
+'''
+
+
 class DatabaseSafetyError(Exception):
     """Raised when database safety checks fail."""
     pass
@@ -197,27 +222,7 @@ class OmniFocusClient:
         end tell
 
         return "[" & linefeed & output & linefeed & "]"
-
-        -- Helper to escape JSON strings
-        on escapeJSON(txt)
-            set txt to my replaceText(txt, "\\\\", "\\\\\\\\")
-            set txt to my replaceText(txt, "\\"", "\\\\\\"")
-            set txt to my replaceText(txt, linefeed, "\\\\n")
-            set txt to my replaceText(txt, return, "\\\\r")
-            set txt to my replaceText(txt, tab, "\\\\t")
-            return txt
-        end escapeJSON
-
-        -- Helper to replace text
-        on replaceText(sourceText, oldText, newText)
-            set AppleScript's text item delimiters to oldText
-            set textItems to text items of sourceText
-            set AppleScript's text item delimiters to newText
-            set resultText to textItems as text
-            set AppleScript's text item delimiters to ""
-            return resultText
-        end replaceText
-        '''
+        ''' + APPLESCRIPT_JSON_HELPERS
 
         try:
             result = run_applescript(script)
@@ -761,27 +766,7 @@ class OmniFocusClient:
         end tell
 
         return "[" & linefeed & output & linefeed & "]"
-
-        -- Helper to escape JSON strings
-        on escapeJSON(txt)
-            set txt to my replaceText(txt, "\\\\", "\\\\\\\\")
-            set txt to my replaceText(txt, "\\"", "\\\\\\"")
-            set txt to my replaceText(txt, linefeed, "\\\\n")
-            set txt to my replaceText(txt, return, "\\\\r")
-            set txt to my replaceText(txt, tab, "\\\\t")
-            return txt
-        end escapeJSON
-
-        -- Helper to replace text
-        on replaceText(sourceText, oldText, newText)
-            set AppleScript's text item delimiters to oldText
-            set textItems to text items of sourceText
-            set AppleScript's text item delimiters to newText
-            set resultText to textItems as text
-            set AppleScript's text item delimiters to ""
-            return resultText
-        end replaceText
-        '''
+        ''' + APPLESCRIPT_JSON_HELPERS
 
         try:
             result = run_applescript(script)
@@ -1006,27 +991,7 @@ class OmniFocusClient:
         end tell
 
         return "[" & linefeed & output & linefeed & "]"
-
-        -- Helper to escape JSON strings
-        on escapeJSON(txt)
-            set txt to my replaceText(txt, "\\\\", "\\\\\\\\")
-            set txt to my replaceText(txt, "\\"", "\\\\\\"")
-            set txt to my replaceText(txt, linefeed, "\\\\n")
-            set txt to my replaceText(txt, return, "\\\\r")
-            set txt to my replaceText(txt, tab, "\\\\t")
-            return txt
-        end escapeJSON
-
-        -- Helper to replace text
-        on replaceText(sourceText, oldText, newText)
-            set AppleScript's text item delimiters to oldText
-            set textItems to text items of sourceText
-            set AppleScript's text item delimiters to newText
-            set resultText to textItems as text
-            set AppleScript's text item delimiters to ""
-            return resultText
-        end replaceText
-        '''
+        ''' + APPLESCRIPT_JSON_HELPERS
 
         try:
             result = run_applescript(script)
@@ -1146,27 +1111,7 @@ class OmniFocusClient:
         end tell
 
         return "[" & linefeed & output & linefeed & "]"
-
-        -- Helper to escape JSON strings
-        on escapeJSON(txt)
-            set txt to my replaceText(txt, "\\\\", "\\\\\\\\")
-            set txt to my replaceText(txt, "\\"", "\\\\\\"")
-            set txt to my replaceText(txt, linefeed, "\\\\n")
-            set txt to my replaceText(txt, return, "\\\\r")
-            set txt to my replaceText(txt, tab, "\\\\t")
-            return txt
-        end escapeJSON
-
-        -- Helper to replace text
-        on replaceText(sourceText, oldText, newText)
-            set AppleScript's text item delimiters to oldText
-            set textItems to text items of sourceText
-            set AppleScript's text item delimiters to newText
-            set resultText to textItems as text
-            set AppleScript's text item delimiters to ""
-            return resultText
-        end replaceText
-        '''
+        ''' + APPLESCRIPT_JSON_HELPERS
 
         try:
             result = run_applescript(script)
@@ -1472,8 +1417,8 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('create_folder')
 
-        # Escape quotes in name
-        name_escaped = name.replace('"', '\\"')
+        # Escape quotes and backslashes in name
+        name_escaped = self._escape_applescript_string(name)
 
         if parent_path is None:
             # Create at root level
@@ -1737,27 +1682,7 @@ class OmniFocusClient:
                 return "[" & linefeed & output & linefeed & "]"
             end tell
         end tell
-
-        -- Helper to escape JSON strings
-        on escapeJSON(txt)
-            set txt to my replaceText(txt, "\\\\", "\\\\\\\\")
-            set txt to my replaceText(txt, "\\"", "\\\\\\"")
-            set txt to my replaceText(txt, linefeed, "\\\\n")
-            set txt to my replaceText(txt, return, "\\\\r")
-            set txt to my replaceText(txt, tab, "\\\\t")
-            return txt
-        end escapeJSON
-
-        -- Helper to replace text
-        on replaceText(sourceText, oldText, newText)
-            set AppleScript's text item delimiters to oldText
-            set textItems to text items of sourceText
-            set AppleScript's text item delimiters to newText
-            set resultText to textItems as text
-            set AppleScript's text item delimiters to ""
-            return resultText
-        end replaceText
-        '''
+        ''' + APPLESCRIPT_JSON_HELPERS
 
         try:
             result = run_applescript(script)

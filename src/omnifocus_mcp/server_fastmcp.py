@@ -10,6 +10,9 @@ from .omnifocus_client import OmniFocusClient
 # Create FastMCP server
 mcp = FastMCP("omnifocus-mcp")
 
+# Configuration
+NOTE_TRUNCATION_LENGTH = 100  # Maximum note length in get_projects/get_tasks responses
+
 # Initialize OmniFocus client (lazy)
 _client: Optional[OmniFocusClient] = None
 
@@ -24,12 +27,12 @@ def get_client() -> OmniFocusClient:
     return _client
 
 
-def _truncate_note(note: str, max_length: int = 100) -> str:
+def _truncate_note(note: str, max_length: int = NOTE_TRUNCATION_LENGTH) -> str:
     """Truncate note with ellipsis if too long.
 
     Args:
         note: The note text to truncate
-        max_length: Maximum length before truncation (default: 100)
+        max_length: Maximum length before truncation (default: NOTE_TRUNCATION_LENGTH)
 
     Returns:
         Truncated note with "..." appended if it exceeds max_length
@@ -442,7 +445,7 @@ def get_note(item_id: str, item_type: str = "project") -> str:
     """Get the full note content from a project or task.
 
     This tool retrieves the complete note without truncation, unlike get_projects
-    or get_tasks which truncate notes to 100 characters.
+    or get_tasks which truncate notes to {NOTE_TRUNCATION_LENGTH} characters.
 
     Args:
         item_id: The ID of the project or task

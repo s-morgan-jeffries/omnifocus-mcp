@@ -20,7 +20,7 @@ test-unit:
 	./venv/bin/pytest tests/test_omnifocus_client.py tests/test_server_fastmcp.py
 
 test-integration:
-	./venv/bin/pytest tests/test_integration.py
+	./venv/bin/pytest tests/test_integration_real.py
 
 test-verbose:
 	./venv/bin/pytest tests/ -v --tb=long

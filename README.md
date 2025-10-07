@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **25 comprehensive tools** for managing OmniFocus:
+This server provides **26 comprehensive tools** for managing OmniFocus:
 
 ### Project Management
 - **get_projects** - Get all active projects with folder hierarchy, names, notes, and status
@@ -19,7 +19,7 @@ This server provides **25 comprehensive tools** for managing OmniFocus:
 - **complete_task** - Mark tasks as completed
 - **delete_task** - Delete tasks
 - **move_task** - Move tasks between projects or to inbox
-- **drop_task** - Remove task from project (make it independent)
+- **drop_task** - Mark task as dropped/on hold (task becomes inactive)
 - **set_parent_task** - Create task hierarchies with parent/child relationships
 - **set_estimated_minutes** - Set time estimates for tasks
 
@@ -46,6 +46,7 @@ This server provides **25 comprehensive tools** for managing OmniFocus:
 
 ### Notes
 - **add_note** - Append notes to projects or tasks
+- **get_note** - Retrieve full note content from projects or tasks (no truncation)
 
 ## Prerequisites
 
@@ -81,8 +82,8 @@ cd omnifocus-mcp
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install in development mode with dependencies
+pip install -e ".[dev]"
 ```
 
 ## Configuration
@@ -175,7 +176,7 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 ### Running Tests
 
-The project has comprehensive test coverage with **204 tests** and **89% code coverage**:
+The project has comprehensive test coverage with **217 tests (204 passing, 13 skipped)** and **89% code coverage**:
 
 ```bash
 # Activate virtual environment
