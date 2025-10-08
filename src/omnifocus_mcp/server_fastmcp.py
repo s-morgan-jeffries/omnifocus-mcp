@@ -449,6 +449,20 @@ def complete_task(task_id: str) -> str:
         return f"Error: Failed to complete task {task_id}"
 
 
+@mcp.tool()
+def complete_tasks(task_ids: list[str]) -> str:
+    """Mark multiple tasks as completed in a single operation.
+
+    Args:
+        task_ids: List of task IDs to complete
+
+    Returns a success message with count of completed tasks.
+    """
+    client = get_client()
+    count = client.complete_tasks(task_ids)
+    return f"Successfully completed {count} of {len(task_ids)} tasks"
+
+
 # ============================================================================
 # Inbox Tools
 # ============================================================================
@@ -564,6 +578,42 @@ def add_tag_to_task(task_id: str, tag_name: str) -> str:
         return f"Error: Failed to add tag '{tag_name}' to task {task_id}"
 
 
+@mcp.tool()
+def add_tag_to_tasks(task_ids: list[str], tag_name: str) -> str:
+    """Add a tag to multiple tasks in a single operation.
+
+    Args:
+        task_ids: List of task IDs to tag
+        tag_name: The name of the tag to add (tag must already exist)
+
+    Returns a success message with count of tagged tasks.
+    """
+    client = get_client()
+    try:
+        count = client.add_tag_to_tasks(task_ids, tag_name)
+        return f"Successfully added tag '{tag_name}' to {count} of {len(task_ids)} tasks"
+    except Exception as e:
+        return f"Error adding tag to tasks: {str(e)}"
+
+
+@mcp.tool()
+def remove_tag_from_tasks(task_ids: list[str], tag_name: str) -> str:
+    """Remove a tag from multiple tasks in a single operation.
+
+    Args:
+        task_ids: List of task IDs to remove tag from
+        tag_name: The name of the tag to remove
+
+    Returns a success message with count of updated tasks.
+    """
+    client = get_client()
+    try:
+        count = client.remove_tag_from_tasks(task_ids, tag_name)
+        return f"Successfully removed tag '{tag_name}' from {count} of {len(task_ids)} tasks"
+    except Exception as e:
+        return f"Error removing tag from tasks: {str(e)}"
+
+
 # ============================================================================
 # Note Tools
 # ============================================================================
@@ -657,6 +707,44 @@ def delete_project(project_id: str) -> str:
         return f"Error deleting project: {str(e)}"
 
 
+@mcp.tool()
+def delete_tasks(task_ids: list[str]) -> str:
+    """Delete multiple tasks from OmniFocus in a single operation.
+
+    WARNING: This permanently deletes the tasks and cannot be undone.
+
+    Args:
+        task_ids: List of task IDs to delete
+
+    Returns a success message with count of deleted tasks.
+    """
+    client = get_client()
+    try:
+        count = client.delete_tasks(task_ids)
+        return f"Successfully deleted {count} of {len(task_ids)} tasks"
+    except Exception as e:
+        return f"Error deleting tasks: {str(e)}"
+
+
+@mcp.tool()
+def delete_projects(project_ids: list[str]) -> str:
+    """Delete multiple projects from OmniFocus in a single operation.
+
+    WARNING: This permanently deletes the projects and all their tasks. Cannot be undone.
+
+    Args:
+        project_ids: List of project IDs to delete
+
+    Returns a success message with count of deleted projects.
+    """
+    client = get_client()
+    try:
+        count = client.delete_projects(project_ids)
+        return f"Successfully deleted {count} of {len(project_ids)} projects"
+    except Exception as e:
+        return f"Error deleting projects: {str(e)}"
+
+
 # ============================================================================
 # Task Movement Tools
 # ============================================================================
@@ -686,6 +774,27 @@ def move_task(task_id: str, project_id: Optional[str] = None) -> str:
 
 
 @mcp.tool()
+def move_tasks(task_ids: list[str], project_id: Optional[str] = None) -> str:
+    """Move multiple tasks to a different project or to inbox in a single operation.
+
+    Args:
+        task_ids: List of task IDs to move
+        project_id: The ID of the destination project, or omit/null to move to inbox
+
+    Returns a success message with count of moved tasks.
+    """
+    client = get_client()
+    try:
+        count = client.move_tasks(task_ids, project_id)
+        if project_id:
+            return f"Successfully moved {count} of {len(task_ids)} tasks to project {project_id}"
+        else:
+            return f"Successfully moved {count} of {len(task_ids)} tasks to inbox"
+    except Exception as e:
+        return f"Error moving tasks: {str(e)}"
+
+
+@mcp.tool()
 def drop_task(task_id: str) -> str:
     """Drop a task (mark as on hold indefinitely).
 
@@ -706,6 +815,26 @@ def drop_task(task_id: str) -> str:
             return f"Error: Failed to drop task {task_id}"
     except Exception as e:
         return f"Error dropping task: {str(e)}"
+
+
+@mcp.tool()
+def drop_tasks(task_ids: list[str]) -> str:
+    """Drop multiple tasks (mark as on hold indefinitely) in a single operation.
+
+    Dropping tasks is different from deleting them - the tasks remain in OmniFocus
+    but are marked as on hold and won't appear in available task lists.
+
+    Args:
+        task_ids: List of task IDs to drop
+
+    Returns a success message with count of dropped tasks.
+    """
+    client = get_client()
+    try:
+        count = client.drop_tasks(task_ids)
+        return f"Successfully dropped {count} of {len(task_ids)} tasks"
+    except Exception as e:
+        return f"Error dropping tasks: {str(e)}"
 
 
 # ============================================================================

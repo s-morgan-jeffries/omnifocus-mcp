@@ -36,6 +36,13 @@ get_projects_due_for_review = server.get_projects_due_for_review.fn
 set_estimated_minutes = server.set_estimated_minutes.fn
 get_perspectives = server.get_perspectives.fn
 switch_perspective = server.switch_perspective.fn
+complete_tasks = server.complete_tasks.fn
+move_tasks = server.move_tasks.fn
+add_tag_to_tasks = server.add_tag_to_tasks.fn
+remove_tag_from_tasks = server.remove_tag_from_tasks.fn
+drop_tasks = server.drop_tasks.fn
+delete_tasks = server.delete_tasks.fn
+delete_projects = server.delete_projects.fn
 
 
 @pytest.fixture(autouse=True)
@@ -722,3 +729,111 @@ class TestNoteTools:
             result = get_note("proj-001", "project")
 
             assert "no note" in result.lower() or "empty" in result.lower()
+
+
+class TestBatchOperationTools:
+    """Tests for batch operation MCP tools."""
+
+    def test_complete_tasks_success(self):
+        """Test completing multiple tasks."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.complete_tasks.return_value = 3
+            mock_get_client.return_value = mock_client
+
+            result = complete_tasks(["task-001", "task-002", "task-003"])
+
+            mock_client.complete_tasks.assert_called_once_with(["task-001", "task-002", "task-003"])
+            assert "3" in result
+            assert "successfully" in result.lower()
+
+    def test_move_tasks_to_project(self):
+        """Test moving multiple tasks to a project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.move_tasks.return_value = 2
+            mock_get_client.return_value = mock_client
+
+            result = move_tasks(["task-001", "task-002"], "proj-001")
+
+            mock_client.move_tasks.assert_called_once_with(["task-001", "task-002"], "proj-001")
+            assert "2" in result
+            assert "proj-001" in result
+
+    def test_move_tasks_to_inbox(self):
+        """Test moving multiple tasks to inbox."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.move_tasks.return_value = 2
+            mock_get_client.return_value = mock_client
+
+            result = move_tasks(["task-001", "task-002"], None)
+
+            mock_client.move_tasks.assert_called_once_with(["task-001", "task-002"], None)
+            assert "2" in result
+            assert "inbox" in result.lower()
+
+    def test_add_tag_to_tasks_success(self):
+        """Test adding a tag to multiple tasks."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.add_tag_to_tasks.return_value = 3
+            mock_get_client.return_value = mock_client
+
+            result = add_tag_to_tasks(["task-001", "task-002", "task-003"], "urgent")
+
+            mock_client.add_tag_to_tasks.assert_called_once_with(["task-001", "task-002", "task-003"], "urgent")
+            assert "3" in result
+            assert "urgent" in result
+
+    def test_remove_tag_from_tasks_success(self):
+        """Test removing a tag from multiple tasks."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.remove_tag_from_tasks.return_value = 2
+            mock_get_client.return_value = mock_client
+
+            result = remove_tag_from_tasks(["task-001", "task-002"], "urgent")
+
+            mock_client.remove_tag_from_tasks.assert_called_once_with(["task-001", "task-002"], "urgent")
+            assert "2" in result
+            assert "urgent" in result
+
+    def test_drop_tasks_success(self):
+        """Test dropping multiple tasks."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.drop_tasks.return_value = 3
+            mock_get_client.return_value = mock_client
+
+            result = drop_tasks(["task-001", "task-002", "task-003"])
+
+            mock_client.drop_tasks.assert_called_once_with(["task-001", "task-002", "task-003"])
+            assert "3" in result
+            assert "dropped" in result.lower()
+
+    def test_delete_tasks_success(self):
+        """Test deleting multiple tasks."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.delete_tasks.return_value = 2
+            mock_get_client.return_value = mock_client
+
+            result = delete_tasks(["task-001", "task-002"])
+
+            mock_client.delete_tasks.assert_called_once_with(["task-001", "task-002"])
+            assert "2" in result
+            assert "deleted" in result.lower()
+
+    def test_delete_projects_success(self):
+        """Test deleting multiple projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.delete_projects.return_value = 2
+            mock_get_client.return_value = mock_client
+
+            result = delete_projects(["proj-001", "proj-002"])
+
+            mock_client.delete_projects.assert_called_once_with(["proj-001", "proj-002"])
+            assert "2" in result
+            assert "deleted" in result.lower()
