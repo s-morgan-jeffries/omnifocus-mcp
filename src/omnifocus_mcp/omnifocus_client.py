@@ -2007,6 +2007,88 @@ class OmniFocusClient:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error moving task: {e.stderr}")
 
+    def move_tasks(self, task_ids: list[str], project_id: Optional[str]) -> int:
+        """Move multiple tasks to a different project or to inbox.
+
+        Args:
+            task_ids: List of task IDs to move
+            project_id: The ID of the destination project, or None for inbox
+
+        Returns:
+            int: Number of tasks successfully moved
+
+        Raises:
+            ValueError: If task_ids is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('move_tasks')
+
+        if not task_ids or len(task_ids) == 0:
+            raise ValueError("task_ids cannot be empty")
+
+        # Build AppleScript list of task IDs
+        ids_list = ", ".join([f'"{task_id}"' for task_id in task_ids])
+
+        if project_id is None:
+            # Move to inbox
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    set taskIdList to {{{ids_list}}}
+                    set successCount to 0
+
+                    repeat with taskId in taskIdList
+                        try
+                            set theTask to first flattened task whose id is taskId
+                            move theTask to end of tasks of front document
+                            set successCount to successCount + 1
+                        on error
+                            -- Task not found, skip
+                        end try
+                    end repeat
+
+                    return successCount as text
+                end tell
+            end tell
+            '''
+        else:
+            # Move to project
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    set taskIdList to {{{ids_list}}}
+                    set successCount to 0
+
+                    try
+                        set theProject to first flattened project whose id is "{project_id}"
+
+                        repeat with taskId in taskIdList
+                            try
+                                set theTask to first flattened task whose id is taskId
+                                move theTask to end of tasks of theProject
+                                set successCount to successCount + 1
+                            on error
+                                -- Task not found, skip
+                            end try
+                        end repeat
+
+                        return successCount as text
+                    on error errMsg
+                        error "Project not found: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error moving tasks: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing move result: {e}")
+
     def get_folders(self) -> list[dict]:
         """Get all folders from OmniFocus.
 
