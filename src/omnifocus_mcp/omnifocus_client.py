@@ -154,15 +154,62 @@ class OmniFocusClient:
         text = text.replace('"', '\\"')
         return text
 
-    def get_projects(self, on_hold_only: bool = False) -> list[dict[str, Any]]:
+    def _sort_tasks(self, tasks: list[dict[str, Any]], sort_by: str, sort_order: str) -> list[dict[str, Any]]:
+        """Sort tasks by specified field and order.
+
+        Args:
+            tasks: List of task dictionaries to sort
+            sort_by: Field to sort by ("name", "due_date", "defer_date")
+            sort_order: Sort order ("asc" or "desc")
+
+        Returns:
+            Sorted list of tasks
+        """
+        # Map sort_by to actual field names in task dict
+        field_map = {
+            "name": "name",
+            "due_date": "dueDate",
+            "defer_date": "deferDate"
+        }
+
+        field = field_map[sort_by]
+        reverse = (sort_order == "desc")
+
+        # For date fields, handle empty dates by putting them last
+        if field in ["dueDate", "deferDate"]:
+            def sort_key(task):
+                value = task.get(field, "")
+                # Empty dates sort to end regardless of asc/desc
+                if not value:
+                    return ("9999" if not reverse else "")
+                return value
+            return sorted(tasks, key=sort_key, reverse=reverse)
+        else:
+            # For name, simple case-insensitive sort
+            return sorted(tasks, key=lambda t: t.get(field, "").lower(), reverse=reverse)
+
+    def get_projects(self, on_hold_only: bool = False, sort_by: Optional[str] = None, sort_order: str = "asc") -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
 
         Args:
             on_hold_only: Only return projects with "on hold" status (default: False)
+            sort_by: Field to sort by - "name" (default: None - OmniFocus order)
+            sort_order: Sort order - "asc" or "desc" (default: "asc")
 
         Returns:
             list: List of project dictionaries with id, name, status, folder, note, etc.
+
+        Raises:
+            ValueError: If sort parameters are invalid
         """
+        # Validate sort parameters
+        valid_sort_by = ["name", None]
+        valid_sort_order = ["asc", "desc"]
+
+        if sort_by not in valid_sort_by:
+            raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
+        if sort_order not in valid_sort_order:
+            raise ValueError(f"Invalid sort_order value: {sort_order}. Must be one of: {valid_sort_order}")
         script = '''
         use AppleScript version "2.4"
         use scripting additions
@@ -245,7 +292,14 @@ class OmniFocusClient:
         try:
             result = run_applescript(script)
             if result:
-                return json.loads(result)
+                projects = json.loads(result)
+
+                # Apply sorting if requested
+                if sort_by:
+                    reverse = (sort_order == "desc")
+                    projects = sorted(projects, key=lambda p: p.get("name", "").lower(), reverse=reverse)
+
+                return projects
             else:
                 raise Exception("No output from OmniFocus AppleScript")
         except subprocess.CalledProcessError as e:
@@ -758,7 +812,9 @@ class OmniFocusClient:
         defer_relative: Optional[str] = None,
         max_estimated_minutes: Optional[int] = None,
         has_estimate: Optional[bool] = None,
-        tag_filter: Optional[list[str]] = None
+        tag_filter: Optional[list[str]] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc"
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
 
@@ -776,13 +832,24 @@ class OmniFocusClient:
             max_estimated_minutes: Only return tasks estimated at or under this many minutes
             has_estimate: If True, only return tasks with estimates; if False, only tasks without estimates
             tag_filter: List of tag names to filter by (AND logic - task must have all tags)
+            sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
+            sort_order: Sort order - "asc" or "desc" (default: "asc")
 
         Returns:
             list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, and tags
 
         Raises:
-            ValueError: If relative date filter value is invalid
+            ValueError: If relative date filter value or sort parameters are invalid
         """
+        # Validate sort parameters
+        valid_sort_by = ["name", "due_date", "defer_date", None]
+        valid_sort_order = ["asc", "desc"]
+
+        if sort_by not in valid_sort_by:
+            raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
+        if sort_order not in valid_sort_order:
+            raise ValueError(f"Invalid sort_order value: {sort_order}. Must be one of: {valid_sort_order}")
+
         # Validate relative date parameters
         valid_due_relative = ["today", "tomorrow", "this_week", "next_week", "overdue", None]
         valid_defer_relative = ["today", "tomorrow", "this_week", "next_week", None]
@@ -1154,7 +1221,13 @@ class OmniFocusClient:
         try:
             result = run_applescript(script)
             if result:
-                return json.loads(result)
+                tasks = json.loads(result)
+
+                # Apply sorting if requested
+                if sort_by:
+                    tasks = self._sort_tasks(tasks, sort_by, sort_order)
+
+                return tasks
             else:
                 raise Exception("No output from OmniFocus AppleScript")
         except subprocess.CalledProcessError as e:
