@@ -838,7 +838,9 @@ class OmniFocusClient:
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
         flagged: bool = False,
-        tags: Optional[list[str]] = None
+        tags: Optional[list[str]] = None,
+        recurrence: Optional[str] = None,
+        repetition_method: Optional[str] = None
     ) -> bool:
         """Add a task to a specific project using AppleScript.
 
@@ -850,12 +852,30 @@ class OmniFocusClient:
             defer_date: Defer date in ISO 8601 format (when task becomes available)
             flagged: Whether to flag the task
             tags: List of tag names to assign to the task
+            recurrence: Optional iCalendar RRULE string (e.g., "FREQ=WEEKLY", "FREQ=DAILY;INTERVAL=2")
+            repetition_method: Optional repetition method - "fixed" (default), "start_after_completion", "due_after_completion"
 
         Returns:
             bool: True if task was created successfully
+
+        Raises:
+            ValueError: If repetition_method is invalid or provided without recurrence
         """
         # SAFETY: Verify database before modifying
         self._verify_database_safety('add_task')
+
+        # Validate repetition parameters
+        if repetition_method and not recurrence:
+            raise ValueError("repetition_method requires recurrence to be specified")
+
+        if repetition_method:
+            valid_methods = ["fixed", "start_after_completion", "due_after_completion"]
+            if repetition_method not in valid_methods:
+                raise ValueError(f"Invalid repetition_method: {repetition_method}. Must be one of: {', '.join(valid_methods)}")
+
+        # Default repetition_method to 'fixed' if recurrence is provided but method isn't
+        if recurrence and not repetition_method:
+            repetition_method = "fixed"
 
         # Escape quotes and backslashes for AppleScript
         task_name_escaped = self._escape_applescript_string(task_name)
@@ -889,9 +909,44 @@ class OmniFocusClient:
                         -- Tag doesn't exist, skip it
                     end try''')
 
+        # Build repetition rule commands
+        repetition_commands = []
+        if recurrence:
+            # Convert Python-friendly method names to AppleScript enum names
+            as_method = {
+                "fixed": "fixed repetition",
+                "start_after_completion": "start after completion",
+                "due_after_completion": "due after completion"
+            }[repetition_method]
+
+            # Escape the recurrence string for AppleScript
+            recurrence_escaped = self._escape_applescript_string(recurrence)
+
+            # Get a template rule, create task, assign rule, modify properties
+            repetition_commands.append(f'''
+                    -- Get template repetition rule from any existing task
+                    set templateRule to missing value
+                    repeat with t in flattened tasks
+                        try
+                            set templateRule to repetition rule of t
+                            if templateRule is not missing value then
+                                exit repeat
+                            end if
+                        end try
+                    end repeat
+
+                    -- If we have a template, set up recurrence
+                    if templateRule is not missing value then
+                        set repetition rule of newTask to templateRule
+                        set theRule to repetition rule of newTask
+                        set recurrence of theRule to "{recurrence_escaped}"
+                        set repetition method of theRule to {as_method}
+                    end if''')
+
         properties_str = ", ".join(properties)
         date_commands_str = "\n                    ".join(date_commands)
         tag_commands_str = "\n                    ".join(tag_commands)
+        repetition_commands_str = "\n                    ".join(repetition_commands)
 
         script = f'''
         tell application "OmniFocus"
@@ -910,6 +965,9 @@ class OmniFocusClient:
 
                     -- Add tags if provided
                     {tag_commands_str if tag_commands else ""}
+
+                    -- Set up repetition if provided
+                    {repetition_commands_str if repetition_commands else ""}
 
                     return "true"
                 on error errMsg
@@ -1084,7 +1142,8 @@ class OmniFocusClient:
         modified_after: Optional[str] = None,
         modified_before: Optional[str] = None,
         sort_by: Optional[str] = None,
-        sort_order: str = "asc"
+        sort_order: str = "asc",
+        recurring_only: Optional[bool] = None
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
 
@@ -1109,9 +1168,10 @@ class OmniFocusClient:
             modified_before: Only return tasks modified before this ISO date
             sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
+            recurring_only: If True, only return recurring tasks; if False, only non-recurring tasks; if None, return all (default: None)
 
         Returns:
-            list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, and tags
+            list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, tags, and recurring info
 
         Raises:
             ValueError: If relative date filter value, tag_filter_mode, date format, or sort parameters are invalid
@@ -1483,6 +1543,23 @@ class OmniFocusClient:
                             end if
                         end try
 
+                        -- Get repetition info
+                        set isRecurring to "false"
+                        set recurrence to ""
+                        set repetitionMethod to ""
+                        try
+                            set repRule to repetition rule of t
+                            if repRule is not missing value then
+                                set isRecurring to "true"
+                                try
+                                    set recurrence to recurrence of repRule
+                                end try
+                                try
+                                    set repetitionMethod to (repetition method of repRule) as text
+                                end try
+                            end if
+                        end try
+
                         -- Build JSON manually
                         set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -1499,7 +1576,10 @@ class OmniFocusClient:
                             "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                             "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
                             "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
-                            "\\"estimatedMinutes\\": " & estimatedMins & ¬
+                            "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
+                            "\\"isRecurring\\": " & isRecurring & ", " & ¬
+                            "\\"recurrence\\": \\"" & my escapeJSON(recurrence) & "\\", " & ¬
+                            "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethod) & "\\" " & ¬
                             "}}"
 
                         if output is not "" then
@@ -1518,6 +1598,23 @@ class OmniFocusClient:
             result = run_applescript(script)
             if result:
                 tasks = json.loads(result)
+
+                # Normalize repetitionMethod values
+                for task in tasks:
+                    # Convert AppleScript enum values to Python-friendly snake_case
+                    rep_method = task.get('repetitionMethod', '')
+                    if rep_method == 'fixed repetition':
+                        task['repetitionMethod'] = 'fixed'
+                    elif rep_method == 'start after completion':
+                        task['repetitionMethod'] = 'start_after_completion'
+                    elif rep_method == 'due after completion':
+                        task['repetitionMethod'] = 'due_after_completion'
+                    elif rep_method == '':
+                        task['repetitionMethod'] = None
+
+                    # Normalize recurrence
+                    if task.get('recurrence', '') == '':
+                        task['recurrence'] = None
 
                 # Apply Python-based tag filtering
                 # For AND mode: AppleScript already filtered, but we apply Python filter too for consistency in tests
@@ -1538,6 +1635,13 @@ class OmniFocusClient:
                         modified_after,
                         modified_before
                     )
+
+                # Apply recurring filter
+                if recurring_only is not None:
+                    if recurring_only:
+                        tasks = [t for t in tasks if t.get('isRecurring', False)]
+                    else:
+                        tasks = [t for t in tasks if not t.get('isRecurring', False)]
 
                 # Apply sorting if requested
                 if sort_by:
@@ -1960,26 +2064,32 @@ class OmniFocusClient:
         self,
         task_id: str,
         name: Optional[str] = None,
+        task_name: Optional[str] = None,
         note: Optional[str] = None,
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
-        flagged: Optional[bool] = None
+        flagged: Optional[bool] = None,
+        recurrence: Optional[str] = None,
+        repetition_method: Optional[str] = None
     ) -> bool:
         """Update properties of an existing task.
 
         Args:
             task_id: The ID of the task to update
-            name: New task name (optional)
+            name: New task name (optional) - deprecated, use task_name
+            task_name: New task name (optional)
             note: New task note (optional)
             due_date: New due date in ISO 8601 format, or None to clear (optional)
             defer_date: New defer date in ISO 8601 format, or None to clear (optional)
             flagged: New flagged status (optional)
+            recurrence: iCalendar RRULE string to set, or "" to remove recurrence (optional)
+            repetition_method: Repetition method - "fixed", "start_after_completion", "due_after_completion" (optional)
 
         Returns:
             bool: True if successful
 
         Raises:
-            ValueError: If task_id is empty or no fields are provided
+            ValueError: If task_id is empty, no fields are provided, or repetition_method is invalid
             Exception: If the task cannot be updated
         """
         # SAFETY: Verify database before modifying
@@ -1988,8 +2098,18 @@ class OmniFocusClient:
         if not task_id:
             raise ValueError("task_id is required")
 
+        # Support both name and task_name for backwards compatibility
+        if task_name is not None:
+            name = task_name
+
+        # Validate repetition parameters
+        if repetition_method:
+            valid_methods = ["fixed", "start_after_completion", "due_after_completion"]
+            if repetition_method not in valid_methods:
+                raise ValueError(f"Invalid repetition_method: {repetition_method}. Must be one of: {', '.join(valid_methods)}")
+
         # Check if at least one field is provided
-        if all(v is None for v in [name, note, due_date, flagged]) and defer_date is None:
+        if all(v is None for v in [name, note, due_date, flagged, recurrence, repetition_method]) and defer_date is None:
             raise ValueError("At least one field must be provided to update")
 
         # Build properties to update
@@ -2023,9 +2143,69 @@ class OmniFocusClient:
                 as_date = self._iso_to_applescript_date(defer_date)
                 date_commands.append(f'set defer date of theTask to date "{as_date}"')
 
+        # Build repetition update commands
+        repetition_commands = []
+        if recurrence is not None:
+            if recurrence == "":
+                # Remove recurrence
+                repetition_commands.append("set repetition rule of theTask to missing value")
+            else:
+                # Add or update recurrence
+                as_method = "fixed repetition"  # default
+                if repetition_method:
+                    as_method = {
+                        "fixed": "fixed repetition",
+                        "start_after_completion": "start after completion",
+                        "due_after_completion": "due after completion"
+                    }[repetition_method]
+
+                recurrence_escaped = self._escape_applescript_string(recurrence)
+
+                # Check if task already has a rule; if not, get template
+                repetition_commands.append(f'''
+                    set existingRule to repetition rule of theTask
+                    if existingRule is missing value then
+                        -- Need to get a template rule
+                        set templateRule to missing value
+                        repeat with t in flattened tasks
+                            try
+                                set templateRule to repetition rule of t
+                                if templateRule is not missing value then
+                                    exit repeat
+                                end if
+                            end try
+                        end repeat
+
+                        -- Set up new rule from template
+                        if templateRule is not missing value then
+                            set repetition rule of theTask to templateRule
+                            set theRule to repetition rule of theTask
+                            set recurrence of theRule to "{recurrence_escaped}"
+                            set repetition method of theRule to {as_method}
+                        end if
+                    else
+                        -- Modify existing rule
+                        set recurrence of existingRule to "{recurrence_escaped}"
+                        set repetition method of existingRule to {as_method}
+                    end if''')
+        elif repetition_method is not None:
+            # Only updating the method, not the recurrence string
+            as_method = {
+                "fixed": "fixed repetition",
+                "start_after_completion": "start after completion",
+                "due_after_completion": "due after completion"
+            }[repetition_method]
+
+            repetition_commands.append(f'''
+                    set existingRule to repetition rule of theTask
+                    if existingRule is not missing value then
+                        set repetition method of existingRule to {as_method}
+                    end if''')
+
         # Build properties string
         props_str = ", ".join(properties) if properties else ""
         date_cmds_str = "\n                ".join(date_commands) if date_commands else ""
+        repetition_cmds_str = "\n                ".join(repetition_commands) if repetition_commands else ""
 
         script = f'''
         tell application "OmniFocus"
@@ -2038,6 +2218,9 @@ class OmniFocusClient:
 
         if date_cmds_str:
             script += f'\n                {date_cmds_str}'
+
+        if repetition_cmds_str:
+            script += f'\n                {repetition_cmds_str}'
 
         script += '''
                 return "true"
@@ -2150,7 +2333,9 @@ class OmniFocusClient:
         task_name: str,
         note: Optional[str] = None,
         due_date: Optional[str] = None,
-        flagged: bool = False
+        flagged: bool = False,
+        recurrence: Optional[str] = None,
+        repetition_method: Optional[str] = None
     ) -> bool:
         """Create a new task in the inbox.
 
@@ -2159,12 +2344,14 @@ class OmniFocusClient:
             note: Optional note for the task
             due_date: Optional due date in ISO 8601 format
             flagged: Whether to flag the task (default: False)
+            recurrence: Optional iCalendar RRULE string (e.g., "FREQ=WEEKLY", "FREQ=DAILY;INTERVAL=2")
+            repetition_method: Optional repetition method - "fixed" (default), "start_after_completion", "due_after_completion"
 
         Returns:
             bool: True if successful
 
         Raises:
-            ValueError: If task_name is empty
+            ValueError: If task_name is empty or if repetition_method is invalid or provided without recurrence
             Exception: If the task cannot be created
         """
         # SAFETY: Verify database before modifying
@@ -2172,6 +2359,19 @@ class OmniFocusClient:
 
         if not task_name:
             raise ValueError("task_name is required")
+
+        # Validate repetition parameters
+        if repetition_method and not recurrence:
+            raise ValueError("repetition_method requires recurrence to be specified")
+
+        if repetition_method:
+            valid_methods = ["fixed", "start_after_completion", "due_after_completion"]
+            if repetition_method not in valid_methods:
+                raise ValueError(f"Invalid repetition_method: {repetition_method}. Must be one of: {', '.join(valid_methods)}")
+
+        # Default repetition_method to 'fixed' if recurrence is provided but method isn't
+        if recurrence and not repetition_method:
+            repetition_method = "fixed"
 
         # Build properties
         task_name_escaped = self._escape_applescript_string(task_name)
@@ -2192,6 +2392,42 @@ class OmniFocusClient:
             as_date = self._iso_to_applescript_date(due_date)
             date_command = f'set due date of newTask to date "{as_date}"'
 
+        # Build repetition rule commands
+        repetition_commands = []
+        if recurrence:
+            # Convert Python-friendly method names to AppleScript enum names
+            as_method = {
+                "fixed": "fixed repetition",
+                "start_after_completion": "start after completion",
+                "due_after_completion": "due after completion"
+            }[repetition_method]
+
+            # Escape the recurrence string for AppleScript
+            recurrence_escaped = self._escape_applescript_string(recurrence)
+
+            # Get a template rule, create task, assign rule, modify properties
+            repetition_commands.append(f'''
+                    -- Get template repetition rule from any existing task
+                    set templateRule to missing value
+                    repeat with t in flattened tasks
+                        try
+                            set templateRule to repetition rule of t
+                            if templateRule is not missing value then
+                                exit repeat
+                            end if
+                        end try
+                    end repeat
+
+                    -- If we have a template, set up recurrence
+                    if templateRule is not missing value then
+                        set repetition rule of newTask to templateRule
+                        set theRule to repetition rule of newTask
+                        set recurrence of theRule to "{recurrence_escaped}"
+                        set repetition method of theRule to {as_method}
+                    end if''')
+
+        repetition_commands_str = "\n                ".join(repetition_commands)
+
         script = f'''
         tell application "OmniFocus"
             tell front document
@@ -2199,6 +2435,7 @@ class OmniFocusClient:
                     set newTask to make new task with properties {{{properties_str}}}
                 end tell
                 {date_command if date_command else ""}
+                {repetition_commands_str if repetition_commands else ""}
                 return "true"
             end tell
         end tell
