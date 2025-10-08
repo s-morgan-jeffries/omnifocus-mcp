@@ -268,3 +268,99 @@ class TestBatchDrop:
 
             with pytest.raises(Exception, match="Error dropping tasks"):
                 client.drop_tasks(["task-001"])
+
+
+class TestBatchDelete:
+    """Tests for batch deletion operations."""
+
+    def test_delete_tasks_success(self, client):
+        """Test deleting multiple tasks successfully."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "3"  # 3 tasks deleted
+
+            task_ids = ["task-001", "task-002", "task-003"]
+            result = client.delete_tasks(task_ids)
+
+            assert result == 3
+            # Verify AppleScript was called
+            call_args = mock_run.call_args[0][0]
+            assert "task-001" in call_args
+            assert "task-002" in call_args
+            assert "task-003" in call_args
+            assert "delete" in call_args.lower()
+
+    def test_delete_tasks_single(self, client):
+        """Test deleting a single task via batch operation."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+
+            result = client.delete_tasks(["task-001"])
+
+            assert result == 1
+
+    def test_delete_tasks_empty_list(self, client):
+        """Test that empty list raises ValueError."""
+        with pytest.raises(ValueError, match="task_ids cannot be empty"):
+            client.delete_tasks([])
+
+    def test_delete_tasks_partial_success(self, client):
+        """Test when some tasks delete but others don't exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "2"  # Only 2 of 3
+
+            task_ids = ["task-001", "task-002", "nonexistent"]
+            result = client.delete_tasks(task_ids)
+
+            assert result == 2
+
+    def test_delete_tasks_error(self, client):
+        """Test error handling in batch deletion."""
+        import subprocess
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            error = subprocess.CalledProcessError(1, 'osascript')
+            error.stderr = "OmniFocus error"
+            mock_run.side_effect = error
+
+            with pytest.raises(Exception, match="Error deleting tasks"):
+                client.delete_tasks(["task-001"])
+
+    def test_delete_projects_success(self, client):
+        """Test deleting multiple projects successfully."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "2"  # 2 projects deleted
+
+            project_ids = ["proj-001", "proj-002"]
+            result = client.delete_projects(project_ids)
+
+            assert result == 2
+            call_args = mock_run.call_args[0][0]
+            assert "proj-001" in call_args
+            assert "proj-002" in call_args
+            assert "delete" in call_args.lower()
+            assert "project" in call_args.lower()
+
+    def test_delete_projects_empty_list(self, client):
+        """Test that empty list raises ValueError."""
+        with pytest.raises(ValueError, match="project_ids cannot be empty"):
+            client.delete_projects([])
+
+    def test_delete_projects_partial_success(self, client):
+        """Test when some projects delete but others don't exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "1"  # Only 1 of 2
+
+            project_ids = ["proj-001", "nonexistent"]
+            result = client.delete_projects(project_ids)
+
+            assert result == 1
+
+    def test_delete_projects_error(self, client):
+        """Test error handling in batch project deletion."""
+        import subprocess
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            error = subprocess.CalledProcessError(1, 'osascript')
+            error.stderr = "OmniFocus error"
+            mock_run.side_effect = error
+
+            with pytest.raises(Exception, match="Error deleting projects"):
+                client.delete_projects(["proj-001"])

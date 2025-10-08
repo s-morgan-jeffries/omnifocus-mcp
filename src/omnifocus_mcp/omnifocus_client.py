@@ -2264,6 +2264,108 @@ class OmniFocusClient:
         except ValueError as e:
             raise Exception(f"Error parsing drop result: {e}")
 
+    def delete_tasks(self, task_ids: list[str]) -> int:
+        """Delete multiple tasks from OmniFocus in a single operation.
+
+        Args:
+            task_ids: List of task IDs to delete
+
+        Returns:
+            int: Number of tasks successfully deleted
+
+        Raises:
+            ValueError: If task_ids is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('delete_tasks')
+
+        if not task_ids or len(task_ids) == 0:
+            raise ValueError("task_ids cannot be empty")
+
+        # Build AppleScript list of task IDs
+        ids_list = ", ".join([f'"{task_id}"' for task_id in task_ids])
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set taskIdList to {{{ids_list}}}
+                set successCount to 0
+
+                repeat with taskId in taskIdList
+                    try
+                        set theTask to first flattened task whose id is taskId
+                        delete theTask
+                        set successCount to successCount + 1
+                    on error
+                        -- Task not found, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error deleting tasks: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing delete result: {e}")
+
+    def delete_projects(self, project_ids: list[str]) -> int:
+        """Delete multiple projects from OmniFocus in a single operation.
+
+        Args:
+            project_ids: List of project IDs to delete
+
+        Returns:
+            int: Number of projects successfully deleted
+
+        Raises:
+            ValueError: If project_ids is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('delete_projects')
+
+        if not project_ids or len(project_ids) == 0:
+            raise ValueError("project_ids cannot be empty")
+
+        # Build AppleScript list of project IDs
+        ids_list = ", ".join([f'"{project_id}"' for project_id in project_ids])
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set projectIdList to {{{ids_list}}}
+                set successCount to 0
+
+                repeat with projectId in projectIdList
+                    try
+                        set theProject to first flattened project whose id is projectId
+                        delete theProject
+                        set successCount to successCount + 1
+                    on error
+                        -- Project not found, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error deleting projects: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing delete result: {e}")
+
     def get_folders(self) -> list[dict]:
         """Get all folders from OmniFocus.
 
