@@ -331,6 +331,49 @@ class OmniFocusClient:
                     set completionPct to (completedCount / taskCount) * 100
                 end if
 
+                -- Get review metadata
+                set reviewIntervalStr to "null"
+                set lastReviewStr to "null"
+                set nextReviewStr to "null"
+
+                try
+                    set reviewInterval to review interval of targetProject
+                    if reviewInterval is not missing value then
+                        -- Convert interval to readable format (e.g., "1 week", "2 weeks")
+                        set intervalSecs to reviewInterval as integer
+                        set intervalDays to intervalSecs / 86400
+                        set intervalWeeks to intervalDays / 7
+
+                        if intervalWeeks ≥ 1 then
+                            if intervalWeeks = 1 then
+                                set reviewIntervalStr to "\\"1 week\\""
+                            else
+                                set reviewIntervalStr to "\\"" & (intervalWeeks as integer) & " weeks\\""
+                            end if
+                        else if intervalDays ≥ 1 then
+                            if intervalDays = 1 then
+                                set reviewIntervalStr to "\\"1 day\\""
+                            else
+                                set reviewIntervalStr to "\\"" & (intervalDays as integer) & " days\\""
+                            end if
+                        end if
+                    end if
+                end try
+
+                try
+                    set lastReview to last review date of targetProject
+                    if lastReview is not missing value then
+                        set lastReviewStr to "\\"" & (lastReview as «class isot» as string) & "\\""
+                    end if
+                end try
+
+                try
+                    set nextReview to next review date of targetProject
+                    if nextReview is not missing value then
+                        set nextReviewStr to "\\"" & (nextReview as «class isot» as string) & "\\""
+                    end if
+                end try
+
                 -- Build JSON manually
                 set jsonOutput to "{{" & ¬
                     "\\"id\\": \\"" & projId & "\\", " & ¬
@@ -341,7 +384,10 @@ class OmniFocusClient:
                     "\\"taskCount\\": " & taskCount & ", " & ¬
                     "\\"completedTaskCount\\": " & completedCount & ", " & ¬
                     "\\"remainingTaskCount\\": " & remainingCount & ", " & ¬
-                    "\\"completionPercentage\\": " & completionPct & ¬
+                    "\\"completionPercentage\\": " & completionPct & ", " & ¬
+                    "\\"reviewInterval\\": " & reviewIntervalStr & ", " & ¬
+                    "\\"lastReviewDate\\": " & lastReviewStr & ", " & ¬
+                    "\\"nextReviewDate\\": " & nextReviewStr & ¬
                     "}}"
 
                 return jsonOutput

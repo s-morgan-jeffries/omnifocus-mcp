@@ -246,6 +246,16 @@ def get_project(project_id: str) -> str:
     result += f"  Remaining: {project.get('remainingTaskCount', 0)}\n"
     result += f"  Progress: {project.get('completionPercentage', 0.0):.1f}%\n"
 
+    # Add review metadata
+    if project.get('reviewInterval') or project.get('lastReviewDate') or project.get('nextReviewDate'):
+        result += f"\nReview:\n"
+        if project.get('reviewInterval'):
+            result += f"  Interval: {project['reviewInterval']}\n"
+        if project.get('lastReviewDate'):
+            result += f"  Last Reviewed: {project['lastReviewDate']}\n"
+        if project.get('nextReviewDate'):
+            result += f"  Next Review: {project['nextReviewDate']}\n"
+
     if project.get('note'):
         result += f"\nNote: {_truncate_note(project['note'])}\n"
 
