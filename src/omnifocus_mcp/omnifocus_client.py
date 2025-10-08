@@ -650,7 +650,7 @@ class OmniFocusClient:
                             else
                                 set reviewIntervalStr to "\\"" & (intervalWeeks as integer) & " weeks\\""
                             end if
-                        elifintervalDays ≥ 1 then
+                        else if intervalDays ≥ 1 then
                             if intervalDays = 1 then
                                 set reviewIntervalStr to "\\"1 day\\""
                             else
