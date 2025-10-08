@@ -1162,6 +1162,52 @@ class OmniFocusClient:
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing OmniFocus task output: {e}")
 
+    def search_tasks(self, query: str, search_notes: bool = True) -> list[dict[str, Any]]:
+        """Search for tasks by text query.
+
+        Performs case-insensitive search across task names and optionally notes.
+
+        Args:
+            query: The search term to look for
+            search_notes: If True, also search in task notes (default: True)
+
+        Returns:
+            List of matching tasks with all standard task fields
+
+        Raises:
+            ValueError: If query is empty or whitespace-only
+            Exception: If the search operation fails
+        """
+        if not query or query.strip() == "":
+            raise ValueError("query cannot be empty")
+
+        query_lower = query.lower()
+
+        try:
+            # Get all tasks and filter in Python for simplicity
+            # This approach is simpler and more maintainable than building complex AppleScript
+            all_tasks = self.get_tasks()
+
+            matching_tasks = []
+            for task in all_tasks:
+                task_matches = False
+
+                # Search in task name
+                if query_lower in task.get('name', '').lower():
+                    task_matches = True
+
+                # Search in notes if requested
+                if search_notes and not task_matches:
+                    if query_lower in task.get('note', '').lower():
+                        task_matches = True
+
+                if task_matches:
+                    matching_tasks.append(task)
+
+            return matching_tasks
+        except Exception as e:
+            raise Exception(f"Error searching tasks: {str(e)}")
+
     def get_task(self, task_id: str) -> dict[str, Any]:
         """Get a single task by its ID.
 
