@@ -350,7 +350,7 @@ class OmniFocusClient:
                             else
                                 set reviewIntervalStr to "\\"" & (intervalWeeks as integer) & " weeks\\""
                             end if
-                        else if intervalDays ≥ 1 then
+                        elifintervalDays ≥ 1 then
                             if intervalDays = 1 then
                                 set reviewIntervalStr to "\\"1 day\\""
                             else
@@ -754,6 +754,10 @@ class OmniFocusClient:
         dropped_only: bool = False,
         blocked_only: bool = False,
         next_only: bool = False,
+        due_relative: Optional[str] = None,
+        defer_relative: Optional[str] = None,
+        max_estimated_minutes: Optional[int] = None,
+        has_estimate: Optional[bool] = None,
         tag_filter: Optional[list[str]] = None
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
@@ -767,11 +771,27 @@ class OmniFocusClient:
             dropped_only: Only return dropped tasks (default: False)
             blocked_only: Only return blocked tasks (default: False)
             next_only: Only return next tasks (default: False)
+            due_relative: Relative due date filter - "today", "tomorrow", "this_week", "next_week", "overdue"
+            defer_relative: Relative defer date filter - "today", "tomorrow", "this_week", "next_week"
+            max_estimated_minutes: Only return tasks estimated at or under this many minutes
+            has_estimate: If True, only return tasks with estimates; if False, only tasks without estimates
             tag_filter: List of tag names to filter by (AND logic - task must have all tags)
 
         Returns:
             list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, and tags
+
+        Raises:
+            ValueError: If relative date filter value is invalid
         """
+        # Validate relative date parameters
+        valid_due_relative = ["today", "tomorrow", "this_week", "next_week", "overdue", None]
+        valid_defer_relative = ["today", "tomorrow", "this_week", "next_week", None]
+
+        if due_relative not in valid_due_relative:
+            raise ValueError(f"Invalid due_relative value: {due_relative}. Must be one of: {valid_due_relative[:-1]}")
+        if defer_relative not in valid_defer_relative:
+            raise ValueError(f"Invalid defer_relative value: {defer_relative}. Must be one of: {valid_defer_relative[:-1]}")
+
         # Build project filter
         if project_id:
             project_filter = f'whose id is "{project_id}"'
@@ -840,12 +860,153 @@ class OmniFocusClient:
                             set taskDueDate to due date of t
                             if taskDueDate is missing value then
                                 error "skip non-overdue task"
-                            else if taskDueDate >= (current date) then
+                            eliftaskDueDate >= (current date) then
                                 error "skip non-overdue task"
                             end if
                         on error
                             error "skip non-overdue task"
                         end try"""
+
+        # Build relative due date filter
+        due_relative_check = ""
+        if due_relative:
+            if due_relative == "today":
+                due_relative_check = """
+                        -- Skip tasks not due today
+                        set taskDue to due date of t
+                        if taskDue is missing value then
+                            error "skip task"
+                        end if
+                        set todayStart to (current date)
+                        set time of todayStart to 0
+                        set todayEnd to todayStart + (24 * hours)
+                        if taskDue < todayStart or taskDue ≥ todayEnd then
+                            error "skip task"
+                        end if"""
+            elif due_relative == "tomorrow":
+                due_relative_check = """
+                        -- Skip tasks not due tomorrow
+                        set taskDue to due date of t
+                        if taskDue is missing value then
+                            error "skip task"
+                        end if
+                        set tomorrowStart to (current date) + (1 * days)
+                        set time of tomorrowStart to 0
+                        set tomorrowEnd to tomorrowStart + (24 * hours)
+                        if taskDue < tomorrowStart or taskDue ≥ tomorrowEnd then
+                            error "skip task"
+                        end if"""
+            elif due_relative == "this_week":
+                due_relative_check = """
+                        -- Skip tasks not due this week
+                        set taskDue to due date of t
+                        if taskDue is missing value then
+                            error "skip task"
+                        end if
+                        set weekEnd to (current date) + (7 * days)
+                        if taskDue > weekEnd then
+                            error "skip task"
+                        end if"""
+            elif due_relative == "next_week":
+                due_relative_check = """
+                        -- Skip tasks not due next week
+                        set taskDue to due date of t
+                        if taskDue is missing value then
+                            error "skip task"
+                        end if
+                        set nextWeekStart to (current date) + (7 * days)
+                        set nextWeekEnd to nextWeekStart + (7 * days)
+                        if taskDue < nextWeekStart or taskDue > nextWeekEnd then
+                            error "skip task"
+                        end if"""
+            elif due_relative == "overdue":
+                due_relative_check = """
+                        -- Skip non-overdue tasks
+                        set taskDue to due date of t
+                        if taskDue is missing value then
+                            error "skip task"
+                        end if
+                        if taskDue >= (current date) then
+                            error "skip task"
+                        end if"""
+
+        # Build relative defer date filter
+        defer_relative_check = ""
+        if defer_relative:
+            if defer_relative == "today":
+                defer_relative_check = """
+                        -- Skip tasks not deferred until today
+                        set taskDefer to defer date of t
+                        if taskDefer is missing value then
+                            error "skip task"
+                        end if
+                        set todayStart to (current date)
+                        set time of todayStart to 0
+                        set todayEnd to todayStart + (24 * hours)
+                        if taskDefer < todayStart or taskDefer ≥ todayEnd then
+                            error "skip task"
+                        end if"""
+            elif defer_relative == "tomorrow":
+                defer_relative_check = """
+                        -- Skip tasks not deferred until tomorrow
+                        set taskDefer to defer date of t
+                        if taskDefer is missing value then
+                            error "skip task"
+                        end if
+                        set tomorrowStart to (current date) + (1 * days)
+                        set time of tomorrowStart to 0
+                        set tomorrowEnd to tomorrowStart + (24 * hours)
+                        if taskDefer < tomorrowStart or taskDefer ≥ tomorrowEnd then
+                            error "skip task"
+                        end if"""
+            elif defer_relative == "this_week":
+                defer_relative_check = """
+                        -- Skip tasks not deferred until this week
+                        set taskDefer to defer date of t
+                        if taskDefer is missing value then
+                            error "skip task"
+                        end if
+                        set weekEnd to (current date) + (7 * days)
+                        if taskDefer > weekEnd then
+                            error "skip task"
+                        end if"""
+            elif defer_relative == "next_week":
+                defer_relative_check = """
+                        -- Skip tasks not deferred until next week
+                        set taskDefer to defer date of t
+                        if taskDefer is missing value then
+                            error "skip task"
+                        end if
+                        set nextWeekStart to (current date) + (7 * days)
+                        set nextWeekEnd to nextWeekStart + (7 * days)
+                        if taskDefer < nextWeekStart or taskDefer > nextWeekEnd then
+                            error "skip task"
+                        end if"""
+
+        # Build time estimate filters
+        estimate_check = ""
+        if max_estimated_minutes is not None:
+            estimate_check = f"""
+                        -- Skip tasks over time limit
+                        set estMins to estimated minutes of t
+                        if estMins is missing value or estMins = 0 or estMins > {max_estimated_minutes} then
+                            error "skip task"
+                        end if"""
+        elif has_estimate is not None:
+            if has_estimate:
+                estimate_check = """
+                        -- Skip tasks without estimate
+                        set estMins to estimated minutes of t
+                        if estMins is missing value or estMins = 0 then
+                            error "skip task"
+                        end if"""
+            else:
+                estimate_check = """
+                        -- Skip tasks with estimate
+                        set estMins to estimated minutes of t
+                        if estMins is not missing value and estMins > 0 then
+                            error "skip task"
+                        end if"""
 
         # Build tag filter
         tag_check = ""
@@ -896,6 +1057,9 @@ class OmniFocusClient:
                         {next_check}
                         {available_check}
                         {overdue_check}
+                        {due_relative_check}
+                        {defer_relative_check}
+                        {estimate_check}
                         {tag_check}
 
                         -- Get project info
