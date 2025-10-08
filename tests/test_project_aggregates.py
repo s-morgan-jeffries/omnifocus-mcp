@@ -114,3 +114,83 @@ class TestProjectAggregates:
             # Should handle missing fields gracefully
             assert result['taskCount'] == 2
             assert result['totalEstimatedMinutes'] == 30
+
+
+class TestTaskDistributionAnalysis:
+    """Tests for enhanced task distribution fields in aggregates."""
+
+    def test_due_today_count(self, client):
+        """Test counting tasks due today."""
+        from datetime import datetime, timezone
+
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+        with mock.patch.object(client, 'get_tasks') as mock_get_tasks:
+            mock_get_tasks.return_value = [
+                {"id": "t1", "name": "Task 1", "completed": False, "dueDate": today, "estimatedMinutes": 0},
+                {"id": "t2", "name": "Task 2", "completed": False, "dueDate": "2026-01-15T00:00:00Z", "estimatedMinutes": 0},
+                {"id": "t3", "name": "Task 3", "completed": False, "dueDate": "", "estimatedMinutes": 0}
+            ]
+
+            result = client.get_project_aggregates("proj-001")
+
+            assert result['dueTodayCount'] == 1
+
+    def test_due_this_week_count(self, client):
+        """Test counting tasks due this week."""
+        from datetime import datetime, timezone, timedelta
+
+        today = datetime.now(timezone.utc)
+        tomorrow = (today + timedelta(days=1)).isoformat()
+        next_week = (today + timedelta(days=8)).isoformat()
+
+        with mock.patch.object(client, 'get_tasks') as mock_get_tasks:
+            mock_get_tasks.return_value = [
+                {"id": "t1", "name": "Task 1", "completed": False, "dueDate": tomorrow, "estimatedMinutes": 0},
+                {"id": "t2", "name": "Task 2", "completed": False, "dueDate": next_week, "estimatedMinutes": 0},
+                {"id": "t3", "name": "Task 3", "completed": False, "dueDate": "", "estimatedMinutes": 0}
+            ]
+
+            result = client.get_project_aggregates("proj-001")
+
+            assert result['dueThisWeekCount'] == 1
+
+    def test_no_due_date_count(self, client):
+        """Test counting tasks without due dates."""
+        with mock.patch.object(client, 'get_tasks') as mock_get_tasks:
+            mock_get_tasks.return_value = [
+                {"id": "t1", "name": "Task 1", "completed": False, "dueDate": "", "estimatedMinutes": 0},
+                {"id": "t2", "name": "Task 2", "completed": False, "dueDate": "", "estimatedMinutes": 0},
+                {"id": "t3", "name": "Task 3", "completed": False, "dueDate": "2026-01-15T00:00:00Z", "estimatedMinutes": 0}
+            ]
+
+            result = client.get_project_aggregates("proj-001")
+
+            assert result['noDueDateCount'] == 2
+
+    def test_all_distribution_fields(self, client):
+        """Test all distribution fields together."""
+        from datetime import datetime, timezone, timedelta
+
+        now = datetime.now(timezone.utc)
+        today = now.replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
+        yesterday = (now - timedelta(days=1)).isoformat()
+        in_3_days = (now + timedelta(days=3)).isoformat()
+        in_10_days = (now + timedelta(days=10)).isoformat()
+
+        with mock.patch.object(client, 'get_tasks') as mock_get_tasks:
+            mock_get_tasks.return_value = [
+                {"id": "t1", "name": "Overdue", "completed": False, "dueDate": yesterday, "estimatedMinutes": 0},
+                {"id": "t2", "name": "Due today", "completed": False, "dueDate": today, "estimatedMinutes": 0},
+                {"id": "t3", "name": "Due this week", "completed": False, "dueDate": in_3_days, "estimatedMinutes": 0},
+                {"id": "t4", "name": "Due later", "completed": False, "dueDate": in_10_days, "estimatedMinutes": 0},
+                {"id": "t5", "name": "No due date", "completed": False, "dueDate": "", "estimatedMinutes": 0}
+            ]
+
+            result = client.get_project_aggregates("proj-001")
+
+            assert result['overdueTaskCount'] == 1
+            assert result['dueTodayCount'] == 1
+            assert result['dueThisWeekCount'] == 1
+            assert result['noDueDateCount'] == 1
+            assert result['taskCount'] == 5

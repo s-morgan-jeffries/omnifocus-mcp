@@ -144,6 +144,62 @@ def create_project(
     return result
 
 
+@mcp.tool()
+def set_project_status(project_id: str, status: str) -> str:
+    """Set the status of a project.
+
+    Args:
+        project_id: The ID of the project
+        status: The status to set - one of: "active", "on_hold", "done"
+               Note: "dropped" status is not supported by AppleScript
+
+    Returns a success message.
+    Raises ValueError if project not found or status is invalid.
+    """
+    client = get_client()
+    client.set_project_status(project_id, status)
+
+    status_display = status.replace("_", " ").title()
+    return f"Successfully set project status to: {status_display}"
+
+
+@mcp.tool()
+def get_stalled_projects(days_inactive: int = 30) -> str:
+    """Get active projects with no recent task activity.
+
+    Args:
+        days_inactive: Minimum days of inactivity to consider a project stalled (default: 30)
+
+    Returns a formatted list of stalled projects sorted by days inactive (most stale first).
+    Projects with no activity ever are included.
+    """
+    client = get_client()
+    projects = client.get_stalled_projects(days_inactive=days_inactive)
+
+    if not projects:
+        return f"No stalled projects found (inactive for {days_inactive}+ days)."
+
+    result = f"Found {len(projects)} stalled projects (inactive for {days_inactive}+ days):\n\n"
+
+    for proj in projects:
+        days = proj.get('daysInactive')
+        last_activity = proj.get('lastActivityDate')
+
+        if days is not None:
+            result += f"• {proj['name']} ({days} days inactive)\n"
+        else:
+            result += f"• {proj['name']} (no activity recorded)\n"
+
+        result += f"  ID: {proj['id']}\n"
+
+        if last_activity:
+            result += f"  Last activity: {last_activity}\n"
+
+        result += "\n"
+
+    return result.strip()
+
+
 # ============================================================================
 # Task Tools
 # ============================================================================

@@ -11,6 +11,8 @@ get_projects = server.get_projects.fn
 get_project = server.get_project.fn
 search_projects = server.search_projects.fn
 create_project = server.create_project.fn
+set_project_status = server.set_project_status.fn
+get_stalled_projects = server.get_stalled_projects.fn
 get_tasks = server.get_tasks.fn
 get_task = server.get_task.fn
 get_subtasks = server.get_subtasks.fn
@@ -174,6 +176,108 @@ class TestProjectTools:
             mock_client.create_project.assert_called_once_with(
                 name="New Project", note=None, folder_path="Work", sequential=False
             )
+
+    def test_set_project_status_to_active(self):
+        """Test set_project_status setting status to active."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_project_status.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = set_project_status("proj-123", "active")
+
+            assert "Successfully set project status to: Active" in result
+            mock_client.set_project_status.assert_called_once_with("proj-123", "active")
+
+    def test_set_project_status_to_on_hold(self):
+        """Test set_project_status setting status to on_hold."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_project_status.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = set_project_status("proj-123", "on_hold")
+
+            assert "Successfully set project status to: On Hold" in result
+            mock_client.set_project_status.assert_called_once_with("proj-123", "on_hold")
+
+    def test_set_project_status_to_done(self):
+        """Test set_project_status setting status to done."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_project_status.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = set_project_status("proj-123", "done")
+
+            assert "Successfully set project status to: Done" in result
+            mock_client.set_project_status.assert_called_once_with("proj-123", "done")
+
+    def test_set_project_status_project_not_found(self):
+        """Test set_project_status raises ValueError when project not found."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_project_status.side_effect = ValueError("Project with ID nonexistent not found")
+            mock_get_client.return_value = mock_client
+
+            with pytest.raises(ValueError, match="Project.*not found"):
+                set_project_status("nonexistent", "active")
+
+    def test_get_stalled_projects_success(self):
+        """Test get_stalled_projects with results."""
+        mock_projects = [
+            {
+                "id": "proj-stale-1",
+                "name": "Stale Project",
+                "status": "active",
+                "lastActivityDate": "2024-08-01T00:00:00Z",
+                "daysInactive": 68
+            }
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_stalled_projects.return_value = mock_projects
+            mock_get_client.return_value = mock_client
+
+            result = get_stalled_projects()
+
+            assert "Found 1 stalled projects" in result
+            assert "Stale Project" in result
+            assert "68 days inactive" in result
+
+    def test_get_stalled_projects_custom_threshold(self):
+        """Test get_stalled_projects with custom threshold."""
+        mock_projects = [
+            {
+                "id": "proj-1",
+                "name": "Project 1",
+                "status": "active",
+                "lastActivityDate": "2025-09-20T00:00:00Z",
+                "daysInactive": 18
+            }
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_stalled_projects.return_value = mock_projects
+            mock_get_client.return_value = mock_client
+
+            result = get_stalled_projects(days_inactive=14)
+
+            assert "Found 1 stalled projects" in result
+            mock_client.get_stalled_projects.assert_called_once_with(days_inactive=14)
+
+    def test_get_stalled_projects_empty(self):
+        """Test get_stalled_projects with no results."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_stalled_projects.return_value = []
+            mock_get_client.return_value = mock_client
+
+            result = get_stalled_projects()
+
+            assert "No stalled projects found" in result
 
 
 class TestTaskTools:

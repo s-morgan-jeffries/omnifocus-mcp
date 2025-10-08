@@ -444,13 +444,55 @@ class OmniFocusClient:
                             end if
                         end try
 
+                        -- Get modification date
+                        set modDateStr to "null"
+                        try
+                            set modDate to modification date of proj
+                            if modDate is not missing value then
+                                set modDateStr to "\\"" & (modDate as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        -- Calculate last activity date (most recent task creation or completion)
+                        set lastActivityStr to "null"
+                        try
+                            set projTasks to flattened tasks of proj
+                            set lastActivity to missing value
+
+                            repeat with t in projTasks
+                                try
+                                    set createDate to creation date of t
+                                    if lastActivity is missing value or createDate > lastActivity then
+                                        set lastActivity to createDate
+                                    end if
+                                end try
+
+                                try
+                                    if completed of t is true then
+                                        set compDate to completion date of t
+                                        if compDate is not missing value then
+                                            if lastActivity is missing value or compDate > lastActivity then
+                                                set lastActivity to compDate
+                                            end if
+                                        end if
+                                    end if
+                                end try
+                            end repeat
+
+                            if lastActivity is not missing value then
+                                set lastActivityStr to "\\"" & (lastActivity as «class isot» as string) & "\\""
+                            end if
+                        end try
+
                         -- Build JSON manually (AppleScript doesn't have native JSON)
                         set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & projId & "\\", " & ¬
                             "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
                             "\\"note\\": \\"" & my escapeJSON(projNote) & "\\", " & ¬
                             "\\"status\\": \\"" & projStatus & "\\", " & ¬
-                            "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\"" & ¬
+                            "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
+                            "\\"modificationDate\\": " & modDateStr & ", " & ¬
+                            "\\"lastActivityDate\\": " & lastActivityStr & ¬
                             "}}"
 
                         if output is not "" then
@@ -632,6 +674,45 @@ class OmniFocusClient:
                     end if
                 end try
 
+                -- Get modification date
+                set modDateStr to "null"
+                try
+                    set modDate to modification date of targetProject
+                    if modDate is not missing value then
+                        set modDateStr to "\\"" & (modDate as «class isot» as string) & "\\""
+                    end if
+                end try
+
+                -- Calculate last activity date (already have tasks from earlier)
+                set lastActivityStr to "null"
+                try
+                    set lastActivity to missing value
+
+                    repeat with t in allTasks
+                        try
+                            set createDate to creation date of t
+                            if lastActivity is missing value or createDate > lastActivity then
+                                set lastActivity to createDate
+                            end if
+                        end try
+
+                        try
+                            if completed of t is true then
+                                set compDate to completion date of t
+                                if compDate is not missing value then
+                                    if lastActivity is missing value or compDate > lastActivity then
+                                        set lastActivity to compDate
+                                    end if
+                                end if
+                            end if
+                        end try
+                    end repeat
+
+                    if lastActivity is not missing value then
+                        set lastActivityStr to "\\"" & (lastActivity as «class isot» as string) & "\\""
+                    end if
+                end try
+
                 -- Build JSON manually
                 set jsonOutput to "{{" & ¬
                     "\\"id\\": \\"" & projId & "\\", " & ¬
@@ -645,7 +726,9 @@ class OmniFocusClient:
                     "\\"completionPercentage\\": " & completionPct & ", " & ¬
                     "\\"reviewInterval\\": " & reviewIntervalStr & ", " & ¬
                     "\\"lastReviewDate\\": " & lastReviewStr & ", " & ¬
-                    "\\"nextReviewDate\\": " & nextReviewStr & ¬
+                    "\\"nextReviewDate\\": " & nextReviewStr & ", " & ¬
+                    "\\"modificationDate\\": " & modDateStr & ", " & ¬
+                    "\\"lastActivityDate\\": " & lastActivityStr & ¬
                     "}}"
 
                 return jsonOutput
@@ -680,6 +763,9 @@ class OmniFocusClient:
                 - earliestDueDate: Earliest due date among tasks (None if no dates)
                 - latestDueDate: Latest due date among tasks (None if no dates)
                 - overdueTaskCount: Number of tasks with past due dates
+                - dueTodayCount: Number of tasks due today
+                - dueThisWeekCount: Number of tasks due within the next 7 days (excluding today and overdue)
+                - noDueDateCount: Number of tasks without due dates
 
         Raises:
             ValueError: If project_id is empty
@@ -695,10 +781,23 @@ class OmniFocusClient:
         earliest_due_date = None
         latest_due_date = None
         overdue_count = 0
+        due_today_count = 0
+        due_this_week_count = 0
+        no_due_date_count = 0
 
-        # Get current datetime for overdue check
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat()
+        # Get current datetime for date comparisons
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+
+        # Calculate today's date range (start and end of day in UTC)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        today_start_iso = today_start.isoformat()
+        today_end_iso = today_end.isoformat()
+
+        # Calculate end of this week (7 days from today's start)
+        week_end = (today_start + timedelta(days=7)).isoformat()
 
         for task in tasks:
             # Sum time estimates
@@ -706,7 +805,7 @@ class OmniFocusClient:
             if estimated_minutes:
                 total_estimated_minutes += estimated_minutes
 
-            # Track due date range
+            # Track due date range and categorize
             due_date = task.get('dueDate', '')
             if due_date:
                 if earliest_due_date is None or due_date < earliest_due_date:
@@ -714,9 +813,20 @@ class OmniFocusClient:
                 if latest_due_date is None or due_date > latest_due_date:
                     latest_due_date = due_date
 
-                # Check if overdue
-                if due_date < now:
+                # Categorize by due date
+                if due_date < today_start_iso:
+                    # Overdue (before today)
                     overdue_count += 1
+                elif today_start_iso <= due_date <= today_end_iso:
+                    # Due today
+                    due_today_count += 1
+                elif due_date <= week_end:
+                    # Due this week (not including today, not overdue)
+                    due_this_week_count += 1
+                # else: due later than this week
+            else:
+                # No due date
+                no_due_date_count += 1
 
         return {
             'projectId': project_id,
@@ -724,8 +834,134 @@ class OmniFocusClient:
             'totalEstimatedMinutes': total_estimated_minutes,
             'earliestDueDate': earliest_due_date,
             'latestDueDate': latest_due_date,
-            'overdueTaskCount': overdue_count
+            'overdueTaskCount': overdue_count,
+            'dueTodayCount': due_today_count,
+            'dueThisWeekCount': due_this_week_count,
+            'noDueDateCount': no_due_date_count
         }
+
+    def get_stalled_projects(self, days_inactive: int = 30) -> list[dict[str, Any]]:
+        """Get active projects with no recent task activity.
+
+        Args:
+            days_inactive: Minimum days of inactivity to consider a project stalled (default: 30)
+
+        Returns:
+            list[dict]: List of stalled projects, each containing:
+                - id: Project ID
+                - name: Project name
+                - status: Project status (always "active")
+                - lastActivityDate: ISO timestamp of most recent task activity (or null)
+                - daysInactive: Number of days since last activity (or null if no activity)
+
+            Projects are sorted by days inactive (most stale first).
+        """
+        from datetime import datetime, timezone, timedelta
+
+        # Calculate the cutoff date
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_inactive)
+        cutoff_iso = cutoff_date.isoformat()
+
+        script = f'''
+        {APPLESCRIPT_JSON_HELPERS}
+
+        tell application "OmniFocus"
+            tell front document
+                set currentDate to current date
+                set projectsJSON to {{}}
+
+                repeat with proj in flattened projects
+                    -- Only check active projects
+                    if status of proj is not active then
+                        next repeat
+                    end if
+
+                    set projId to id of proj
+                    set projName to name of proj
+                    set projStatus to status of proj as string
+
+                    -- Calculate last activity date (most recent task creation or completion)
+                    set lastActivity to missing value
+                    set projTasks to flattened tasks of proj
+
+                    repeat with t in projTasks
+                        try
+                            set createDate to creation date of t
+                            if lastActivity is missing value or createDate > lastActivity then
+                                set lastActivity to createDate
+                            end if
+                        end try
+
+                        try
+                            if completed of t is true then
+                                set compDate to completion date of t
+                                if compDate is not missing value then
+                                    if lastActivity is missing value or compDate > lastActivity then
+                                        set lastActivity to compDate
+                                    end if
+                                end if
+                            end if
+                        end try
+                    end repeat
+
+                    -- Determine if project is stalled
+                    set isStalled to false
+                    set lastActivityStr to "null"
+                    set daysInactiveStr to "null"
+
+                    if lastActivity is missing value then
+                        -- No activity ever - consider stalled
+                        set isStalled to true
+                    else
+                        -- Check if activity is old enough
+                        set daysSinceActivity to (currentDate - lastActivity) / days
+                        if daysSinceActivity ≥ {days_inactive} then
+                            set isStalled to true
+                            set lastActivityStr to "\\"" & (lastActivity as «class isot» as string) & "\\""
+                            set daysInactiveStr to (daysSinceActivity as integer) as string
+                        end if
+                    end if
+
+                    -- Only add if stalled
+                    if isStalled then
+                        set projectJSON to "{{" & ¬
+                            "\\"id\\": \\"" & projId & "\\", " & ¬
+                            "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
+                            "\\"status\\": \\"" & projStatus & "\\", " & ¬
+                            "\\"lastActivityDate\\": " & lastActivityStr & ", " & ¬
+                            "\\"daysInactive\\": " & daysInactiveStr & ¬
+                            "}}"
+
+                        set end of projectsJSON to projectJSON
+                    end if
+                end repeat
+
+                -- Build JSON array
+                set AppleScript's text item delimiters to ", "
+                set jsonOutput to "[" & (projectsJSON as text) & "]"
+                set AppleScript's text item delimiters to ""
+
+                return jsonOutput
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if not result or result == "[]":
+                return []
+
+            projects = json.loads(result)
+
+            # Sort by days inactive (descending - most stale first)
+            # Projects with null daysInactive (no activity ever) go to the end
+            projects.sort(key=lambda p: p.get('daysInactive') or 999999, reverse=True)
+
+            return projects
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Failed to parse OmniFocus response: {e}")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"AppleScript execution failed: {e.stderr}")
 
     def create_project(
         self,
@@ -829,6 +1065,72 @@ class OmniFocusClient:
                 raise Exception("No project ID returned from OmniFocus")
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error creating project: {e.stderr}")
+
+    def set_project_status(self, project_id: str, status: str) -> bool:
+        """Set the status of a project.
+
+        Args:
+            project_id: The ID of the project
+            status: The status to set - one of: "active", "on_hold", "done"
+                   Note: "dropped" status is not supported by AppleScript
+
+        Returns:
+            bool: True if status was set successfully
+
+        Raises:
+            ValueError: If project not found, status is invalid, or "dropped" is requested
+            RuntimeError: If AppleScript execution fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('set_project_status')
+
+        # Validate status
+        valid_statuses = ["active", "on_hold", "done"]
+        if status not in valid_statuses:
+            if status == "dropped":
+                raise ValueError("Status 'dropped' is not supported by AppleScript API. Only 'active', 'on_hold', and 'done' are supported.")
+            raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join(valid_statuses)}")
+
+        project_id_escaped = self._escape_applescript_string(project_id)
+
+        # Different AppleScript commands for different statuses
+        if status in ["active", "on_hold"]:
+            # For active/on_hold, use "set status" with the appropriate value
+            status_value = "on hold" if status == "on_hold" else status
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    set targetProject to first flattened project whose id is "{project_id_escaped}"
+                    if targetProject is missing value then
+                        return "false"
+                    end if
+                    set status of targetProject to {status_value}
+                    return "true"
+                end tell
+            end tell
+            '''
+        else:  # status == "done"
+            # For done, use "mark complete" command
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    set targetProject to first flattened project whose id is "{project_id_escaped}"
+                    if targetProject is missing value then
+                        return "false"
+                    end if
+                    mark complete targetProject
+                    return "true"
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            if result == "false":
+                raise ValueError(f"Project with ID {project_id} not found")
+            return True
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"AppleScript execution failed: {e.stderr}")
 
     def add_task(
         self,
