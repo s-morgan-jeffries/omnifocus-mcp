@@ -236,8 +236,16 @@ def get_project(project_id: str) -> str:
     result += f"Status: {project['status']}\n"
     if project.get('folderPath'):
         result += f"Folder: {project['folderPath']}\n"
+
+    # Add statistics
+    result += f"\nStatistics:\n"
+    result += f"  Total Tasks: {project.get('taskCount', 0)}\n"
+    result += f"  Completed: {project.get('completedTaskCount', 0)}\n"
+    result += f"  Remaining: {project.get('remainingTaskCount', 0)}\n"
+    result += f"  Progress: {project.get('completionPercentage', 0.0):.1f}%\n"
+
     if project.get('note'):
-        result += f"Note: {_truncate_note(project['note'])}\n"
+        result += f"\nNote: {_truncate_note(project['note'])}\n"
 
     return result
 
@@ -277,6 +285,48 @@ def get_task(task_id: str) -> str:
         result += f"Tags: {task['tags']}\n"
     if task.get('note'):
         result += f"Note: {_truncate_note(task['note'])}\n"
+
+    return result
+
+
+@mcp.tool()
+def get_subtasks(task_id: str) -> str:
+    """Get all subtasks (child tasks) of a given task.
+
+    Args:
+        task_id: The ID of the parent task
+
+    Returns a formatted list of all subtasks.
+    """
+    client = get_client()
+    subtasks = client.get_subtasks(task_id)
+
+    if not subtasks:
+        return f"Task has 0 subtasks"
+
+    result = f"Found {len(subtasks)} subtasks:\n\n"
+    for task in subtasks:
+        result += f"ID: {task['id']}\n"
+        result += f"Name: {task['name']}\n"
+        result += f"Project: {task.get('projectName', 'N/A')}\n"
+        result += f"Completed: {task['completed']}\n"
+        if task.get('dropped'):
+            result += f"Dropped: Yes\n"
+        if task.get('blocked'):
+            result += f"Blocked: Yes\n"
+        if task.get('next'):
+            result += f"Next: Yes\n"
+        if task.get('flagged'):
+            result += f"Flagged: Yes\n"
+        if task.get('dueDate'):
+            result += f"Due: {task['dueDate']}\n"
+        if task.get('deferDate'):
+            result += f"Defer: {task['deferDate']}\n"
+        if task.get('tags'):
+            result += f"Tags: {task['tags']}\n"
+        if task.get('note'):
+            result += f"Note: {_truncate_note(task['note'])}\n"
+        result += "\n"
 
     return result
 

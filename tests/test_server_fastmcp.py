@@ -13,6 +13,7 @@ search_projects = server.search_projects.fn
 create_project = server.create_project.fn
 get_tasks = server.get_tasks.fn
 get_task = server.get_task.fn
+get_subtasks = server.get_subtasks.fn
 add_task = server.add_task.fn
 update_task = server.update_task.fn
 complete_task = server.complete_task.fn
@@ -312,6 +313,68 @@ class TestTaskTools:
             assert "Flagged: Yes" in result
             assert "Due: 2025-10-15T17:00:00" in result
             mock_client.get_task.assert_called_once_with("task-001")
+
+    def test_get_subtasks_success(self):
+        """Test get_subtasks with subtasks found."""
+        mock_subtasks = [
+            {
+                "id": "subtask-001",
+                "name": "Subtask 1",
+                "note": "First subtask",
+                "completed": False,
+                "flagged": True,
+                "dropped": False,
+                "blocked": False,
+                "next": True,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "2025-10-15",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": "urgent"
+            },
+            {
+                "id": "subtask-002",
+                "name": "Subtask 2",
+                "note": "",
+                "completed": True,
+                "flagged": False,
+                "dropped": False,
+                "blocked": False,
+                "next": False,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "2025-10-01",
+                "tags": ""
+            }
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_subtasks.return_value = mock_subtasks
+            mock_get_client.return_value = mock_client
+
+            result = get_subtasks("parent-task-001")
+
+            assert "Found 2 subtasks" in result
+            assert "Subtask 1" in result
+            assert "Subtask 2" in result
+            assert "Flagged: Yes" in result
+            mock_client.get_subtasks.assert_called_once_with("parent-task-001")
+
+    def test_get_subtasks_empty(self):
+        """Test get_subtasks with no subtasks."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_subtasks.return_value = []
+            mock_get_client.return_value = mock_client
+
+            result = get_subtasks("task-no-children")
+
+            assert "Task has 0 subtasks" in result
+            mock_client.get_subtasks.assert_called_once_with("task-no-children")
 
     def test_add_task_success(self):
         """Test add_task with successful addition."""

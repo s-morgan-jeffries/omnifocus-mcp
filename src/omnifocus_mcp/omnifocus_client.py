@@ -260,7 +260,11 @@ class OmniFocusClient:
             project_id: The ID of the project to retrieve
 
         Returns:
-            dict: Project dictionary with id, name, note, status, and folderPath
+            dict: Project dictionary with id, name, note, status, folderPath, and statistics:
+                - taskCount: Total number of tasks
+                - completedTaskCount: Number of completed tasks
+                - remainingTaskCount: Number of remaining tasks
+                - completionPercentage: Percentage of completed tasks (0.0-100.0)
 
         Raises:
             ValueError: If project_id is empty
@@ -310,13 +314,34 @@ class OmniFocusClient:
                     end if
                 end try
 
+                -- Calculate task statistics
+                set allTasks to flattened tasks of targetProject
+                set taskCount to count of allTasks
+                set completedCount to 0
+
+                repeat with t in allTasks
+                    if completed of t is true then
+                        set completedCount to completedCount + 1
+                    end if
+                end repeat
+
+                set remainingCount to taskCount - completedCount
+                set completionPct to 0.0
+                if taskCount > 0 then
+                    set completionPct to (completedCount / taskCount) * 100
+                end if
+
                 -- Build JSON manually
                 set jsonOutput to "{{" & ¬
                     "\\"id\\": \\"" & projId & "\\", " & ¬
                     "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
                     "\\"note\\": \\"" & my escapeJSON(projNote) & "\\", " & ¬
                     "\\"status\\": \\"" & projStatus & "\\", " & ¬
-                    "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\"" & ¬
+                    "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
+                    "\\"taskCount\\": " & taskCount & ", " & ¬
+                    "\\"completedTaskCount\\": " & completedCount & ", " & ¬
+                    "\\"remainingTaskCount\\": " & remainingCount & ", " & ¬
+                    "\\"completionPercentage\\": " & completionPct & ¬
                     "}}"
 
                 return jsonOutput
@@ -1034,6 +1059,136 @@ class OmniFocusClient:
             raise Exception(f"Error retrieving task: {e.stderr}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing task output: {e}")
+
+    def get_subtasks(self, task_id: str) -> list[dict[str, Any]]:
+        """Get all subtasks (child tasks) of a given task.
+
+        Args:
+            task_id: The ID of the parent task
+
+        Returns:
+            list: List of subtask dictionaries with full task details
+
+        Raises:
+            ValueError: If task_id is empty
+        """
+        if not task_id:
+            raise ValueError("task_id cannot be empty")
+
+        script = f'''
+        use AppleScript version "2.4"
+        use scripting additions
+        use framework "Foundation"
+
+        set output to ""
+
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set parentTask to first flattened task whose id is "{task_id}"
+                    set childTasks to tasks of parentTask
+
+                    repeat with t in childTasks
+                        try
+                            set taskId to id of t
+                            set taskName to name of t
+                            set taskNote to note of t
+                            set taskCompleted to completed of t
+                            set taskFlagged to flagged of t
+                            set taskDropped to dropped of t
+                            set taskBlocked to blocked of t
+                            set taskNext to next of t
+
+                            -- Get project info
+                            set projectId to ""
+                            set projectName to ""
+                            try
+                                set parentProj to containing project of t
+                                if parentProj is not missing value then
+                                    set projectId to id of parentProj
+                                    set projectName to name of parentProj
+                                end if
+                            end try
+
+                            -- Get dates
+                            set dueDate to ""
+                            set deferDate to ""
+                            set completionDate to ""
+
+                            try
+                                if due date of t is not missing value then
+                                    set dueDate to (due date of t) as «class isot» as string
+                                end if
+                            end try
+
+                            try
+                                if defer date of t is not missing value then
+                                    set deferDate to (defer date of t) as «class isot» as string
+                                end if
+                            end try
+
+                            try
+                                if completion date of t is not missing value then
+                                    set completionDate to (completion date of t) as «class isot» as string
+                                end if
+                            end try
+
+                            -- Get tags
+                            set tagsList to ""
+                            try
+                                set taskTags to tags of t
+                                set tagNames to {{}}
+                                repeat with aTag in taskTags
+                                    set end of tagNames to name of aTag
+                                end repeat
+                                set AppleScript's text item delimiters to ", "
+                                set tagsList to tagNames as text
+                                set AppleScript's text item delimiters to ""
+                            end try
+
+                            -- Build JSON manually
+                            set jsonLine to "{{" & ¬
+                                "\\"id\\": \\"" & taskId & "\\", " & ¬
+                                "\\"name\\": \\"" & my escapeJSON(taskName) & "\\", " & ¬
+                                "\\"note\\": \\"" & my escapeJSON(taskNote) & "\\", " & ¬
+                                "\\"completed\\": " & (taskCompleted as text) & ", " & ¬
+                                "\\"flagged\\": " & (taskFlagged as text) & ", " & ¬
+                                "\\"dropped\\": " & (taskDropped as text) & ", " & ¬
+                                "\\"blocked\\": " & (taskBlocked as text) & ", " & ¬
+                                "\\"next\\": " & (taskNext as text) & ", " & ¬
+                                "\\"projectId\\": \\"" & projectId & "\\", " & ¬
+                                "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
+                                "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
+                                "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
+                                "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
+                                "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\"" & ¬
+                                "}}"
+
+                            if output is not "" then
+                                set output to output & "," & linefeed
+                            end if
+                            set output to output & jsonLine
+                        end try
+                    end repeat
+                on error errMsg
+                    -- Parent task not found or has no children - return empty array
+                end try
+            end tell
+        end tell
+
+        return "[" & linefeed & output & linefeed & "]"
+        ''' + APPLESCRIPT_JSON_HELPERS
+
+        try:
+            result = run_applescript(script)
+            if result:
+                return json.loads(result)
+            else:
+                return []
+        except subprocess.CalledProcessError as e:
+            return []
+        except json.JSONDecodeError as e:
+            raise Exception(f"Error parsing subtasks output: {e}")
 
     def complete_task(self, task_id: str) -> bool:
         """Mark a task as completed.
