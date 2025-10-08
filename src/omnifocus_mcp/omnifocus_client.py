@@ -585,6 +585,67 @@ class OmniFocusClient:
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing project output: {e}")
 
+    def get_project_aggregates(self, project_id: str) -> dict[str, Any]:
+        """Get aggregated statistics for a project's tasks.
+
+        Args:
+            project_id: The ID of the project
+
+        Returns:
+            dict: Aggregated statistics with:
+                - projectId: The project ID
+                - taskCount: Total number of incomplete tasks
+                - totalEstimatedMinutes: Sum of all task time estimates
+                - earliestDueDate: Earliest due date among tasks (None if no dates)
+                - latestDueDate: Latest due date among tasks (None if no dates)
+                - overdueTaskCount: Number of tasks with past due dates
+
+        Raises:
+            ValueError: If project_id is empty
+        """
+        if not project_id:
+            raise ValueError("project_id is required")
+
+        # Get all incomplete tasks for this project
+        tasks = self.get_tasks(project_id=project_id, include_completed=False)
+
+        # Initialize aggregates
+        total_estimated_minutes = 0
+        earliest_due_date = None
+        latest_due_date = None
+        overdue_count = 0
+
+        # Get current datetime for overdue check
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+
+        for task in tasks:
+            # Sum time estimates
+            estimated_minutes = task.get('estimatedMinutes', 0)
+            if estimated_minutes:
+                total_estimated_minutes += estimated_minutes
+
+            # Track due date range
+            due_date = task.get('dueDate', '')
+            if due_date:
+                if earliest_due_date is None or due_date < earliest_due_date:
+                    earliest_due_date = due_date
+                if latest_due_date is None or due_date > latest_due_date:
+                    latest_due_date = due_date
+
+                # Check if overdue
+                if due_date < now:
+                    overdue_count += 1
+
+        return {
+            'projectId': project_id,
+            'taskCount': len(tasks),
+            'totalEstimatedMinutes': total_estimated_minutes,
+            'earliestDueDate': earliest_due_date,
+            'latestDueDate': latest_due_date,
+            'overdueTaskCount': overdue_count
+        }
+
     def create_project(
         self,
         name: str,
