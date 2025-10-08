@@ -154,6 +154,72 @@ class OmniFocusClient:
         text = text.replace('"', '\\"')
         return text
 
+    def _filter_projects_by_conditions(
+        self,
+        projects: list[dict[str, Any]],
+        min_task_count: Optional[int],
+        has_overdue_tasks: Optional[bool],
+        has_no_due_dates: Optional[bool]
+    ) -> list[dict[str, Any]]:
+        """Filter projects by conditional criteria.
+
+        Args:
+            projects: List of project dictionaries to filter
+            min_task_count: Only include projects with at least this many tasks
+            has_overdue_tasks: If True, only include projects with overdue tasks
+            has_no_due_dates: If True, only include projects where no tasks have due dates
+
+        Returns:
+            Filtered list of projects
+        """
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+
+        filtered = []
+
+        for project in projects:
+            project_id = project.get('id')
+            if not project_id:
+                continue
+
+            # Get tasks for this project (cached by get_tasks)
+            tasks = self.get_tasks(project_id=project_id, include_completed=False)
+
+            include = True
+
+            # Check min_task_count filter
+            if min_task_count is not None:
+                if len(tasks) < min_task_count:
+                    include = False
+
+            # Check has_overdue_tasks filter
+            if include and has_overdue_tasks is not None:
+                has_overdue = any(
+                    task.get('dueDate', '') and task.get('dueDate', '') < now
+                    for task in tasks
+                )
+                if has_overdue_tasks and not has_overdue:
+                    include = False
+                elif not has_overdue_tasks and has_overdue:
+                    include = False
+
+            # Check has_no_due_dates filter
+            if include and has_no_due_dates is not None:
+                all_have_no_due_date = all(
+                    not task.get('dueDate', '')
+                    for task in tasks
+                ) and len(tasks) > 0  # Must have at least one task
+
+                if has_no_due_dates and not all_have_no_due_date:
+                    include = False
+                elif not has_no_due_dates and all_have_no_due_date:
+                    include = False
+
+            if include:
+                filtered.append(project)
+
+        return filtered
+
     def _filter_by_date_range(
         self,
         items: list[dict[str, Any]],
@@ -285,6 +351,9 @@ class OmniFocusClient:
         on_hold_only: bool = False,
         modified_after: Optional[str] = None,
         modified_before: Optional[str] = None,
+        min_task_count: Optional[int] = None,
+        has_overdue_tasks: Optional[bool] = None,
+        has_no_due_dates: Optional[bool] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc"
     ) -> list[dict[str, Any]]:
@@ -294,6 +363,9 @@ class OmniFocusClient:
             on_hold_only: Only return projects with "on hold" status (default: False)
             modified_after: Only return projects modified after this ISO date
             modified_before: Only return projects modified before this ISO date
+            min_task_count: Only return projects with at least this many tasks
+            has_overdue_tasks: If True, only return projects with overdue tasks
+            has_no_due_dates: If True, only return projects where no tasks have due dates
             sort_by: Field to sort by - "name" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
 
@@ -415,6 +487,15 @@ class OmniFocusClient:
                         None,  # created_before
                         modified_after,
                         modified_before
+                    )
+
+                # Apply conditional filters
+                if min_task_count is not None or has_overdue_tasks is not None or has_no_due_dates is not None:
+                    projects = self._filter_projects_by_conditions(
+                        projects,
+                        min_task_count,
+                        has_overdue_tasks,
+                        has_no_due_dates
                     )
 
                 # Apply sorting if requested
