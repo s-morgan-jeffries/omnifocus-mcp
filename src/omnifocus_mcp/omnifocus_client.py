@@ -2089,6 +2089,128 @@ class OmniFocusClient:
         except ValueError as e:
             raise Exception(f"Error parsing move result: {e}")
 
+    def add_tag_to_tasks(self, task_ids: list[str], tag_name: str) -> int:
+        """Add a tag to multiple tasks in a single operation.
+
+        Args:
+            task_ids: List of task IDs to tag
+            tag_name: Name of the tag to add
+
+        Returns:
+            int: Number of tasks successfully tagged
+
+        Raises:
+            ValueError: If task_ids is empty or tag_name is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('add_tag_to_tasks')
+
+        if not task_ids or len(task_ids) == 0:
+            raise ValueError("task_ids cannot be empty")
+        if not tag_name or tag_name.strip() == "":
+            raise ValueError("tag_name cannot be empty")
+
+        # Build AppleScript list of task IDs
+        ids_list = ", ".join([f'"{task_id}"' for task_id in task_ids])
+        tag_escaped = self._escape_applescript_string(tag_name)
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set taskIdList to {{{ids_list}}}
+                set successCount to 0
+
+                try
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+
+                    repeat with taskId in taskIdList
+                        try
+                            set theTask to first flattened task whose id is taskId
+                            add tagObj to tags of theTask
+                            set successCount to successCount + 1
+                        on error
+                            -- Task not found, skip
+                        end try
+                    end repeat
+
+                    return successCount as text
+                on error errMsg
+                    error "Tag not found: " & errMsg
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error adding tag to tasks: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing tag result: {e}")
+
+    def remove_tag_from_tasks(self, task_ids: list[str], tag_name: str) -> int:
+        """Remove a tag from multiple tasks in a single operation.
+
+        Args:
+            task_ids: List of task IDs to remove tag from
+            tag_name: Name of the tag to remove
+
+        Returns:
+            int: Number of tasks successfully updated
+
+        Raises:
+            ValueError: If task_ids is empty or tag_name is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('remove_tag_from_tasks')
+
+        if not task_ids or len(task_ids) == 0:
+            raise ValueError("task_ids cannot be empty")
+        if not tag_name or tag_name.strip() == "":
+            raise ValueError("tag_name cannot be empty")
+
+        # Build AppleScript list of task IDs
+        ids_list = ", ".join([f'"{task_id}"' for task_id in task_ids])
+        tag_escaped = self._escape_applescript_string(tag_name)
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set taskIdList to {{{ids_list}}}
+                set successCount to 0
+
+                try
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+
+                    repeat with taskId in taskIdList
+                        try
+                            set theTask to first flattened task whose id is taskId
+                            remove tagObj from tags of theTask
+                            set successCount to successCount + 1
+                        on error
+                            -- Task not found or tag not present, skip
+                        end try
+                    end repeat
+
+                    return successCount as text
+                on error errMsg
+                    error "Tag not found: " & errMsg
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error removing tag from tasks: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing tag result: {e}")
+
     def get_folders(self) -> list[dict]:
         """Get all folders from OmniFocus.
 

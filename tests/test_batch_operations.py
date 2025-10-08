@@ -133,3 +133,74 @@ class TestBatchMove:
 
             with pytest.raises(Exception, match="Error moving tasks"):
                 client.move_tasks(["task-001"], "nonexistent-project")
+
+
+class TestBatchTag:
+    """Tests for batch tagging operations."""
+
+    def test_add_tag_to_tasks(self, client):
+        """Test adding a tag to multiple tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "3"
+
+            task_ids = ["task-001", "task-002", "task-003"]
+            result = client.add_tag_to_tasks(task_ids, "urgent")
+
+            assert result == 3
+            call_args = mock_run.call_args[0][0]
+            assert "task-001" in call_args
+            assert "urgent" in call_args
+
+    def test_add_tag_to_tasks_empty_list(self, client):
+        """Test that empty task list raises ValueError."""
+        with pytest.raises(ValueError, match="task_ids cannot be empty"):
+            client.add_tag_to_tasks([], "urgent")
+
+    def test_add_tag_to_tasks_empty_tag(self, client):
+        """Test that empty tag name raises ValueError."""
+        with pytest.raises(ValueError, match="tag_name cannot be empty"):
+            client.add_tag_to_tasks(["task-001"], "")
+
+    def test_remove_tag_from_tasks(self, client):
+        """Test removing a tag from multiple tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+
+            task_ids = ["task-001", "task-002"]
+            result = client.remove_tag_from_tasks(task_ids, "urgent")
+
+            assert result == 2
+            call_args = mock_run.call_args[0][0]
+            assert "task-001" in call_args
+            assert "urgent" in call_args
+
+    def test_remove_tag_from_tasks_empty_list(self, client):
+        """Test that empty task list raises ValueError."""
+        with pytest.raises(ValueError, match="task_ids cannot be empty"):
+            client.remove_tag_from_tasks([], "urgent")
+
+    def test_remove_tag_from_tasks_empty_tag(self, client):
+        """Test that empty tag name raises ValueError."""
+        with pytest.raises(ValueError, match="tag_name cannot be empty"):
+            client.remove_tag_from_tasks(["task-001"], "")
+
+    def test_add_tag_to_tasks_partial_success(self, client):
+        """Test when some tasks get tagged but others don't exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "2"  # Only 2 of 3
+
+            task_ids = ["task-001", "task-002", "nonexistent"]
+            result = client.add_tag_to_tasks(task_ids, "urgent")
+
+            assert result == 2
+
+    def test_add_tag_error(self, client):
+        """Test error handling in batch tagging."""
+        import subprocess
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            error = subprocess.CalledProcessError(1, 'osascript')
+            error.stderr = "Tag error"
+            mock_run.side_effect = error
+
+            with pytest.raises(Exception, match="Error adding tag"):
+                client.add_tag_to_tasks(["task-001"], "urgent")
