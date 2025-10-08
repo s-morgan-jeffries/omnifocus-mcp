@@ -47,13 +47,16 @@ def _truncate_note(note: str, max_length: int = NOTE_TRUNCATION_LENGTH) -> str:
 # ============================================================================
 
 @mcp.tool()
-def get_projects() -> str:
+def get_projects(on_hold_only: bool = False) -> str:
     """Get all active projects from OmniFocus with their folder hierarchy, names, notes, and status.
+
+    Args:
+        on_hold_only: If True, only return projects with "on hold" status
 
     Returns a formatted list of all active projects with their details.
     """
     client = get_client()
-    projects = client.get_projects()
+    projects = client.get_projects(on_hold_only=on_hold_only)
 
     if not projects:
         return "Found 0 active projects"
@@ -152,6 +155,9 @@ def get_tasks(
     include_completed: bool = False,
     available_only: bool = False,
     overdue: bool = False,
+    dropped_only: bool = False,
+    blocked_only: bool = False,
+    next_only: bool = False,
     tag_filter: Optional[list[str]] = None
 ) -> str:
     """Get tasks from OmniFocus with optional filtering.
@@ -162,6 +168,9 @@ def get_tasks(
         include_completed: If True, include completed tasks (default: False)
         available_only: If True, only return available tasks (not blocked or deferred)
         overdue: If True, only return overdue tasks
+        dropped_only: If True, only return dropped tasks
+        blocked_only: If True, only return blocked tasks
+        next_only: If True, only return next tasks
         tag_filter: List of tag names to filter by (task must have all tags)
 
     Returns a formatted list of tasks.
@@ -173,6 +182,9 @@ def get_tasks(
         include_completed=include_completed,
         available_only=available_only,
         overdue=overdue,
+        dropped_only=dropped_only,
+        blocked_only=blocked_only,
+        next_only=next_only,
         tag_filter=tag_filter
     )
 
@@ -185,6 +197,12 @@ def get_tasks(
         result += f"Name: {task['name']}\n"
         result += f"Project: {task.get('projectName', 'N/A')}\n"
         result += f"Completed: {task['completed']}\n"
+        if task.get('dropped'):
+            result += f"Dropped: Yes\n"
+        if task.get('blocked'):
+            result += f"Blocked: Yes\n"
+        if task.get('next'):
+            result += f"Next: Yes\n"
         if task.get('flagged'):
             result += f"Flagged: Yes\n"
         if task.get('dueDate'):
@@ -196,6 +214,69 @@ def get_tasks(
         if task.get('note'):
             result += f"Note: {_truncate_note(task['note'])}\n"
         result += "\n"
+
+    return result
+
+
+@mcp.tool()
+def get_project(project_id: str) -> str:
+    """Get details for a specific project by its ID.
+
+    Args:
+        project_id: The ID of the project to retrieve
+
+    Returns a formatted display of the project details.
+    """
+    client = get_client()
+    project = client.get_project(project_id)
+
+    result = f"Project Details:\n\n"
+    result += f"ID: {project['id']}\n"
+    result += f"Name: {project['name']}\n"
+    result += f"Status: {project['status']}\n"
+    if project.get('folderPath'):
+        result += f"Folder: {project['folderPath']}\n"
+    if project.get('note'):
+        result += f"Note: {_truncate_note(project['note'])}\n"
+
+    return result
+
+
+@mcp.tool()
+def get_task(task_id: str) -> str:
+    """Get details for a specific task by its ID.
+
+    Args:
+        task_id: The ID of the task to retrieve
+
+    Returns a formatted display of the task details.
+    """
+    client = get_client()
+    task = client.get_task(task_id)
+
+    result = f"Task Details:\n\n"
+    result += f"ID: {task['id']}\n"
+    result += f"Name: {task['name']}\n"
+    result += f"Project: {task.get('projectName', 'N/A')}\n"
+    result += f"Completed: {task['completed']}\n"
+    if task.get('dropped'):
+        result += f"Dropped: Yes\n"
+    if task.get('blocked'):
+        result += f"Blocked: Yes\n"
+    if task.get('next'):
+        result += f"Next: Yes\n"
+    if task.get('flagged'):
+        result += f"Flagged: Yes\n"
+    if task.get('dueDate'):
+        result += f"Due: {task['dueDate']}\n"
+    if task.get('deferDate'):
+        result += f"Defer: {task['deferDate']}\n"
+    if task.get('completionDate'):
+        result += f"Completed: {task['completionDate']}\n"
+    if task.get('tags'):
+        result += f"Tags: {task['tags']}\n"
+    if task.get('note'):
+        result += f"Note: {_truncate_note(task['note'])}\n"
 
     return result
 
@@ -325,6 +406,8 @@ def get_inbox_tasks() -> str:
         result += f"ID: {task['id']}\n"
         result += f"Name: {task['name']}\n"
         result += f"Completed: {task['completed']}\n"
+        if task.get('dropped'):
+            result += f"Dropped: Yes\n"
         if task.get('flagged'):
             result += f"Flagged: Yes\n"
         if task.get('dueDate'):

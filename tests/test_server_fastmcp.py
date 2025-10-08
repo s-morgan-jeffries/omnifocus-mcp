@@ -8,9 +8,11 @@ import omnifocus_mcp.server_fastmcp as server
 # Extract underlying functions from FunctionTool wrappers
 get_client = server.get_client
 get_projects = server.get_projects.fn
+get_project = server.get_project.fn
 search_projects = server.search_projects.fn
 create_project = server.create_project.fn
 get_tasks = server.get_tasks.fn
+get_task = server.get_task.fn
 add_task = server.add_task.fn
 update_task = server.update_task.fn
 complete_task = server.complete_task.fn
@@ -115,6 +117,29 @@ class TestProjectTools:
             assert "Budget Project" in result
             mock_client.search_projects.assert_called_once_with("budget")
 
+    def test_get_project_success(self):
+        """Test get_project with successful retrieval."""
+        mock_project = {
+            "id": "proj-001",
+            "name": "Test Project",
+            "note": "Project note",
+            "status": "active",
+            "folderPath": "Work > Tests"
+        }
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_project.return_value = mock_project
+            mock_get_client.return_value = mock_client
+
+            result = get_project("proj-001")
+
+            assert "Project Details:" in result
+            assert "Test Project" in result
+            assert "Status: active" in result
+            assert "Folder: Work > Tests" in result
+            mock_client.get_project.assert_called_once_with("proj-001")
+
     def test_create_project_success(self):
         """Test create_project with successful creation."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
@@ -162,6 +187,41 @@ class TestTaskTools:
             assert "Found 1 tasks" in result
             assert "Test Task" in result
 
+    def test_get_tasks_includes_dropped_status(self):
+        """Test that get_tasks output includes dropped status."""
+        mock_tasks = [
+            {
+                "id": "task-001",
+                "name": "Dropped Task",
+                "completed": False,
+                "dropped": True,
+                "projectName": "Test Project"
+            },
+            {
+                "id": "task-002",
+                "name": "Active Task",
+                "completed": False,
+                "dropped": False,
+                "projectName": "Test Project"
+            }
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_tasks.return_value = mock_tasks
+            mock_get_client.return_value = mock_client
+
+            result = get_tasks()
+
+            # Dropped task should show "Dropped: Yes"
+            assert "Dropped: Yes" in result
+            # Should appear in the first task's output
+            task1_section = result.split("ID: task-002")[0]
+            assert "Dropped: Yes" in task1_section
+            # Active task should not show dropped status
+            task2_section = result.split("ID: task-002")[1]
+            assert "Dropped: Yes" not in task2_section
+
     def test_get_tasks_with_filters(self):
         """Test get_tasks with all filters."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
@@ -183,8 +243,75 @@ class TestTaskTools:
                 include_completed=False,
                 available_only=True,
                 overdue=True,
+                dropped_only=False,
+                blocked_only=False,
+                next_only=False,
                 tag_filter=["urgent"]
             )
+
+    def test_get_tasks_dropped_only(self):
+        """Test get_tasks with dropped_only filter."""
+        mock_tasks = [
+            {
+                "id": "task-001",
+                "name": "Dropped Task",
+                "completed": False,
+                "dropped": True,
+                "projectName": "Old Project"
+            }
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_tasks.return_value = mock_tasks
+            mock_get_client.return_value = mock_client
+
+            result = get_tasks(dropped_only=True)
+
+            assert "Found 1 tasks" in result
+            assert "Dropped Task" in result
+            mock_client.get_tasks.assert_called_once_with(
+                project_id=None,
+                flagged_only=False,
+                include_completed=False,
+                available_only=False,
+                overdue=False,
+                dropped_only=True,
+                blocked_only=False,
+                next_only=False,
+                tag_filter=None
+            )
+
+    def test_get_task_success(self):
+        """Test get_task with successful retrieval."""
+        mock_task = {
+            "id": "task-001",
+            "name": "Test Task",
+            "note": "Task note",
+            "completed": False,
+            "flagged": True,
+            "dropped": False,
+            "projectId": "proj-001",
+            "projectName": "Test Project",
+            "dueDate": "2025-10-15T17:00:00",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "urgent"
+        }
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_task.return_value = mock_task
+            mock_get_client.return_value = mock_client
+
+            result = get_task("task-001")
+
+            assert "Task Details:" in result
+            assert "Test Task" in result
+            assert "Test Project" in result
+            assert "Flagged: Yes" in result
+            assert "Due: 2025-10-15T17:00:00" in result
+            mock_client.get_task.assert_called_once_with("task-001")
 
     def test_add_task_success(self):
         """Test add_task with successful addition."""
@@ -260,6 +387,39 @@ class TestInboxTools:
 
             assert "Found 1 inbox tasks" in result
             assert "Inbox Task" in result
+
+    def test_get_inbox_tasks_includes_dropped_status(self):
+        """Test that get_inbox_tasks output includes dropped status."""
+        mock_tasks = [
+            {
+                "id": "task-001",
+                "name": "Dropped Inbox Task",
+                "completed": False,
+                "dropped": True
+            },
+            {
+                "id": "task-002",
+                "name": "Active Inbox Task",
+                "completed": False,
+                "dropped": False
+            }
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_inbox_tasks.return_value = mock_tasks
+            mock_get_client.return_value = mock_client
+
+            result = get_inbox_tasks()
+
+            # Dropped task should show "Dropped: Yes"
+            assert "Dropped: Yes" in result
+            # Should appear in the first task's output
+            task1_section = result.split("ID: task-002")[0]
+            assert "Dropped: Yes" in task1_section
+            # Active task should not show dropped status
+            task2_section = result.split("ID: task-002")[1]
+            assert "Dropped: Yes" not in task2_section
 
     def test_create_inbox_task_success(self):
         """Test create_inbox_task with success."""

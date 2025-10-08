@@ -443,6 +443,53 @@ class TestOmniFocusClient:
             assert len(results) == 2  # Both projects have "Project" in name
 
 
+class TestGetProject:
+    """Tests for get_project functionality."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_get_project_success(self, client):
+        """Test getting a single project by ID."""
+        project_json = json.dumps({
+            "id": "proj-001",
+            "name": "Test Project",
+            "note": "Project note",
+            "status": "active",
+            "folderPath": "Work > Tests"
+        })
+
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = project_json
+            project = client.get_project("proj-001")
+
+            # Verify the project details
+            assert project['id'] == "proj-001"
+            assert project['name'] == "Test Project"
+            assert project['status'] == "active"
+            assert project['folderPath'] == "Work > Tests"
+
+            # Verify the AppleScript was called with the project ID
+            call_args = mock_run.call_args[0][0]
+            assert 'proj-001' in call_args
+
+    def test_get_project_not_found(self, client):
+        """Test handling of project not found."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = ""
+            with pytest.raises(Exception) as exc_info:
+                client.get_project("nonexistent-project")
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_get_project_empty_id(self, client):
+        """Test handling of empty project ID."""
+        with pytest.raises(ValueError) as exc_info:
+            client.get_project("")
+        assert "project_id is required" in str(exc_info.value)
+
+
 class TestCreateProject:
     """Tests for create_project functionality."""
 
@@ -631,6 +678,7 @@ class TestGetTasks:
                 "note": "Task note",
                 "completed": False,
                 "flagged": True,
+                "dropped": False,
                 "projectId": "proj-001",
                 "projectName": "Test Project",
                 "dueDate": "2025-10-15T17:00:00",
@@ -644,6 +692,7 @@ class TestGetTasks:
                 "note": "",
                 "completed": False,
                 "flagged": False,
+                "dropped": False,
                 "projectId": "proj-001",
                 "projectName": "Test Project",
                 "dueDate": "",
@@ -662,6 +711,7 @@ class TestGetTasks:
             assert tasks[0]['id'] == "task-001"
             assert tasks[0]['name'] == "Test Task"
             assert tasks[0]['flagged'] is True
+            assert tasks[0]['dropped'] is False
             assert tasks[0]['tags'] == "urgent, work"
 
     def test_get_tasks_by_project(self, client, sample_tasks_json):
@@ -754,6 +804,110 @@ class TestGetTasks:
             assert 'whose id is "proj-001"' in call_args
             assert "skip completed task" not in call_args
             assert "skip non-flagged task" in call_args
+
+    def test_get_tasks_includes_dropped_field(self, client, sample_tasks_json):
+        """Test that get_tasks includes the dropped field in the AppleScript and response."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            tasks = client.get_tasks()
+            # Verify dropped field is in returned data
+            assert 'dropped' in tasks[0]
+            assert tasks[0]['dropped'] is False
+            # Verify the AppleScript retrieves the dropped field
+            call_args = mock_run.call_args[0][0]
+            assert "set taskDropped to dropped of t" in call_args
+            # Verify the AppleScript includes dropped in JSON output
+            assert '\\"dropped\\"' in call_args
+
+    def test_get_tasks_dropped_only(self, client):
+        """Test filtering for only dropped tasks."""
+        dropped_tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Dropped Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "dropped": True,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = dropped_tasks_json
+            tasks = client.get_tasks(dropped_only=True)
+            assert len(tasks) == 1
+            assert tasks[0]['dropped'] is True
+            # Verify the filter is in the script
+            call_args = mock_run.call_args[0][0]
+            assert "dropped of t" in call_args
+            # Should skip non-dropped tasks
+            assert "skip" in call_args.lower() or "error" in call_args.lower()
+
+    def test_get_tasks_includes_blocked_field(self, client):
+        """Test that get_tasks includes the blocked field in the AppleScript and response."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Blocked Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "dropped": False,
+                "blocked": True,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks()
+            # Verify blocked field is in returned data
+            assert 'blocked' in tasks[0]
+            assert tasks[0]['blocked'] is True
+            # Verify the AppleScript retrieves the blocked field
+            call_args = mock_run.call_args[0][0]
+            assert "set taskBlocked to blocked of t" in call_args
+            # Verify the AppleScript includes blocked in JSON output
+            assert '\\"blocked\\"' in call_args
+
+    def test_get_tasks_blocked_only(self, client):
+        """Test filtering for only blocked tasks."""
+        blocked_tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Blocked Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "dropped": False,
+                "blocked": True,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = blocked_tasks_json
+            tasks = client.get_tasks(blocked_only=True)
+            assert len(tasks) == 1
+            assert tasks[0]['blocked'] is True
+            # Verify the filter is in the script
+            call_args = mock_run.call_args[0][0]
+            assert "blocked of t" in call_args
+            # Should skip non-blocked tasks
+            assert "skip" in call_args.lower() or "error" in call_args.lower()
 
     def test_get_tasks_available_only(self, client):
         """Test getting only available tasks (not deferred or blocked)."""
@@ -851,6 +1005,61 @@ class TestGetTasks:
             mock_run.return_value = tasks_json
             tasks = client.get_tasks(tag_filter=["urgent", "work"])
             assert len(tasks) == 1
+
+
+class TestGetTask:
+    """Tests for get_task functionality."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_get_task_success(self, client):
+        """Test getting a single task by ID."""
+        task_json = json.dumps({
+            "id": "task-001",
+            "name": "Test Task",
+            "note": "Task note",
+            "completed": False,
+            "flagged": True,
+            "dropped": False,
+            "projectId": "proj-001",
+            "projectName": "Test Project",
+            "dueDate": "2025-10-15T17:00:00",
+            "deferDate": "2025-10-08T09:00:00",
+            "completionDate": "",
+            "tags": "urgent, work"
+        })
+
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = task_json
+            task = client.get_task("task-001")
+
+            # Verify the task details
+            assert task['id'] == "task-001"
+            assert task['name'] == "Test Task"
+            assert task['flagged'] is True
+            assert task['dropped'] is False
+            assert task['projectId'] == "proj-001"
+
+            # Verify the AppleScript was called with the task ID
+            call_args = mock_run.call_args[0][0]
+            assert 'task-001' in call_args
+
+    def test_get_task_not_found(self, client):
+        """Test handling of task not found."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = ""
+            with pytest.raises(Exception) as exc_info:
+                client.get_task("nonexistent-task")
+            assert "not found" in str(exc_info.value).lower()
+
+    def test_get_task_empty_id(self, client):
+        """Test handling of empty task ID."""
+        with pytest.raises(ValueError) as exc_info:
+            client.get_task("")
+        assert "task_id is required" in str(exc_info.value)
 
 
 class TestCompleteTask:
@@ -1031,6 +1240,7 @@ class TestInboxOperations:
                 "note": "Need to process this",
                 "completed": False,
                 "flagged": False,
+                "dropped": False,
                 "dueDate": "",
                 "deferDate": "",
                 "tags": ""
@@ -1041,6 +1251,7 @@ class TestInboxOperations:
                 "note": "",
                 "completed": False,
                 "flagged": True,
+                "dropped": False,
                 "dueDate": "2025-10-15T17:00:00",
                 "deferDate": "",
                 "tags": "urgent"
@@ -1055,7 +1266,22 @@ class TestInboxOperations:
             assert len(tasks) == 2
             assert tasks[0]['id'] == "inbox-001"
             assert tasks[0]['name'] == "Quick Capture"
+            assert tasks[0]['dropped'] is False
             assert tasks[1]['flagged'] is True
+
+    def test_get_inbox_tasks_includes_dropped_field(self, client, sample_inbox_tasks_json):
+        """Test that get_inbox_tasks includes the dropped field in the AppleScript and response."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = sample_inbox_tasks_json
+            tasks = client.get_inbox_tasks()
+            # Verify dropped field is in returned data
+            assert 'dropped' in tasks[0]
+            assert tasks[0]['dropped'] is False
+            # Verify the AppleScript retrieves the dropped field
+            call_args = mock_run.call_args[0][0]
+            assert "set taskDropped to dropped of t" in call_args
+            # Verify the AppleScript includes dropped in JSON output
+            assert '\\"dropped\\"' in call_args
 
     def test_get_inbox_tasks_empty(self, client):
         """Test handling of empty inbox."""

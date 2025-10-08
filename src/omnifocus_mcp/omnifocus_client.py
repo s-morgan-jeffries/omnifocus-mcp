@@ -154,8 +154,15 @@ class OmniFocusClient:
         text = text.replace('"', '\\"')
         return text
 
-    def get_projects(self) -> list[dict[str, Any]]:
-        """Get projects with their folder/hierarchy information using AppleScript."""
+    def get_projects(self, on_hold_only: bool = False) -> list[dict[str, Any]]:
+        """Get projects with their folder/hierarchy information using AppleScript.
+
+        Args:
+            on_hold_only: Only return projects with "on hold" status (default: False)
+
+        Returns:
+            list: List of project dictionaries with id, name, status, folder, note, etc.
+        """
         script = '''
         use AppleScript version "2.4"
         use scripting additions
@@ -178,6 +185,8 @@ class OmniFocusClient:
                         if projStatus is "dropped" then
                             error "skip dropped project"
                         end if
+
+                        {on_hold_check}
 
                         -- Get folder path
                         set folderPath to ""
@@ -204,13 +213,13 @@ class OmniFocusClient:
                         end try
 
                         -- Build JSON manually (AppleScript doesn't have native JSON)
-                        set jsonLine to "{" & ¬
+                        set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & projId & "\\", " & ¬
                             "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
                             "\\"note\\": \\"" & my escapeJSON(projNote) & "\\", " & ¬
                             "\\"status\\": \\"" & projStatus & "\\", " & ¬
                             "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\"" & ¬
-                            "}"
+                            "}}"
 
                         if output is not "" then
                             set output to output & "," & linefeed
@@ -224,6 +233,15 @@ class OmniFocusClient:
         return "[" & linefeed & output & linefeed & "]"
         ''' + APPLESCRIPT_JSON_HELPERS
 
+        # Build on_hold filter
+        on_hold_check = "" if not on_hold_only else """
+                        -- Skip non-on-hold projects
+                        if projStatus is not "on hold" then
+                            error "skip non-on-hold project"
+                        end if"""
+
+        script = script.format(on_hold_check=on_hold_check)
+
         try:
             result = run_applescript(script)
             if result:
@@ -234,6 +252,90 @@ class OmniFocusClient:
             raise Exception(f"Error querying OmniFocus: {e.stderr}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing OmniFocus output: {e}")
+
+    def get_project(self, project_id: str) -> dict[str, Any]:
+        """Get a single project by its ID.
+
+        Args:
+            project_id: The ID of the project to retrieve
+
+        Returns:
+            dict: Project dictionary with id, name, note, status, and folderPath
+
+        Raises:
+            ValueError: If project_id is empty
+            Exception: If project not found or error occurs
+        """
+        if not project_id:
+            raise ValueError("project_id is required")
+
+        script = f'''
+        use AppleScript version "2.4"
+        use scripting additions
+
+        tell application "OmniFocus"
+            tell front document
+                set targetProject to first flattened project whose id is "{project_id}"
+
+                if targetProject is missing value then
+                    error "Project not found"
+                end if
+
+                set projId to id of targetProject
+                set projName to name of targetProject
+                set projNote to note of targetProject
+                set projStatus to status of targetProject as text
+
+                -- Get folder path
+                set folderPath to ""
+                try
+                    set parentFolder to container of targetProject
+                    if class of parentFolder is folder then
+                        set folderPath to name of parentFolder
+                        -- Walk up the folder hierarchy
+                        set currentFolder to parentFolder
+                        repeat
+                            try
+                                set parentOfFolder to container of currentFolder
+                                if class of parentOfFolder is folder then
+                                    set folderPath to (name of parentOfFolder) & " > " & folderPath
+                                    set currentFolder to parentOfFolder
+                                else
+                                    exit repeat
+                                end if
+                            on error
+                                exit repeat
+                            end try
+                        end repeat
+                    end if
+                end try
+
+                -- Build JSON manually
+                set jsonOutput to "{{" & ¬
+                    "\\"id\\": \\"" & projId & "\\", " & ¬
+                    "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
+                    "\\"note\\": \\"" & my escapeJSON(projNote) & "\\", " & ¬
+                    "\\"status\\": \\"" & projStatus & "\\", " & ¬
+                    "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\"" & ¬
+                    "}}"
+
+                return jsonOutput
+            end tell
+        end tell
+        ''' + APPLESCRIPT_JSON_HELPERS
+
+        try:
+            result = run_applescript(script)
+            if result:
+                return json.loads(result)
+            else:
+                raise Exception(f"Project with ID '{project_id}' not found")
+        except subprocess.CalledProcessError as e:
+            if "Project not found" in e.stderr:
+                raise Exception(f"Project with ID '{project_id}' not found")
+            raise Exception(f"Error retrieving project: {e.stderr}")
+        except json.JSONDecodeError as e:
+            raise Exception(f"Error parsing project output: {e}")
 
     def create_project(
         self,
@@ -578,6 +680,9 @@ class OmniFocusClient:
         flagged_only: bool = False,
         available_only: bool = False,
         overdue: bool = False,
+        dropped_only: bool = False,
+        blocked_only: bool = False,
+        next_only: bool = False,
         tag_filter: Optional[list[str]] = None
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
@@ -588,10 +693,13 @@ class OmniFocusClient:
             flagged_only: Only return flagged tasks (default: False)
             available_only: Only return available tasks (not blocked or deferred) (default: False)
             overdue: Only return overdue tasks (default: False)
+            dropped_only: Only return dropped tasks (default: False)
+            blocked_only: Only return blocked tasks (default: False)
+            next_only: Only return next tasks (default: False)
             tag_filter: List of tag names to filter by (AND logic - task must have all tags)
 
         Returns:
-            list: List of task dictionaries with id, name, note, status, project info, dates, flagged status, and tags
+            list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, and tags
         """
         # Build project filter
         if project_id:
@@ -612,6 +720,27 @@ class OmniFocusClient:
                         -- Skip non-flagged tasks
                         if not flagged of t then
                             error "skip non-flagged task"
+                        end if"""
+
+        # Build dropped filter
+        dropped_check = "" if not dropped_only else """
+                        -- Skip non-dropped tasks
+                        if not dropped of t then
+                            error "skip non-dropped task"
+                        end if"""
+
+        # Build blocked filter
+        blocked_check = "" if not blocked_only else """
+                        -- Skip non-blocked tasks
+                        if not blocked of t then
+                            error "skip non-blocked task"
+                        end if"""
+
+        # Build next filter
+        next_check = "" if not next_only else """
+                        -- Skip non-next tasks
+                        if not next of t then
+                            error "skip non-next task"
                         end if"""
 
         # Build available filter (not dropped, not blocked, not deferred)
@@ -685,9 +814,15 @@ class OmniFocusClient:
                         set taskNote to note of t
                         set taskCompleted to completed of t
                         set taskFlagged to flagged of t
+                        set taskDropped to dropped of t
+                        set taskBlocked to blocked of t
+                        set taskNext to next of t
 
                         {completion_check}
                         {flagged_check}
+                        {dropped_check}
+                        {blocked_check}
+                        {next_check}
                         {available_check}
                         {overdue_check}
                         {tag_check}
@@ -748,6 +883,9 @@ class OmniFocusClient:
                             "\\"note\\": \\"" & my escapeJSON(taskNote) & "\\", " & ¬
                             "\\"completed\\": " & (taskCompleted as text) & ", " & ¬
                             "\\"flagged\\": " & (taskFlagged as text) & ", " & ¬
+                            "\\"dropped\\": " & (taskDropped as text) & ", " & ¬
+                            "\\"blocked\\": " & (taskBlocked as text) & ", " & ¬
+                            "\\"next\\": " & (taskNext as text) & ", " & ¬
                             "\\"projectId\\": \\"" & projectId & "\\", " & ¬
                             "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
                             "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
@@ -778,6 +916,124 @@ class OmniFocusClient:
             raise Exception(f"Error querying OmniFocus tasks: {e.stderr}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing OmniFocus task output: {e}")
+
+    def get_task(self, task_id: str) -> dict[str, Any]:
+        """Get a single task by its ID.
+
+        Args:
+            task_id: The ID of the task to retrieve
+
+        Returns:
+            dict: Task dictionary with id, name, note, completed, flagged, dropped, project info, dates, and tags
+
+        Raises:
+            ValueError: If task_id is empty
+            Exception: If task not found or error occurs
+        """
+        if not task_id:
+            raise ValueError("task_id is required")
+
+        script = f'''
+        use AppleScript version "2.4"
+        use scripting additions
+
+        tell application "OmniFocus"
+            tell front document
+                set targetTask to first flattened task whose id is "{task_id}"
+
+                if targetTask is missing value then
+                    error "Task not found"
+                end if
+
+                set taskId to id of targetTask
+                set taskName to name of targetTask
+                set taskNote to note of targetTask
+                set taskCompleted to completed of targetTask
+                set taskFlagged to flagged of targetTask
+                set taskDropped to dropped of targetTask
+
+                -- Get project info
+                set projectId to ""
+                set projectName to ""
+                try
+                    set parentProj to containing project of targetTask
+                    if parentProj is not missing value then
+                        set projectId to id of parentProj
+                        set projectName to name of parentProj
+                    end if
+                end try
+
+                -- Get dates
+                set dueDate to ""
+                try
+                    set dueDateObj to due date of targetTask
+                    if dueDateObj is not missing value then
+                        set dueDate to dueDateObj as «class isot» as string
+                    end if
+                end try
+
+                set deferDate to ""
+                try
+                    set deferDateObj to defer date of targetTask
+                    if deferDateObj is not missing value then
+                        set deferDate to deferDateObj as «class isot» as string
+                    end if
+                end try
+
+                set completionDate to ""
+                try
+                    set completionDateObj to completion date of targetTask
+                    if completionDateObj is not missing value then
+                        set completionDate to completionDateObj as «class isot» as string
+                    end if
+                end try
+
+                -- Get tags
+                set tagsList to ""
+                try
+                    set taskTags to tags of targetTask
+                    set tagNames to {{}}
+                    repeat with tg in taskTags
+                        set end of tagNames to name of tg
+                    end repeat
+                    set AppleScript's text item delimiters to ", "
+                    set tagsList to tagNames as text
+                    set AppleScript's text item delimiters to ""
+                end try
+
+                -- Build JSON manually
+                set jsonOutput to "{{" & ¬
+                    "\\"id\\": \\"" & taskId & "\\", " & ¬
+                    "\\"name\\": \\"" & my escapeJSON(taskName) & "\\", " & ¬
+                    "\\"note\\": \\"" & my escapeJSON(taskNote) & "\\", " & ¬
+                    "\\"completed\\": " & (taskCompleted as text) & ", " & ¬
+                    "\\"flagged\\": " & (taskFlagged as text) & ", " & ¬
+                    "\\"dropped\\": " & (taskDropped as text) & ", " & ¬
+                    "\\"projectId\\": \\"" & projectId & "\\", " & ¬
+                    "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
+                    "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
+                    "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
+                    "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
+                    "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\"" & ¬
+                    "}}"
+
+                return jsonOutput
+            end tell
+        end tell
+        ''' + APPLESCRIPT_JSON_HELPERS
+
+        try:
+            result = run_applescript(script)
+            if result:
+                return json.loads(result)
+            else:
+                raise Exception(f"Task with ID '{task_id}' not found")
+        except subprocess.CalledProcessError as e:
+            if "Task not found" in e.stderr:
+                raise Exception(f"Task with ID '{task_id}' not found")
+            raise Exception(f"Error retrieving task: {e.stderr}")
+        except json.JSONDecodeError as e:
+            raise Exception(f"Error parsing task output: {e}")
 
     def complete_task(self, task_id: str) -> bool:
         """Mark a task as completed.
@@ -919,7 +1175,7 @@ class OmniFocusClient:
         """Get all tasks from the inbox.
 
         Returns:
-            list: List of inbox task dictionaries with id, name, note, dates, flagged status, and tags
+            list: List of inbox task dictionaries with id, name, note, completed, flagged, dropped, dates, and tags
         """
         script = '''
         use AppleScript version "2.4"
@@ -938,6 +1194,7 @@ class OmniFocusClient:
                         set taskNote to note of t
                         set taskCompleted to completed of t
                         set taskFlagged to flagged of t
+                        set taskDropped to dropped of t
 
                         -- Get dates
                         set dueDate to ""
@@ -976,6 +1233,7 @@ class OmniFocusClient:
                             "\\"note\\": \\"" & my escapeJSON(taskNote) & "\\", " & ¬
                             "\\"completed\\": " & (taskCompleted as text) & ", " & ¬
                             "\\"flagged\\": " & (taskFlagged as text) & ", " & ¬
+                            "\\"dropped\\": " & (taskDropped as text) & ", " & ¬
                             "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                             "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\"" & ¬
