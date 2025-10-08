@@ -42,6 +42,62 @@ def _truncate_note(note: str, max_length: int = NOTE_TRUNCATION_LENGTH) -> str:
     return note
 
 
+def _format_task(task: dict) -> str:
+    """Format a task dictionary as human-readable text.
+
+    Args:
+        task: Task dictionary from omnifocus_client
+
+    Returns:
+        Formatted task text with all properties
+    """
+    result = f"ID: {task['id']}\n"
+    result += f"Name: {task['name']}\n"
+    result += f"Project: {task.get('projectName', 'N/A')}\n"
+    result += f"Completed: {task['completed']}\n"
+
+    if task.get('dropped'):
+        result += f"Dropped: Yes\n"
+    if task.get('blocked'):
+        result += f"Blocked: Yes\n"
+    if task.get('next'):
+        result += f"Next: Yes\n"
+    if task.get('flagged'):
+        result += f"Flagged: Yes\n"
+    if task.get('dueDate'):
+        result += f"Due: {task['dueDate']}\n"
+    if task.get('deferDate'):
+        result += f"Defer: {task['deferDate']}\n"
+    if task.get('estimatedMinutes'):
+        result += f"Estimated: {task['estimatedMinutes']} minutes\n"
+    if task.get('tags'):
+        result += f"Tags: {task['tags']}\n"
+    if task.get('note'):
+        result += f"Note: {_truncate_note(task['note'])}\n"
+
+    return result
+
+
+def _format_project(proj: dict) -> str:
+    """Format a project dictionary as human-readable text.
+
+    Args:
+        proj: Project dictionary from omnifocus_client
+
+    Returns:
+        Formatted project text with all properties
+    """
+    result = f"ID: {proj['id']}\n"
+    result += f"Name: {proj['name']}\n"
+    if proj.get('folderPath'):
+        result += f"Folder: {proj['folderPath']}\n"
+    result += f"Status: {proj['status']}\n"
+    if proj.get('note'):
+        result += f"Note: {_truncate_note(proj['note'])}\n"
+
+    return result
+
+
 # ============================================================================
 # Project Tools
 # ============================================================================
@@ -65,13 +121,7 @@ def get_projects(on_hold_only: bool = False) -> str:
     # Format projects for display
     result = f"Found {len(projects)} active projects:\n\n"
     for proj in projects:
-        result += f"ID: {proj['id']}\n"
-        result += f"Name: {proj['name']}\n"
-        if proj.get('folderPath'):
-            result += f"Folder: {proj['folderPath']}\n"
-        result += f"Status: {proj['status']}\n"
-        if proj.get('note'):
-            result += f"Note: {_truncate_note(proj['note'])}\n"
+        result += _format_project(proj)
         result += "\n"
 
     return result
@@ -95,13 +145,7 @@ def search_projects(query: str) -> str:
 
     result = f"Found {len(projects)} projects matching '{query}':\n\n"
     for proj in projects:
-        result += f"ID: {proj['id']}\n"
-        result += f"Name: {proj['name']}\n"
-        if proj.get('folderPath'):
-            result += f"Folder: {proj['folderPath']}\n"
-        result += f"Status: {proj['status']}\n"
-        if proj.get('note'):
-            result += f"Note: {_truncate_note(proj['note'])}\n"
+        result += _format_project(proj)
         result += "\n"
 
     return result
@@ -255,28 +299,7 @@ def get_tasks(
 
     result = f"Found {len(tasks)} tasks:\n\n"
     for task in tasks:
-        result += f"ID: {task['id']}\n"
-        result += f"Name: {task['name']}\n"
-        result += f"Project: {task.get('projectName', 'N/A')}\n"
-        result += f"Completed: {task['completed']}\n"
-        if task.get('dropped'):
-            result += f"Dropped: Yes\n"
-        if task.get('blocked'):
-            result += f"Blocked: Yes\n"
-        if task.get('next'):
-            result += f"Next: Yes\n"
-        if task.get('flagged'):
-            result += f"Flagged: Yes\n"
-        if task.get('dueDate'):
-            result += f"Due: {task['dueDate']}\n"
-        if task.get('deferDate'):
-            result += f"Defer: {task['deferDate']}\n"
-        if task.get('estimatedMinutes'):
-            result += f"Estimated: {task['estimatedMinutes']} minutes\n"
-        if task.get('tags'):
-            result += f"Tags: {task['tags']}\n"
-        if task.get('note'):
-            result += f"Note: {_truncate_note(task['note'])}\n"
+        result += _format_task(task)
         result += "\n"
 
     return result
@@ -339,28 +362,9 @@ def get_task(task_id: str) -> str:
     task = client.get_task(task_id)
 
     result = f"Task Details:\n\n"
-    result += f"ID: {task['id']}\n"
-    result += f"Name: {task['name']}\n"
-    result += f"Project: {task.get('projectName', 'N/A')}\n"
-    result += f"Completed: {task['completed']}\n"
-    if task.get('dropped'):
-        result += f"Dropped: Yes\n"
-    if task.get('blocked'):
-        result += f"Blocked: Yes\n"
-    if task.get('next'):
-        result += f"Next: Yes\n"
-    if task.get('flagged'):
-        result += f"Flagged: Yes\n"
-    if task.get('dueDate'):
-        result += f"Due: {task['dueDate']}\n"
-    if task.get('deferDate'):
-        result += f"Defer: {task['deferDate']}\n"
+    result += _format_task(task)
     if task.get('completionDate'):
-        result += f"Completed: {task['completionDate']}\n"
-    if task.get('tags'):
-        result += f"Tags: {task['tags']}\n"
-    if task.get('note'):
-        result += f"Note: {_truncate_note(task['note'])}\n"
+        result += f"Completion Date: {task['completionDate']}\n"
 
     return result
 
@@ -383,28 +387,7 @@ def get_subtasks(task_id: str) -> str:
 
     result = f"Found {len(subtasks)} subtasks:\n\n"
     for task in subtasks:
-        result += f"ID: {task['id']}\n"
-        result += f"Name: {task['name']}\n"
-        result += f"Project: {task.get('projectName', 'N/A')}\n"
-        result += f"Completed: {task['completed']}\n"
-        if task.get('dropped'):
-            result += f"Dropped: Yes\n"
-        if task.get('blocked'):
-            result += f"Blocked: Yes\n"
-        if task.get('next'):
-            result += f"Next: Yes\n"
-        if task.get('flagged'):
-            result += f"Flagged: Yes\n"
-        if task.get('dueDate'):
-            result += f"Due: {task['dueDate']}\n"
-        if task.get('deferDate'):
-            result += f"Defer: {task['deferDate']}\n"
-        if task.get('estimatedMinutes'):
-            result += f"Estimated: {task['estimatedMinutes']} minutes\n"
-        if task.get('tags'):
-            result += f"Tags: {task['tags']}\n"
-        if task.get('note'):
-            result += f"Note: {_truncate_note(task['note'])}\n"
+        result += _format_task(task)
         result += "\n"
 
     return result
@@ -551,17 +534,7 @@ def get_inbox_tasks() -> str:
 
     result = f"Found {len(tasks)} inbox tasks:\n\n"
     for task in tasks:
-        result += f"ID: {task['id']}\n"
-        result += f"Name: {task['name']}\n"
-        result += f"Completed: {task['completed']}\n"
-        if task.get('dropped'):
-            result += f"Dropped: Yes\n"
-        if task.get('flagged'):
-            result += f"Flagged: Yes\n"
-        if task.get('dueDate'):
-            result += f"Due: {task['dueDate']}\n"
-        if task.get('note'):
-            result += f"Note: {_truncate_note(task['note'])}\n"
+        result += _format_task(task)
         result += "\n"
 
     return result

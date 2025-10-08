@@ -2325,7 +2325,7 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('complete_tasks')
 
-        if not task_ids or len(task_ids) == 0:
+        if not task_ids:
             raise ValueError("task_ids cannot be empty")
 
         # Build AppleScript list of task IDs
@@ -2998,7 +2998,7 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('move_tasks')
 
-        if not task_ids or len(task_ids) == 0:
+        if not task_ids:
             raise ValueError("task_ids cannot be empty")
 
         # Build AppleScript list of task IDs
@@ -3080,7 +3080,7 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('add_tag_to_tasks')
 
-        if not task_ids or len(task_ids) == 0:
+        if not task_ids:
             raise ValueError("task_ids cannot be empty")
         if not tag_name or tag_name.strip() == "":
             raise ValueError("tag_name cannot be empty")
@@ -3141,7 +3141,7 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('remove_tag_from_tasks')
 
-        if not task_ids or len(task_ids) == 0:
+        if not task_ids:
             raise ValueError("task_ids cannot be empty")
         if not tag_name or tag_name.strip() == "":
             raise ValueError("tag_name cannot be empty")
@@ -3201,7 +3201,7 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('drop_tasks')
 
-        if not task_ids or len(task_ids) == 0:
+        if not task_ids:
             raise ValueError("task_ids cannot be empty")
 
         # Build AppleScript list of task IDs
@@ -3254,7 +3254,7 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('delete_tasks')
 
-        if not task_ids or len(task_ids) == 0:
+        if not task_ids:
             raise ValueError("task_ids cannot be empty")
 
         # Build AppleScript list of task IDs
@@ -3305,7 +3305,7 @@ class OmniFocusClient:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('delete_projects')
 
-        if not project_ids or len(project_ids) == 0:
+        if not project_ids:
             raise ValueError("project_ids cannot be empty")
 
         # Build AppleScript list of project IDs
