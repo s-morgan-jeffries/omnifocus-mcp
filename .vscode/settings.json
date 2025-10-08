@@ -13,6 +13,5 @@
     "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit"
     }
-  },
-  "makefile.configureOnOpen": false
+  }
 }
