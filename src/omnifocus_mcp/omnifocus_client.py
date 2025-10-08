@@ -154,6 +154,60 @@ class OmniFocusClient:
         text = text.replace('"', '\\"')
         return text
 
+    def _filter_by_date_range(
+        self,
+        items: list[dict[str, Any]],
+        created_after: Optional[str],
+        created_before: Optional[str],
+        modified_after: Optional[str],
+        modified_before: Optional[str]
+    ) -> list[dict[str, Any]]:
+        """Filter items by date ranges.
+
+        Args:
+            items: List of task or project dictionaries to filter
+            created_after: Only include items created after this date
+            created_before: Only include items created before this date
+            modified_after: Only include items modified after this date
+            modified_before: Only include items modified before this date
+
+        Returns:
+            Filtered list of items
+        """
+        filtered = []
+
+        for item in items:
+            include = True
+
+            # Check creation date filters
+            if created_after or created_before:
+                creation_date = item.get('creationDate', '')
+                if creation_date:
+                    if created_after and creation_date < created_after:
+                        include = False
+                    if created_before and creation_date > created_before:
+                        include = False
+                else:
+                    # No creation date - exclude if filtering by creation date
+                    include = False
+
+            # Check modification date filters
+            if include and (modified_after or modified_before):
+                mod_date = item.get('modificationDate', '')
+                if mod_date:
+                    if modified_after and mod_date < modified_after:
+                        include = False
+                    if modified_before and mod_date > modified_before:
+                        include = False
+                else:
+                    # No modification date - exclude if filtering by modification date
+                    include = False
+
+            if include:
+                filtered.append(item)
+
+        return filtered
+
     def _filter_tasks_by_tags(self, tasks: list[dict[str, Any]], tag_filter: list[str], mode: str) -> list[dict[str, Any]]:
         """Filter tasks by tags using boolean logic.
 
@@ -226,11 +280,20 @@ class OmniFocusClient:
             # For name, simple case-insensitive sort
             return sorted(tasks, key=lambda t: t.get(field, "").lower(), reverse=reverse)
 
-    def get_projects(self, on_hold_only: bool = False, sort_by: Optional[str] = None, sort_order: str = "asc") -> list[dict[str, Any]]:
+    def get_projects(
+        self,
+        on_hold_only: bool = False,
+        modified_after: Optional[str] = None,
+        modified_before: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc"
+    ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
 
         Args:
             on_hold_only: Only return projects with "on hold" status (default: False)
+            modified_after: Only return projects modified after this ISO date
+            modified_before: Only return projects modified before this ISO date
             sort_by: Field to sort by - "name" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
 
@@ -238,8 +301,20 @@ class OmniFocusClient:
             list: List of project dictionaries with id, name, status, folder, note, etc.
 
         Raises:
-            ValueError: If sort parameters are invalid
+            ValueError: If date format or sort parameters are invalid
         """
+        # Validate date formats
+        from datetime import datetime
+        for date_param, date_value in [
+            ("modified_after", modified_after),
+            ("modified_before", modified_before)
+        ]:
+            if date_value:
+                try:
+                    datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                except ValueError:
+                    raise ValueError(f"Invalid date format for {date_param}: {date_value}. Use ISO format (e.g., '2025-01-15T00:00:00Z')")
+
         # Validate sort parameters
         valid_sort_by = ["name", None]
         valid_sort_order = ["asc", "desc"]
@@ -331,6 +406,16 @@ class OmniFocusClient:
             result = run_applescript(script)
             if result:
                 projects = json.loads(result)
+
+                # Apply date range filtering
+                if modified_after or modified_before:
+                    projects = self._filter_by_date_range(
+                        projects,
+                        None,  # created_after (not applicable to projects)
+                        None,  # created_before
+                        modified_after,
+                        modified_before
+                    )
 
                 # Apply sorting if requested
                 if sort_by:
@@ -852,6 +937,10 @@ class OmniFocusClient:
         has_estimate: Optional[bool] = None,
         tag_filter: Optional[list[str]] = None,
         tag_filter_mode: str = "and",
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
+        modified_after: Optional[str] = None,
+        modified_before: Optional[str] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc"
     ) -> list[dict[str, Any]]:
@@ -872,6 +961,10 @@ class OmniFocusClient:
             has_estimate: If True, only return tasks with estimates; if False, only tasks without estimates
             tag_filter: List of tag names to filter by
             tag_filter_mode: Tag filtering logic - "and" (all tags), "or" (any tag), "not" (none of tags) (default: "and")
+            created_after: Only return tasks created after this ISO date (e.g., "2025-01-15T00:00:00Z")
+            created_before: Only return tasks created before this ISO date
+            modified_after: Only return tasks modified after this ISO date
+            modified_before: Only return tasks modified before this ISO date
             sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
 
@@ -879,8 +972,22 @@ class OmniFocusClient:
             list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, and tags
 
         Raises:
-            ValueError: If relative date filter value, tag_filter_mode, or sort parameters are invalid
+            ValueError: If relative date filter value, tag_filter_mode, date format, or sort parameters are invalid
         """
+        # Validate date formats
+        from datetime import datetime
+        for date_param, date_value in [
+            ("created_after", created_after),
+            ("created_before", created_before),
+            ("modified_after", modified_after),
+            ("modified_before", modified_before)
+        ]:
+            if date_value:
+                try:
+                    datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                except ValueError:
+                    raise ValueError(f"Invalid date format for {date_param}: {date_value}. Use ISO format (e.g., '2025-01-15T00:00:00Z')")
+
         # Validate tag filter mode
         valid_tag_filter_modes = ["and", "or", "not"]
         if tag_filter_mode not in valid_tag_filter_modes:
@@ -1279,6 +1386,16 @@ class OmniFocusClient:
                         tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
                     elif tag_filter_mode in ["or", "not"]:
                         tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
+
+                # Apply date range filtering
+                if created_after or created_before or modified_after or modified_before:
+                    tasks = self._filter_by_date_range(
+                        tasks,
+                        created_after,
+                        created_before,
+                        modified_after,
+                        modified_before
+                    )
 
                 # Apply sorting if requested
                 if sort_by:
