@@ -48,12 +48,13 @@ def _truncate_note(note: str, max_length: int = NOTE_TRUNCATION_LENGTH) -> str:
 
 @mcp.tool()
 def get_projects(on_hold_only: bool = False) -> str:
-    """Get all active projects from OmniFocus with their folder hierarchy, names, notes, and status.
+    """Retrieve ALL active projects with full details and hierarchy (no filtering by name/content).
 
     Args:
         on_hold_only: If True, only return projects with "on hold" status
 
-    Returns a formatted list of all active projects with their details.
+    Returns:
+        Formatted text with project list (one per line with ID, name, folder, status, and note preview)
     """
     client = get_client()
     projects = client.get_projects(on_hold_only=on_hold_only)
@@ -78,12 +79,13 @@ def get_projects(on_hold_only: bool = False) -> str:
 
 @mcp.tool()
 def search_projects(query: str) -> str:
-    """Search OmniFocus projects by name, note content, or folder path.
+    """Find specific projects by searching name, note, or folder path (use when you know what you're looking for).
 
     Args:
         query: Search query to match against project names, notes, or folder paths
 
-    Returns a formatted list of matching projects.
+    Returns:
+        Formatted text with matching projects (one per line with ID, name, folder, status, and note preview)
     """
     client = get_client()
     projects = client.search_projects(query)
@@ -120,7 +122,8 @@ def create_project(
         folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
         sequential: If True, tasks must be completed in order; if False, tasks can be done in parallel (default: False)
 
-    Returns the project ID of the newly created project.
+    Returns:
+        Success message with project ID and configuration details
     """
     client = get_client()
     project_id = client.create_project(
@@ -146,14 +149,15 @@ def create_project(
 
 @mcp.tool()
 def set_project_status(project_id: str, status: str) -> str:
-    """Set the status of a project.
+    """Change a project's status to active, on hold, or done.
 
     Args:
         project_id: The ID of the project
         status: The status to set - one of: "active", "on_hold", "done"
                Note: "dropped" status is not supported by AppleScript
 
-    Returns a success message.
+    Returns:
+        Success message confirming the status change
     Raises ValueError if project not found or status is invalid.
     """
     client = get_client()
@@ -170,7 +174,8 @@ def get_stalled_projects(days_inactive: int = 30) -> str:
     Args:
         days_inactive: Minimum days of inactivity to consider a project stalled (default: 30)
 
-    Returns a formatted list of stalled projects sorted by days inactive (most stale first).
+    Returns:
+        Formatted text with stalled projects sorted by inactivity (days, last activity date)
     Projects with no activity ever are included.
     """
     client = get_client()
@@ -229,7 +234,8 @@ def get_tasks(
         next_only: If True, only return next tasks
         tag_filter: List of tag names to filter by (task must have all tags)
 
-    Returns a formatted list of tasks.
+    Returns:
+        Formatted text with task list including ID, name, project, due date, tags, and completion status
     """
     client = get_client()
     tasks = client.get_tasks(
@@ -283,7 +289,8 @@ def get_project(project_id: str) -> str:
     Args:
         project_id: The ID of the project to retrieve
 
-    Returns a formatted display of the project details.
+    Returns:
+        Formatted text with detailed project information including task counts and statistics
     """
     client = get_client()
     project = client.get_project(project_id)
@@ -325,7 +332,8 @@ def get_task(task_id: str) -> str:
     Args:
         task_id: The ID of the task to retrieve
 
-    Returns a formatted display of the task details.
+    Returns:
+        Formatted text with detailed task information including all properties
     """
     client = get_client()
     task = client.get_task(task_id)
@@ -364,7 +372,8 @@ def get_subtasks(task_id: str) -> str:
     Args:
         task_id: The ID of the parent task
 
-    Returns a formatted list of all subtasks.
+    Returns:
+        Formatted text with list of child tasks or message if task has no subtasks
     """
     client = get_client()
     subtasks = client.get_subtasks(task_id)
@@ -422,7 +431,8 @@ def add_task(
         flagged: Whether to flag the task (default: False)
         tags: List of tag names to assign to the task (tags must already exist)
 
-    Returns a success message with the task details.
+    Returns:
+        Success message with task name, project, and all configured properties
     """
     client = get_client()
     success = client.add_task(
@@ -469,7 +479,8 @@ def update_task(
         defer_date: New defer date in ISO 8601 format, or empty string to clear (optional)
         flagged: New flagged status (optional)
 
-    Returns a success message.
+    Returns:
+        Success message listing all updated fields
     """
     client = get_client()
     success = client.update_task(
@@ -494,7 +505,8 @@ def complete_task(task_id: str) -> str:
     Args:
         task_id: The ID of the task to complete
 
-    Returns a success message.
+    Returns:
+        Success message confirming task completion
     """
     client = get_client()
     success = client.complete_task(task_id)
@@ -507,12 +519,13 @@ def complete_task(task_id: str) -> str:
 
 @mcp.tool()
 def complete_tasks(task_ids: list[str]) -> str:
-    """Mark multiple tasks as completed in a single operation.
+    """Mark multiple tasks as completed in a single operation (more efficient than calling complete_task repeatedly).
 
     Args:
         task_ids: List of task IDs to complete
 
-    Returns a success message with count of completed tasks.
+    Returns:
+        Summary with count of completed tasks and any errors encountered
     """
     client = get_client()
     count = client.complete_tasks(task_ids)
@@ -527,7 +540,8 @@ def complete_tasks(task_ids: list[str]) -> str:
 def get_inbox_tasks() -> str:
     """Get all tasks from the OmniFocus inbox.
 
-    Returns a formatted list of inbox tasks.
+    Returns:
+        Formatted text with all inbox tasks including ID, name, due date, and tags
     """
     client = get_client()
     tasks = client.get_inbox_tasks()
@@ -568,7 +582,8 @@ def create_inbox_task(
         due_date: Optional due date in ISO 8601 format
         flagged: Whether to flag the task (default: False)
 
-    Returns a success message.
+    Returns:
+        Success message with task ID and configured properties
     """
     client = get_client()
     success = client.create_inbox_task(
@@ -595,9 +610,10 @@ def create_inbox_task(
 
 @mcp.tool()
 def get_tags() -> str:
-    """Get all tags from OmniFocus.
+    """Retrieve all available tags from OmniFocus with their names.
 
-    Returns a formatted list of all available tags.
+    Returns:
+        Formatted list of all tag names (one per line)
     """
     client = get_client()
     tags = client.get_tags()
@@ -623,7 +639,8 @@ def add_tag_to_task(task_id: str, tag_name: str) -> str:
         task_id: The ID of the task to tag
         tag_name: The name of the tag to add (tag must already exist)
 
-    Returns a success message.
+    Returns:
+        Success message confirming tag was added to task
     """
     client = get_client()
     success = client.add_tag_to_task(task_id, tag_name)
@@ -636,13 +653,14 @@ def add_tag_to_task(task_id: str, tag_name: str) -> str:
 
 @mcp.tool()
 def add_tag_to_tasks(task_ids: list[str], tag_name: str) -> str:
-    """Add a tag to multiple tasks in a single operation.
+    """Add a tag to multiple tasks in a single operation (more efficient than calling add_tag_to_task repeatedly).
 
     Args:
         task_ids: List of task IDs to tag
         tag_name: The name of the tag to add (tag must already exist)
 
-    Returns a success message with count of tagged tasks.
+    Returns:
+        Summary with count of tasks tagged and any errors encountered
     """
     client = get_client()
     try:
@@ -654,13 +672,14 @@ def add_tag_to_tasks(task_ids: list[str], tag_name: str) -> str:
 
 @mcp.tool()
 def remove_tag_from_tasks(task_ids: list[str], tag_name: str) -> str:
-    """Remove a tag from multiple tasks in a single operation.
+    """Remove a tag from multiple tasks in a single operation (batch operation for efficiency).
 
     Args:
         task_ids: List of task IDs to remove tag from
         tag_name: The name of the tag to remove
 
-    Returns a success message with count of updated tasks.
+    Returns:
+        Summary with count of tasks untagged and any errors encountered
     """
     client = get_client()
     try:
@@ -682,7 +701,8 @@ def add_note(project_id: str, note_text: str) -> str:
         project_id: The ID of the project to add the note to
         note_text: The text to append to the project's notes
 
-    Returns a success message.
+    Returns:
+        Success message confirming note was appended
     """
     client = get_client()
     success = client.add_note(project_id, note_text)
@@ -704,7 +724,8 @@ def get_note(item_id: str, item_type: str = "project") -> str:
         item_id: The ID of the project or task
         item_type: Either "project" or "task" (default: "project")
 
-    Returns the full note content or a message if no note exists.
+    Returns:
+        The full note content as plain text (may be empty if no note exists)
     """
     client = get_client()
     note_content = client.get_note(item_id, item_type)
@@ -721,14 +742,15 @@ def get_note(item_id: str, item_type: str = "project") -> str:
 
 @mcp.tool()
 def delete_task(task_id: str) -> str:
-    """Delete a task from OmniFocus.
+    """Permanently remove a task from OmniFocus (cannot be undone).
 
     WARNING: This permanently deletes the task and cannot be undone.
 
     Args:
         task_id: The ID of the task to delete
 
-    Returns a success or error message.
+    Returns:
+        Success message confirming task deletion
     """
     client = get_client()
     try:
@@ -750,7 +772,8 @@ def delete_project(project_id: str) -> str:
     Args:
         project_id: The ID of the project to delete
 
-    Returns a success or error message.
+    Returns:
+        Success message confirming project deletion
     """
     client = get_client()
     try:
@@ -765,14 +788,15 @@ def delete_project(project_id: str) -> str:
 
 @mcp.tool()
 def delete_tasks(task_ids: list[str]) -> str:
-    """Delete multiple tasks from OmniFocus in a single operation.
+    """Delete multiple tasks from OmniFocus in a single operation (batch operation for efficiency).
 
     WARNING: This permanently deletes the tasks and cannot be undone.
 
     Args:
         task_ids: List of task IDs to delete
 
-    Returns a success message with count of deleted tasks.
+    Returns:
+        Summary of deleted tasks with count and any errors encountered
     """
     client = get_client()
     try:
@@ -784,14 +808,15 @@ def delete_tasks(task_ids: list[str]) -> str:
 
 @mcp.tool()
 def delete_projects(project_ids: list[str]) -> str:
-    """Delete multiple projects from OmniFocus in a single operation.
+    """Delete multiple projects from OmniFocus in a single operation (batch operation for efficiency).
 
     WARNING: This permanently deletes the projects and all their tasks. Cannot be undone.
 
     Args:
         project_ids: List of project IDs to delete
 
-    Returns a success message with count of deleted projects.
+    Returns:
+        Summary of deleted projects with count and any errors encountered
     """
     client = get_client()
     try:
@@ -813,7 +838,8 @@ def move_task(task_id: str, project_id: Optional[str] = None) -> str:
         task_id: The ID of the task to move
         project_id: The ID of the destination project, or omit/null to move to inbox
 
-    Returns a success or error message.
+    Returns:
+        Success message with task name and new location (project or inbox)
     """
     client = get_client()
     try:
@@ -831,13 +857,14 @@ def move_task(task_id: str, project_id: Optional[str] = None) -> str:
 
 @mcp.tool()
 def move_tasks(task_ids: list[str], project_id: Optional[str] = None) -> str:
-    """Move multiple tasks to a different project or to inbox in a single operation.
+    """Move multiple tasks to a different project or inbox in a single operation (more efficient than calling move_task repeatedly).
 
     Args:
         task_ids: List of task IDs to move
         project_id: The ID of the destination project, or omit/null to move to inbox
 
-    Returns a success message with count of moved tasks.
+    Returns:
+        Summary of moved tasks with count, destination, and any errors encountered
     """
     client = get_client()
     try:
@@ -860,7 +887,8 @@ def drop_task(task_id: str) -> str:
     Args:
         task_id: The ID of the task to drop
 
-    Returns a success or error message.
+    Returns:
+        Success message confirming task was dropped
     """
     client = get_client()
     try:
@@ -875,7 +903,7 @@ def drop_task(task_id: str) -> str:
 
 @mcp.tool()
 def drop_tasks(task_ids: list[str]) -> str:
-    """Drop multiple tasks (mark as on hold indefinitely) in a single operation.
+    """Drop multiple tasks (mark as on hold indefinitely) in a single operation (batch operation for efficiency).
 
     Dropping tasks is different from deleting them - the tasks remain in OmniFocus
     but are marked as on hold and won't appear in available task lists.
@@ -883,7 +911,8 @@ def drop_tasks(task_ids: list[str]) -> str:
     Args:
         task_ids: List of task IDs to drop
 
-    Returns a success message with count of dropped tasks.
+    Returns:
+        Summary of dropped tasks with count and any errors encountered
     """
     client = get_client()
     try:
@@ -901,7 +930,8 @@ def drop_tasks(task_ids: list[str]) -> str:
 def get_folders() -> str:
     """Get all folders from OmniFocus with their hierarchy.
 
-    Returns a formatted list of all folders with their paths.
+    Returns:
+        Formatted hierarchical list of all folders with indentation showing nesting
     """
     client = get_client()
     folders = client.get_folders()
@@ -928,7 +958,8 @@ def create_folder(name: str, parent_path: Optional[str] = None) -> str:
         name: The name of the folder to create
         parent_path: Optional parent folder path (e.g., "Work" or "Work > Clients")
 
-    Returns a success message with the folder ID.
+    Returns:
+        Success message with folder ID and full path
     """
     client = get_client()
     try:
@@ -953,7 +984,8 @@ def set_parent_task(task_id: str, parent_task_id: Optional[str] = None) -> str:
         task_id: The ID of the task to modify
         parent_task_id: The ID of the parent task, or omit/null to make it root-level
 
-    Returns a success or error message.
+    Returns:
+        Success message confirming the parent-child relationship
     """
     client = get_client()
     try:
@@ -981,7 +1013,8 @@ def set_review_interval(project_id: str, interval_weeks: int) -> str:
         project_id: The ID of the project
         interval_weeks: Review interval in weeks (e.g., 1 for weekly, 4 for monthly)
 
-    Returns a success or error message.
+    Returns:
+        Success message with new review interval and next review date
     """
     client = get_client()
     try:
@@ -1001,7 +1034,8 @@ def mark_project_reviewed(project_id: str) -> str:
     Args:
         project_id: The ID of the project
 
-    Returns a success or error message.
+    Returns:
+        Success message with updated review dates
     """
     client = get_client()
     try:
@@ -1018,7 +1052,8 @@ def mark_project_reviewed(project_id: str) -> str:
 def get_projects_due_for_review() -> str:
     """Get all projects that are due for review.
 
-    Returns a formatted list of projects needing review.
+    Returns:
+        Formatted list of projects needing review with last review date and next review date
     """
     client = get_client()
     projects = client.get_projects_due_for_review()
@@ -1051,7 +1086,8 @@ def set_estimated_minutes(task_id: str, minutes: int) -> str:
         task_id: The ID of the task
         minutes: Estimated time in minutes (0 to clear estimate)
 
-    Returns a success or error message.
+    Returns:
+        Success message with task name and new time estimate
     """
     client = get_client()
     try:
@@ -1075,7 +1111,8 @@ def set_estimated_minutes(task_id: str, minutes: int) -> str:
 def get_perspectives() -> str:
     """Get all perspective names from OmniFocus.
 
-    Returns a formatted list of perspectives (both built-in and custom).
+    Returns:
+        Formatted list of all perspective names (one per line)
     """
     client = get_client()
     perspectives = client.get_perspectives()
@@ -1097,7 +1134,8 @@ def switch_perspective(perspective_name: str) -> str:
     Args:
         perspective_name: Name of the perspective to switch to
 
-    Returns a success or error message.
+    Returns:
+        Success message confirming perspective switch
     """
     client = get_client()
     try:
