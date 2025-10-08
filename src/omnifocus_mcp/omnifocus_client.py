@@ -1468,6 +1468,59 @@ class OmniFocusClient:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error completing task: {e.stderr}")
 
+    def complete_tasks(self, task_ids: list[str]) -> int:
+        """Mark multiple tasks as completed in a single operation.
+
+        Args:
+            task_ids: List of task IDs to complete
+
+        Returns:
+            int: Number of tasks successfully completed
+
+        Raises:
+            ValueError: If task_ids is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('complete_tasks')
+
+        if not task_ids or len(task_ids) == 0:
+            raise ValueError("task_ids cannot be empty")
+
+        # Build AppleScript list of task IDs
+        ids_list = ", ".join([f'"{task_id}"' for task_id in task_ids])
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set taskIdList to {{{ids_list}}}
+                set successCount to 0
+
+                repeat with taskId in taskIdList
+                    try
+                        set theTask to first flattened task whose id is taskId
+                        if completed of theTask is false then
+                            set completed of theTask to true
+                            set successCount to successCount + 1
+                        end if
+                    on error
+                        -- Task not found or already completed, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error completing tasks: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing completion result: {e}")
+
     def update_task(
         self,
         task_id: str,
