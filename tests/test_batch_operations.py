@@ -204,3 +204,67 @@ class TestBatchTag:
 
             with pytest.raises(Exception, match="Error adding tag"):
                 client.add_tag_to_tasks(["task-001"], "urgent")
+
+
+class TestBatchDrop:
+    """Tests for batch task dropping operations."""
+
+    def test_drop_tasks_success(self, client):
+        """Test dropping multiple tasks successfully."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "3"  # 3 tasks dropped
+
+            task_ids = ["task-001", "task-002", "task-003"]
+            result = client.drop_tasks(task_ids)
+
+            assert result == 3
+            # Verify AppleScript was called
+            call_args = mock_run.call_args[0][0]
+            assert "task-001" in call_args
+            assert "task-002" in call_args
+            assert "task-003" in call_args
+            assert "dropped" in call_args.lower()
+
+    def test_drop_tasks_single(self, client):
+        """Test dropping a single task via batch operation."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+
+            result = client.drop_tasks(["task-001"])
+
+            assert result == 1
+
+    def test_drop_tasks_empty_list(self, client):
+        """Test that empty list raises ValueError."""
+        with pytest.raises(ValueError, match="task_ids cannot be empty"):
+            client.drop_tasks([])
+
+    def test_drop_tasks_partial_success(self, client):
+        """Test when some tasks drop but others don't exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "2"  # Only 2 of 3
+
+            task_ids = ["task-001", "task-002", "nonexistent"]
+            result = client.drop_tasks(task_ids)
+
+            assert result == 2
+
+    def test_drop_tasks_already_dropped(self, client):
+        """Test dropping tasks that are already dropped."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "0"  # Already dropped
+
+            result = client.drop_tasks(["dropped-task"])
+
+            assert result == 0
+
+    def test_drop_tasks_error(self, client):
+        """Test error handling in batch dropping."""
+        import subprocess
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            error = subprocess.CalledProcessError(1, 'osascript')
+            error.stderr = "OmniFocus error"
+            mock_run.side_effect = error
+
+            with pytest.raises(Exception, match="Error dropping tasks"):
+                client.drop_tasks(["task-001"])

@@ -2211,6 +2211,59 @@ class OmniFocusClient:
         except ValueError as e:
             raise Exception(f"Error parsing tag result: {e}")
 
+    def drop_tasks(self, task_ids: list[str]) -> int:
+        """Drop multiple tasks (mark as on hold indefinitely) in a single operation.
+
+        Args:
+            task_ids: List of task IDs to drop
+
+        Returns:
+            int: Number of tasks successfully dropped
+
+        Raises:
+            ValueError: If task_ids is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('drop_tasks')
+
+        if not task_ids or len(task_ids) == 0:
+            raise ValueError("task_ids cannot be empty")
+
+        # Build AppleScript list of task IDs
+        ids_list = ", ".join([f'"{task_id}"' for task_id in task_ids])
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set taskIdList to {{{ids_list}}}
+                set successCount to 0
+
+                repeat with taskId in taskIdList
+                    try
+                        set theTask to first flattened task whose id is taskId
+                        if dropped of theTask is false then
+                            set dropped of theTask to true
+                            set successCount to successCount + 1
+                        end if
+                    on error
+                        -- Task not found or already dropped, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error dropping tasks: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing drop result: {e}")
+
     def get_folders(self) -> list[dict]:
         """Get all folders from OmniFocus.
 
