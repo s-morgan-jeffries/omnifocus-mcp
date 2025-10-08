@@ -154,6 +154,44 @@ class OmniFocusClient:
         text = text.replace('"', '\\"')
         return text
 
+    def _filter_tasks_by_tags(self, tasks: list[dict[str, Any]], tag_filter: list[str], mode: str) -> list[dict[str, Any]]:
+        """Filter tasks by tags using boolean logic.
+
+        Args:
+            tasks: List of task dictionaries to filter
+            tag_filter: List of tag names to filter by
+            mode: Filtering mode - "and" (all tags), "or" (any tag), "not" (none of tags)
+
+        Returns:
+            Filtered list of tasks
+        """
+        filtered_tasks = []
+        # Normalize filter tags to lowercase for case-insensitive comparison
+        filter_tags_lower = [tag.lower() for tag in tag_filter]
+
+        for task in tasks:
+            # Parse task tags (comma-separated string)
+            task_tags_str = task.get('tags', '')
+            if task_tags_str:
+                task_tags = [t.strip().lower() for t in task_tags_str.split(',')]
+            else:
+                task_tags = []
+
+            if mode == "and":
+                # Task must have all of the filter tags
+                if all(tag in task_tags for tag in filter_tags_lower):
+                    filtered_tasks.append(task)
+            elif mode == "or":
+                # Task must have at least one of the filter tags
+                if any(tag in task_tags for tag in filter_tags_lower):
+                    filtered_tasks.append(task)
+            elif mode == "not":
+                # Task must not have any of the filter tags
+                if not any(tag in task_tags for tag in filter_tags_lower):
+                    filtered_tasks.append(task)
+
+        return filtered_tasks
+
     def _sort_tasks(self, tasks: list[dict[str, Any]], sort_by: str, sort_order: str) -> list[dict[str, Any]]:
         """Sort tasks by specified field and order.
 
@@ -813,6 +851,7 @@ class OmniFocusClient:
         max_estimated_minutes: Optional[int] = None,
         has_estimate: Optional[bool] = None,
         tag_filter: Optional[list[str]] = None,
+        tag_filter_mode: str = "and",
         sort_by: Optional[str] = None,
         sort_order: str = "asc"
     ) -> list[dict[str, Any]]:
@@ -831,7 +870,8 @@ class OmniFocusClient:
             defer_relative: Relative defer date filter - "today", "tomorrow", "this_week", "next_week"
             max_estimated_minutes: Only return tasks estimated at or under this many minutes
             has_estimate: If True, only return tasks with estimates; if False, only tasks without estimates
-            tag_filter: List of tag names to filter by (AND logic - task must have all tags)
+            tag_filter: List of tag names to filter by
+            tag_filter_mode: Tag filtering logic - "and" (all tags), "or" (any tag), "not" (none of tags) (default: "and")
             sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
 
@@ -839,8 +879,13 @@ class OmniFocusClient:
             list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, and tags
 
         Raises:
-            ValueError: If relative date filter value or sort parameters are invalid
+            ValueError: If relative date filter value, tag_filter_mode, or sort parameters are invalid
         """
+        # Validate tag filter mode
+        valid_tag_filter_modes = ["and", "or", "not"]
+        if tag_filter_mode not in valid_tag_filter_modes:
+            raise ValueError(f"Invalid tag_filter_mode value: {tag_filter_mode}. Must be one of: {valid_tag_filter_modes}")
+
         # Validate sort parameters
         valid_sort_by = ["name", "due_date", "defer_date", None]
         valid_sort_order = ["asc", "desc"]
@@ -1076,9 +1121,11 @@ class OmniFocusClient:
                         end if"""
 
         # Build tag filter
+        # Tag filtering: only use AppleScript for AND mode (existing behavior)
+        # OR and NOT modes will be filtered in Python after retrieval
         tag_check = ""
-        if tag_filter and len(tag_filter) > 0:
-            # Build AppleScript to check for all required tags
+        if tag_filter and len(tag_filter) > 0 and tag_filter_mode == "and":
+            # Build AppleScript to check for all required tags (AND logic)
             tag_checks = []
             for tag_name in tag_filter:
                 tag_escaped = tag_name.replace('"', '\\"')
@@ -1222,6 +1269,16 @@ class OmniFocusClient:
             result = run_applescript(script)
             if result:
                 tasks = json.loads(result)
+
+                # Apply Python-based tag filtering
+                # For AND mode: AppleScript already filtered, but we apply Python filter too for consistency in tests
+                # For OR/NOT modes: always filter in Python
+                if tag_filter and len(tag_filter) > 0:
+                    if tag_filter_mode == "and":
+                        # For AND mode, filter to ensure all tags are present (redundant if AppleScript worked, but needed for tests)
+                        tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
+                    elif tag_filter_mode in ["or", "not"]:
+                        tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
 
                 # Apply sorting if requested
                 if sort_by:
