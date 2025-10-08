@@ -901,6 +901,15 @@ class OmniFocusClient:
                             set AppleScript's text item delimiters to ""
                         end try
 
+                        -- Get estimated minutes
+                        set estimatedMins to "null"
+                        try
+                            set estMins to estimated minutes of t
+                            if estMins is not missing value and estMins is not 0 then
+                                set estimatedMins to estMins as text
+                            end if
+                        end try
+
                         -- Build JSON manually
                         set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -916,7 +925,8 @@ class OmniFocusClient:
                             "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                             "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
-                            "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\"" & ¬
+                            "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
+                            "\\"estimatedMinutes\\": " & estimatedMins & ¬
                             "}}"
 
                         if output is not "" then
@@ -1026,6 +1036,15 @@ class OmniFocusClient:
                     set AppleScript's text item delimiters to ""
                 end try
 
+                -- Get estimated minutes
+                set estimatedMins to "null"
+                try
+                    set estMins to estimated minutes of targetTask
+                    if estMins is not missing value and estMins is not 0 then
+                        set estimatedMins to estMins as text
+                    end if
+                end try
+
                 -- Build JSON manually
                 set jsonOutput to "{{" & ¬
                     "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -1039,7 +1058,8 @@ class OmniFocusClient:
                     "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                     "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                     "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
-                    "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\"" & ¬
+                    "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
+                    "\\"estimatedMinutes\\": " & estimatedMins & ¬
                     "}}"
 
                 return jsonOutput
@@ -1146,6 +1166,15 @@ class OmniFocusClient:
                                 set AppleScript's text item delimiters to ""
                             end try
 
+                            -- Get estimated minutes
+                            set estimatedMins to "null"
+                            try
+                                set estMins to estimated minutes of t
+                                if estMins is not missing value and estMins is not 0 then
+                                    set estimatedMins to estMins as text
+                                end if
+                            end try
+
                             -- Build JSON manually
                             set jsonLine to "{{" & ¬
                                 "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -1161,7 +1190,8 @@ class OmniFocusClient:
                                 "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                                 "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                                 "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
-                                "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\"" & ¬
+                                "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
+                                "\\"estimatedMinutes\\": " & estimatedMins & ¬
                                 "}}"
 
                             if output is not "" then

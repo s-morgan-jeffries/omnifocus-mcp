@@ -209,6 +209,8 @@ def get_tasks(
             result += f"Due: {task['dueDate']}\n"
         if task.get('deferDate'):
             result += f"Defer: {task['deferDate']}\n"
+        if task.get('estimatedMinutes'):
+            result += f"Estimated: {task['estimatedMinutes']} minutes\n"
         if task.get('tags'):
             result += f"Tags: {task['tags']}\n"
         if task.get('note'):
@@ -322,6 +324,8 @@ def get_subtasks(task_id: str) -> str:
             result += f"Due: {task['dueDate']}\n"
         if task.get('deferDate'):
             result += f"Defer: {task['deferDate']}\n"
+        if task.get('estimatedMinutes'):
+            result += f"Estimated: {task['estimatedMinutes']} minutes\n"
         if task.get('tags'):
             result += f"Tags: {task['tags']}\n"
         if task.get('note'):
