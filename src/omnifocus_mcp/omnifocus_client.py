@@ -5,13 +5,29 @@ import os
 from typing import Any, Optional
 
 
-def run_applescript(script: str) -> str:
-    """Execute AppleScript and return the result."""
+def run_applescript(script: str, timeout: int = 60) -> str:
+    """Execute AppleScript and return the result.
+
+    Args:
+        script: The AppleScript code to execute
+        timeout: Maximum seconds to wait (default: 60, max: 300)
+
+    Returns:
+        The stdout output from the AppleScript
+
+    Raises:
+        subprocess.TimeoutExpired: If script execution exceeds timeout
+        subprocess.CalledProcessError: If script execution fails
+    """
+    if timeout > 300:
+        raise ValueError("Timeout cannot exceed 300 seconds")
+
     result = subprocess.run(
         ["osascript", "-e", script],
         capture_output=True,
         text=True,
-        check=True
+        check=True,
+        timeout=timeout
     )
     return result.stdout.strip()
 
@@ -356,7 +372,8 @@ class OmniFocusClient:
         has_no_due_dates: Optional[bool] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
-        query: Optional[str] = None
+        query: Optional[str] = None,
+        timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
 
@@ -370,12 +387,14 @@ class OmniFocusClient:
             sort_by: Field to sort by - "name" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
             query: Optional search term to filter by name, note, or folder path (case-insensitive)
+            timeout: Maximum seconds to wait for AppleScript (default: 90). Increase for large project lists (100+)
 
         Returns:
             list: List of project dictionaries with id, name, status, folder, note, etc.
 
         Raises:
             ValueError: If date format or sort parameters are invalid
+            subprocess.TimeoutExpired: If AppleScript execution exceeds timeout
         """
         # Validate date formats
         from datetime import datetime
@@ -519,7 +538,7 @@ class OmniFocusClient:
         script = script.format(on_hold_check=on_hold_check)
 
         try:
-            result = run_applescript(script)
+            result = run_applescript(script, timeout=timeout)
             if result:
                 projects = json.loads(result)
 
@@ -1459,7 +1478,8 @@ class OmniFocusClient:
         sort_order: str = "asc",
         recurring_only: Optional[bool] = None,
         query: Optional[str] = None,
-        inbox_only: bool = False
+        inbox_only: bool = False,
+        timeout: int = 120
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
 
@@ -1487,12 +1507,14 @@ class OmniFocusClient:
             recurring_only: If True, only return recurring tasks; if False, only non-recurring tasks; if None, return all (default: None)
             query: Optional search term to filter by name or note (case-insensitive)
             inbox_only: Only return inbox tasks (default: False)
+            timeout: Maximum seconds to wait for AppleScript (default: 120). Increase for large task lists (500+)
 
         Returns:
             list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, tags, and recurring info
 
         Raises:
             ValueError: If relative date filter value, tag_filter_mode, date format, or sort parameters are invalid
+            subprocess.TimeoutExpired: If AppleScript execution exceeds timeout (increase timeout for large task lists)
         """
         # Validate date formats
         from datetime import datetime
@@ -1865,17 +1887,17 @@ class OmniFocusClient:
 
                         -- Get repetition info
                         set isRecurring to "false"
-                        set recurrence to ""
-                        set repetitionMethod to ""
+                        set recurrenceStr to ""
+                        set repetitionMethodStr to ""
                         try
                             set repRule to repetition rule of t
                             if repRule is not missing value then
                                 set isRecurring to "true"
                                 try
-                                    set recurrence to recurrence of repRule
+                                    set recurrenceStr to recurrence of repRule
                                 end try
                                 try
-                                    set repetitionMethod to (repetition method of repRule) as text
+                                    set repetitionMethodStr to (repetition method of repRule) as text
                                 end try
                             end if
                         end try
@@ -1898,8 +1920,8 @@ class OmniFocusClient:
                             "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
                             "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
                             "\\"isRecurring\\": " & isRecurring & ", " & ¬
-                            "\\"recurrence\\": \\"" & my escapeJSON(recurrence) & "\\", " & ¬
-                            "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethod) & "\\" " & ¬
+                            "\\"recurrence\\": \\"" & my escapeJSON(recurrenceStr) & "\\", " & ¬
+                            "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethodStr) & "\\" " & ¬
                             "}}"
 
                         if output is not "" then
@@ -1915,7 +1937,7 @@ class OmniFocusClient:
         ''' + APPLESCRIPT_JSON_HELPERS
 
         try:
-            result = run_applescript(script)
+            result = run_applescript(script, timeout=timeout)
             if result:
                 tasks = json.loads(result)
 

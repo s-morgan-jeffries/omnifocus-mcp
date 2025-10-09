@@ -22,9 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `get_projects(query="budget", status="active")` - Project search with filters
 
 ### Fixed
+- **Critical: AppleScript variable naming conflict** in `get_tasks()` repetition info extraction
+  - Variables `recurrence` and `repetitionMethod` conflicted with OmniFocus property names
+  - Caused ALL tasks to be skipped with error: "Can't set recurrence of document 1 to ''"
+  - Renamed to `recurrenceStr` and `repetitionMethodStr` to avoid conflicts
+  - Fixed `get_tasks()` returning 0 results for all queries
 - **Second AppleScript syntax error** in `get_tasks()` overdue filter
   - Fixed typo at line 1586: `eliftaskDueDate` → `else if taskDueDate`
   - Caused `get_tasks()` to return 0 results when overdue logic was evaluated
+- **Performance: Added timeout parameter** to prevent infinite hangs
+  - `run_applescript()` now accepts timeout parameter (default 60s, max 300s)
+  - `get_tasks()` timeout defaults to 120s (handles ~738 tasks in 13-17s)
+  - `get_projects()` timeout defaults to 90s
 
 ### Documentation
 - Updated README with consolidated API usage examples
