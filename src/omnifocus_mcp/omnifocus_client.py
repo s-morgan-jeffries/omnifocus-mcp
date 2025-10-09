@@ -2343,7 +2343,7 @@ class OmniFocusClient:
         tell application "OmniFocus"
             tell front document
                 set theTask to first flattened task whose id is "{task_id}"
-                set completed of theTask to true
+                mark complete theTask
                 return "true"
             end tell
         end tell
@@ -2390,7 +2390,7 @@ class OmniFocusClient:
                     try
                         set theTask to first flattened task whose id is taskId
                         if completed of theTask is false then
-                            set completed of theTask to true
+                            mark complete theTask
                             set successCount to successCount + 1
                         end if
                     on error

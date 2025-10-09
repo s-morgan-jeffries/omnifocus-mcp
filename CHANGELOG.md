@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Caused ALL tasks to be skipped with error: "Can't set recurrence of document 1 to ''"
   - Renamed to `recurrenceStr` and `repetitionMethodStr` to avoid conflicts
   - Fixed `get_tasks()` returning 0 results for all queries
+- **Complete recurring tasks** - Use `mark complete` instead of setting `completed` property
+  - Fixed error: "Can't set completed of inbox task to true" (-10006)
+  - Now works correctly with recurring tasks and inbox tasks
+  - Updated both `complete_task()` and `complete_tasks()` methods
 - **Second AppleScript syntax error** in `get_tasks()` overdue filter
   - Fixed typo at line 1586: `eliftaskDueDate` → `else if taskDueDate`
   - Caused `get_tasks()` to return 0 results when overdue logic was evaluated

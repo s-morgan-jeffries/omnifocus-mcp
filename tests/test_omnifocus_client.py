@@ -1076,10 +1076,10 @@ class TestCompleteTask:
             mock_run.return_value = "true"
             result = client.complete_task("task-001")
             assert result is True
-            # Verify the AppleScript contains task ID
+            # Verify the AppleScript contains task ID and mark complete command
             call_args = mock_run.call_args[0][0]
             assert 'whose id is "task-001"' in call_args
-            assert "completed" in call_args
+            assert "mark complete" in call_args
 
     def test_complete_task_failure(self, client):
         """Test handling of task completion failure."""
