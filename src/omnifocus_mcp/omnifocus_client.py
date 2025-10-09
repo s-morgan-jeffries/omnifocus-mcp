@@ -1583,7 +1583,7 @@ class OmniFocusClient:
                             set taskDueDate to due date of t
                             if taskDueDate is missing value then
                                 error "skip non-overdue task"
-                            eliftaskDueDate >= (current date) then
+                            else if taskDueDate >= (current date) then
                                 error "skip non-overdue task"
                             end if
                         on error

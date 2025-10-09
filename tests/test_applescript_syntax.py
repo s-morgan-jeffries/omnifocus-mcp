@@ -28,6 +28,7 @@ class TestAppleScriptSyntax:
         typos = [
             # Conditional statements
             ('elifintervalDays', 'else if intervalDays'),
+            ('eliftaskDueDate', 'else if taskDueDate'),
             ('elifinterval', 'else if interval'),
             ('elifthen', 'else if ... then'),
             ('elseifthen', 'else if ... then'),
