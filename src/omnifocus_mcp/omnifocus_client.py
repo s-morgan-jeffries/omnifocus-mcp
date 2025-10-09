@@ -114,13 +114,16 @@ class OmniFocusClient:
                 )
 
     def _verify_database_safety(self, operation_name: str) -> None:
-        """Verify we're not accidentally modifying production database.
+        """Verify we're using the correct database during test mode.
+
+        In production mode (default): All operations are allowed.
+        In test mode (OMNIFOCUS_TEST_MODE=true): Verifies the correct test database is open.
 
         Args:
             operation_name: Name of the operation being performed
 
         Raises:
-            DatabaseSafetyError: If safety checks fail
+            DatabaseSafetyError: If test mode is enabled but wrong database is open
         """
         # Skip if safety checks are disabled (for unit tests)
         if not self._safety_checks_enabled:
@@ -130,15 +133,12 @@ class OmniFocusClient:
         if operation_name not in self.DESTRUCTIVE_OPERATIONS:
             return
 
-        # For destructive operations, test mode must be enabled
+        # If in test mode, verify we're using the correct test database
         if not self._test_mode:
-            raise DatabaseSafetyError(
-                f"Cannot perform destructive operation '{operation_name}' without test mode. "
-                "Set OMNIFOCUS_TEST_MODE=true to enable testing with OmniFocus. "
-                "WARNING: Only use with a test database!"
-            )
+            # Production mode: no safety checks, allow the operation
+            return
 
-        # Verify we're using the correct test database via AppleScript
+        # Test mode: verify we're using the correct test database via AppleScript
         try:
             script = '''
             tell application "OmniFocus"

@@ -13,7 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Removed `get_inbox_tasks()`** - Use `get_tasks(inbox_only=True)` instead
   - **Enhanced `get_projects()`** - Added `query` parameter for text search
   - **Enhanced `get_tasks()`** - Added `query` and `inbox_only` parameters
-  - All 393 tests updated and passing
+  - All 378 tests updated and passing
+- **Safety Guards Removed from Production** - No longer block production database operations
+  - Production mode (default): All operations allowed without configuration
+  - Test mode (when `OMNIFOCUS_TEST_MODE=true`): Verifies correct test database is open
+  - Removed 16 obsolete tests that enforced blocking behavior
+  - Test mode still requires `OMNIFOCUS_TEST_DATABASE` to be set for safety
 
 ### Added
 - **Powerful Query Combinations** - New parameters enable advanced filtering:
