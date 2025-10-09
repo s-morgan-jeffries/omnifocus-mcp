@@ -64,9 +64,9 @@ class TestRealOmniFocusIntegration:
         print(f"\n✓ Found {len(projects)} projects in test database")
 
     def test_search_projects_real(self, client):
-        """Test searching projects in real OmniFocus."""
+        """Test searching projects with query parameter."""
         # Search for test projects (created by setup script)
-        results = client.search_projects("Test")
+        results = client.get_projects(query="Test")
 
         assert isinstance(results, list)
         # Should find at least one test project
@@ -90,12 +90,35 @@ class TestRealOmniFocusIntegration:
 
         print(f"\n✓ Found {len(tasks)} tasks in test database")
 
+    def test_get_tasks_with_query_real(self, client):
+        """Test getting tasks with query parameter (NEW in v0.5.0)."""
+        # Search for test tasks
+        tasks = client.get_tasks(query="Test")
+
+        assert isinstance(tasks, list)
+        # Should find at least one test task
+        assert len(tasks) > 0
+
+        # Verify all returned tasks contain "Test" in name or note
+        for task in tasks:
+            task_text = (task.get('name', '') + ' ' + task.get('note', '')).lower()
+            assert 'test' in task_text, f"Task {task['name']} doesn't contain 'test'"
+
+        print(f"\n✓ Query search found {len(tasks)} matching tasks")
+
     def test_get_inbox_tasks_real(self, client):
-        """Test getting inbox tasks from real OmniFocus."""
-        inbox_tasks = client.get_inbox_tasks()
+        """Test getting inbox tasks with inbox_only parameter."""
+        inbox_tasks = client.get_tasks(inbox_only=True)
 
         assert isinstance(inbox_tasks, list)
-        # May or may not have inbox tasks, just verify it works
+        # Should have at least one inbox task from setup script
+        assert len(inbox_tasks) > 0
+
+        # Verify all tasks have no project
+        for task in inbox_tasks:
+            assert task.get('projectName') in [None, '', 'N/A'], \
+                f"Inbox task should not have project: {task.get('projectName')}"
+
         print(f"\n✓ Found {len(inbox_tasks)} inbox tasks")
 
     def test_get_tags_real(self, client):

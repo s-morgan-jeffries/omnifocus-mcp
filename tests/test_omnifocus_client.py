@@ -400,7 +400,7 @@ class TestOmniFocusClient:
         """Test searching projects by name."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_projects_json
-            results = client.search_projects("quotes")
+            results = client.get_projects(query="quotes")
             assert len(results) == 1
             assert results[0]['name'] == 'Project with "quotes"'
 
@@ -408,7 +408,7 @@ class TestOmniFocusClient:
         """Test searching projects by note content."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_projects_json
-            results = client.search_projects("newlines")
+            results = client.get_projects(query="newlines")
             assert len(results) == 1
             assert "newlines" in results[0]['note']
 
@@ -416,7 +416,7 @@ class TestOmniFocusClient:
         """Test searching projects by folder path."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_projects_json
-            results = client.search_projects("Work")
+            results = client.get_projects(query="Work")
             assert len(results) == 1
             assert "Work" in results[0]['folderPath']
 
@@ -424,7 +424,7 @@ class TestOmniFocusClient:
         """Test that search is case-insensitive."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_projects_json
-            results = client.search_projects("TEST")
+            results = client.get_projects(query="TEST")
             assert len(results) == 1
             assert results[0]['name'] == "Test Project"
 
@@ -432,14 +432,14 @@ class TestOmniFocusClient:
         """Test searching with no matching results."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_projects_json
-            results = client.search_projects("nonexistent")
+            results = client.get_projects(query="nonexistent")
             assert results == []
 
     def test_search_projects_multiple_matches(self, client, sample_projects_json):
         """Test searching that matches multiple projects."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_projects_json
-            results = client.search_projects("Project")
+            results = client.get_projects(query="Project")
             assert len(results) == 2  # Both projects have "Project" in name
 
 
@@ -1262,7 +1262,7 @@ class TestInboxOperations:
         """Test getting inbox tasks."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_inbox_tasks_json
-            tasks = client.get_inbox_tasks()
+            tasks = client.get_tasks(inbox_only=True)
             assert len(tasks) == 2
             assert tasks[0]['id'] == "inbox-001"
             assert tasks[0]['name'] == "Quick Capture"
@@ -1270,10 +1270,10 @@ class TestInboxOperations:
             assert tasks[1]['flagged'] is True
 
     def test_get_inbox_tasks_includes_dropped_field(self, client, sample_inbox_tasks_json):
-        """Test that get_inbox_tasks includes the dropped field in the AppleScript and response."""
+        """Test that get_tasks(inbox_only=True) includes the dropped field in the AppleScript and response."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = sample_inbox_tasks_json
-            tasks = client.get_inbox_tasks()
+            tasks = client.get_tasks(inbox_only=True)
             # Verify dropped field is in returned data
             assert 'dropped' in tasks[0]
             assert tasks[0]['dropped'] is False
@@ -1287,7 +1287,7 @@ class TestInboxOperations:
         """Test handling of empty inbox."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "[]"
-            tasks = client.get_inbox_tasks()
+            tasks = client.get_tasks(inbox_only=True)
             assert tasks == []
 
     def test_get_inbox_tasks_subprocess_error(self, client):
@@ -1295,8 +1295,8 @@ class TestInboxOperations:
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
             with pytest.raises(Exception) as exc_info:
-                client.get_inbox_tasks()
-            assert "Error querying inbox tasks" in str(exc_info.value)
+                client.get_tasks(inbox_only=True)
+            assert "Error querying" in str(exc_info.value)
 
     def test_create_inbox_task_basic(self, client):
         """Test creating basic inbox task."""

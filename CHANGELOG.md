@@ -5,6 +5,32 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-10-09
+
+### Changed - BREAKING
+- **Tool Consolidation** - Reduced from 38 to 36 tools by eliminating redundant search wrappers
+  - **Removed `search_projects()`** - Use `get_projects(query="...")` instead
+  - **Removed `get_inbox_tasks()`** - Use `get_tasks(inbox_only=True)` instead
+  - **Enhanced `get_projects()`** - Added `query` parameter for text search
+  - **Enhanced `get_tasks()`** - Added `query` and `inbox_only` parameters
+  - All 393 tests updated and passing
+
+### Added
+- **Powerful Query Combinations** - New parameters enable advanced filtering:
+  - `get_tasks(query="mortgage", due_relative="this_week")` - Search with date filters
+  - `get_tasks(query="urgent", inbox_only=True, flagged_only=True)` - Complex inbox queries
+  - `get_projects(query="budget", status="active")` - Project search with filters
+
+### Fixed
+- **Second AppleScript syntax error** in `get_tasks()` overdue filter
+  - Fixed typo at line 1586: `eliftaskDueDate` → `else if taskDueDate`
+  - Caused `get_tasks()` to return 0 results when overdue logic was evaluated
+
+### Documentation
+- Updated README with consolidated API usage examples
+- Added tool consolidation analysis document
+- Updated all test documentation
+
 ## [0.4.0] - 2025-10-08
 
 ### Added

@@ -9,7 +9,6 @@ import omnifocus_mcp.server_fastmcp as server
 get_client = server.get_client
 get_projects = server.get_projects.fn
 get_project = server.get_project.fn
-search_projects = server.search_projects.fn
 create_project = server.create_project.fn
 set_project_status = server.set_project_status.fn
 get_stalled_projects = server.get_stalled_projects.fn
@@ -23,7 +22,6 @@ delete_task = server.delete_task.fn
 delete_project = server.delete_project.fn
 move_task = server.move_task.fn
 drop_task = server.drop_task.fn
-get_inbox_tasks = server.get_inbox_tasks.fn
 create_inbox_task = server.create_inbox_task.fn
 get_tags = server.get_tags.fn
 add_tag_to_task = server.add_tag_to_task.fn
@@ -111,21 +109,21 @@ class TestProjectTools:
             assert "Found 0 active projects" in result
 
     def test_search_projects_success(self):
-        """Test search_projects with results."""
+        """Test get_projects with query parameter."""
         mock_projects = [
             {"id": "proj-001", "name": "Budget Project", "status": "active"}
         ]
 
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.search_projects.return_value = mock_projects
+            mock_client.get_projects.return_value = mock_projects
             mock_get_client.return_value = mock_client
 
-            result = search_projects("budget")
+            result = get_projects(query="budget")
 
             assert "Found 1 projects matching 'budget'" in result
             assert "Budget Project" in result
-            mock_client.search_projects.assert_called_once_with("budget")
+            mock_client.get_projects.assert_called_once_with(on_hold_only=False, query="budget")
 
     def test_get_project_success(self):
         """Test get_project with successful retrieval."""
@@ -358,7 +356,9 @@ class TestTaskTools:
                 dropped_only=False,
                 blocked_only=False,
                 next_only=False,
-                tag_filter=["urgent"]
+                tag_filter=["urgent"],
+                query=None,
+                inbox_only=False
             )
 
     def test_get_tasks_dropped_only(self):
@@ -391,7 +391,9 @@ class TestTaskTools:
                 dropped_only=True,
                 blocked_only=False,
                 next_only=False,
-                tag_filter=None
+                tag_filter=None,
+                query=None,
+                inbox_only=False
             )
 
     def test_get_task_success(self):
@@ -547,23 +549,23 @@ class TestInboxTools:
     """Tests for inbox-related tools."""
 
     def test_get_inbox_tasks_success(self):
-        """Test get_inbox_tasks with results."""
+        """Test get_tasks with inbox_only parameter."""
         mock_tasks = [
             {"id": "task-001", "name": "Inbox Task", "completed": False}
         ]
 
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.get_inbox_tasks.return_value = mock_tasks
+            mock_client.get_tasks.return_value = mock_tasks
             mock_get_client.return_value = mock_client
 
-            result = get_inbox_tasks()
+            result = get_tasks(inbox_only=True)
 
             assert "Found 1 inbox tasks" in result
             assert "Inbox Task" in result
 
     def test_get_inbox_tasks_includes_dropped_status(self):
-        """Test that get_inbox_tasks output includes dropped status."""
+        """Test that get_tasks(inbox_only=True) output includes dropped status."""
         mock_tasks = [
             {
                 "id": "task-001",
@@ -581,10 +583,10 @@ class TestInboxTools:
 
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.get_inbox_tasks.return_value = mock_tasks
+            mock_client.get_tasks.return_value = mock_tasks
             mock_get_client.return_value = mock_client
 
-            result = get_inbox_tasks()
+            result = get_tasks(inbox_only=True)
 
             # Dropped task should show "Dropped: Yes"
             assert "Dropped: Yes" in result

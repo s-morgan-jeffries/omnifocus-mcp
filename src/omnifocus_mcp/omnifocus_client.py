@@ -355,7 +355,8 @@ class OmniFocusClient:
         has_overdue_tasks: Optional[bool] = None,
         has_no_due_dates: Optional[bool] = None,
         sort_by: Optional[str] = None,
-        sort_order: str = "asc"
+        sort_order: str = "asc",
+        query: Optional[str] = None
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
 
@@ -368,6 +369,7 @@ class OmniFocusClient:
             has_no_due_dates: If True, only return projects where no tasks have due dates
             sort_by: Field to sort by - "name" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
+            query: Optional search term to filter by name, note, or folder path (case-insensitive)
 
         Returns:
             list: List of project dictionaries with id, name, status, folder, note, etc.
@@ -539,6 +541,16 @@ class OmniFocusClient:
                         has_overdue_tasks,
                         has_no_due_dates
                     )
+
+                # Apply query filter if provided
+                if query:
+                    query_lower = query.lower()
+                    projects = [
+                        p for p in projects
+                        if query_lower in p.get('name', '').lower()
+                        or query_lower in p.get('note', '').lower()
+                        or query_lower in p.get('folderPath', '').lower()
+                    ]
 
                 # Apply sorting if requested
                 if sort_by:
@@ -1445,12 +1457,14 @@ class OmniFocusClient:
         modified_before: Optional[str] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
-        recurring_only: Optional[bool] = None
+        recurring_only: Optional[bool] = None,
+        query: Optional[str] = None,
+        inbox_only: bool = False
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
 
         Args:
-            project_id: Optional project ID to filter tasks. If None, returns all tasks.
+            project_id: Optional project ID to filter tasks. If None, returns all tasks (ignored if inbox_only=True).
             include_completed: Whether to include completed tasks (default: False)
             flagged_only: Only return flagged tasks (default: False)
             available_only: Only return available tasks (not blocked or deferred) (default: False)
@@ -1471,6 +1485,8 @@ class OmniFocusClient:
             sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
             recurring_only: If True, only return recurring tasks; if False, only non-recurring tasks; if None, return all (default: None)
+            query: Optional search term to filter by name or note (case-insensitive)
+            inbox_only: Only return inbox tasks (default: False)
 
         Returns:
             list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, tags, and recurring info
@@ -1515,8 +1531,10 @@ class OmniFocusClient:
         if defer_relative not in valid_defer_relative:
             raise ValueError(f"Invalid defer_relative value: {defer_relative}. Must be one of: {valid_defer_relative[:-1]}")
 
-        # Build project filter
-        if project_id:
+        # Build task source (inbox, project, or all tasks)
+        if inbox_only:
+            task_source = 'inbox tasks'
+        elif project_id:
             project_filter = f'whose id is "{project_id}"'
             task_source = f'tasks of (first flattened project {project_filter})'
         else:
@@ -1944,6 +1962,15 @@ class OmniFocusClient:
                         tasks = [t for t in tasks if t.get('isRecurring', False)]
                     else:
                         tasks = [t for t in tasks if not t.get('isRecurring', False)]
+
+                # Apply query filter if provided
+                if query:
+                    query_lower = query.lower()
+                    tasks = [
+                        t for t in tasks
+                        if query_lower in t.get('name', '').lower()
+                        or query_lower in t.get('note', '').lower()
+                    ]
 
                 # Apply sorting if requested
                 if sort_by:

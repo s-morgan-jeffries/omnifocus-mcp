@@ -103,47 +103,32 @@ def _format_project(proj: dict) -> str:
 # ============================================================================
 
 @mcp.tool()
-def get_projects(on_hold_only: bool = False) -> str:
-    """Retrieve ALL active projects with full details and hierarchy (no filtering by name/content).
+def get_projects(
+    on_hold_only: bool = False,
+    query: Optional[str] = None
+) -> str:
+    """Retrieve ALL active projects with full details and hierarchy, optionally filtered by search query.
 
     Args:
         on_hold_only: If True, only return projects with "on hold" status
+        query: Optional search term to filter by name, note, or folder path (case-insensitive)
 
     Returns:
         Formatted text with project list (one per line with ID, name, folder, status, and note preview)
     """
     client = get_client()
-    projects = client.get_projects(on_hold_only=on_hold_only)
+    projects = client.get_projects(on_hold_only=on_hold_only, query=query)
 
     if not projects:
+        if query:
+            return f"No projects found matching '{query}'"
         return "Found 0 active projects"
 
     # Format projects for display
-    result = f"Found {len(projects)} active projects:\n\n"
-    for proj in projects:
-        result += _format_project(proj)
-        result += "\n"
-
-    return result
-
-
-@mcp.tool()
-def search_projects(query: str) -> str:
-    """Find specific projects by searching name, note, or folder path (use when you know what you're looking for).
-
-    Args:
-        query: Search query to match against project names, notes, or folder paths
-
-    Returns:
-        Formatted text with matching projects (one per line with ID, name, folder, status, and note preview)
-    """
-    client = get_client()
-    projects = client.search_projects(query)
-
-    if not projects:
-        return f"No projects found matching '{query}'"
-
-    result = f"Found {len(projects)} projects matching '{query}':\n\n"
+    if query:
+        result = f"Found {len(projects)} projects matching '{query}':\n\n"
+    else:
+        result = f"Found {len(projects)} active projects:\n\n"
     for proj in projects:
         result += _format_project(proj)
         result += "\n"
@@ -263,12 +248,14 @@ def get_tasks(
     dropped_only: bool = False,
     blocked_only: bool = False,
     next_only: bool = False,
-    tag_filter: Optional[list[str]] = None
+    tag_filter: Optional[list[str]] = None,
+    query: Optional[str] = None,
+    inbox_only: bool = False
 ) -> str:
     """Get tasks from OmniFocus with optional filtering.
 
     Args:
-        project_id: Optional project ID to filter tasks
+        project_id: Optional project ID to filter tasks (ignored if inbox_only=True)
         flagged_only: If True, only return flagged tasks
         include_completed: If True, include completed tasks (default: False)
         available_only: If True, only return available tasks (not blocked or deferred)
@@ -277,6 +264,8 @@ def get_tasks(
         blocked_only: If True, only return blocked tasks
         next_only: If True, only return next tasks
         tag_filter: List of tag names to filter by (task must have all tags)
+        query: Optional search term to filter by name or note (case-insensitive)
+        inbox_only: If True, only return inbox tasks
 
     Returns:
         Formatted text with task list including ID, name, project, due date, tags, and completion status
@@ -291,13 +280,28 @@ def get_tasks(
         dropped_only=dropped_only,
         blocked_only=blocked_only,
         next_only=next_only,
-        tag_filter=tag_filter
+        tag_filter=tag_filter,
+        query=query,
+        inbox_only=inbox_only
     )
 
     if not tasks:
+        if query:
+            return f"No tasks found matching '{query}'"
+        elif inbox_only:
+            return "No tasks in inbox"
         return "Found 0 tasks"
 
-    result = f"Found {len(tasks)} tasks:\n\n"
+    # Build descriptive result message
+    if query and inbox_only:
+        result = f"Found {len(tasks)} inbox tasks matching '{query}':\n\n"
+    elif query:
+        result = f"Found {len(tasks)} tasks matching '{query}':\n\n"
+    elif inbox_only:
+        result = f"Found {len(tasks)} inbox tasks:\n\n"
+    else:
+        result = f"Found {len(tasks)} tasks:\n\n"
+
     for task in tasks:
         result += _format_task(task)
         result += "\n"
@@ -518,27 +522,6 @@ def complete_tasks(task_ids: list[str]) -> str:
 # ============================================================================
 # Inbox Tools
 # ============================================================================
-
-@mcp.tool()
-def get_inbox_tasks() -> str:
-    """Get all tasks from the OmniFocus inbox.
-
-    Returns:
-        Formatted text with all inbox tasks including ID, name, due date, and tags
-    """
-    client = get_client()
-    tasks = client.get_inbox_tasks()
-
-    if not tasks:
-        return "No tasks in inbox"
-
-    result = f"Found {len(tasks)} inbox tasks:\n\n"
-    for task in tasks:
-        result += _format_task(task)
-        result += "\n"
-
-    return result
-
 
 @mcp.tool()
 def create_inbox_task(

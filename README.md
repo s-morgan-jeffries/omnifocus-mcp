@@ -4,16 +4,15 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **26 comprehensive tools** for managing OmniFocus:
+This server provides **36 comprehensive tools** for managing OmniFocus:
 
 ### Project Management
-- **get_projects** - Get all active projects with folder hierarchy, names, notes, and status
-- **search_projects** - Search projects by name, note content, or folder path
+- **get_projects** - Get all active projects with folder hierarchy, names, notes, and status (supports query parameter for text search)
 - **create_project** - Create new projects with optional folder placement and sequential mode
 - **delete_project** - Delete a project and all its tasks
 
 ### Task Management
-- **get_tasks** - Get tasks with advanced filtering (flagged, available, overdue, by tag)
+- **get_tasks** - Get tasks with advanced filtering (flagged, available, overdue, by tag, text search, inbox-only)
 - **add_task** - Add new tasks with due dates, defer dates, flags, tags, and estimated time
 - **update_task** - Update any task properties (name, dates, flags, notes)
 - **complete_task** - Mark tasks as completed
@@ -24,8 +23,8 @@ This server provides **26 comprehensive tools** for managing OmniFocus:
 - **set_estimated_minutes** - Set time estimates for tasks
 
 ### Inbox Operations
-- **get_inbox_tasks** - Get all inbox tasks (tasks not in any project)
 - **create_inbox_task** - Quickly capture tasks to inbox
+- **Note:** Use `get_tasks(inbox_only=True)` to retrieve inbox tasks
 
 ### Folder & Organization
 - **get_folders** - Get all folders and their hierarchy
@@ -144,20 +143,21 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 **Project Management:**
 - "Show me all my OmniFocus projects"
-- "Search for projects related to 'budget'"
+- "Search for projects related to 'budget'" → uses `get_projects(query="budget")`
 - "Create a new project called 'Q1 Planning' in my Work folder"
 - "What projects are due for review?"
 
 **Task Management:**
 - "Add a task 'Review Q4 numbers' with a due date next Friday, flagged as important"
 - "Show me all available tasks that are overdue"
+- "Do I have a mortgage payment due this week?" → uses `get_tasks(query="mortgage", due_relative="this_week")`
 - "Mark task task-001 as complete"
 - "Move this task to my Personal project"
 - "Set time estimate for task-001 to 90 minutes"
 
 **Inbox & Quick Capture:**
 - "Add 'Call dentist' to my inbox"
-- "Show me what's in my inbox"
+- "Show me what's in my inbox" → uses `get_tasks(inbox_only=True)`
 
 **Organization:**
 - "Add the 'urgent' tag to task-001"
@@ -176,7 +176,7 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 ### Running Tests
 
-The project has comprehensive test coverage with **218 tests (204 passing, 14 skipped)** and **89% code coverage**:
+The project has comprehensive test coverage with **393 tests passing (13 skipped integration tests)**:
 
 ```bash
 # Activate virtual environment
