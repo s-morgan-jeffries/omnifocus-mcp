@@ -75,10 +75,8 @@ tell application "OmniFocus"
         make new tag with properties {name:"test-work"}
         make new tag with properties {name:"test-personal"}
 
-        -- Add an inbox task
-        tell inbox
-            make new task with properties {name:"Test Inbox Task"}
-        end tell
+        -- Add an inbox task (use inbox tasks instead of tell inbox)
+        make new inbox task with properties {name:"Test Inbox Task"}
     end tell
 end tell
 

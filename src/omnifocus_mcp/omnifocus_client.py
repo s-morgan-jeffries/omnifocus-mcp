@@ -150,9 +150,11 @@ class OmniFocusClient:
             result = run_applescript(script)
 
             # Check if the database name matches what we expect
-            if self._test_database not in result:
+            # OmniFocus returns name without .ofocus extension, so strip it for comparison
+            expected_name = self._test_database.replace('.ofocus', '')
+            if expected_name not in result:
                 raise DatabaseSafetyError(
-                    f"Database safety check FAILED! Expected '{self._test_database}' but got '{result}'. "
+                    f"Database safety check FAILED! Expected '{expected_name}' (from {self._test_database}) but got '{result}'. "
                     "This could mean you're about to modify your PRODUCTION database! "
                     "Operation blocked for safety."
                 )
@@ -2782,9 +2784,7 @@ class OmniFocusClient:
         script = f'''
         tell application "OmniFocus"
             tell front document
-                tell inbox
-                    set newTask to make new task with properties {{{properties_str}}}
-                end tell
+                set newTask to make new inbox task with properties {{{properties_str}}}
                 {date_command if date_command else ""}
                 {repetition_commands_str if repetition_commands else ""}
                 return "true"
