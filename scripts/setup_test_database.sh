@@ -50,16 +50,43 @@ echo -e "${GREEN}Creating test database...${NC}"
 echo ""
 
 # Create test database using AppleScript
-# This creates a minimal valid database structure
-osascript <<EOF
+# This creates comprehensive test data for 90% coverage
+osascript <<'EOF'
 tell application "OmniFocus"
-    -- Get the default document to ensure OmniFocus is running
     tell front document
-        -- Create some test data
-        set testFolder to make new folder with properties {name:"Test Projects"}
-        tell testFolder
-            set testProject to make new project with properties {name:"Test Project 1"}
-            tell testProject
+        -- Create folder hierarchy
+        set rootFolder to make new folder with properties {name:"Test Root Folder"}
+        set subFolder to make new folder with properties {name:"Test Sub Folder"}
+
+        -- Create diverse projects
+        tell rootFolder
+            -- Active project with multiple tasks
+            set activeProject to make new project with properties {name:"Active Test Project"}
+            tell activeProject
+                make new task with properties {name:"Task 1 - Flagged", flagged:true}
+                make new task with properties {name:"Task 2 - With Note", note:"This task has a detailed note"}
+                make new task with properties {name:"Task 3 - Available"}
+
+                -- Task with subtasks
+                set parentTask to make new task with properties {name:"Parent Task"}
+                tell parentTask
+                    make new task with properties {name:"Subtask 1"}
+                    make new task with properties {name:"Subtask 2"}
+                end tell
+            end tell
+
+            -- On-hold project
+            set onHoldProj to make new project with properties {name:"On Hold Test Project", status:on hold}
+            tell onHoldProj
+                make new task with properties {name:"Blocked Task"}
+            end tell
+
+            -- Completed project (will be marked done later)
+            set completedProj to make new project with properties {name:"Completed Test Project", status:done}
+
+            -- Test Project 1 and 2 for backwards compatibility
+            set testProject1 to make new project with properties {name:"Test Project 1"}
+            tell testProject1
                 make new task with properties {name:"Test Task 1", note:"This is a test task"}
                 make new task with properties {name:"Test Task 2"}
             end tell
@@ -70,17 +97,42 @@ tell application "OmniFocus"
             end tell
         end tell
 
-        -- Create some test tags
+        -- Project in subfolder
+        tell subFolder
+            set subProject to make new project with properties {name:"Subfolder Project"}
+            tell subProject
+                make new task with properties {name:"Subfolder Task"}
+            end tell
+        end tell
+
+        -- Create a standalone project (no folder)
+        set standaloneProj to make new project with properties {name:"Standalone Project"}
+        tell standaloneProj
+            make new task with properties {name:"Standalone Task 1"}
+            make new task with properties {name:"Standalone Task 2"}
+        end tell
+
+        -- Create diverse tags
+        make new tag with properties {name:"urgent"}
+        make new tag with properties {name:"work"}
+        make new tag with properties {name:"personal"}
+        make new tag with properties {name:"waiting"}
+        make new tag with properties {name:"someday"}
+        -- Backwards compatibility tags
         make new tag with properties {name:"test-urgent"}
         make new tag with properties {name:"test-work"}
         make new tag with properties {name:"test-personal"}
 
-        -- Add an inbox task (use inbox tasks instead of tell inbox)
+        -- Create inbox tasks with various states
+        make new inbox task with properties {name:"Inbox Task 1"}
+        make new inbox task with properties {name:"Inbox Task 2 - Flagged", flagged:true}
+        make new inbox task with properties {name:"Inbox Task 3 - With Note", note:"Inbox note"}
+        -- Backwards compatibility
         make new inbox task with properties {name:"Test Inbox Task"}
+
+        return "Comprehensive test data created successfully"
     end tell
 end tell
-
-return "Test data created"
 EOF
 
 if [ $? -eq 0 ]; then
