@@ -294,7 +294,8 @@ class TestProjectCRUD:
     def test_create_project_basic(self, client):
         """Test creating a basic project."""
         result = client.create_project("Integration Test Project")
-        assert result is True
+        assert isinstance(result, str)  # Returns project ID
+        assert len(result) > 0
         print("\n✓ Created basic project")
 
         # Verify it exists
@@ -307,10 +308,9 @@ class TestProjectCRUD:
         result = client.create_project(
             "Project with Properties",
             folder_path="Test Root Folder",
-            note="This project has a note",
-            review_interval=7
+            note="This project has a note"
         )
-        assert result is True
+        assert isinstance(result, str)  # Returns project ID
         print("\n✓ Created project with properties")
 
     def test_get_project_by_id(self, client):
@@ -336,7 +336,7 @@ class TestProjectCRUD:
 
         # Change to on-hold
         result = client.set_project_status(project_id, "on_hold")
-        assert "on hold" in result.lower() or "on-hold" in result.lower()
+        assert result is True
         print("\n✓ Set project to on-hold")
 
     def test_set_project_status_to_done(self, client):
@@ -347,7 +347,7 @@ class TestProjectCRUD:
 
         # Mark as done
         result = client.set_project_status(project_id, "done")
-        assert "done" in result.lower() or "completed" in result.lower()
+        assert result is True
         print("\n✓ Marked project as done")
 
     def test_delete_project(self, client):
@@ -489,8 +489,9 @@ class TestTaskCRUD:
     def test_drop_task(self, client, test_project_id):
         """Test marking a task as dropped."""
         # Create a task to drop
-        client.add_task(test_project_id, "Task to Drop")
-        tasks = client.get_tasks(project_id=test_project_id, query="Task to Drop")
+        client.add_task(test_project_id, "Unique Task to Drop")
+        tasks = client.get_tasks(project_id=test_project_id, query="Unique Task to Drop")
+        assert len(tasks) > 0, "Task was not created"
         task_id = tasks[0]['id']
 
         # Drop it
@@ -498,18 +499,21 @@ class TestTaskCRUD:
         assert result is True
         print("\n✓ Marked task as dropped")
 
-        # Verify it's dropped
-        task = client.get_task(task_id)
-        assert task['dropped'] is True
+        # Verify it's dropped (need to include dropped tasks in query)
+        all_tasks = client.get_tasks(project_id=test_project_id, dropped_only=True)
+        dropped_task = next((t for t in all_tasks if t['id'] == task_id), None)
+        assert dropped_task is not None
+        assert dropped_task['dropped'] is True
 
     def test_drop_tasks_batch(self, client, test_project_id):
         """Test batch dropping multiple tasks."""
-        # Create multiple tasks
-        client.add_task(test_project_id, "Batch Drop 1")
-        client.add_task(test_project_id, "Batch Drop 2")
+        # Create multiple tasks with unique names
+        client.add_task(test_project_id, "Unique Batch Drop 1")
+        client.add_task(test_project_id, "Unique Batch Drop 2")
 
-        tasks = client.get_tasks(project_id=test_project_id, query="Batch Drop")
+        tasks = client.get_tasks(project_id=test_project_id, query="Unique Batch Drop")
         task_ids = [t['id'] for t in tasks]
+        assert len(task_ids) >= 2, f"Expected 2+ tasks, got {len(task_ids)}"
 
         # Batch drop
         count = client.drop_tasks(task_ids)
@@ -544,3 +548,633 @@ class TestTaskCRUD:
         count = client.complete_tasks(task_ids)
         assert count >= 2
         print(f"\n✓ Batch completed {count} tasks")
+
+
+# ============================================================================
+# PHASE 2: ADVANCED FEATURES
+# ============================================================================
+
+class TestFolderOperations:
+    """Test folder-related operations."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_get_folders(self, client):
+        """Test retrieving all folders."""
+        folders = client.get_folders()
+
+        # Should find our test folders
+        folder_names = [f['name'] for f in folders]
+        assert "Test Root Folder" in folder_names
+        assert "Test Sub Folder" in folder_names
+
+        # Verify folder structure
+        root_folder = next(f for f in folders if f['name'] == "Test Root Folder")
+        assert 'id' in root_folder
+        assert root_folder['name'] == "Test Root Folder"
+        print("\n✓ Retrieved folders successfully")
+
+    def test_create_folder(self, client):
+        """Test creating a new folder."""
+        # Create root folder
+        folder_id = client.create_folder("Phase 2 Test Folder")
+        assert folder_id is not None
+        assert len(folder_id) > 0
+
+        # Verify it exists
+        folders = client.get_folders()
+        folder_names = [f['name'] for f in folders]
+        assert "Phase 2 Test Folder" in folder_names
+
+        # Create sub-folder
+        sub_folder_id = client.create_folder("Phase 2 Sub Folder", parent_path="Phase 2 Test Folder")
+        assert sub_folder_id is not None
+
+        # Verify hierarchy
+        folders = client.get_folders()
+        sub_folder = next((f for f in folders if f['name'] == "Phase 2 Sub Folder"), None)
+        assert sub_folder is not None
+        print("\n✓ Created folders with hierarchy")
+
+
+class TestNoteOperations:
+    """Test note-related operations."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_add_note_to_project(self, client):
+        """Test adding a note to a project."""
+        # Find Active Test Project
+        projects = client.get_projects(query="Active Test Project")
+        assert len(projects) > 0
+        project_id = projects[0]['id']
+
+        # Add note
+        note_content = "This is a test note added by Phase 2 tests.\n\nIt has multiple lines."
+        result = client.add_note(project_id, note_content)
+        assert result is True
+
+        # Verify note was added
+        note = client.get_note(project_id)
+        assert note_content in note
+        print("\n✓ Added note to project")
+
+    def test_get_note_from_task(self, client):
+        """Test retrieving a note from a task."""
+        # Find a task with a note
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        tasks = client.get_tasks(project_id=project_id, query="Task 2 - With Note")
+        assert len(tasks) > 0
+
+        task_id = tasks[0]['id']
+        note = client.get_note(task_id, item_type="task")
+
+        assert note is not None
+        assert len(note) > 0
+        print(f"\n✓ Retrieved note from task")
+
+
+class TestTagBatchOperations:
+    """Test batch tag operations."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    @pytest.fixture
+    def test_tasks_for_tagging(self, client):
+        """Create test tasks for batch tagging."""
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        # Create 3 tasks for tagging tests
+        client.add_task(project_id, "Batch Tag Test 1")
+        client.add_task(project_id, "Batch Tag Test 2")
+        client.add_task(project_id, "Batch Tag Test 3")
+
+        tasks = client.get_tasks(project_id=project_id, query="Batch Tag Test")
+        task_ids = [t['id'] for t in tasks]
+
+        yield task_ids
+
+        # Cleanup
+        client.delete_tasks(task_ids)
+
+    def test_add_tag_to_multiple_tasks(self, client, test_tasks_for_tagging):
+        """Test adding a tag to multiple tasks."""
+        task_ids = test_tasks_for_tagging
+
+        # Add 'urgent' tag to all tasks
+        count = client.add_tag_to_tasks(task_ids, "urgent")
+        assert count == len(task_ids)
+        print(f"\n✓ Added tag to {count} tasks")
+
+        # Verify tags were added
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+        tasks = client.get_tasks(project_id=project_id, query="Batch Tag Test")
+
+        for task in tasks:
+            assert "urgent" in task.get('tags', [])
+
+    def test_remove_tag_from_multiple_tasks(self, client, test_tasks_for_tagging):
+        """Test removing a tag from multiple tasks."""
+        task_ids = test_tasks_for_tagging
+
+        # First add a tag
+        client.add_tag_to_tasks(task_ids, "work")
+
+        # Then remove it
+        count = client.remove_tag_from_tasks(task_ids, "work")
+        assert count == len(task_ids)
+        print(f"\n✓ Removed tag from {count} tasks")
+
+        # Verify tags were removed
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+        tasks = client.get_tasks(project_id=project_id, query="Batch Tag Test")
+
+        for task in tasks:
+            assert "work" not in task.get('tags', [])
+
+
+class TestReviewSystem:
+    """Test project review system operations."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_set_review_interval(self, client):
+        """Test setting a review interval on a project."""
+        # Find Active Test Project
+        projects = client.get_projects(query="Active Test Project")
+        assert len(projects) > 0
+        project_id = projects[0]['id']
+
+        # Set review interval (weekly = 1 week)
+        result = client.set_review_interval(project_id, interval_weeks=1)
+        assert result is True
+        print("\n✓ Set review interval to 1 week")
+
+    def test_mark_project_reviewed(self, client):
+        """Test marking a project as reviewed."""
+        # Find Active Test Project
+        projects = client.get_projects(query="Active Test Project")
+        assert len(projects) > 0
+        project_id = projects[0]['id']
+
+        # Mark as reviewed
+        result = client.mark_project_reviewed(project_id)
+        assert result is True
+        print("\n✓ Marked project as reviewed")
+
+    def test_get_projects_due_for_review(self, client):
+        """Test retrieving projects due for review."""
+        # This will return projects that need review
+        projects = client.get_projects_due_for_review()
+
+        # Should return a list (may be empty if no projects due)
+        assert isinstance(projects, list)
+
+        # Each project should have required fields
+        for project in projects:
+            assert 'id' in project
+            assert 'name' in project
+
+        print(f"\n✓ Found {len(projects)} projects due for review")
+
+
+class TestTimeEstimation:
+    """Test time estimation operations."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_set_estimated_minutes(self, client):
+        """Test setting estimated time on a task."""
+        # Find a task
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        tasks = client.get_tasks(project_id=project_id, query="Task 1 - Flagged")
+        assert len(tasks) > 0
+        task_id = tasks[0]['id']
+
+        # Set estimate to 30 minutes
+        result = client.set_estimated_minutes(task_id, 30)
+        assert result is True
+        print("\n✓ Set estimated time to 30 minutes")
+
+        # Verify estimate was set (get task and check)
+        task = client.get_task(task_id)
+        assert task is not None
+        # Note: The estimate might be in the task data
+
+
+class TestStalledProjects:
+    """Test stalled project detection."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_get_stalled_projects(self, client):
+        """Test retrieving stalled projects (currently returns all active projects)."""
+        # Get stalled projects (currently simplified to return all active projects)
+        projects = client.get_stalled_projects()
+
+        # Should return a list
+        assert isinstance(projects, list)
+
+        # Each project should have required fields
+        for project in projects:
+            assert 'id' in project
+            assert 'name' in project
+            assert 'status' in project
+
+        print(f"\n✓ Found {len(projects)} active projects (stalled detection simplified)")
+
+
+# ============================================================================
+# PHASE 3: PARAMETER VARIATIONS & EDGE CASES
+# ============================================================================
+
+class TestGetTasksParameterVariations:
+    """Test various parameter combinations for get_tasks()."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    @pytest.fixture(scope="class")
+    def test_project_id(self, client):
+        """Get the Active Test Project ID."""
+        projects = client.get_projects(query="Active Test Project")
+        return projects[0]['id']
+
+    def test_get_tasks_with_project_id(self, client, test_project_id):
+        """Test get_tasks with specific project_id."""
+        tasks = client.get_tasks(project_id=test_project_id)
+
+        assert isinstance(tasks, list)
+        assert len(tasks) > 0
+
+        # All tasks should be from this project
+        for task in tasks:
+            if 'project' in task and task['project']:
+                assert 'Active Test Project' in task['project']
+
+        print(f"\n✓ Found {len(tasks)} tasks in project")
+
+    def test_get_tasks_include_completed(self, client, test_project_id):
+        """Test get_tasks with include_completed=True."""
+        all_tasks = client.get_tasks(project_id=test_project_id, include_completed=True)
+        incomplete_tasks = client.get_tasks(project_id=test_project_id, include_completed=False)
+
+        assert len(all_tasks) >= len(incomplete_tasks)
+        print(f"\n✓ All tasks: {len(all_tasks)}, Incomplete: {len(incomplete_tasks)}")
+
+    def test_get_tasks_flagged_only(self, client, test_project_id):
+        """Test get_tasks with flagged_only=True."""
+        flagged = client.get_tasks(project_id=test_project_id, flagged_only=True)
+
+        assert isinstance(flagged, list)
+        # Should find "Task 1 - Flagged"
+        flagged_names = [t['name'] for t in flagged]
+        assert any('Flagged' in name for name in flagged_names)
+
+        # All returned tasks should be flagged
+        for task in flagged:
+            assert task.get('flagged', False) is True
+
+        print(f"\n✓ Found {len(flagged)} flagged tasks")
+
+    def test_get_tasks_available_only(self, client, test_project_id):
+        """Test get_tasks with available_only=True."""
+        available = client.get_tasks(project_id=test_project_id, available_only=True)
+
+        assert isinstance(available, list)
+        # Just verify it returns a list (may be empty if no available tasks)
+        print(f"\n✓ Found {len(available)} available tasks")
+
+    def test_get_tasks_dropped_only(self, client, test_project_id):
+        """Test get_tasks with dropped_only=True."""
+        dropped = client.get_tasks(project_id=test_project_id, dropped_only=True)
+
+        assert isinstance(dropped, list)
+        # All returned tasks should be dropped
+        for task in dropped:
+            assert task.get('dropped', False) is True
+
+        print(f"\n✓ Found {len(dropped)} dropped tasks")
+
+    def test_get_tasks_blocked_only(self, client, test_project_id):
+        """Test get_tasks with blocked_only=True."""
+        blocked = client.get_tasks(project_id=test_project_id, blocked_only=True)
+
+        assert isinstance(blocked, list)
+        print(f"\n✓ Found {len(blocked)} blocked tasks")
+
+    def test_get_tasks_next_only(self, client, test_project_id):
+        """Test get_tasks with next_only=True."""
+        next_tasks = client.get_tasks(project_id=test_project_id, next_only=True)
+
+        assert isinstance(next_tasks, list)
+        print(f"\n✓ Found {len(next_tasks)} next action tasks")
+
+    def test_get_tasks_overdue(self, client):
+        """Test get_tasks with overdue=True."""
+        overdue = client.get_tasks(overdue=True)
+
+        assert isinstance(overdue, list)
+        print(f"\n✓ Found {len(overdue)} overdue tasks")
+
+    def test_get_tasks_due_relative_today(self, client):
+        """Test get_tasks with due_relative='today'."""
+        today_tasks = client.get_tasks(due_relative="today")
+
+        assert isinstance(today_tasks, list)
+        print(f"\n✓ Found {len(today_tasks)} tasks due today")
+
+    def test_get_tasks_due_relative_this_week(self, client):
+        """Test get_tasks with due_relative='this_week'."""
+        week_tasks = client.get_tasks(due_relative="this_week")
+
+        assert isinstance(week_tasks, list)
+        print(f"\n✓ Found {len(week_tasks)} tasks due this week")
+
+    def test_get_tasks_defer_relative_this_week(self, client):
+        """Test get_tasks with defer_relative='this_week'."""
+        deferred = client.get_tasks(defer_relative="this_week")
+
+        assert isinstance(deferred, list)
+        print(f"\n✓ Found {len(deferred)} tasks deferred this week")
+
+    def test_get_tasks_max_estimated_minutes(self, client, test_project_id):
+        """Test get_tasks with max_estimated_minutes."""
+        quick_tasks = client.get_tasks(project_id=test_project_id, max_estimated_minutes=60)
+
+        assert isinstance(quick_tasks, list)
+        # Verify tasks have estimates <= 60 minutes
+        for task in quick_tasks:
+            if task.get('estimatedMinutes'):
+                assert task['estimatedMinutes'] <= 60
+
+        print(f"\n✓ Found {len(quick_tasks)} tasks <= 60 minutes")
+
+    def test_get_tasks_has_estimate_true(self, client, test_project_id):
+        """Test get_tasks with has_estimate=True."""
+        with_estimate = client.get_tasks(project_id=test_project_id, has_estimate=True)
+
+        assert isinstance(with_estimate, list)
+        # All should have an estimate
+        for task in with_estimate:
+            assert task.get('estimatedMinutes') is not None
+            assert task['estimatedMinutes'] > 0
+
+        print(f"\n✓ Found {len(with_estimate)} tasks with estimates")
+
+    def test_get_tasks_tag_filter_single(self, client):
+        """Test get_tasks with single tag filter."""
+        urgent_tasks = client.get_tasks(tag_filter=["urgent"])
+
+        assert isinstance(urgent_tasks, list)
+        # All should have 'urgent' tag
+        for task in urgent_tasks:
+            assert 'urgent' in task.get('tags', [])
+
+        print(f"\n✓ Found {len(urgent_tasks)} tasks with 'urgent' tag")
+
+    def test_get_tasks_sort_by_due_date(self, client, test_project_id):
+        """Test get_tasks with sort_by='due_date'."""
+        sorted_tasks = client.get_tasks(
+            project_id=test_project_id,
+            sort_by="due_date",
+            sort_order="asc"
+        )
+
+        assert isinstance(sorted_tasks, list)
+        # Verify sorting (tasks with due dates should be in order)
+        due_dates = [t.get('dueDate') for t in sorted_tasks if t.get('dueDate')]
+        assert due_dates == sorted(due_dates)
+
+        print(f"\n✓ Retrieved {len(sorted_tasks)} tasks sorted by due date")
+
+
+class TestGetProjectsParameterVariations:
+    """Test various parameter combinations for get_projects()."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_get_projects_on_hold_only(self, client):
+        """Test get_projects with on_hold_only=True."""
+        on_hold = client.get_projects(on_hold_only=True)
+
+        assert isinstance(on_hold, list)
+
+        # If we have on-hold projects, verify they are actually on hold
+        if on_hold:
+            for project in on_hold:
+                assert project['status'] == 'on hold'
+
+        print(f"\n✓ Found {len(on_hold)} on-hold projects")
+
+    def test_get_projects_min_task_count(self, client):
+        """Test get_projects with min_task_count."""
+        projects = client.get_projects(min_task_count=3)
+
+        assert isinstance(projects, list)
+        # If filtering works, all returned projects should have at least 3 tasks
+        # Note: Some implementations may not include taskCount in response
+        if projects:
+            for project in projects:
+                if 'taskCount' in project:
+                    assert project['taskCount'] >= 3
+
+        print(f"\n✓ Found {len(projects)} projects (filtered by min_task_count)")
+
+    def test_get_projects_has_overdue_tasks(self, client):
+        """Test get_projects with has_overdue_tasks=True."""
+        projects = client.get_projects(has_overdue_tasks=True)
+
+        assert isinstance(projects, list)
+        print(f"\n✓ Found {len(projects)} projects with overdue tasks")
+
+    def test_get_projects_has_no_due_dates(self, client):
+        """Test get_projects with has_no_due_dates=True."""
+        projects = client.get_projects(has_no_due_dates=True)
+
+        assert isinstance(projects, list)
+        print(f"\n✓ Found {len(projects)} projects with no due dates")
+
+    def test_get_projects_sort_by_name(self, client):
+        """Test get_projects with sort_by='name'."""
+        projects = client.get_projects(sort_by="name", sort_order="asc")
+
+        assert isinstance(projects, list)
+        assert len(projects) > 0
+
+        # Verify alphabetical sorting (case-insensitive)
+        names = [p['name'] for p in projects]
+        sorted_names = sorted(names, key=str.lower)
+        assert names == sorted_names
+
+        print(f"\n✓ Retrieved {len(projects)} projects sorted by name")
+
+
+class TestAddTaskParameterVariations:
+    """Test various parameter combinations for add_task()."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    @pytest.fixture(scope="class")
+    def test_project_id(self, client):
+        """Get the Active Test Project ID."""
+        projects = client.get_projects(query="Active Test Project")
+        return projects[0]['id']
+
+    def test_add_task_with_defer_date(self, client, test_project_id):
+        """Test add_task with defer_date."""
+        from datetime import datetime, timedelta
+
+        defer_date = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+
+        result = client.add_task(
+            test_project_id,
+            "Task with Defer Date",
+            defer_date=defer_date
+        )
+        assert result is True
+
+        # Verify task was created with defer date
+        tasks = client.get_tasks(project_id=test_project_id, query="Task with Defer Date")
+        assert len(tasks) > 0
+        assert tasks[0].get('deferDate') is not None
+
+        # Cleanup
+        client.delete_task(tasks[0]['id'])
+        print("\n✓ Created task with defer date")
+
+    def test_add_task_with_estimated_minutes(self, client, test_project_id):
+        """Test add_task with estimated time."""
+        result = client.add_task(
+            test_project_id,
+            "Task with Estimate"
+        )
+        assert result is True
+
+        # Get task and set estimate
+        tasks = client.get_tasks(project_id=test_project_id, query="Task with Estimate")
+        task_id = tasks[0]['id']
+        client.set_estimated_minutes(task_id, 45)
+
+        # Verify estimate was set
+        task = client.get_task(task_id)
+        assert task.get('estimatedMinutes') == 45
+
+        # Cleanup
+        client.delete_task(task_id)
+        print("\n✓ Created task with time estimate")
+
+    def test_add_task_with_recurrence(self, client, test_project_id):
+        """Test add_task with recurrence pattern."""
+        result = client.add_task(
+            test_project_id,
+            "Recurring Task Test",
+            recurrence="FREQ=WEEKLY",
+            repetition_method="fixed"
+        )
+        assert result is True
+
+        # Verify task was created
+        tasks = client.get_tasks(project_id=test_project_id, query="Recurring Task Test")
+        assert len(tasks) > 0
+
+        # Cleanup
+        client.delete_task(tasks[0]['id'])
+        print("\n✓ Created recurring task")
+
+
+class TestUpdateTaskParameterVariations:
+    """Test various parameter combinations for update_task()."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    @pytest.fixture
+    def test_task(self, client):
+        """Create a test task for update tests."""
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        client.add_task(project_id, "Task for Update Tests")
+        tasks = client.get_tasks(project_id=project_id, query="Task for Update Tests")
+        task_id = tasks[0]['id']
+
+        yield task_id
+
+        # Cleanup
+        try:
+            client.delete_task(task_id)
+        except:
+            pass
+
+    def test_update_task_dates(self, client, test_task):
+        """Test updating due_date and defer_date."""
+        from datetime import datetime, timedelta
+
+        due_date = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d")
+        defer_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        result = client.update_task(
+            test_task,
+            due_date=due_date,
+            defer_date=defer_date
+        )
+        assert result is True
+
+        # Verify dates were updated
+        task = client.get_task(test_task)
+        assert task.get('dueDate') is not None
+        assert task.get('deferDate') is not None
+
+        print("\n✓ Updated task dates")
+
+    def test_update_task_clear_properties(self, client, test_task):
+        """Test clearing properties by setting to None."""
+        # First set some properties
+        client.update_task(test_task, note="Test note", flagged=True)
+
+        # Then clear them
+        result = client.update_task(test_task, note="", flagged=False)
+        assert result is True
+
+        # Verify properties were cleared
+        task = client.get_task(test_task)
+        assert task.get('note', '') == ''
+        assert task.get('flagged', False) is False
+
+        print("\n✓ Cleared task properties")

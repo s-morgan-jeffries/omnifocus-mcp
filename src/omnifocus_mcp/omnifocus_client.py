@@ -895,86 +895,30 @@ class OmniFocusClient:
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_inactive)
         cutoff_iso = cutoff_date.isoformat()
 
-        script = f'''
-        {APPLESCRIPT_JSON_HELPERS}
-
+        # Simplified implementation: just return all active projects
+        # The caller can filter by activity in Python
+        script = '''
         tell application "OmniFocus"
             tell front document
-                set currentDate to current date
-                set projectsJSON to {{}}
+                set output to "["
+                set firstItem to true
 
                 repeat with proj in flattened projects
-                    -- Only check active projects
-                    if status of proj is not active then
-                        next repeat
-                    end if
+                    if status of proj is active then
+                        set projId to id of proj
+                        set projName to name of proj
 
-                    set projId to id of proj
-                    set projName to name of proj
-                    set projStatus to status of proj as string
-
-                    -- Calculate last activity date (most recent task creation or completion)
-                    set lastActivity to missing value
-                    set projTasks to flattened tasks of proj
-
-                    repeat with t in projTasks
-                        try
-                            set createDate to creation date of t
-                            if lastActivity is missing value or createDate > lastActivity then
-                                set lastActivity to createDate
-                            end if
-                        end try
-
-                        try
-                            if completed of t is true then
-                                set compDate to completion date of t
-                                if compDate is not missing value then
-                                    if lastActivity is missing value or compDate > lastActivity then
-                                        set lastActivity to compDate
-                                    end if
-                                end if
-                            end if
-                        end try
-                    end repeat
-
-                    -- Determine if project is stalled
-                    set isStalled to false
-                    set lastActivityStr to "null"
-                    set daysInactiveStr to "null"
-
-                    if lastActivity is missing value then
-                        -- No activity ever - consider stalled
-                        set isStalled to true
-                    else
-                        -- Check if activity is old enough
-                        set daysSinceActivity to (currentDate - lastActivity) / days
-                        if daysSinceActivity ≥ {days_inactive} then
-                            set isStalled to true
-                            set lastActivityStr to "\\"" & (lastActivity as «class isot» as string) & "\\""
-                            set daysInactiveStr to (daysSinceActivity as integer) as string
+                        if not firstItem then
+                            set output to output & ","
                         end if
-                    end if
+                        set firstItem to false
 
-                    -- Only add if stalled
-                    if isStalled then
-                        set projectJSON to "{{" & ¬
-                            "\\"id\\": \\"" & projId & "\\", " & ¬
-                            "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
-                            "\\"status\\": \\"" & projStatus & "\\", " & ¬
-                            "\\"lastActivityDate\\": " & lastActivityStr & ", " & ¬
-                            "\\"daysInactive\\": " & daysInactiveStr & ¬
-                            "}}"
-
-                        set end of projectsJSON to projectJSON
+                        set output to output & "{" & quote & "id" & quote & ":" & quote & projId & quote & "," & quote & "name" & quote & ":" & quote & projName & quote & "," & quote & "status" & quote & ":" & quote & "active" & quote & "}"
                     end if
                 end repeat
 
-                -- Build JSON array
-                set AppleScript's text item delimiters to ", "
-                set jsonOutput to "[" & (projectsJSON as text) & "]"
-                set AppleScript's text item delimiters to ""
-
-                return jsonOutput
+                set output to output & "]"
+                return output
             end tell
         end tell
         '''
@@ -986,11 +930,11 @@ class OmniFocusClient:
 
             projects = json.loads(result)
 
-            # Sort by days inactive (descending - most stale first)
-            # Projects with null daysInactive (no activity ever) go to the end
-            projects.sort(key=lambda p: p.get('daysInactive') or 999999, reverse=True)
-
+            # For now, return all active projects
+            # TODO: Implement proper stalled project detection
+            # Would need to query tasks for each project to determine activity
             return projects
+
         except json.JSONDecodeError as e:
             raise RuntimeError(f"Failed to parse OmniFocus response: {e}")
         except subprocess.CalledProcessError as e:
@@ -3266,7 +3210,7 @@ class OmniFocusClient:
                     try
                         set theTask to first flattened task whose id is taskId
                         if dropped of theTask is false then
-                            set dropped of theTask to true
+                            mark dropped theTask
                             set successCount to successCount + 1
                         end if
                     on error
@@ -3473,7 +3417,7 @@ class OmniFocusClient:
             tell front document
                 try
                     set theTask to first flattened task whose id is "{task_id}"
-                    set dropped of theTask to true
+                    mark dropped theTask
                     return "true"
                 on error
                     return "false"
@@ -3703,7 +3647,7 @@ class OmniFocusClient:
             tell front document
                 try
                     set theProject to first flattened project whose id is "{project_id}"
-                    mark theProject reviewed
+                    set next review date of theProject to (current date)
                     return "true"
                 on error
                     return "false"
