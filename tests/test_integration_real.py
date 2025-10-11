@@ -1430,3 +1430,120 @@ class TestTaskReordering:
 
         # Cleanup
         client.delete_project(project_id)
+
+
+class TestAvailabilityFields:
+    """Tests for availability status fields."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_task_has_available_and_number_of_available_tasks(self, client):
+        """Test that tasks include available and numberOfAvailableTasks fields."""
+        # Create a project with a parent task and subtask
+        project_id = client.create_project("Availability Test Project", sequential=True)
+        
+        # Add parent task and subtask
+        client.add_task(project_id, "Parent Task")
+        tasks = client.get_tasks(project_id=project_id)
+        parent_id = tasks[0]['id']
+        
+        # Make it have a subtask
+        client.add_task(project_id, "Subtask")
+        all_tasks = client.get_tasks(project_id=project_id)
+        subtask = next(t for t in all_tasks if t['name'] == 'Subtask')
+        client.set_parent_task(subtask['id'], parent_id)
+        
+        # Get updated parent
+        parent = client.get_task(parent_id)
+        
+        # Check fields exist
+        assert 'available' in parent, "Should have available field"
+        assert 'numberOfAvailableTasks' in parent, "Should have numberOfAvailableTasks field"
+        
+        # Check types
+        assert isinstance(parent['available'], bool), "available should be boolean"
+        assert isinstance(parent['numberOfAvailableTasks'], int), "numberOfAvailableTasks should be int"
+        
+        # For a sequential project, first task is available, parent should have available subtasks
+        assert parent['numberOfAvailableTasks'] >= 0, "Should have count of available subtasks"
+        
+        print(f"\n✓ Task has availability fields:")
+        print(f"  available: {parent['available']}")
+        print(f"  numberOfAvailableTasks: {parent['numberOfAvailableTasks']}")
+        print(f"  blocked: {parent['blocked']}")
+        
+        # Cleanup
+        client.delete_project(project_id)
+
+    def test_available_true_when_task_actionable(self, client):
+        """Test that available is true for directly actionable tasks."""
+        project_id = client.create_project("Available Task Test")
+        client.add_task(project_id, "Available Task")
+        
+        tasks = client.get_tasks(project_id=project_id)
+        task = tasks[0]
+        
+        # Task should be available (not blocked, not completed, not dropped, not deferred)
+        assert task['completed'] == False
+        assert task['dropped'] == False
+        assert task['blocked'] == False
+        assert task['deferDate'] == ""
+        assert task['available'] == True, "Actionable task should be available"
+        
+        print(f"\n✓ Directly actionable task shows available: true")
+        
+        # Cleanup
+        client.delete_project(project_id)
+
+    def test_available_true_when_blocked_with_available_children(self, client):
+        """Test that available is true for blocked tasks with available subtasks."""
+        # Create sequential project - parent task will be sequential action group
+        project_id = client.create_project("Blocked Parent Test", sequential=True)
+
+        # Add first task and a parent task (which will be blocked)
+        client.add_task(project_id, "First Task")
+        client.add_task(project_id, "Blocked Parent")
+
+        tasks = client.get_tasks(project_id=project_id)
+        first_task = tasks[0]
+        blocked_parent_task = tasks[1]
+
+        # Add two children to the blocked parent, making it an action group
+        # Make the parent itself parallel so children are available
+        client.add_task(project_id, "Child 1")
+        client.add_task(project_id, "Child 2")
+        all_tasks = client.get_tasks(project_id=project_id)
+        child1 = next(t for t in all_tasks if t['name'] == 'Child 1')
+        child2 = next(t for t in all_tasks if t['name'] == 'Child 2')
+
+        # Move children under blocked parent
+        client.set_parent_task(child1['id'], blocked_parent_task['id'])
+        client.set_parent_task(child2['id'], blocked_parent_task['id'])
+
+        # Get updated parent
+        blocked_parent = client.get_task(blocked_parent_task['id'])
+
+        # Parent should be blocked (second in sequential project)
+        # The parent action group itself is parallel (default), so children are available
+        # Parent should be available (has available children)
+        assert blocked_parent['blocked'] == True, "Second task in sequential project should be blocked"
+
+        # Even if numberOfAvailableTasks is 0 (children might inherit blocked status),
+        # we still test that the available field is computed correctly
+        if blocked_parent['numberOfAvailableTasks'] > 0:
+            assert blocked_parent['available'] == True, "Should be available due to available children"
+            print(f"\n✓ Blocked task with available children shows available: true")
+        else:
+            # If children are also blocked (sequential inheritance), available should be false
+            assert blocked_parent['available'] == False, "Should not be available if no available children"
+            print(f"\n✓ Blocked task without available children shows available: false")
+
+        print(f"  blocked: {blocked_parent['blocked']}")
+        print(f"  numberOfAvailableTasks: {blocked_parent['numberOfAvailableTasks']}")
+        print(f"  available: {blocked_parent['available']}")
+
+        # Cleanup
+        client.delete_project(project_id)

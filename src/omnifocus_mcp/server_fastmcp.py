@@ -59,7 +59,13 @@ def _format_task(task: dict) -> str:
     if task.get('dropped'):
         result += f"Dropped: Yes\n"
     if task.get('blocked'):
-        result += f"Blocked: Yes\n"
+        # Show blocked status with explanation if it has available subtasks
+        if task.get('numberOfAvailableTasks', 0) > 0:
+            result += f"Blocked: Yes (but has {task['numberOfAvailableTasks']} available subtask(s))\n"
+        else:
+            result += f"Blocked: Yes\n"
+    if task.get('available') is not None:
+        result += f"Available: {task['available']}\n"
     if task.get('next'):
         result += f"Next: Yes\n"
     if task.get('flagged'):

@@ -1877,6 +1877,22 @@ class OmniFocusClient:
                             set taskSequential to sequential of t
                         end try
 
+                        -- Get availability fields
+                        set numAvailableTasks to 0
+                        try
+                            set numAvailableTasks to number of available tasks of t
+                        end try
+
+                        -- Compute available status
+                        set deferDateObj to defer date of t
+                        set isDeferred to false
+                        if deferDateObj is not missing value then
+                            set isDeferred to (deferDateObj > (current date))
+                        end if
+
+                        set directlyAvailable to (not taskCompleted) and (not taskDropped) and (not taskBlocked) and (not isDeferred)
+                        set taskAvailable to directlyAvailable or (numAvailableTasks > 0)
+
                         -- Build JSON manually
                         set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -1900,7 +1916,9 @@ class OmniFocusClient:
                             "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
                             "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
                             "\\"sequential\\": " & (taskSequential as text) & ", " & ¬
-                            "\\"position\\": " & (taskIndex as text) & ¬
+                            "\\"position\\": " & (taskIndex as text) & ", " & ¬
+                            "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
+                            "\\"available\\": " & (taskAvailable as text) & ¬
                             "}}"
 
                         if output is not "" then
@@ -2149,6 +2167,23 @@ class OmniFocusClient:
                     set taskSequential to sequential of targetTask
                 end try
 
+                -- Get availability fields
+                set numAvailableTasks to 0
+                try
+                    set numAvailableTasks to number of available tasks of targetTask
+                end try
+
+                -- Compute available status
+                -- A task is available if it's directly actionable OR has available subtasks
+                set deferDateObj to defer date of targetTask
+                set isDeferred to false
+                if deferDateObj is not missing value then
+                    set isDeferred to (deferDateObj > (current date))
+                end if
+
+                set directlyAvailable to (not taskCompleted) and (not taskDropped) and (not taskBlocked) and (not isDeferred)
+                set taskAvailable to directlyAvailable or (numAvailableTasks > 0)
+
                 -- Build JSON manually
                 set jsonOutput to "{{" & ¬
                     "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -2169,7 +2204,9 @@ class OmniFocusClient:
                     "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
                     "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
                     "\\"sequential\\": " & (taskSequential as text) & ", " & ¬
-                    "\\"position\\": 1" & ¬
+                    "\\"position\\": 1, " & ¬
+                    "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
+                    "\\"available\\": " & (taskAvailable as text) & ¬
                     "}}"
 
                 return jsonOutput
@@ -2310,6 +2347,22 @@ class OmniFocusClient:
                                 set taskSequential to sequential of t
                             end try
 
+                            -- Get availability fields
+                            set numAvailableTasks to 0
+                            try
+                                set numAvailableTasks to number of available tasks of t
+                            end try
+
+                            -- Compute available status
+                            set deferDateObj to defer date of t
+                            set isDeferred to false
+                            if deferDateObj is not missing value then
+                                set isDeferred to (deferDateObj > (current date))
+                            end if
+
+                            set directlyAvailable to (not taskCompleted) and (not taskDropped) and (not taskBlocked) and (not isDeferred)
+                            set taskAvailable to directlyAvailable or (numAvailableTasks > 0)
+
                             -- Build JSON manually
                             set jsonLine to "{{" & ¬
                                 "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -2330,7 +2383,9 @@ class OmniFocusClient:
                                 "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
                                 "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
                                 "\\"sequential\\": " & (taskSequential as text) & ", " & ¬
-                                "\\"position\\": " & (taskIndex as text) & ¬
+                                "\\"position\\": " & (taskIndex as text) & ", " & ¬
+                                "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
+                                "\\"available\\": " & (taskAvailable as text) & ¬
                                 "}}"
 
                             if output is not "" then
