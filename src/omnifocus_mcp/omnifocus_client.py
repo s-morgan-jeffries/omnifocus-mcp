@@ -941,11 +941,12 @@ class OmniFocusClient:
             'noDueDateCount': no_due_date_count
         }
 
-    def get_stalled_projects(self, days_inactive: int = 30) -> list[dict[str, Any]]:
+    def get_stalled_projects(self, days_inactive: int = 30, min_task_count: Optional[int] = None) -> list[dict[str, Any]]:
         """Get active projects with no recent task activity.
 
         Args:
             days_inactive: Minimum days of inactivity to consider a project stalled (default: 30)
+            min_task_count: Minimum number of tasks a project must have to be included (optional)
 
         Returns:
             list[dict]: List of stalled projects, each containing:
@@ -954,17 +955,13 @@ class OmniFocusClient:
                 - status: Project status (always "active")
                 - lastActivityDate: ISO timestamp of most recent task activity (or null)
                 - daysInactive: Number of days since last activity (or null if no activity)
+                - taskCount: Total number of tasks in project
 
             Projects are sorted by days inactive (most stale first).
         """
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timezone
 
-        # Calculate the cutoff date
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_inactive)
-        cutoff_iso = cutoff_date.isoformat()
-
-        # Simplified implementation: just return all active projects
-        # The caller can filter by activity in Python
+        # AppleScript to get projects with lastActivityDate
         script = '''
         tell application "OmniFocus"
             tell front document
@@ -976,12 +973,30 @@ class OmniFocusClient:
                         set projId to id of proj
                         set projName to name of proj
 
+                        -- Get modification date as last activity proxy
+                        set lastActivityStr to "null"
+                        try
+                            set modDate to modification date of proj
+                            if modDate is not missing value then
+                                set lastActivityStr to "\\"" & (modDate as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        -- Get task count
+                        set taskCount to (count of flattened tasks of proj)
+
                         if not firstItem then
                             set output to output & ","
                         end if
                         set firstItem to false
 
-                        set output to output & "{" & quote & "id" & quote & ":" & quote & projId & quote & "," & quote & "name" & quote & ":" & quote & projName & quote & "," & quote & "status" & quote & ":" & quote & "active" & quote & "}"
+                        set output to output & "{" & ¬
+                            "\\"id\\":\\"" & projId & "\\"," & ¬
+                            "\\"name\\":\\"" & projName & "\\"," & ¬
+                            "\\"status\\":\\"active\\"," & ¬
+                            "\\"lastActivityDate\\":" & lastActivityStr & "," & ¬
+                            "\\"taskCount\\":" & taskCount & ¬
+                            "}"
                     end if
                 end repeat
 
@@ -998,10 +1013,39 @@ class OmniFocusClient:
 
             projects = json.loads(result)
 
-            # For now, return all active projects
-            # TODO: Implement proper stalled project detection
-            # Would need to query tasks for each project to determine activity
-            return projects
+            # Calculate daysInactive and filter
+            now = datetime.now(timezone.utc)
+            filtered_projects = []
+
+            for project in projects:
+                # Calculate days inactive
+                if project['lastActivityDate']:
+                    last_activity_str = project['lastActivityDate'].replace('Z', '+00:00')
+                    last_activity = datetime.fromisoformat(last_activity_str)
+
+                    # Make timezone-aware if needed
+                    if last_activity.tzinfo is None:
+                        last_activity = last_activity.replace(tzinfo=timezone.utc)
+
+                    days_diff = (now - last_activity).days
+                    project['daysInactive'] = days_diff
+
+                    # Filter by days_inactive threshold
+                    if days_diff < days_inactive:
+                        continue
+                else:
+                    project['daysInactive'] = None
+
+                # Filter by min_task_count if specified
+                if min_task_count is not None and project['taskCount'] < min_task_count:
+                    continue
+
+                filtered_projects.append(project)
+
+            # Sort by days inactive (most stale first)
+            filtered_projects.sort(key=lambda p: p['daysInactive'] if p['daysInactive'] is not None else float('inf'), reverse=True)
+
+            return filtered_projects
 
         except json.JSONDecodeError as e:
             raise RuntimeError(f"Failed to parse OmniFocus response: {e}")

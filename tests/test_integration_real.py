@@ -1068,8 +1068,8 @@ class TestStalledProjects:
         return OmniFocusClient(enable_safety_checks=True)
 
     def test_get_stalled_projects(self, client):
-        """Test retrieving stalled projects (currently returns all active projects)."""
-        # Get stalled projects (currently simplified to return all active projects)
+        """Test retrieving stalled projects with default parameters."""
+        # Get stalled projects with default settings (30 days inactive)
         projects = client.get_stalled_projects()
 
         # Should return a list
@@ -1080,8 +1080,43 @@ class TestStalledProjects:
             assert 'id' in project
             assert 'name' in project
             assert 'status' in project
+            assert 'lastActivityDate' in project
+            assert 'daysInactive' in project
 
-        print(f"\n✓ Found {len(projects)} active projects (stalled detection simplified)")
+        print(f"\n✓ Found {len(projects)} stalled projects (30+ days inactive)")
+
+    def test_get_stalled_projects_custom_days(self, client):
+        """Test get_stalled_projects with custom inactivity threshold."""
+        # Get projects inactive for 90+ days
+        projects_90 = client.get_stalled_projects(days_inactive=90)
+
+        # Get projects inactive for 7+ days
+        projects_7 = client.get_stalled_projects(days_inactive=7)
+
+        # Should return lists
+        assert isinstance(projects_90, list)
+        assert isinstance(projects_7, list)
+
+        # 7-day threshold should catch more projects than 90-day
+        assert len(projects_7) >= len(projects_90)
+
+        print(f"\n✓ 90+ days inactive: {len(projects_90)} projects")
+        print(f"  7+ days inactive: {len(projects_7)} projects")
+
+    def test_get_stalled_projects_min_task_count(self, client):
+        """Test filtering stalled projects by minimum task count."""
+        # Get stalled projects with at least 2 tasks
+        projects = client.get_stalled_projects(days_inactive=30, min_task_count=2)
+
+        assert isinstance(projects, list)
+
+        # All projects should have at least min_task_count tasks
+        for project in projects:
+            # Get full project details to check task count
+            full_project = client.get_project(project['id'])
+            assert full_project['taskCount'] >= 2
+
+        print(f"\n✓ Found {len(projects)} stalled projects with 2+ tasks")
 
 
 # ============================================================================

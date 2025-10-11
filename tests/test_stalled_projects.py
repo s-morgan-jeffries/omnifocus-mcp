@@ -23,14 +23,14 @@ class TestGetStalledProjects:
                 "name": "Stale Project 1",
                 "status": "active",
                 "lastActivityDate": "2024-09-01T00:00:00Z",  # Old
-                "daysInactive": 37
+                "taskCount": 5
             },
             {
                 "id": "proj-stale-2",
                 "name": "Stale Project 2",
                 "status": "active",
                 "lastActivityDate": "2024-09-05T00:00:00Z",  # Old
-                "daysInactive": 33
+                "taskCount": 3
             }
         ])
 
@@ -40,8 +40,9 @@ class TestGetStalledProjects:
 
         assert len(projects) == 2
         assert projects[0]['name'] == "Stale Project 1"
-        assert projects[0]['daysInactive'] == 37
-        assert projects[1]['daysInactive'] == 33
+        assert projects[0]['daysInactive'] >= 30  # Calculated dynamically
+        assert projects[1]['daysInactive'] >= 30  # Calculated dynamically
+        assert 'taskCount' in projects[0]
 
     def test_get_stalled_projects_custom_threshold(self, client):
         """Should accept custom inactivity threshold."""
@@ -51,7 +52,7 @@ class TestGetStalledProjects:
                 "name": "Stale Project",
                 "status": "active",
                 "lastActivityDate": "2025-09-20T00:00:00Z",
-                "daysInactive": 18
+                "taskCount": 2
             }
         ])
 
@@ -60,7 +61,7 @@ class TestGetStalledProjects:
             projects = client.get_stalled_projects(days_inactive=14)
 
         assert len(projects) == 1
-        assert projects[0]['daysInactive'] == 18
+        assert projects[0]['daysInactive'] >= 14  # Calculated dynamically
 
     def test_get_stalled_projects_empty_result(self, client):
         """Should return empty list when no stalled projects."""
@@ -81,7 +82,7 @@ class TestGetStalledProjects:
                 "name": "Active Stale",
                 "status": "active",
                 "lastActivityDate": "2024-08-01T00:00:00Z",
-                "daysInactive": 68
+                "taskCount": 4
             }
         ])
 
@@ -91,7 +92,7 @@ class TestGetStalledProjects:
 
         # Verify the AppleScript filters for active status
         call_args = mock_run.call_args[0][0]
-        assert 'status of proj is not active' in call_args  # Uses negation to skip non-active
+        assert 'status of proj is active' in call_args  # Filters for active
         assert len(projects) == 1
 
     def test_get_stalled_projects_no_activity_date(self, client):
@@ -102,7 +103,7 @@ class TestGetStalledProjects:
                 "name": "No Activity Project",
                 "status": "active",
                 "lastActivityDate": None,
-                "daysInactive": None
+                "taskCount": 1
             }
         ])
 
@@ -122,21 +123,21 @@ class TestGetStalledProjects:
                 "name": "Most Stale",
                 "status": "active",
                 "lastActivityDate": "2024-07-01T00:00:00Z",
-                "daysInactive": 99
+                "taskCount": 5
             },
             {
                 "id": "proj-2",
                 "name": "Less Stale",
                 "status": "active",
                 "lastActivityDate": "2024-09-01T00:00:00Z",
-                "daysInactive": 37
+                "taskCount": 3
             },
             {
                 "id": "proj-3",
                 "name": "Least Stale",
                 "status": "active",
                 "lastActivityDate": "2024-09-10T00:00:00Z",
-                "daysInactive": 28
+                "taskCount": 2
             }
         ])
 
@@ -144,7 +145,6 @@ class TestGetStalledProjects:
             mock_run.return_value = mock_json
             projects = client.get_stalled_projects()
 
-        # Projects should already be sorted by AppleScript
-        assert projects[0]['daysInactive'] == 99
-        assert projects[1]['daysInactive'] == 37
-        assert projects[2]['daysInactive'] == 28
+        # Projects should be sorted by implementation (most stale first)
+        assert projects[0]['daysInactive'] > projects[1]['daysInactive']
+        assert projects[1]['daysInactive'] > projects[2]['daysInactive']
