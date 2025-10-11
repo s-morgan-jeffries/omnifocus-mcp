@@ -336,34 +336,42 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 - ✅ Migrated TDD practices from hooks to CLAUDE.md
 - ✅ Added availability status fields (`available`, `numberOfAvailableTasks`)
   - Clarified why blocked tasks appear in Available filter
+- ✅ **Completed AppleScript audit** - Found all needed timestamps! (see `docs/APPLESCRIPT_AUDIT_FINDINGS.md`)
+- ✅ **Added timestamp fields to all project/task methods**:
+  - Projects: `creationDate`, `modificationDate`, `completionDate`, `droppedDate`
+  - Tasks: `creationDate`, `modificationDate`, `completionDate`, `droppedDate`
+  - All timestamps as ISO 8601 strings or null
+- ✅ **Fixed tags to be arrays instead of strings**:
+  - Tasks now return `tags: ["tag1", "tag2"]` instead of `"tag1, tag2"`
+  - Proper JSON arrays for filtering and organization
+- ✅ **Made `get_stalled_projects()` configurable**:
+  - Added `min_task_count` parameter for filtering
+  - Returns `lastActivityDate`, `daysInactive`, and `taskCount`
+  - Filters and sorts by inactivity (most stale first)
 
 **Known Limitations:**
 - ❌ Cannot retrieve formatted/rich text notes (OmniFocus API limitation)
   - AppleScript only exposes plain text
   - OmniAutomation has RTF access but cannot be called externally with result retrieval
 
-**Current Tool Count:** 26 MCP tools (added `update_project`)
+**Current Tool Count:** 26 MCP tools
+
+**Test Coverage:** 392 passing tests (up from 302)
 
 ### Upcoming Work
 
-**Planned:**
-- ✅ Audit AppleScript interface for missing properties - **COMPLETE** (see `docs/APPLESCRIPT_AUDIT_FINDINGS.md`)
-  - ✅ **Found all needed timestamps!** creationDate, modificationDate, completionDate, droppedDate, lastReviewDate
-  - 🚨 **Discovered**: Tags not exposed on task objects (have get_tags and add_tag, but can't see which tags a task has)
-  - 📋 Ready to implement Phase 1 (timestamps + tags)
-
-**High Priority - New Use Case Identified:**
+**High Priority - Project Cleanup Use Case (IN PROGRESS):**
 - 🎯 **Project Cleanup & Reorganization Assistant** (USE CASE #16)
-  - **User Need**: Long-time OmniFocus users (5-10+ years) with 100+ accumulated projects need systematic cleanup help
-  - **Workflow**: AI-guided review, categorization, and reorganization of stale/redundant projects
-  - **See**: `docs/USE_CASES.md` for detailed analysis
-  - **Key Missing Features**:
-    - Project/task activity timestamps (lastActivityDate, creationDate, modificationDate)
-    - Configurable stalled project detection (parameterize definition)
-    - Batch operations (merge_projects, split_project, archive_projects)
-    - Enhanced project queries (filter by inactivity, review status)
+  - **Status**: Core features COMPLETE ✅
+  - ✅ Timestamps on all projects/tasks
+  - ✅ Tags as arrays on tasks
+  - ✅ Configurable stalled project detection
+  - ⏳ **Remaining**: Batch operations (lower priority)
+    - `merge_projects(source_ids, target_id)` - Merge multiple projects
+    - `split_project(project_id, task_ids, new_project_name)` - Split off tasks
+    - `archive_projects(project_ids)` - Batch archive/complete
   - **Impact**: Very High for power users with mature databases
-  - **Effort**: High (requires new AppleScript properties, batch operations)
+  - **See**: `docs/USE_CASES.md` for detailed workflow
 
 **Under Consideration:**
 - Batch operations for improved performance (some already implemented: complete_tasks, move_tasks, etc.)
