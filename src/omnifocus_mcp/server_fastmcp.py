@@ -260,32 +260,40 @@ def set_project_status(project_id: str, status: str) -> str:
 
 
 @mcp.tool()
-def get_stalled_projects(days_inactive: int = 30) -> str:
+def get_stalled_projects(days_inactive: int = 30, min_task_count: Optional[int] = None) -> str:
     """Get active projects with no recent task activity.
 
     Args:
         days_inactive: Minimum days of inactivity to consider a project stalled (default: 30)
+        min_task_count: Minimum number of tasks a project must have to be included (optional)
 
     Returns:
         Formatted text with stalled projects sorted by inactivity (days, last activity date)
     Projects with no activity ever are included.
     """
     client = get_client()
-    projects = client.get_stalled_projects(days_inactive=days_inactive)
+    projects = client.get_stalled_projects(days_inactive=days_inactive, min_task_count=min_task_count)
 
     if not projects:
-        return f"No stalled projects found (inactive for {days_inactive}+ days)."
+        filters = f"inactive for {days_inactive}+ days"
+        if min_task_count:
+            filters += f", with {min_task_count}+ tasks"
+        return f"No stalled projects found ({filters})."
 
-    result = f"Found {len(projects)} stalled projects (inactive for {days_inactive}+ days):\n\n"
+    filters_desc = f"inactive for {days_inactive}+ days"
+    if min_task_count:
+        filters_desc += f", with {min_task_count}+ tasks"
+    result = f"Found {len(projects)} stalled projects ({filters_desc}):\n\n"
 
     for proj in projects:
         days = proj.get('daysInactive')
         last_activity = proj.get('lastActivityDate')
+        task_count = proj.get('taskCount', 0)
 
         if days is not None:
-            result += f"• {proj['name']} ({days} days inactive)\n"
+            result += f"• {proj['name']} ({days} days inactive, {task_count} tasks)\n"
         else:
-            result += f"• {proj['name']} (no activity recorded)\n"
+            result += f"• {proj['name']} (no activity recorded, {task_count} tasks)\n"
 
         result += f"  ID: {proj['id']}\n"
 

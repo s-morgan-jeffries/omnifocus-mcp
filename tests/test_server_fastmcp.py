@@ -230,7 +230,8 @@ class TestProjectTools:
                 "name": "Stale Project",
                 "status": "active",
                 "lastActivityDate": "2024-08-01T00:00:00Z",
-                "daysInactive": 68
+                "daysInactive": 68,
+                "taskCount": 3
             }
         ]
 
@@ -253,7 +254,8 @@ class TestProjectTools:
                 "name": "Project 1",
                 "status": "active",
                 "lastActivityDate": "2025-09-20T00:00:00Z",
-                "daysInactive": 18
+                "daysInactive": 18,
+                "taskCount": 2
             }
         ]
 
@@ -265,7 +267,7 @@ class TestProjectTools:
             result = get_stalled_projects(days_inactive=14)
 
             assert "Found 1 stalled projects" in result
-            mock_client.get_stalled_projects.assert_called_once_with(days_inactive=14)
+            mock_client.get_stalled_projects.assert_called_once_with(days_inactive=14, min_task_count=None)
 
     def test_get_stalled_projects_empty(self):
         """Test get_stalled_projects with no results."""
@@ -277,6 +279,31 @@ class TestProjectTools:
             result = get_stalled_projects()
 
             assert "No stalled projects found" in result
+
+    def test_get_stalled_projects_with_min_task_count(self):
+        """Test get_stalled_projects with min_task_count parameter."""
+        mock_projects = [
+            {
+                "id": "proj-1",
+                "name": "Project with Many Tasks",
+                "status": "active",
+                "lastActivityDate": "2024-08-01T00:00:00Z",
+                "daysInactive": 68,
+                "taskCount": 5
+            }
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_stalled_projects.return_value = mock_projects
+            mock_get_client.return_value = mock_client
+
+            result = get_stalled_projects(days_inactive=30, min_task_count=3)
+
+            assert "Found 1 stalled projects" in result
+            assert "with 3+ tasks" in result
+            assert "5 tasks" in result  # Should show actual task count
+            mock_client.get_stalled_projects.assert_called_once_with(days_inactive=30, min_task_count=3)
 
 
 class TestTaskTools:
