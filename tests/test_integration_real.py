@@ -232,6 +232,39 @@ class TestRealOmniFocusWriteOperations:
         assert result is True
         print("\n✓ Successfully updated task")
 
+    def test_update_task_flag(self, client, test_project_id):
+        """Test setting and unsetting the flagged status on a task."""
+        # Create a task (unflagged by default)
+        client.add_task(test_project_id, "Task for Flag Test", flagged=False)
+
+        # Get the task
+        tasks = client.get_tasks(project_id=test_project_id)
+        task = next(t for t in tasks if t['name'] == "Task for Flag Test")
+
+        # Verify it's not flagged initially
+        assert task['flagged'] is False
+        print("\n✓ Task initially unflagged")
+
+        # Set flag to True
+        result = client.update_task(task['id'], flagged=True)
+        assert result is True
+
+        # Verify flag was set
+        tasks = client.get_tasks(project_id=test_project_id)
+        task = next(t for t in tasks if t['name'] == "Task for Flag Test")
+        assert task['flagged'] is True
+        print("✓ Successfully set flag to True")
+
+        # Unset flag back to False
+        result = client.update_task(task['id'], flagged=False)
+        assert result is True
+
+        # Verify flag was unset
+        tasks = client.get_tasks(project_id=test_project_id)
+        task = next(t for t in tasks if t['name'] == "Task for Flag Test")
+        assert task['flagged'] is False
+        print("✓ Successfully set flag to False")
+
     def test_add_tag_to_task_real(self, client, test_project_id):
         """Test adding a tag to a task in real OmniFocus."""
         # First, add a task
@@ -327,6 +360,68 @@ class TestProjectCRUD:
         assert project['name'] == "Active Test Project"
         print(f"\n✓ Retrieved project by ID: {project['name']}")
 
+    def test_get_project_includes_timestamp_fields(self, client):
+        """Test that get_project includes all timestamp fields."""
+        # Get any active project
+        projects = client.get_projects(query="Active Test Project")
+        assert len(projects) > 0
+
+        project_id = projects[0]['id']
+        project = client.get_project(project_id)
+
+        # Verify timestamp fields are present
+        assert 'creationDate' in project
+        assert 'modificationDate' in project
+        assert 'completionDate' in project
+        assert 'droppedDate' in project
+        assert 'lastReviewDate' in project
+        assert 'nextReviewDate' in project
+        assert 'lastActivityDate' in project
+
+        # creationDate and modificationDate should be set for active projects
+        assert project['creationDate'] is not None
+        assert project['modificationDate'] is not None
+
+        # completionDate and droppedDate should be null for active projects
+        assert project['completionDate'] is None
+        assert project['droppedDate'] is None
+
+        # Verify dates are in ISO 8601 format (if not null)
+        if project['creationDate']:
+            assert 'T' in project['creationDate'] or '-' in project['creationDate']
+        if project['lastReviewDate']:
+            assert 'T' in project['lastReviewDate'] or '-' in project['lastReviewDate']
+
+        print("\n✓ Project includes all timestamp fields")
+        print(f"  Created: {project['creationDate']}")
+        print(f"  Modified: {project['modificationDate']}")
+        print(f"  Last Review: {project['lastReviewDate']}")
+        print(f"  Next Review: {project['nextReviewDate']}")
+
+    def test_get_projects_includes_timestamp_fields(self, client):
+        """Test that get_projects includes timestamp fields in list results."""
+        # Get multiple projects
+        projects = client.get_projects()
+        assert len(projects) > 0
+
+        # Check first project has timestamp fields
+        project = projects[0]
+
+        assert 'creationDate' in project
+        assert 'modificationDate' in project
+        assert 'completionDate' in project
+        assert 'droppedDate' in project
+
+        # Active projects should have creationDate and modificationDate
+        if project['status'] == 'active status':
+            assert project['creationDate'] is not None
+            assert project['modificationDate'] is not None
+
+        print("\n✓ get_projects includes timestamp fields")
+        print(f"  First project: {project['name']}")
+        print(f"  Created: {project['creationDate']}")
+        print(f"  Modified: {project['modificationDate']}")
+
     def test_set_project_status_to_on_hold(self, client):
         """Test changing project status to on-hold."""
         # Create a project to modify
@@ -349,6 +444,88 @@ class TestProjectCRUD:
         result = client.set_project_status(project_id, "done")
         assert result is True
         print("\n✓ Marked project as done")
+
+    def test_update_project_name(self, client):
+        """Test updating project name."""
+        # Create a project to update
+        project_id = client.create_project("Project to Update Name")
+
+        # Update the name
+        result = client.update_project(project_id, name="Updated Project Name")
+        assert result is True
+        print("\n✓ Updated project name")
+
+        # Verify the change
+        project = client.get_project(project_id)
+        assert project['name'] == "Updated Project Name"
+
+    def test_update_project_note(self, client):
+        """Test updating project note."""
+        # Create a project with a note
+        project_id = client.create_project("Project with Note", note="Original note")
+
+        # Update the note
+        result = client.update_project(project_id, note="Updated note content")
+        assert result is True
+        print("\n✓ Updated project note")
+
+        # Verify the change
+        project = client.get_project(project_id)
+        assert project['note'] == "Updated note content"
+
+    def test_update_project_sequential(self, client):
+        """Test updating project sequential setting."""
+        # Create a parallel project
+        project_id = client.create_project("Project Sequential Test", sequential=False)
+
+        # Verify it's parallel
+        project = client.get_project(project_id)
+        assert project['sequential'] is False
+
+        # Change to sequential
+        result = client.update_project(project_id, sequential=True)
+        assert result is True
+        print("\n✓ Updated project to sequential")
+
+        # Verify the change
+        project = client.get_project(project_id)
+        assert project['sequential'] is True
+
+    def test_update_project_multiple_fields(self, client):
+        """Test updating multiple project fields at once."""
+        # Create a project
+        project_id = client.create_project("Multi-field Update", note="Old note", sequential=False)
+
+        # Update multiple fields
+        result = client.update_project(
+            project_id,
+            name="New Multi-field Name",
+            note="New note content",
+            sequential=True
+        )
+        assert result is True
+        print("\n✓ Updated multiple project fields")
+
+        # Verify all changes
+        project = client.get_project(project_id)
+        assert project['name'] == "New Multi-field Name"
+        assert project['note'] == "New note content"
+        assert project['sequential'] is True
+
+    def test_update_project_preserves_note_when_not_provided(self, client):
+        """Test that not providing note parameter preserves existing note."""
+        # Create a project with a note
+        project_id = client.create_project("Note Preservation Test", note="Important note content")
+
+        # Update only the name (not the note)
+        result = client.update_project(project_id, name="Updated Name Only")
+        assert result is True
+        print("\n✓ Updated project name without touching note")
+
+        # Verify note is preserved
+        project = client.get_project(project_id)
+        assert project['name'] == "Updated Name Only"
+        assert project['note'] == "Important note content"
 
     def test_delete_project(self, client):
         """Test deleting a single project."""
@@ -410,6 +587,59 @@ class TestTaskCRUD:
         assert task is not None
         assert task['id'] == task_id
         print(f"\n✓ Retrieved task by ID: {task['name']}")
+
+    def test_get_task_includes_timestamp_fields(self, client, test_project_id):
+        """Test that get_task includes all timestamp fields."""
+        # Get any task
+        tasks = client.get_tasks(project_id=test_project_id)
+        assert len(tasks) > 0
+
+        task_id = tasks[0]['id']
+        task = client.get_task(task_id)
+
+        # Verify timestamp fields are present
+        assert 'creationDate' in task
+        assert 'modificationDate' in task
+        assert 'completionDate' in task
+        assert 'droppedDate' in task
+
+        # Active tasks should have creationDate and modificationDate
+        assert task['creationDate'] is not None
+        assert task['modificationDate'] is not None
+
+        # completionDate and droppedDate should be null for incomplete tasks
+        if not task.get('completed'):
+            assert task['completionDate'] is None
+            assert task['droppedDate'] is None
+
+        print("\n✓ Task includes all timestamp fields")
+        print(f"  Created: {task['creationDate']}")
+        print(f"  Modified: {task['modificationDate']}")
+
+    def test_get_task_includes_tags(self, client, test_project_id):
+        """Test that get_task includes tags array."""
+        # Create a task with tags
+        client.add_task(test_project_id, "Task with Tags for Testing", tags=["test-work", "test-urgent"])
+
+        # Get the task
+        tasks = client.get_tasks(project_id=test_project_id)
+        task = next(t for t in tasks if t['name'] == "Task with Tags for Testing")
+
+        # Get full task details
+        full_task = client.get_task(task['id'])
+
+        # Verify tags field is present
+        assert 'tags' in full_task
+        assert isinstance(full_task['tags'], list)
+
+        # Should have the tags we added
+        assert len(full_task['tags']) >= 2
+        tag_names = [t if isinstance(t, str) else t.get('name') for t in full_task['tags']]
+        assert "test-work" in tag_names
+        assert "test-urgent" in tag_names
+
+        print("\n✓ Task includes tags array")
+        print(f"  Tags: {tag_names}")
 
     def test_get_subtasks(self, client):
         """Test getting subtasks of a parent task."""

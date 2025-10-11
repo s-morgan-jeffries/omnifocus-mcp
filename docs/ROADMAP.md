@@ -313,12 +313,78 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 
 ---
 
+## Phase 3: Refinement & Polish - 🚧 IN PROGRESS
+
+### v0.5.0 (October 2025) - ✅ COMPLETE
+
+**Focus:** Claude Desktop compatibility improvements and API refinements
+
+**Implemented:**
+- ✅ Added `update_project()` tool (name, note, sequential)
+- ✅ Fixed `get_project()` to include `sequential` field
+- ✅ Fixed Optional[bool] parameter validation issues
+  - `update_task(flagged)` now accepts "true"/"false" strings
+  - `update_project(sequential)` now accepts "true"/"false" strings
+  - Workaround for FastMCP known issue with Optional[bool] parameters
+- ✅ Added plain text note warnings to all note-related tools
+  - Documented that OmniFocus automation APIs only support plain text
+  - Warned that updating notes removes rich text formatting
+- ✅ Added comprehensive tests
+  - 5 integration tests for update_project
+  - 8 unit tests for string boolean parameter handling
+  - 1 integration test for flag toggling
+- ✅ Migrated TDD practices from hooks to CLAUDE.md
+- ✅ Added availability status fields (`available`, `numberOfAvailableTasks`)
+  - Clarified why blocked tasks appear in Available filter
+
+**Known Limitations:**
+- ❌ Cannot retrieve formatted/rich text notes (OmniFocus API limitation)
+  - AppleScript only exposes plain text
+  - OmniAutomation has RTF access but cannot be called externally with result retrieval
+
+**Current Tool Count:** 26 MCP tools (added `update_project`)
+
+### Upcoming Work
+
+**Planned:**
+- ✅ Audit AppleScript interface for missing properties - **COMPLETE** (see `docs/APPLESCRIPT_AUDIT_FINDINGS.md`)
+  - ✅ **Found all needed timestamps!** creationDate, modificationDate, completionDate, droppedDate, lastReviewDate
+  - 🚨 **Discovered**: Tags not exposed on task objects (have get_tags and add_tag, but can't see which tags a task has)
+  - 📋 Ready to implement Phase 1 (timestamps + tags)
+
+**High Priority - New Use Case Identified:**
+- 🎯 **Project Cleanup & Reorganization Assistant** (USE CASE #16)
+  - **User Need**: Long-time OmniFocus users (5-10+ years) with 100+ accumulated projects need systematic cleanup help
+  - **Workflow**: AI-guided review, categorization, and reorganization of stale/redundant projects
+  - **See**: `docs/USE_CASES.md` for detailed analysis
+  - **Key Missing Features**:
+    - Project/task activity timestamps (lastActivityDate, creationDate, modificationDate)
+    - Configurable stalled project detection (parameterize definition)
+    - Batch operations (merge_projects, split_project, archive_projects)
+    - Enhanced project queries (filter by inactivity, review status)
+  - **Impact**: Very High for power users with mature databases
+  - **Effort**: High (requires new AppleScript properties, batch operations)
+
+**Under Consideration:**
+- Batch operations for improved performance (some already implemented: complete_tasks, move_tasks, etc.)
+- Additional filtering options based on user feedback
+- **Note management improvements** (open design question):
+  - Should we add dedicated `set_note()` function (or `update_note()`) for explicit note-only updates?
+  - Single function for both tasks and projects: `set_note(item_id, note, item_type="task")`?
+  - Should note parameter remain in `update_task()` and `update_project()` for convenience?
+  - Alternative: `append_note()` for non-destructive incremental updates?
+  - **Rationale**: Updating notes is destructive (removes formatting), should be more intentional
+  - **User workflow**: Generate Markdown notes in Claude, copy/paste into OmniFocus manually
+
+---
+
 ## Next Steps
 
 For the MCP server:
 1. ✅ Test with Claude Desktop
 2. ✅ Documentation updates
-3. ⏭️ Potential enhancements (see MCP_ROADMAP.md)
+3. ⏳ Complete property audit
+4. ⏭️ Additional enhancements based on usage patterns
 
 For application-layer features:
 1. Build separate services that use this MCP server

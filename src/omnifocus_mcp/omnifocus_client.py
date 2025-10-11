@@ -467,12 +467,36 @@ class OmniFocusClient:
                             end if
                         end try
 
-                        -- Get modification date
+                        -- Get timestamp fields
+                        set creationDateStr to "null"
+                        try
+                            set creationDate to creation date of proj
+                            if creationDate is not missing value then
+                                set creationDateStr to "\\"" & (creationDate as «class isot» as string) & "\\""
+                            end if
+                        end try
+
                         set modDateStr to "null"
                         try
                             set modDate to modification date of proj
                             if modDate is not missing value then
                                 set modDateStr to "\\"" & (modDate as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        set completionDateStr to "null"
+                        try
+                            set completionDate to completion date of proj
+                            if completionDate is not missing value then
+                                set completionDateStr to "\\"" & (completionDate as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        set droppedDateStr to "null"
+                        try
+                            set droppedDate to dropped date of proj
+                            if droppedDate is not missing value then
+                                set droppedDateStr to "\\"" & (droppedDate as «class isot» as string) & "\\""
                             end if
                         end try
 
@@ -518,7 +542,10 @@ class OmniFocusClient:
                             "\\"status\\": \\"" & projStatus & "\\", " & ¬
                             "\\"sequential\\": " & (isSequential as text) & ", " & ¬
                             "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
+                            "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modDateStr & ", " & ¬
+                            "\\"completionDate\\": " & completionDateStr & ", " & ¬
+                            "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
                             "\\"lastActivityDate\\": " & lastActivityStr & ¬
                             "}}"
 
@@ -597,7 +624,15 @@ class OmniFocusClient:
             project_id: The ID of the project to retrieve
 
         Returns:
-            dict: Project dictionary with id, name, note, status, folderPath, and statistics:
+            dict: Project dictionary with id, name, note, status, folderPath, sequential, timestamps, and statistics:
+                - sequential: Boolean indicating if tasks must be completed in order
+                - creationDate: When project was created (ISO 8601 or null)
+                - modificationDate: Last time project was modified (ISO 8601 or null)
+                - completionDate: When project was completed (ISO 8601 or null)
+                - droppedDate: When project was dropped (ISO 8601 or null)
+                - lastReviewDate: Last GTD review date (ISO 8601 or null)
+                - nextReviewDate: Next scheduled review (ISO 8601 or null)
+                - lastActivityDate: Most recent task activity (ISO 8601 or null)
                 - taskCount: Total number of tasks
                 - completedTaskCount: Number of completed tasks
                 - remainingTaskCount: Number of remaining tasks
@@ -626,6 +661,7 @@ class OmniFocusClient:
                 set projName to name of targetProject
                 set projNote to note of targetProject
                 set projStatus to status of targetProject as text
+                set projSequential to sequential of targetProject
 
                 -- Get folder path
                 set folderPath to ""
@@ -711,12 +747,36 @@ class OmniFocusClient:
                     end if
                 end try
 
-                -- Get modification date
+                -- Get timestamp fields
+                set creationDateStr to "null"
+                try
+                    set creationDate to creation date of targetProject
+                    if creationDate is not missing value then
+                        set creationDateStr to "\\"" & (creationDate as «class isot» as string) & "\\""
+                    end if
+                end try
+
                 set modDateStr to "null"
                 try
                     set modDate to modification date of targetProject
                     if modDate is not missing value then
                         set modDateStr to "\\"" & (modDate as «class isot» as string) & "\\""
+                    end if
+                end try
+
+                set completionDateStr to "null"
+                try
+                    set completionDate to completion date of targetProject
+                    if completionDate is not missing value then
+                        set completionDateStr to "\\"" & (completionDate as «class isot» as string) & "\\""
+                    end if
+                end try
+
+                set droppedDateStr to "null"
+                try
+                    set droppedDate to dropped date of targetProject
+                    if droppedDate is not missing value then
+                        set droppedDateStr to "\\"" & (droppedDate as «class isot» as string) & "\\""
                     end if
                 end try
 
@@ -757,6 +817,7 @@ class OmniFocusClient:
                     "\\"note\\": \\"" & my escapeJSON(projNote) & "\\", " & ¬
                     "\\"status\\": \\"" & projStatus & "\\", " & ¬
                     "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
+                    "\\"sequential\\": " & (projSequential as text) & ", " & ¬
                     "\\"taskCount\\": " & taskCount & ", " & ¬
                     "\\"completedTaskCount\\": " & completedCount & ", " & ¬
                     "\\"remainingTaskCount\\": " & remainingCount & ", " & ¬
@@ -764,7 +825,10 @@ class OmniFocusClient:
                     "\\"reviewInterval\\": " & reviewIntervalStr & ", " & ¬
                     "\\"lastReviewDate\\": " & lastReviewStr & ", " & ¬
                     "\\"nextReviewDate\\": " & nextReviewStr & ", " & ¬
+                    "\\"creationDate\\": " & creationDateStr & ", " & ¬
                     "\\"modificationDate\\": " & modDateStr & ", " & ¬
+                    "\\"completionDate\\": " & completionDateStr & ", " & ¬
+                    "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
                     "\\"lastActivityDate\\": " & lastActivityStr & ¬
                     "}}"
 
@@ -1046,6 +1110,74 @@ class OmniFocusClient:
                 raise Exception("No project ID returned from OmniFocus")
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error creating project: {e.stderr}")
+
+    def update_project(
+        self,
+        project_id: str,
+        name: Optional[str] = None,
+        note: Optional[str] = None,
+        sequential: Optional[bool] = None
+    ) -> bool:
+        """Update properties of an existing project.
+
+        Args:
+            project_id: The ID of the project to update
+            name: New project name (optional)
+            note: New project note (optional)
+            sequential: New sequential setting (optional)
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            ValueError: If project_id is empty or no fields are provided
+            Exception: If the project cannot be updated
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('update_project')
+
+        if not project_id:
+            raise ValueError("project_id is required")
+
+        # Check if at least one field is provided
+        if all(v is None for v in [name, note, sequential]):
+            raise ValueError("At least one field must be provided to update")
+
+        # Build properties to update
+        properties = []
+
+        if name is not None:
+            escaped_name = self._escape_applescript_string(name)
+            properties.append(f'name:"{escaped_name}"')
+
+        if note is not None:
+            escaped_note = self._escape_applescript_string(note)
+            properties.append(f'note:"{escaped_note}"')
+
+        if sequential is not None:
+            properties.append(f'sequential:{str(sequential).lower()}')
+
+        properties_str = ", ".join(properties)
+        project_id_escaped = self._escape_applescript_string(project_id)
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set theProject to first flattened project whose id is "{project_id_escaped}"
+                if theProject is missing value then
+                    error "Project not found: {project_id}"
+                end if
+                set properties of theProject to {{{properties_str}}}
+                return "true"
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return result.strip().lower() == "true"
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error updating project: {e.stderr}")
 
     def set_project_status(self, project_id: str, status: str) -> bool:
         """Set the status of a project.

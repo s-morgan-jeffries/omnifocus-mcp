@@ -1715,6 +1715,225 @@ Valuable but less urgent:
 
 ---
 
+### USE CASE 16: Project Cleanup & Reorganization Assistant
+**Personas:** Sarah (GTD Purist), Dr. Chen (Academic), James (Non-Profit Director), and **The Overwhelmed Long-Time User**
+
+**New Persona: The Overwhelmed Long-Time User (Morgan)**
+**Profile:** Professional who's used OmniFocus for years (5-10+ years), accumulated 100+ projects
+**OmniFocus Current State:**
+- Many stalled projects (no recent activity, unclear next steps)
+- Redundant or overlapping projects that should be consolidated
+- Projects that should be split into multiple focused projects
+- Mixed contexts and unclear organization
+- Behind on reviews - some projects not reviewed in months/years
+- Unclear which projects are still relevant vs. should be archived/dropped
+
+**Pain Points:**
+- Overwhelming to manually review 100+ projects
+- Don't know where to start with cleanup
+- Hard to identify patterns (which projects are truly stalled vs. just long-term?)
+- Difficult to see relationships between projects (should these be merged?)
+- Analysis paralysis: Every time I open OmniFocus, the mess prevents effective use
+- Need guidance: "What should I do with this project?"
+
+**Desired Workflow:**
+1. User initiates systematic project review with AI
+2. AI analyzes ALL projects with quantitative metrics:
+   - Last activity date (task completion, modification)
+   - Task count and completion rate
+   - Number of available vs. blocked tasks
+   - Review history (when last reviewed)
+   - Time since project creation
+3. AI categorizes projects into triage groups:
+   - 🚨 **Critical attention** (has deadlines but no recent activity)
+   - ⚠️ **Stalled but potentially active** (no recent tasks but not old)
+   - 📦 **Archive candidates** (old, no activity, low completion)
+   - ✅ **Healthy active** (recent activity, clear next actions)
+   - 🔄 **Review needed** (not reviewed in >X weeks)
+4. AI works through projects systematically, asking guided questions:
+   - "This project hasn't had activity in 6 months. Is it still relevant?"
+   - "You have 3 projects about home renovation. Should these be merged?"
+   - "This project has 47 tasks. Should it be split into sub-projects?"
+5. AI suggests specific actions:
+   - Complete/archive project
+   - Merge with another project
+   - Split into multiple projects
+   - Add clear next action
+   - Move to different folder/context
+   - Mark for review in X days
+6. AI executes approved reorganization actions
+7. AI generates "after" summary showing improvements
+
+**Example Conversation:**
+```
+User: "Help me clean up my OmniFocus projects. I'm overwhelmed."
+
+AI: I've analyzed your 147 projects. Here's what I found:
+
+📊 Project Health Analysis:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Healthy (32 projects): Recent activity, clear next actions
+⚠️ Needs Attention (68 projects): Various issues
+📦 Archive Candidates (31 projects): No activity >6 months
+🚨 Critical (16 projects): Has deadlines but stalled
+
+Let's work through these systematically. I'll start with the most critical.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 CRITICAL #1: "Grant Application - Foundation XYZ"
+Last activity: 4 months ago
+Due date: 30 days from now
+Status: 0 of 12 tasks completed
+Created: 8 months ago
+
+This has a deadline approaching but no recent work. Options:
+A) It's still active - help me restart it
+B) Deadline passed/no longer relevant - archive it
+C) Need to defer - move deadline
+
+Your choice? [A/B/C]
+
+User: A - I need to finish this
+
+AI: Great. I see the issue: no clear next action.
+
+Looking at the tasks, you have:
+- "Draft research methodology" (seems like the logical start)
+- "Gather supporting documents"
+- "Write budget justification"
+- ... (9 more)
+
+Should I:
+1. Set "Draft research methodology" as the next action
+2. Break this into phases (Research → Draft → Review → Submit)
+3. Create a timeline working backward from the deadline
+
+Recommend: Option 2 + 3. Want me to restructure this project?
+
+User: Yes
+
+AI: [Creates phases, sets defer dates, flags urgent items]
+
+Done! "Grant Application - Foundation XYZ" is now organized into 4 phases
+with next action: "Draft research methodology section 1" (due this week).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 CRITICAL #2: "Home Renovation Planning"
+Also in:
+- "House Projects" (folder: Personal > Home)
+- "Kitchen Remodel" (folder: Personal > Home)
+- "Bathroom Upgrade" (folder: Personal > Home)
+
+These look related. Should I:
+A) Merge all into single "Home Renovation" project
+B) Keep separate but link them as sequential phases
+C) They're actually unrelated - keep separate
+
+Your choice? [A/B/C]
+
+User: A - merge them
+
+AI: Merging... Done! Created "Home Renovation" with phases:
+- Phase 1: Planning & Budgeting (from old "Planning" project)
+- Phase 2: Kitchen Remodel (23 tasks)
+- Phase 3: Bathroom Upgrade (8 tasks)
+
+Archived the 3 old projects. Next action: "Get contractor quotes for kitchen"
+
+Progress: 2 of 16 critical projects addressed. Continue? [Y/N]
+```
+
+**Current MCP Capabilities - Gap Analysis:**
+
+✅ **What we CAN do:**
+- Get list of all projects (`get_projects`)
+- Get project metadata (name, note, folder, task counts, completion stats)
+- Get project status (active, on hold, completed, dropped)
+- Get tasks for a specific project (`get_tasks(project_id)`)
+- Get task details (completion status, blocked status, available status)
+- Update project properties (`update_project` - name, note, sequential)
+- Update task properties (`update_task`)
+- Delete projects and tasks
+- Move tasks between projects (`move_task`)
+- Create new projects (`create_project`)
+- Add tasks to projects (`add_task`)
+- Get stalled projects (`get_stalled_projects`)
+
+❌ **What we CANNOT do (gaps for this use case):**
+- **Get project last activity date** - No way to know when last task was completed/modified
+- **Get project review history** - Can't see when project was last reviewed
+- **Get project creation date** - Can't determine how old a project is
+- **Define "stalled" parameters** - `get_stalled_projects` has hardcoded definition
+- **Batch operations for reorganization:**
+  - Can't merge projects (combine tasks from multiple into one)
+  - Can't split projects (move subset of tasks to new project)
+  - Can't archive/complete multiple projects at once
+- **Task modification history** - Can't see when tasks were last changed
+- **Flexible filtering** - Can't query "projects with no activity in last X months"
+- **Get project tasks in one call** - Must call `get_project()` then `get_tasks(project_id)` separately
+
+**Required Enhancements for This Use Case:**
+
+**HIGH PRIORITY (blocking core workflow):**
+1. **Project activity timestamps:**
+   - Add `lastActivityDate` to project metadata
+   - Add `lastReviewDate` to project metadata
+   - Add `creationDate` to project metadata
+   - Add `modificationDate` to project metadata
+
+2. **Task modification timestamps:**
+   - Add `completionDate` to completed tasks
+   - Add `modificationDate` to task metadata
+   - Add `creationDate` to task metadata
+
+3. **Configurable stalled project detection:**
+   - `get_stalled_projects(days_inactive=180, min_task_count=1)` - parameterize the definition
+   - Return projects with no activity in X days
+
+4. **Batch project management:**
+   - `merge_projects(source_project_ids, target_project_id)` - combine multiple projects
+   - `split_project(project_id, task_ids, new_project_name)` - move tasks to new project
+   - `archive_projects(project_ids)` - mark multiple projects complete/dropped
+   - `complete_projects(project_ids)` - bulk completion
+
+5. **Enhanced project queries:**
+   - `get_projects_by_activity(last_active_before="2024-04-01")` - filter by inactivity
+   - `get_projects_by_review_status(not_reviewed_in_days=90)`
+   - `get_projects_similar_to(project_id)` - find potentially duplicate/related projects
+
+**MEDIUM PRIORITY (improves experience):**
+6. **Project relationship detection:**
+   - `suggest_projects_to_merge()` - AI analysis of similar names/contexts
+   - `detect_project_overlaps()` - find projects with related tasks
+
+7. **Reorganization previews:**
+   - `preview_merge(project_ids)` - show what merged project would look like
+   - Allow user to review before executing
+
+8. **Progress tracking:**
+   - Track reorganization session (how many reviewed, how many remaining)
+   - Allow pause/resume of cleanup sessions
+
+**LOW PRIORITY (nice-to-have):**
+9. **Reorganization analytics:**
+   - Before/after metrics (projects reduced from X to Y)
+   - Health score improvements
+   - Time estimates for remaining cleanup
+
+**Priority:** SHOULD-HAVE
+**Impact:** Very High - addresses major pain point for long-time users
+**Effort:** High (requires new AppleScript properties, batch operations)
+**User Segment:** Power users with mature OmniFocus databases (5+ years of use)
+
+**Success Metrics:**
+- Projects reviewed per session (target: 10-20 with AI vs. 2-3 manual)
+- Time to review 100 projects (target: <2 hours with AI vs. 6-8 hours manual)
+- Project count reduction (target: 20-30% archived/merged)
+- Stalled project resolution rate (target: >80% get clear next action or archived)
+- User confidence score post-cleanup (survey)
+
+---
+
 ## Competitive Differentiation
 
 ### vs. Motion / AI Task Managers

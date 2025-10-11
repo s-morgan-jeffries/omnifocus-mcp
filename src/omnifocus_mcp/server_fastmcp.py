@@ -168,7 +168,7 @@ def create_project(
 
     Args:
         name: The name of the project
-        note: Optional note/description for the project
+        note: Optional note/description for the project (plain text only - rich text formatting is not supported via automation APIs)
         folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
         sequential: If True, tasks must be completed in order; if False, tasks can be done in parallel (default: False)
 
@@ -195,6 +195,48 @@ def create_project(
         result += f"\nNote: {_truncate_note(note)}"
 
     return result
+
+
+@mcp.tool()
+def update_project(
+    project_id: str,
+    name: Optional[str] = None,
+    note: Optional[str] = None,
+    sequential: Optional[str] = None
+) -> str:
+    """Update an existing project in OmniFocus.
+
+    Args:
+        project_id: The ID of the project to update
+        name: New project name (optional)
+        note: New note content (optional). WARNING: If provided, this will remove any rich text formatting (bold, italics, links, etc.) and replace it with plain text. OmniFocus automation APIs only support plain text notes. If not provided, the existing note will be preserved unchanged.
+        sequential: New sequential setting (optional) - "true" for sequential (tasks completed in order), "false" for parallel, or omit to leave unchanged
+
+    Returns:
+        Success message listing all updated fields
+    """
+    # Convert string sequential parameter to boolean for client
+    sequential_bool: Optional[bool] = None
+    if sequential is not None:
+        if sequential.lower() == "true":
+            sequential_bool = True
+        elif sequential.lower() == "false":
+            sequential_bool = False
+        else:
+            return f"Error: Invalid sequential value '{sequential}'. Must be 'true' or 'false'."
+
+    client = get_client()
+    success = client.update_project(
+        project_id=project_id,
+        name=name,
+        note=note,
+        sequential=sequential_bool
+    )
+
+    if success:
+        return f"Successfully updated project {project_id}"
+    else:
+        return f"Error: Failed to update project {project_id}"
 
 
 @mcp.tool()
@@ -433,7 +475,7 @@ def add_task(
     Args:
         project_id: The ID of the project to add the task to
         task_name: The name/title of the task
-        note: Optional note/description for the task
+        note: Optional note/description for the task (plain text only - rich text formatting is not supported via automation APIs)
         due_date: Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
         defer_date: Defer date in ISO 8601 format (when task becomes available)
         flagged: Whether to flag the task (default: False)
@@ -475,21 +517,31 @@ def update_task(
     note: Optional[str] = None,
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
-    flagged: Optional[bool] = None
+    flagged: Optional[str] = None
 ) -> str:
     """Update an existing task in OmniFocus.
 
     Args:
         task_id: The ID of the task to update
         name: New task name (optional)
-        note: New note content (optional)
+        note: New note content (optional). WARNING: If provided, this will remove any rich text formatting (bold, italics, links, etc.) and replace it with plain text. OmniFocus automation APIs only support plain text notes. If not provided, the existing note will be preserved unchanged.
         due_date: New due date in ISO 8601 format, or empty string to clear (optional)
         defer_date: New defer date in ISO 8601 format, or empty string to clear (optional)
-        flagged: New flagged status (optional)
+        flagged: New flagged status - "true" to flag, "false" to unflag, or omit to leave unchanged (optional)
 
     Returns:
         Success message listing all updated fields
     """
+    # Convert string flagged parameter to boolean for client
+    flagged_bool: Optional[bool] = None
+    if flagged is not None:
+        if flagged.lower() == "true":
+            flagged_bool = True
+        elif flagged.lower() == "false":
+            flagged_bool = False
+        else:
+            return f"Error: Invalid flagged value '{flagged}'. Must be 'true' or 'false'."
+
     client = get_client()
     success = client.update_task(
         task_id=task_id,
@@ -497,7 +549,7 @@ def update_task(
         note=note,
         due_date=due_date,
         defer_date=defer_date,
-        flagged=flagged
+        flagged=flagged_bool
     )
 
     if success:
@@ -555,7 +607,7 @@ def create_inbox_task(
 
     Args:
         task_name: The name/title of the task
-        note: Optional note/description for the task
+        note: Optional note/description for the task (plain text only - rich text formatting is not supported via automation APIs)
         due_date: Optional due date in ISO 8601 format
         flagged: Whether to flag the task (default: False)
 

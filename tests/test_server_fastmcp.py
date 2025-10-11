@@ -10,6 +10,7 @@ get_client = server.get_client
 get_projects = server.get_projects.fn
 get_project = server.get_project.fn
 create_project = server.create_project.fn
+update_project = server.update_project.fn
 set_project_status = server.set_project_status.fn
 get_stalled_projects = server.get_stalled_projects.fn
 get_tasks = server.get_tasks.fn
@@ -1050,3 +1051,141 @@ class TestHierarchyFieldFormatting:
             assert "Subtask Count: 1" in result
             assert "Sequential: False" in result
             assert "Position: 1" in result
+
+    def test_update_task_flagged_with_string_true(self):
+        """Test that update_task accepts string 'true' for flagged parameter."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_task.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = update_task("task-001", flagged="true")
+
+            # Verify the client was called with boolean True
+            mock_client.update_task.assert_called_once_with(
+                task_id="task-001",
+                name=None,
+                note=None,
+                due_date=None,
+                defer_date=None,
+                flagged=True
+            )
+            assert "Successfully updated task" in result
+
+    def test_update_task_flagged_with_string_false(self):
+        """Test that update_task accepts string 'false' for flagged parameter."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_task.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = update_task("task-001", flagged="false")
+
+            # Verify the client was called with boolean False
+            mock_client.update_task.assert_called_once_with(
+                task_id="task-001",
+                name=None,
+                note=None,
+                due_date=None,
+                defer_date=None,
+                flagged=False
+            )
+            assert "Successfully updated task" in result
+
+    def test_update_task_flagged_with_invalid_string(self):
+        """Test that update_task rejects invalid flagged values."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_get_client.return_value = mock_client
+
+            result = update_task("task-001", flagged="maybe")
+
+            # Should return error without calling client
+            assert "Error: Invalid flagged value" in result
+            mock_client.update_task.assert_not_called()
+
+    def test_update_task_flagged_omitted(self):
+        """Test that update_task works when flagged parameter is omitted."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_task.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = update_task("task-001", name="New Name")
+
+            # Verify the client was called with flagged=None
+            mock_client.update_task.assert_called_once_with(
+                task_id="task-001",
+                name="New Name",
+                note=None,
+                due_date=None,
+                defer_date=None,
+                flagged=None
+            )
+            assert "Successfully updated task" in result
+
+    def test_update_project_sequential_with_string_true(self):
+        """Test that update_project accepts string 'true' for sequential parameter."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = update_project("proj-001", sequential="true")
+
+            # Verify the client was called with boolean True
+            mock_client.update_project.assert_called_once_with(
+                project_id="proj-001",
+                name=None,
+                note=None,
+                sequential=True
+            )
+            assert "Successfully updated project" in result
+
+    def test_update_project_sequential_with_string_false(self):
+        """Test that update_project accepts string 'false' for sequential parameter."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = update_project("proj-001", sequential="false")
+
+            # Verify the client was called with boolean False
+            mock_client.update_project.assert_called_once_with(
+                project_id="proj-001",
+                name=None,
+                note=None,
+                sequential=False
+            )
+            assert "Successfully updated project" in result
+
+    def test_update_project_sequential_with_invalid_string(self):
+        """Test that update_project rejects invalid sequential values."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_get_client.return_value = mock_client
+
+            result = update_project("proj-001", sequential="maybe")
+
+            # Should return error without calling client
+            assert "Error: Invalid sequential value" in result
+            mock_client.update_project.assert_not_called()
+
+    def test_update_project_sequential_omitted(self):
+        """Test that update_project works when sequential parameter is omitted."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = update_project("proj-001", name="New Name")
+
+            # Verify the client was called with sequential=None
+            mock_client.update_project.assert_called_once_with(
+                project_id="proj-001",
+                name="New Name",
+                note=None,
+                sequential=None
+            )
+            assert "Successfully updated project" in result
