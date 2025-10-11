@@ -3677,6 +3677,63 @@ class OmniFocusClient:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error setting parent task: {e.stderr}")
 
+    def reorder_task(self, task_id: str, before_task_id: Optional[str] = None, after_task_id: Optional[str] = None) -> bool:
+        """Reorder a task by moving it before or after another task.
+
+        Args:
+            task_id: The ID of the task to move
+            before_task_id: Move the task before this task (optional)
+            after_task_id: Move the task after this task (optional)
+
+        Note:
+            Exactly one of before_task_id or after_task_id must be provided.
+            Both tasks must be in the same project and at the same level (both root or both subtasks of same parent).
+
+        Returns:
+            True if operation was successful
+
+        Raises:
+            ValueError: If neither or both before_task_id and after_task_id are provided
+            Exception: If tasks not found, not in same project, or operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('reorder_task')
+
+        # Validate parameters
+        if before_task_id is None and after_task_id is None:
+            raise ValueError("Must provide either before_task_id or after_task_id")
+        if before_task_id is not None and after_task_id is not None:
+            raise ValueError("Cannot provide both before_task_id and after_task_id")
+
+        reference_task_id = before_task_id if before_task_id else after_task_id
+        position = "before" if before_task_id else "after"
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theTask to first flattened task whose id is "{task_id}"
+                    set refTask to first flattened task whose id is "{reference_task_id}"
+
+                    -- Move task to before/after reference task
+                    move theTask to {position} refTask
+                    return "true"
+                on error errMsg
+                    return "false: " & errMsg
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Error reordering task: {result}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error reordering task: {e.stderr}")
+
     def set_review_interval(self, project_id: str, interval_weeks: int) -> bool:
         """Set the review interval for a project.
 

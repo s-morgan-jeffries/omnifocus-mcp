@@ -1315,3 +1315,118 @@ class TestHierarchyFields:
         print(f"  Parent Task has {len(parent_children)} children")
         print(f"    1. {parent_children[0]['name']} (pos {parent_children[0]['position']})")
         print(f"    2. {parent_children[1]['name']} (pos {parent_children[1]['position']})")
+
+
+class TestTaskReordering:
+    """Tests for reordering tasks within a project."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_reorder_task_before_another(self, client):
+        """Test moving a task before another task."""
+        # Create a test project with 3 tasks
+        project_id = client.create_project("Reorder Test Project")
+
+        # Add 3 tasks
+        client.add_task(project_id, "Task A")
+        client.add_task(project_id, "Task B")
+        client.add_task(project_id, "Task C")
+
+        # Get tasks in current order
+        tasks = client.get_tasks(project_id=project_id)
+        assert len(tasks) == 3
+
+        task_a = next(t for t in tasks if t['name'] == 'Task A')
+        task_b = next(t for t in tasks if t['name'] == 'Task B')
+        task_c = next(t for t in tasks if t['name'] == 'Task C')
+
+        # Verify initial order by position
+        assert task_a['position'] < task_b['position'] < task_c['position'], \
+            "Initial order should be A < B < C"
+
+        # Move Task C before Task A
+        success = client.reorder_task(task_c['id'], before_task_id=task_a['id'])
+        assert success, "reorder_task should return True"
+
+        # Get updated order
+        tasks_after = client.get_tasks(project_id=project_id)
+        task_a_after = next(t for t in tasks_after if t['name'] == 'Task A')
+        task_b_after = next(t for t in tasks_after if t['name'] == 'Task B')
+        task_c_after = next(t for t in tasks_after if t['name'] == 'Task C')
+
+        # Verify new order: C should be before A
+        assert task_c_after['position'] < task_a_after['position'], \
+            "Task C should be before Task A after reordering"
+        assert task_a_after['position'] < task_b_after['position'], \
+            "Task A should still be before Task B"
+
+        print(f"\n✓ Successfully reordered tasks:")
+        print(f"  Initial: A(pos {task_a['position']}) < B(pos {task_b['position']}) < C(pos {task_c['position']})")
+        print(f"  After:   C(pos {task_c_after['position']}) < A(pos {task_a_after['position']}) < B(pos {task_b_after['position']})")
+
+        # Cleanup
+        client.delete_project(project_id)
+
+    def test_reorder_task_after_another(self, client):
+        """Test moving a task after another task."""
+        # Create a test project with 3 tasks
+        project_id = client.create_project("Reorder Test Project 2")
+
+        # Add 3 tasks
+        client.add_task(project_id, "Task X")
+        client.add_task(project_id, "Task Y")
+        client.add_task(project_id, "Task Z")
+
+        # Get tasks in current order
+        tasks = client.get_tasks(project_id=project_id)
+        task_x = next(t for t in tasks if t['name'] == 'Task X')
+        task_y = next(t for t in tasks if t['name'] == 'Task Y')
+        task_z = next(t for t in tasks if t['name'] == 'Task Z')
+
+        # Move Task X after Task Z
+        success = client.reorder_task(task_x['id'], after_task_id=task_z['id'])
+        assert success, "reorder_task should return True"
+
+        # Get updated order
+        tasks_after = client.get_tasks(project_id=project_id)
+        task_x_after = next(t for t in tasks_after if t['name'] == 'Task X')
+        task_y_after = next(t for t in tasks_after if t['name'] == 'Task Y')
+        task_z_after = next(t for t in tasks_after if t['name'] == 'Task Z')
+
+        # Verify new order: X should be after Z
+        assert task_y_after['position'] < task_z_after['position'], \
+            "Task Y should be before Task Z"
+        assert task_z_after['position'] < task_x_after['position'], \
+            "Task X should be after Task Z"
+
+        print(f"\n✓ Successfully reordered tasks with 'after':")
+        print(f"  After:   Y(pos {task_y_after['position']}) < Z(pos {task_z_after['position']}) < X(pos {task_x_after['position']})")
+
+        # Cleanup
+        client.delete_project(project_id)
+
+    def test_reorder_task_requires_one_parameter(self, client):
+        """Test that reorder_task requires either before_task_id or after_task_id."""
+        project_id = client.create_project("Reorder Test Project 3")
+        client.add_task(project_id, "Task 1")
+        client.add_task(project_id, "Task 2")
+
+        tasks = client.get_tasks(project_id=project_id)
+        task1_id = tasks[0]['id']
+        task2_id = tasks[1]['id']
+
+        # Should raise ValueError if neither parameter provided
+        with pytest.raises(ValueError, match="Must provide either before_task_id or after_task_id"):
+            client.reorder_task(task1_id)
+
+        # Should raise ValueError if both parameters provided
+        with pytest.raises(ValueError, match="Cannot provide both"):
+            client.reorder_task(task1_id, before_task_id=task2_id, after_task_id=task2_id)
+
+        print("\n✓ Parameter validation works correctly")
+
+        # Cleanup
+        client.delete_project(project_id)

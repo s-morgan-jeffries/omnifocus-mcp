@@ -948,6 +948,41 @@ def create_folder(name: str, parent_path: Optional[str] = None) -> str:
 # ============================================================================
 
 @mcp.tool()
+def reorder_task(task_id: str, before_task_id: Optional[str] = None, after_task_id: Optional[str] = None) -> str:
+    """Move a task before or after another task to change its position.
+
+    Use this to reorder tasks within a project or within a parent task's subtasks.
+    This is essential for sequential projects where task order matters.
+
+    Args:
+        task_id: The ID of the task to move
+        before_task_id: Move the task before this task (provide either this OR after_task_id)
+        after_task_id: Move the task after this task (provide either this OR before_task_id)
+
+    Returns:
+        Success message confirming the task was reordered
+
+    Note:
+        Both tasks must be in the same project and at the same level (both root-level or both subtasks of the same parent).
+        Exactly one of before_task_id or after_task_id must be provided.
+    """
+    client = get_client()
+    try:
+        success = client.reorder_task(task_id, before_task_id, after_task_id)
+        if success:
+            if before_task_id:
+                return f"Successfully moved task {task_id} before task {before_task_id}"
+            else:
+                return f"Successfully moved task {task_id} after task {after_task_id}"
+        else:
+            return f"Error: Failed to reorder task {task_id}"
+    except ValueError as e:
+        return f"Error: {str(e)}"
+    except Exception as e:
+        return f"Error reordering task: {str(e)}"
+
+
+@mcp.tool()
 def set_parent_task(task_id: str, parent_task_id: Optional[str] = None) -> str:
     """Set the parent task of a task (make it a subtask) or make it root-level.
 
