@@ -943,3 +943,110 @@ class TestBatchOperationTools:
             mock_client.delete_projects.assert_called_once_with(["proj-001", "proj-002"])
             assert "2" in result
             assert "deleted" in result.lower()
+
+
+class TestHierarchyFieldFormatting:
+    """Tests for hierarchy field formatting in output."""
+
+    def test_format_task_includes_hierarchy_fields(self):
+        """Test that _format_task includes all hierarchy fields in output."""
+        mock_task = {
+            "id": "task-001",
+            "name": "Test Task",
+            "projectName": "Test Project",
+            "completed": False,
+            "parentTaskId": "parent-001",
+            "subtaskCount": 2,
+            "sequential": True,
+            "position": 3
+        }
+
+        result = server._format_task(mock_task)
+
+        assert "Parent Task ID: parent-001" in result
+        assert "Subtask Count: 2" in result
+        assert "Sequential: True" in result
+        assert "Position: 3" in result
+
+    def test_format_task_shows_root_level_for_empty_parent(self):
+        """Test that _format_task shows '(none - root level)' for tasks with no parent."""
+        mock_task = {
+            "id": "task-001",
+            "name": "Root Task",
+            "projectName": "Test Project",
+            "completed": False,
+            "parentTaskId": "",
+            "subtaskCount": 0,
+            "sequential": False,
+            "position": 1
+        }
+
+        result = server._format_task(mock_task)
+
+        assert "Parent Task ID: (none - root level)" in result
+        assert "Subtask Count: 0" in result
+
+    def test_format_project_includes_sequential_field(self):
+        """Test that _format_project includes sequential field in output."""
+        mock_project = {
+            "id": "proj-001",
+            "name": "Test Project",
+            "status": "active",
+            "sequential": True
+        }
+
+        result = server._format_project(mock_project)
+
+        assert "Sequential: True" in result
+
+    def test_get_task_output_includes_hierarchy_fields(self):
+        """Test that get_task tool output includes hierarchy fields."""
+        mock_task = {
+            "id": "task-001",
+            "name": "Test Task",
+            "projectName": "Test Project",
+            "completed": False,
+            "parentTaskId": "parent-001",
+            "subtaskCount": 2,
+            "sequential": True,
+            "position": 3
+        }
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_task.return_value = mock_task
+            mock_get_client.return_value = mock_client
+
+            result = get_task("task-001")
+
+            # Verify hierarchy fields are in the formatted output
+            assert "Parent Task ID: parent-001" in result
+            assert "Subtask Count: 2" in result
+            assert "Sequential: True" in result
+            assert "Position: 3" in result
+
+    def test_get_tasks_output_includes_hierarchy_fields(self):
+        """Test that get_tasks tool output includes hierarchy fields."""
+        mock_tasks = [{
+            "id": "task-001",
+            "name": "Test Task",
+            "projectName": "Test Project",
+            "completed": False,
+            "parentTaskId": "",
+            "subtaskCount": 1,
+            "sequential": False,
+            "position": 1
+        }]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_tasks.return_value = mock_tasks
+            mock_get_client.return_value = mock_client
+
+            result = get_tasks()
+
+            # Verify hierarchy fields are in the formatted output
+            assert "Parent Task ID: (none - root level)" in result
+            assert "Subtask Count: 1" in result
+            assert "Sequential: False" in result
+            assert "Position: 1" in result
