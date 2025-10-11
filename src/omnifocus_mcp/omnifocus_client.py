@@ -1939,25 +1939,53 @@ class OmniFocusClient:
                             end if
                         end try
 
-                        set completionDate to ""
+                        -- Get timestamp fields
+                        set creationDateStr to "null"
                         try
-                            set completionDateObj to completion date of t
-                            if completionDateObj is not missing value then
-                                set completionDate to completionDateObj as «class isot» as string
+                            set creationDateObj to creation date of t
+                            if creationDateObj is not missing value then
+                                set creationDateStr to "\\"" & (creationDateObj as «class isot» as string) & "\\""
                             end if
                         end try
 
-                        -- Get tags
-                        set tagsList to ""
+                        set modificationDateStr to "null"
+                        try
+                            set modificationDateObj to modification date of t
+                            if modificationDateObj is not missing value then
+                                set modificationDateStr to "\\"" & (modificationDateObj as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        set completionDateStr to "null"
+                        try
+                            set completionDateObj to completion date of t
+                            if completionDateObj is not missing value then
+                                set completionDateStr to "\\"" & (completionDateObj as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        set droppedDateStr to "null"
+                        try
+                            set droppedDateObj to dropped date of t
+                            if droppedDateObj is not missing value then
+                                set droppedDateStr to "\\"" & (droppedDateObj as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        -- Get tags as JSON array
+                        set tagsJSON to "[]"
                         try
                             set taskTags to tags of t
-                            set tagNames to {{}}
-                            repeat with tg in taskTags
-                                set end of tagNames to name of tg
-                            end repeat
-                            set AppleScript's text item delimiters to ", "
-                            set tagsList to tagNames as text
-                            set AppleScript's text item delimiters to ""
+                            if (count of taskTags) > 0 then
+                                set tagItems to {{}}
+                                repeat with tg in taskTags
+                                    set tagName to name of tg
+                                    set end of tagItems to "\\"" & my escapeJSON(tagName) & "\\""
+                                end repeat
+                                set AppleScript's text item delimiters to ", "
+                                set tagsJSON to "[" & (tagItems as text) & "]"
+                                set AppleScript's text item delimiters to ""
+                            end if
                         end try
 
                         -- Get estimated minutes
@@ -2039,8 +2067,11 @@ class OmniFocusClient:
                             "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
                             "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
-                            "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
-                            "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
+                            "\\"creationDate\\": " & creationDateStr & ", " & ¬
+                            "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
+                            "\\"completionDate\\": " & completionDateStr & ", " & ¬
+                            "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
+                            "\\"tags\\": " & tagsJSON & ", " & ¬
                             "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
                             "\\"isRecurring\\": " & isRecurring & ", " & ¬
                             "\\"recurrence\\": \\"" & my escapeJSON(recurrenceStr) & "\\", " & ¬
@@ -2246,25 +2277,53 @@ class OmniFocusClient:
                     end if
                 end try
 
-                set completionDate to ""
+                -- Get timestamp fields
+                set creationDateStr to "null"
                 try
-                    set completionDateObj to completion date of targetTask
-                    if completionDateObj is not missing value then
-                        set completionDate to completionDateObj as «class isot» as string
+                    set creationDateObj to creation date of targetTask
+                    if creationDateObj is not missing value then
+                        set creationDateStr to "\\"" & (creationDateObj as «class isot» as string) & "\\""
                     end if
                 end try
 
-                -- Get tags
-                set tagsList to ""
+                set modificationDateStr to "null"
+                try
+                    set modificationDateObj to modification date of targetTask
+                    if modificationDateObj is not missing value then
+                        set modificationDateStr to "\\"" & (modificationDateObj as «class isot» as string) & "\\""
+                    end if
+                end try
+
+                set completionDateStr to "null"
+                try
+                    set completionDateObj to completion date of targetTask
+                    if completionDateObj is not missing value then
+                        set completionDateStr to "\\"" & (completionDateObj as «class isot» as string) & "\\""
+                    end if
+                end try
+
+                set droppedDateStr to "null"
+                try
+                    set droppedDateObj to dropped date of targetTask
+                    if droppedDateObj is not missing value then
+                        set droppedDateStr to "\\"" & (droppedDateObj as «class isot» as string) & "\\""
+                    end if
+                end try
+
+                -- Get tags as JSON array
+                set tagsJSON to "[]"
                 try
                     set taskTags to tags of targetTask
-                    set tagNames to {{}}
-                    repeat with tg in taskTags
-                        set end of tagNames to name of tg
-                    end repeat
-                    set AppleScript's text item delimiters to ", "
-                    set tagsList to tagNames as text
-                    set AppleScript's text item delimiters to ""
+                    if (count of taskTags) > 0 then
+                        set tagItems to {{}}
+                        repeat with tg in taskTags
+                            set tagName to name of tg
+                            set end of tagItems to "\\"" & my escapeJSON(tagName) & "\\""
+                        end repeat
+                        set AppleScript's text item delimiters to ", "
+                        set tagsJSON to "[" & (tagItems as text) & "]"
+                        set AppleScript's text item delimiters to ""
+                    end if
                 end try
 
                 -- Get estimated minutes
@@ -2330,8 +2389,11 @@ class OmniFocusClient:
                     "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
                     "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                     "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
-                    "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
-                    "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
+                    "\\"creationDate\\": " & creationDateStr & ", " & ¬
+                    "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
+                    "\\"completionDate\\": " & completionDateStr & ", " & ¬
+                    "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
+                    "\\"tags\\": " & tagsJSON & ", " & ¬
                     "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
                     "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
                     "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬

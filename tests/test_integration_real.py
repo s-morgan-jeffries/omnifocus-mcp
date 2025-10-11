@@ -641,6 +641,51 @@ class TestTaskCRUD:
         print("\n✓ Task includes tags array")
         print(f"  Tags: {tag_names}")
 
+    def test_get_tasks_includes_timestamp_fields(self, client, test_project_id):
+        """Test that get_tasks includes timestamp fields in list results."""
+        # Get tasks for a project
+        tasks = client.get_tasks(project_id=test_project_id)
+        assert len(tasks) > 0
+
+        # Check first task has timestamp fields
+        task = tasks[0]
+
+        assert 'creationDate' in task
+        assert 'modificationDate' in task
+        assert 'completionDate' in task
+        assert 'droppedDate' in task
+
+        # Active tasks should have creationDate and modificationDate
+        if not task.get('completed'):
+            assert task['creationDate'] is not None
+            assert task['modificationDate'] is not None
+
+        print("\n✓ get_tasks includes timestamp fields")
+        print(f"  First task: {task['name']}")
+        print(f"  Created: {task['creationDate']}")
+        print(f"  Modified: {task['modificationDate']}")
+
+    def test_get_tasks_includes_tags(self, client, test_project_id):
+        """Test that get_tasks includes tags array."""
+        # Create a task with tags
+        client.add_task(test_project_id, "Task for get_tasks Tags Test", tags=["test-work"])
+
+        # Get tasks
+        tasks = client.get_tasks(project_id=test_project_id)
+        task = next((t for t in tasks if t['name'] == "Task for get_tasks Tags Test"), None)
+        assert task is not None
+
+        # Verify tags field is present and is an array
+        assert 'tags' in task
+        assert isinstance(task['tags'], list)
+
+        # Should have the tag we added
+        tag_names = [t if isinstance(t, str) else t.get('name') for t in task['tags']]
+        assert "test-work" in tag_names
+
+        print("\n✓ get_tasks includes tags array")
+        print(f"  Tags: {tag_names}")
+
     def test_get_subtasks(self, client):
         """Test getting subtasks of a parent task."""
         # Find the parent task
