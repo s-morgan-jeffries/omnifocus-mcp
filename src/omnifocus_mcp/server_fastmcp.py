@@ -75,6 +75,19 @@ def _format_task(task: dict) -> str:
     if task.get('note'):
         result += f"Note: {_truncate_note(task['note'])}\n"
 
+    # Hierarchy fields
+    if 'parentTaskId' in task:
+        if task['parentTaskId']:
+            result += f"Parent Task ID: {task['parentTaskId']}\n"
+        else:
+            result += f"Parent Task ID: (none - root level)\n"
+    if 'subtaskCount' in task:
+        result += f"Subtask Count: {task['subtaskCount']}\n"
+    if 'sequential' in task:
+        result += f"Sequential: {task['sequential']}\n"
+    if 'position' in task:
+        result += f"Position: {task['position']}\n"
+
     return result
 
 
@@ -92,6 +105,8 @@ def _format_project(proj: dict) -> str:
     if proj.get('folderPath'):
         result += f"Folder: {proj['folderPath']}\n"
     result += f"Status: {proj['status']}\n"
+    if 'sequential' in proj:
+        result += f"Sequential: {proj['sequential']}\n"
     if proj.get('note'):
         result += f"Note: {_truncate_note(proj['note'])}\n"
 
