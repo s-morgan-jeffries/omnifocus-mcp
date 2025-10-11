@@ -2065,6 +2065,8 @@ class OmniFocusClient:
                 set taskCompleted to completed of targetTask
                 set taskFlagged to flagged of targetTask
                 set taskDropped to dropped of targetTask
+                set taskBlocked to blocked of targetTask
+                set taskNext to next of targetTask
 
                 -- Get project info
                 set projectId to ""
@@ -2155,6 +2157,8 @@ class OmniFocusClient:
                     "\\"completed\\": " & (taskCompleted as text) & ", " & ¬
                     "\\"flagged\\": " & (taskFlagged as text) & ", " & ¬
                     "\\"dropped\\": " & (taskDropped as text) & ", " & ¬
+                    "\\"blocked\\": " & (taskBlocked as text) & ", " & ¬
+                    "\\"next\\": " & (taskNext as text) & ", " & ¬
                     "\\"projectId\\": \\"" & projectId & "\\", " & ¬
                     "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
                     "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
