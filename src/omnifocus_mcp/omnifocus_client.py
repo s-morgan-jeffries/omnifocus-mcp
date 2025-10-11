@@ -476,6 +476,9 @@ class OmniFocusClient:
                             end if
                         end try
 
+                        -- Get sequential status
+                        set isSequential to sequential of proj
+
                         -- Calculate last activity date (most recent task creation or completion)
                         set lastActivityStr to "null"
                         try
@@ -513,6 +516,7 @@ class OmniFocusClient:
                             "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
                             "\\"note\\": \\"" & my escapeJSON(projNote) & "\\", " & ¬
                             "\\"status\\": \\"" & projStatus & "\\", " & ¬
+                            "\\"sequential\\": " & (isSequential as text) & ", " & ¬
                             "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
                             "\\"modificationDate\\": " & modDateStr & ", " & ¬
                             "\\"lastActivityDate\\": " & lastActivityStr & ¬
@@ -1504,7 +1508,7 @@ class OmniFocusClient:
             task_source = 'inbox tasks'
         elif project_id:
             project_filter = f'whose id is "{project_id}"'
-            task_source = f'tasks of (first flattened project {project_filter})'
+            task_source = f'flattened tasks of (first flattened project {project_filter})'
         else:
             task_source = 'flattened tasks'
 
@@ -1745,12 +1749,14 @@ class OmniFocusClient:
         use scripting additions
 
         set output to ""
+        set taskIndex to 0
 
         tell application "OmniFocus"
             tell front document
                 set allTasks to {task_source}
 
                 repeat with t in allTasks
+                    set taskIndex to taskIndex + 1
                     try
                         set taskId to id of t
                         set taskName to name of t
@@ -1848,6 +1854,29 @@ class OmniFocusClient:
                             end if
                         end try
 
+                        -- Get hierarchy fields
+                        set parentTaskId to ""
+                        try
+                            set parentTaskObj to parent task of t
+                            if parentTaskObj is not missing value then
+                                -- Check if parent is same as containing project (means no parent task)
+                                set parentTaskObjId to id of parentTaskObj
+                                if parentTaskObjId is not equal to projectId then
+                                    set parentTaskId to parentTaskObjId
+                                end if
+                            end if
+                        end try
+
+                        set taskSubtaskCount to 0
+                        try
+                            set taskSubtaskCount to count of (tasks of t)
+                        end try
+
+                        set taskSequential to false
+                        try
+                            set taskSequential to sequential of t
+                        end try
+
                         -- Build JSON manually
                         set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -1867,7 +1896,11 @@ class OmniFocusClient:
                             "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
                             "\\"isRecurring\\": " & isRecurring & ", " & ¬
                             "\\"recurrence\\": \\"" & my escapeJSON(recurrenceStr) & "\\", " & ¬
-                            "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethodStr) & "\\" " & ¬
+                            "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethodStr) & "\\", " & ¬
+                            "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
+                            "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
+                            "\\"sequential\\": " & (taskSequential as text) & ", " & ¬
+                            "\\"position\\": " & (taskIndex as text) & ¬
                             "}}"
 
                         if output is not "" then
@@ -2091,6 +2124,29 @@ class OmniFocusClient:
                     end if
                 end try
 
+                -- Get hierarchy fields
+                set parentTaskId to ""
+                try
+                    set parentTaskObj to parent task of targetTask
+                    if parentTaskObj is not missing value then
+                        -- Check if parent is same as containing project (means no parent task)
+                        set parentTaskObjId to id of parentTaskObj
+                        if parentTaskObjId is not equal to projectId then
+                            set parentTaskId to parentTaskObjId
+                        end if
+                    end if
+                end try
+
+                set taskSubtaskCount to 0
+                try
+                    set taskSubtaskCount to count of (tasks of targetTask)
+                end try
+
+                set taskSequential to false
+                try
+                    set taskSequential to sequential of targetTask
+                end try
+
                 -- Build JSON manually
                 set jsonOutput to "{{" & ¬
                     "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -2105,7 +2161,11 @@ class OmniFocusClient:
                     "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                     "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
                     "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
-                    "\\"estimatedMinutes\\": " & estimatedMins & ¬
+                    "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
+                    "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
+                    "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
+                    "\\"sequential\\": " & (taskSequential as text) & ", " & ¬
+                    "\\"position\\": 1" & ¬
                     "}}"
 
                 return jsonOutput
@@ -2147,6 +2207,7 @@ class OmniFocusClient:
         use framework "Foundation"
 
         set output to ""
+        set taskIndex to 0
 
         tell application "OmniFocus"
             tell front document
@@ -2155,6 +2216,7 @@ class OmniFocusClient:
                     set childTasks to tasks of parentTask
 
                     repeat with t in childTasks
+                        set taskIndex to taskIndex + 1
                         try
                             set taskId to id of t
                             set taskName to name of t
@@ -2221,6 +2283,29 @@ class OmniFocusClient:
                                 end if
                             end try
 
+                            -- Get hierarchy fields
+                            set parentTaskId to ""
+                            try
+                                set parentTaskObj to parent task of t
+                                if parentTaskObj is not missing value then
+                                    -- Check if parent is same as containing project (means no parent task)
+                                    set parentTaskObjId to id of parentTaskObj
+                                    if parentTaskObjId is not equal to projectId then
+                                        set parentTaskId to parentTaskObjId
+                                    end if
+                                end if
+                            end try
+
+                            set taskSubtaskCount to 0
+                            try
+                                set taskSubtaskCount to count of (tasks of t)
+                            end try
+
+                            set taskSequential to false
+                            try
+                                set taskSequential to sequential of t
+                            end try
+
                             -- Build JSON manually
                             set jsonLine to "{{" & ¬
                                 "\\"id\\": \\"" & taskId & "\\", " & ¬
@@ -2237,7 +2322,11 @@ class OmniFocusClient:
                                 "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                                 "\\"completionDate\\": \\"" & completionDate & "\\", " & ¬
                                 "\\"tags\\": \\"" & my escapeJSON(tagsList) & "\\", " & ¬
-                                "\\"estimatedMinutes\\": " & estimatedMins & ¬
+                                "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
+                                "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
+                                "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
+                                "\\"sequential\\": " & (taskSequential as text) & ", " & ¬
+                                "\\"position\\": " & (taskIndex as text) & ¬
                                 "}}"
 
                             if output is not "" then

@@ -1178,3 +1178,140 @@ class TestUpdateTaskParameterVariations:
         assert task.get('flagged', False) is False
 
         print("\n✓ Cleared task properties")
+
+
+# ============================================================================
+# HIERARCHY FIELDS TESTS
+# ============================================================================
+
+class TestHierarchyFields:
+    """Test that hierarchy and ordering fields are properly exposed."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusClient(enable_safety_checks=True)
+
+    def test_project_has_sequential_field(self, client):
+        """Test that projects expose sequential field."""
+        projects = client.get_projects(query="Active Test Project")
+        assert len(projects) > 0
+
+        project = projects[0]
+        assert 'sequential' in project
+        assert isinstance(project['sequential'], bool)
+        print(f"\n✓ Project has sequential field: {project['sequential']}")
+
+    def test_task_has_hierarchy_fields(self, client):
+        """Test that tasks expose parentTaskId, subtaskCount, sequential, position."""
+        # Get a task we know has subtasks
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        tasks = client.get_tasks(project_id=project_id, query="Parent Task")
+        assert len(tasks) > 0
+
+        task = tasks[0]
+
+        # Check all hierarchy fields exist
+        assert 'parentTaskId' in task, "Missing parentTaskId field"
+        assert 'subtaskCount' in task, "Missing subtaskCount field"
+        assert 'sequential' in task, "Missing sequential field"
+        assert 'position' in task, "Missing position field"
+
+        # Check types
+        assert isinstance(task['parentTaskId'], str), "parentTaskId should be string"
+        assert isinstance(task['subtaskCount'], int), "subtaskCount should be int"
+        assert isinstance(task['sequential'], bool), "sequential should be bool"
+        assert isinstance(task['position'], int), "position should be int"
+
+        # Check values make sense
+        assert task['parentTaskId'] == "", "Top-level task should have empty parentTaskId"
+        assert task['subtaskCount'] == 2, "Parent Task should have 2 subtasks"
+        assert task['position'] >= 1, "Position should be 1-based"
+
+        print(f"\n✓ Task hierarchy fields:")
+        print(f"  parentTaskId: '{task['parentTaskId']}'")
+        print(f"  subtaskCount: {task['subtaskCount']}")
+        print(f"  sequential: {task['sequential']}")
+        print(f"  position: {task['position']}")
+
+    def test_subtask_has_parent_id(self, client):
+        """Test that subtasks have their parent's ID in parentTaskId."""
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        # Get the parent task
+        parent_tasks = client.get_tasks(project_id=project_id, query="Parent Task")
+        parent_id = parent_tasks[0]['id']
+
+        # Get its subtasks
+        subtasks = client.get_subtasks(parent_id)
+        assert len(subtasks) > 0
+
+        for subtask in subtasks:
+            assert 'parentTaskId' in subtask
+            assert subtask['parentTaskId'] == parent_id, \
+                f"Subtask should have parentTaskId='{parent_id}', got '{subtask['parentTaskId']}'"
+            assert subtask['subtaskCount'] == 0, "Leaf tasks should have subtaskCount=0"
+
+        print(f"\n✓ All {len(subtasks)} subtasks have correct parentTaskId")
+
+    def test_position_ordering(self, client):
+        """Test that position field reflects actual task order."""
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        # Get all tasks in the project
+        tasks = client.get_tasks(project_id=project_id)
+
+        # Top-level tasks should have sequential positions
+        top_level = [t for t in tasks if t['parentTaskId'] == '']
+        positions = [t['position'] for t in top_level]
+
+        assert positions == sorted(positions), "Positions should be ordered"
+        assert min(positions) >= 1, "Positions should be 1-based"
+
+        print(f"\n✓ {len(top_level)} top-level tasks have ordered positions: {positions[:5]}...")
+
+    def test_hierarchy_reconstruction(self, client):
+        """Test that we can reconstruct full hierarchy from fields."""
+        projects = client.get_projects(query="Active Test Project")
+        project_id = projects[0]['id']
+
+        # Get all tasks
+        all_tasks = client.get_tasks(project_id=project_id)
+
+        # Build hierarchy using fields
+        tasks_by_id = {t['id']: t for t in all_tasks}
+        children = {}
+        for task in all_tasks:
+            parent_id = task['parentTaskId']
+            if parent_id not in children:
+                children[parent_id] = []
+            children[parent_id].append(task)
+
+        # Sort children by position
+        for child_list in children.values():
+            child_list.sort(key=lambda t: t['position'])
+
+        # Verify hierarchy matches expected structure
+        root_tasks = children.get('', [])
+        assert len(root_tasks) > 0, "Should have root-level tasks"
+
+        # Find Parent Task
+        parent_task = next((t for t in root_tasks if 'Parent Task' in t['name']), None)
+        assert parent_task is not None, "Should find Parent Task"
+        assert parent_task['subtaskCount'] == 2, "Parent Task should have 2 children"
+
+        # Check its children
+        parent_children = children.get(parent_task['id'], [])
+        assert len(parent_children) == 2, "Should retrieve 2 children"
+        assert parent_children[0]['position'] < parent_children[1]['position'], \
+            "Children should be ordered by position"
+
+        print(f"\n✓ Successfully reconstructed hierarchy:")
+        print(f"  Root tasks: {len(root_tasks)}")
+        print(f"  Parent Task has {len(parent_children)} children")
+        print(f"    1. {parent_children[0]['name']} (pos {parent_children[0]['position']})")
+        print(f"    2. {parent_children[1]['name']} (pos {parent_children[1]['position']})")
