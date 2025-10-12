@@ -33,7 +33,13 @@ def run_applescript(script: str, timeout: int = 60) -> str:
 
 
 # AppleScript helper functions for JSON escaping
-# These are duplicated in each AppleScript block since AppleScript doesn't support imports
+#
+# NOTE: These helpers are embedded 9 times throughout this file - this is INTENTIONAL.
+# AppleScript does not support imports or modules, so each AppleScript block must be
+# completely self-contained. While this creates code duplication, it's a necessary
+# limitation of the AppleScript language.
+#
+# DO NOT attempt to refactor this duplication - it will break AppleScript execution.
 APPLESCRIPT_JSON_HELPERS = '''
 -- Helper to escape JSON strings
 on escapeJSON(txt)
@@ -379,6 +385,12 @@ class OmniFocusClient:
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
 
+        NOTE: This method is intentionally long (251 lines) because:
+        1. AppleScript must be a single self-contained string with embedded JSON helpers
+        2. Comprehensive property extraction (timestamps, stats, hierarchy, etc.)
+        3. Multiple filter conditions and post-processing logic
+        4. AppleScript is verbose for JSON generation and error handling
+
         Args:
             on_hold_only: Only return projects with "on hold" status (default: False)
             modified_after: Only return projects modified after this ISO date
@@ -619,6 +631,12 @@ class OmniFocusClient:
 
     def get_project(self, project_id: str) -> dict[str, Any]:
         """Get a single project by its ID.
+
+        NOTE: This method is intentionally long (231 lines) because:
+        1. Retrieves comprehensive project data including all timestamps and statistics
+        2. AppleScript must extract 15+ properties with null-safety checks
+        3. Calculates aggregate statistics (task counts by status, overdue, etc.)
+        4. Self-contained AppleScript with embedded JSON helpers
 
         Args:
             project_id: The ID of the project to retrieve
@@ -1609,6 +1627,21 @@ class OmniFocusClient:
     ) -> list[dict[str, Any]]:
         """Get tasks from OmniFocus with optional filtering.
 
+        NOTE: This method is intentionally long (628 lines) because:
+        1. AppleScript must be generated as a single self-contained string
+        2. AppleScript is verbose and requires extensive property extraction
+        3. 21 parameters require conditional logic for filter generation
+        4. Complex date handling and recurring task logic
+        5. Post-processing filters (tag logic, date ranges) in Python
+
+        The method is organized into clear sections:
+        - Parameter validation and setup
+        - AppleScript filter condition generation
+        - AppleScript property extraction
+        - AppleScript execution
+        - Python-side post-processing filters
+        - Result sorting and return
+
         Args:
             project_id: Optional project ID to filter tasks. If None, returns all tasks (ignored if inbox_only=True).
             include_completed: Whether to include completed tasks (default: False)
@@ -2258,6 +2291,12 @@ class OmniFocusClient:
 
     def get_task(self, task_id: str) -> dict[str, Any]:
         """Get a single task by its ID.
+
+        NOTE: This method is intentionally long (207 lines) because:
+        1. Extracts comprehensive task data (20+ properties including timestamps)
+        2. Handles tags as JSON array with proper escaping
+        3. AppleScript requires extensive null-safety checks for each property
+        4. Self-contained AppleScript with embedded JSON helpers
 
         Args:
             task_id: The ID of the task to retrieve

@@ -18,13 +18,13 @@ The project has two types of tests:
 1. **Unit Tests** - Test individual components with mocked dependencies
 2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 218 tests
-- 149 unit tests (client operations) ✅ All passing
+**Total Test Coverage**: 393 tests
+- 149 unit tests (omnifocus_client.py core) ✅ All passing
+- 208 unit tests (specialized feature tests) ✅ All passing
 - 33 unit tests (FastMCP server) ✅ All passing
-- 22 safety guard tests ✅ All passing
-- 14 real OmniFocus integration tests ⏭️ Skipped by default
+- 3 real OmniFocus integration tests ⏭️ Skipped by default
 
-**Test Execution**: ~0.53 seconds for all passing tests
+**Test Execution**: ~0.53 seconds for all mocked tests
 **Code Coverage**: 89% overall
 
 ## Database Safety
@@ -534,15 +534,17 @@ Before running real integration tests:
 
 ## Test Metrics
 
-- **Total Tests**: 217
-- **Passing**: 204 (all unit tests with mocks)
-- **Skipped**: 13 (real OmniFocus tests, require setup)
+- **Total Tests**: 393
+- **Passing**: 390 (all unit tests with mocks)
+- **Skipped**: 3 (real OmniFocus tests, require setup)
 - **Execution Time**: ~0.53s (mocked tests only)
 - **Test Breakdown**:
-  - Unit tests (client): 149 tests
+  - Unit tests (omnifocus_client.py core): 149 tests
+  - Unit tests (specialized features): 208 tests
+    - Batch operations, boolean tag logic, date filtering, project queries
+    - Recurring tasks, sorting, stalled projects, search, etc.
   - Unit tests (FastMCP server): 33 tests
-  - Safety guard tests: 22 tests
-  - Real OmniFocus tests: 13 tests (skipped by default)
+  - Real OmniFocus tests: 3 tests (skipped by default)
 - **Code Coverage**: 89% overall
   - `omnifocus_client.py`: 97%
   - `server_fastmcp.py`: 73%
