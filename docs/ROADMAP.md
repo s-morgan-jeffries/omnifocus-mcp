@@ -376,7 +376,20 @@ These belong in separate services/servers, not the OmniFocus MCP server.
   - **See**: `docs/USE_CASES.md` for detailed workflow
 
 **Under Consideration:**
-- Batch operations for improved performance (some already implemented: complete_tasks, move_tasks, etc.)
+- **Batch operations** (systematic expansion for efficiency):
+  - **Currently implemented**:
+    - ✅ Tasks: complete_tasks, move_tasks, drop_tasks, delete_tasks, add_tag_to_tasks, remove_tag_from_tasks
+    - ✅ Projects: delete_projects, drop_projects
+  - **Missing - High Priority**:
+    - ❌ `mark_projects_reviewed(project_ids)` - Batch mark projects as reviewed (GTD workflow)
+    - ❌ `update_tasks(task_ids, properties)` - Batch update task properties
+    - ❌ `update_projects(project_ids, properties)` - Batch update project properties
+    - ❌ `set_project_statuses(project_ids, status)` - Batch change project status
+  - **Missing - Medium Priority**:
+    - ❌ `set_review_intervals(project_ids, interval)` - Batch set review intervals
+    - ❌ `set_estimated_minutes_batch(task_ids, minutes)` - Batch time estimates
+    - ❌ `set_parent_tasks(task_ids, parent_task_id)` - Batch reparenting
+  - **Rationale**: Reduce round-trip overhead for bulk operations, especially important for project cleanup/reorganization workflows
 - Additional filtering options based on user feedback
 - **UI navigation/focus commands**:
   - `show_project(project_id)` - Focus on a project in the OmniFocus window
