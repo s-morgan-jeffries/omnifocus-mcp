@@ -376,13 +376,20 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 **Under Consideration:**
 - Batch operations for improved performance (some already implemented: complete_tasks, move_tasks, etc.)
 - Additional filtering options based on user feedback
+- **Attachments** (user priority - document management):
+  - `get_attachments(item_id, item_type="task")` - List attachments on tasks/projects
+  - `add_attachment(item_id, file_path, item_type="task")` - Attach files
+  - `remove_attachment(item_id, attachment_name, item_type="task")` - Remove attachments
+  - Add `attachmentCount` field to task/project responses
+  - **Rationale**: "Attach this PDF to my 'File taxes' task" workflow
+  - **Challenge**: Need to investigate how MCP/Claude Desktop handles local file paths
 - **Archive access** (challenging - requires direct SQLite access):
   - `search_archive(query: str)` - Search archived tasks/projects
   - `get_archived_project(project_id: str)` - Get archived project details
   - `get_archived_task(task_id: str)` - Get archived task details
   - **Rationale**: "Find that project I completed last year" workflow
-  - **Challenge**: Archive is separate SQLite database, not accessible via AppleScript
-  - **Research needed**: Reverse-engineer archive schema, ensure read-only safety
+  - **Challenge**: Archive is separate SQLite database (`ArchiveDatabase.db`), not accessible via AppleScript
+  - **Research needed**: Reverse-engineer archive schema, ensure read-only safety, handle OF3/OF4 differences
 - **Note management improvements** (open design question):
   - Should we add dedicated `set_note()` function (or `update_note()`) for explicit note-only updates?
   - Single function for both tasks and projects: `set_note(item_id, note, item_type="task")`?
