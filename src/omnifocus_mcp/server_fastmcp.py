@@ -958,6 +958,51 @@ def drop_tasks(task_ids: list[str]) -> str:
         return f"Error dropping tasks: {str(e)}"
 
 
+@mcp.tool()
+def drop_project(project_id: str) -> str:
+    """Drop a project (mark as on hold indefinitely).
+
+    Dropping a project is different from deleting it - the project remains in OmniFocus
+    but is marked as on hold and won't appear in active project lists.
+
+    Args:
+        project_id: The ID of the project to drop
+
+    Returns:
+        Success message confirming project was dropped
+    """
+    client = get_client()
+    try:
+        success = client.drop_project(project_id)
+        if success:
+            return f"Successfully dropped project {project_id}"
+        else:
+            return f"Error: Failed to drop project {project_id}"
+    except Exception as e:
+        return f"Error dropping project: {str(e)}"
+
+
+@mcp.tool()
+def drop_projects(project_ids: list[str]) -> str:
+    """Drop multiple projects (mark as on hold indefinitely) in a single operation (batch operation for efficiency).
+
+    Dropping projects is different from deleting them - the projects remain in OmniFocus
+    but are marked as on hold and won't appear in active project lists.
+
+    Args:
+        project_ids: List of project IDs to drop
+
+    Returns:
+        Summary of dropped projects with count and any errors encountered
+    """
+    client = get_client()
+    try:
+        count = client.drop_projects(project_ids)
+        return f"Successfully dropped {count} of {len(project_ids)} projects"
+    except Exception as e:
+        return f"Error dropping projects: {str(e)}"
+
+
 # ============================================================================
 # Folder Tools
 # ============================================================================

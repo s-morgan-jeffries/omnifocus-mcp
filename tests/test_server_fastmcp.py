@@ -44,6 +44,8 @@ remove_tag_from_tasks = server.remove_tag_from_tasks.fn
 drop_tasks = server.drop_tasks.fn
 delete_tasks = server.delete_tasks.fn
 delete_projects = server.delete_projects.fn
+drop_project = server.drop_project.fn
+drop_projects = server.drop_projects.fn
 
 
 @pytest.fixture(autouse=True)
@@ -983,6 +985,32 @@ class TestBatchOperationTools:
             mock_client.delete_projects.assert_called_once_with(["proj-001", "proj-002"])
             assert "2" in result
             assert "deleted" in result.lower()
+
+    def test_drop_project_success(self):
+        """Test dropping a single project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.drop_project.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = drop_project("proj-001")
+
+            mock_client.drop_project.assert_called_once_with("proj-001")
+            assert "Successfully dropped" in result
+            assert "proj-001" in result
+
+    def test_drop_projects_success(self):
+        """Test dropping multiple projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.drop_projects.return_value = 2
+            mock_get_client.return_value = mock_client
+
+            result = drop_projects(["proj-001", "proj-002"])
+
+            mock_client.drop_projects.assert_called_once_with(["proj-001", "proj-002"])
+            assert "2" in result
+            assert "dropped" in result.lower()
 
 
 class TestHierarchyFieldFormatting:
