@@ -378,6 +378,12 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 **Under Consideration:**
 - Batch operations for improved performance (some already implemented: complete_tasks, move_tasks, etc.)
 - Additional filtering options based on user feedback
+- **UI navigation/focus commands**:
+  - `show_project(project_id)` - Focus on a project in the OmniFocus window
+  - `show_task(task_id)` - Focus on a task in the OmniFocus window
+  - **Implementation**: Uses AppleScript `set focus of front document window to item`
+  - **Rationale**: "Jump to this item" workflow after querying/searching
+  - **Verified**: AppleScript command works - tested successfully
 - **Task creation improvements**:
   - Add `parent_task_id` parameter to `add_task()` - Create subtasks directly without needing two-step process
   - **Current workaround**: Use `add_task()` then `set_parent_task()`
