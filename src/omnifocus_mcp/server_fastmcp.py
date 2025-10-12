@@ -114,6 +114,8 @@ def _format_project(proj: dict) -> str:
     result += f"Status: {proj['status']}\n"
     if 'sequential' in proj:
         result += f"Sequential: {proj['sequential']}\n"
+    if proj.get('creationDate'):
+        result += f"Created: {proj['creationDate']}\n"
     if proj.get('note'):
         result += f"Note: {_truncate_note(proj['note'])}\n"
 
@@ -399,6 +401,20 @@ def get_project(project_id: str) -> str:
     result += f"Status: {project['status']}\n"
     if project.get('folderPath'):
         result += f"Folder: {project['folderPath']}\n"
+
+    # Add timestamps
+    if project.get('creationDate') or project.get('modificationDate') or project.get('completionDate') or project.get('droppedDate') or project.get('lastActivityDate'):
+        result += f"\nTimestamps:\n"
+        if project.get('creationDate'):
+            result += f"  Created: {project['creationDate']}\n"
+        if project.get('modificationDate'):
+            result += f"  Modified: {project['modificationDate']}\n"
+        if project.get('completionDate'):
+            result += f"  Completed: {project['completionDate']}\n"
+        if project.get('droppedDate'):
+            result += f"  Dropped: {project['droppedDate']}\n"
+        if project.get('lastActivityDate'):
+            result += f"  Last Activity: {project['lastActivityDate']}\n"
 
     # Add statistics
     result += f"\nStatistics:\n"
