@@ -212,6 +212,18 @@ class TestProjectTools:
             assert "Successfully set project status to: Done" in result
             mock_client.set_project_status.assert_called_once_with("proj-123", "done")
 
+    def test_set_project_status_to_dropped(self):
+        """Test set_project_status setting status to dropped."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_project_status.return_value = True
+            mock_get_client.return_value = mock_client
+
+            result = set_project_status("proj-123", "dropped")
+
+            assert "Successfully set project status to: Dropped" in result
+            mock_client.set_project_status.assert_called_once_with("proj-123", "dropped")
+
     def test_set_project_status_project_not_found(self):
         """Test set_project_status raises ValueError when project not found."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:

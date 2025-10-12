@@ -241,12 +241,11 @@ def update_project(
 
 @mcp.tool()
 def set_project_status(project_id: str, status: str) -> str:
-    """Change a project's status to active, on hold, or done.
+    """Change a project's status to active, on hold, done, or dropped.
 
     Args:
         project_id: The ID of the project
-        status: The status to set - one of: "active", "on_hold", "done"
-               Note: "dropped" status is not supported by AppleScript
+        status: The status to set - one of: "active", "on_hold", "done", "dropped"
 
     Returns:
         Success message confirming the status change

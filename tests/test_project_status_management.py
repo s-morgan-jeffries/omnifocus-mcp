@@ -51,10 +51,18 @@ class TestSetProjectStatus:
         assert 'mark complete targetProject' in call_args
         assert 'set status' not in call_args
 
-    def test_set_status_to_dropped_not_supported(self, client):
-        """Should raise ValueError for dropped status (not supported by AppleScript)."""
-        with pytest.raises(ValueError, match="dropped.*not supported"):
-            client.set_project_status("proj-123", "dropped")
+    def test_set_status_to_dropped(self, client):
+        """Test setting project status to dropped."""
+        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+
+            result = client.set_project_status("proj-123", "dropped")
+
+            assert result is True
+            # Verify it called AppleScript with "mark dropped"
+            call_args = mock_run.call_args[0][0]
+            assert "mark dropped" in call_args.lower()
+            assert "proj-123" in call_args
 
     def test_set_status_invalid_status(self, client):
         """Should raise ValueError for invalid status values."""

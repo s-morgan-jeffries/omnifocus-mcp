@@ -1246,24 +1246,21 @@ class OmniFocusClient:
 
         Args:
             project_id: The ID of the project
-            status: The status to set - one of: "active", "on_hold", "done"
-                   Note: "dropped" status is not supported by AppleScript
+            status: The status to set - one of: "active", "on_hold", "done", "dropped"
 
         Returns:
             bool: True if status was set successfully
 
         Raises:
-            ValueError: If project not found, status is invalid, or "dropped" is requested
+            ValueError: If project not found or status is invalid
             RuntimeError: If AppleScript execution fails
         """
         # SAFETY: Verify database before modifying
         self._verify_database_safety('set_project_status')
 
         # Validate status
-        valid_statuses = ["active", "on_hold", "done"]
+        valid_statuses = ["active", "on_hold", "done", "dropped"]
         if status not in valid_statuses:
-            if status == "dropped":
-                raise ValueError("Status 'dropped' is not supported by AppleScript API. Only 'active', 'on_hold', and 'done' are supported.")
             raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join(valid_statuses)}")
 
         project_id_escaped = self._escape_applescript_string(project_id)
@@ -1284,7 +1281,7 @@ class OmniFocusClient:
                 end tell
             end tell
             '''
-        else:  # status == "done"
+        elif status == "done":
             # For done, use "mark complete" command
             script = f'''
             tell application "OmniFocus"
@@ -1294,6 +1291,20 @@ class OmniFocusClient:
                         return "false"
                     end if
                     mark complete targetProject
+                    return "true"
+                end tell
+            end tell
+            '''
+        else:  # status == "dropped"
+            # For dropped, use "mark dropped" command
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    set targetProject to first flattened project whose id is "{project_id_escaped}"
+                    if targetProject is missing value then
+                        return "false"
+                    end if
+                    mark dropped targetProject
                     return "true"
                 end tell
             end tell
