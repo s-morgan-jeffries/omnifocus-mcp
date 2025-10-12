@@ -378,6 +378,11 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 **Under Consideration:**
 - Batch operations for improved performance (some already implemented: complete_tasks, move_tasks, etc.)
 - Additional filtering options based on user feedback
+- **Task creation improvements**:
+  - Add `parent_task_id` parameter to `add_task()` - Create subtasks directly without needing two-step process
+  - **Current workaround**: Use `add_task()` then `set_parent_task()`
+  - **Rationale**: More efficient workflow for creating task hierarchies
+  - **Challenge**: AppleScript may require task to exist before setting parent (need to test)
 - **Attachments** (user priority - document management):
   - `get_attachments(item_id, item_type="task")` - List attachments on tasks/projects
   - `add_attachment(item_id, file_path, item_type="task")` - Attach files
