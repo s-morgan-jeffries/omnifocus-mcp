@@ -1517,6 +1517,39 @@ class TestDeleteProject:
             assert "Error deleting project" in str(exc_info.value)
 
 
+class TestDropProject:
+    """Tests for drop_project method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    def test_drop_project_success(self, client):
+        """Test successfully dropping a project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.drop_project("proj-001")
+            assert result is True
+            mock_run.assert_called_once()
+
+    def test_drop_project_not_found(self, client):
+        """Test dropping non-existent project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "false"
+            with pytest.raises(Exception) as exc_info:
+                client.drop_project("nonexistent")
+            assert "Project not found" in str(exc_info.value)
+
+    def test_drop_project_error(self, client):
+        """Test handling of drop errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.drop_project("proj-001")
+            assert "Error dropping project" in str(exc_info.value)
+
+
 class TestMoveTask:
     """Tests for move_task method."""
 

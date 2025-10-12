@@ -3342,6 +3342,97 @@ class OmniFocusClient:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error deleting project: {e.stderr}")
 
+    def drop_project(self, project_id: str) -> bool:
+        """Drop a project (mark as on hold indefinitely).
+
+        Args:
+            project_id: The ID of the project to drop
+
+        Returns:
+            True if drop was successful
+
+        Raises:
+            Exception: If project not found or drop fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('drop_project')
+
+        project_id_escaped = self._escape_applescript_string(project_id)
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theProject to first flattened project whose id is "{project_id_escaped}"
+                    mark dropped theProject
+                    return "true"
+                on error
+                    return "false"
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Project not found: {project_id}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error dropping project: {e.stderr}")
+
+    def drop_projects(self, project_ids: list[str]) -> int:
+        """Drop multiple projects (mark as on hold indefinitely) in a single operation.
+
+        Args:
+            project_ids: List of project IDs to drop
+
+        Returns:
+            int: Number of projects successfully dropped
+
+        Raises:
+            ValueError: If project_ids is empty
+            Exception: If the operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('drop_projects')
+
+        if not project_ids:
+            raise ValueError("project_ids cannot be empty")
+
+        # Build AppleScript list of project IDs
+        ids_list = ", ".join([f'"{project_id}"' for project_id in project_ids])
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set projectIdList to {{{ids_list}}}
+                set successCount to 0
+
+                repeat with projectId in projectIdList
+                    try
+                        set theProject to first flattened project whose id is projectId
+                        mark dropped theProject
+                        set successCount to successCount + 1
+                    on error
+                        -- Project not found, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return int(result.strip())
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error dropping projects: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing drop result: {e}")
+
     def move_task(self, task_id: str, project_id: Optional[str]) -> bool:
         """Move a task to a different project or to inbox.
 

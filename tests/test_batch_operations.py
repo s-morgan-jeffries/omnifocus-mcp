@@ -364,3 +364,43 @@ class TestBatchDelete:
 
             with pytest.raises(Exception, match="Error deleting projects"):
                 client.delete_projects(["proj-001"])
+
+    def test_drop_projects_success(self, client):
+        """Test dropping multiple projects successfully."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "2"  # 2 projects dropped
+
+            project_ids = ["proj-001", "proj-002"]
+            result = client.drop_projects(project_ids)
+
+            assert result == 2
+            call_args = mock_run.call_args[0][0]
+            assert "proj-001" in call_args
+            assert "proj-002" in call_args
+            assert "mark dropped" in call_args.lower()
+
+    def test_drop_projects_empty_list(self, client):
+        """Test that empty list raises ValueError."""
+        with pytest.raises(ValueError, match="project_ids cannot be empty"):
+            client.drop_projects([])
+
+    def test_drop_projects_partial_success(self, client):
+        """Test when some projects drop but others don't exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "1"  # Only 1 of 2
+
+            project_ids = ["proj-001", "nonexistent"]
+            result = client.drop_projects(project_ids)
+
+            assert result == 1
+
+    def test_drop_projects_error(self, client):
+        """Test error handling in batch project dropping."""
+        import subprocess
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            error = subprocess.CalledProcessError(1, 'osascript')
+            error.stderr = "OmniFocus error"
+            mock_run.side_effect = error
+
+            with pytest.raises(Exception, match="Error dropping projects"):
+                client.drop_projects(["proj-001"])
