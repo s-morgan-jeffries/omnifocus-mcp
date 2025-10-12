@@ -1127,16 +1127,35 @@ class OmniFocusClient:
                 -- Find folder by walking hierarchy
                 set folderNames to {{{', '.join(f'"{self._escape_applescript_string(p)}"' for p in folder_parts)}}}
                 set targetFolder to missing value
-                set currentContainers to folders of front document
 
-                repeat with folderName in folderNames
-                    repeat with possibleFolder in currentContainers
-                        if name of possibleFolder is folderName then
-                            set targetFolder to possibleFolder
-                            set currentContainers to folders of targetFolder
-                            exit repeat
+                repeat with i from 1 to count of folderNames
+                    set folderName to item i of folderNames
+
+                    if i is 1 then
+                        -- First level: search in document folders
+                        repeat with f in folders
+                            if name of f is folderName then
+                                set targetFolder to f
+                                exit repeat
+                            end if
+                        end repeat
+                    else
+                        -- Subsequent levels: search in current folder's subfolders
+                        if targetFolder is not missing value then
+                            set found to false
+                            repeat with f in folders of targetFolder
+                                if name of f is folderName then
+                                    set targetFolder to f
+                                    set found to true
+                                    exit repeat
+                                end if
+                            end repeat
+                            if not found then
+                                set targetFolder to missing value
+                                exit repeat
+                            end if
                         end if
-                    end repeat
+                    end if
                 end repeat
 
                 if targetFolder is missing value then
