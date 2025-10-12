@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """FastMCP Server for OmniFocus integration."""
+import json
 import os
-from typing import Optional
+from typing import Optional, Union
 
 from fastmcp import FastMCP
 
@@ -475,7 +476,7 @@ def add_task(
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
     flagged: bool = False,
-    tags: Optional[list[str]] = None
+    tags: Optional[str] = None
 ) -> str:
     """Add a new task to a specific OmniFocus project with full properties support.
 
@@ -486,12 +487,23 @@ def add_task(
         due_date: Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
         defer_date: Defer date in ISO 8601 format (when task becomes available)
         flagged: Whether to flag the task (default: False)
-        tags: List of tag names to assign to the task (tags must already exist)
+        tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist.
 
     Returns:
         Success message with task name, project, and all configured properties
     """
     client = get_client()
+
+    # Parse tags parameter - convert JSON string to list
+    tags_list = []
+    if tags:
+        try:
+            tags_list = json.loads(tags)
+            if not isinstance(tags_list, list):
+                return f"Error: tags must be a JSON array string, e.g., '[\"Computer\"]'"
+        except json.JSONDecodeError as e:
+            return f"Error: Invalid JSON for tags parameter: {e}"
+
     success = client.add_task(
         project_id=project_id,
         task_name=task_name,
@@ -499,7 +511,7 @@ def add_task(
         due_date=due_date,
         defer_date=defer_date,
         flagged=flagged,
-        tags=tags or []
+        tags=tags_list
     )
 
     if success:
@@ -510,8 +522,8 @@ def add_task(
             result += f"\nDefer date: {defer_date}"
         if flagged:
             result += "\nFlagged: Yes"
-        if tags:
-            result += f"\nTags: {', '.join(tags)}"
+        if tags_list:
+            result += f"\nTags: {', '.join(tags_list)}"
         return result
     else:
         return f"Error: Failed to add task '{task_name}'"
