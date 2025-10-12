@@ -376,6 +376,13 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 **Under Consideration:**
 - Batch operations for improved performance (some already implemented: complete_tasks, move_tasks, etc.)
 - Additional filtering options based on user feedback
+- **Archive access** (challenging - requires direct SQLite access):
+  - `search_archive(query: str)` - Search archived tasks/projects
+  - `get_archived_project(project_id: str)` - Get archived project details
+  - `get_archived_task(task_id: str)` - Get archived task details
+  - **Rationale**: "Find that project I completed last year" workflow
+  - **Challenge**: Archive is separate SQLite database, not accessible via AppleScript
+  - **Research needed**: Reverse-engineer archive schema, ensure read-only safety
 - **Note management improvements** (open design question):
   - Should we add dedicated `set_note()` function (or `update_note()`) for explicit note-only updates?
   - Single function for both tasks and projects: `set_note(item_id, note, item_type="task")`?
