@@ -449,7 +449,7 @@ class OmniFocusClient:
                         set projStatus to status of proj as text
 
                         -- Skip dropped projects
-                        if projStatus is "dropped" then
+                        if projStatus is "dropped status" then
                             error "skip dropped project"
                         end if
 
@@ -576,7 +576,7 @@ class OmniFocusClient:
         # Build on_hold filter
         on_hold_check = "" if not on_hold_only else """
                         -- Skip non-on-hold projects
-                        if projStatus is not "on hold" then
+                        if projStatus is not "on hold status" then
                             error "skip non-on-hold project"
                         end if"""
 
