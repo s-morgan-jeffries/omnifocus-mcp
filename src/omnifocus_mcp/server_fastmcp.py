@@ -401,6 +401,9 @@ def get_project(project_id: str) -> str:
     result += f"Status: {project['status']}\n"
     if project.get('folderPath'):
         result += f"Folder: {project['folderPath']}\n"
+    if 'sequential' in project:
+        seq_type = "Sequential (tasks must be completed in order)" if project['sequential'] else "Parallel (tasks can be done in any order)"
+        result += f"Type: {seq_type}\n"
 
     # Add timestamps
     if project.get('creationDate') or project.get('modificationDate') or project.get('completionDate') or project.get('droppedDate') or project.get('lastActivityDate'):
@@ -454,8 +457,18 @@ def get_task(task_id: str) -> str:
 
     result = f"Task Details:\n\n"
     result += _format_task(task)
-    if task.get('completionDate'):
-        result += f"Completion Date: {task['completionDate']}\n"
+
+    # Add timestamp fields
+    if task.get('creationDate') or task.get('modificationDate') or task.get('completionDate') or task.get('droppedDate'):
+        result += f"\nTimestamps:\n"
+        if task.get('creationDate'):
+            result += f"  Created: {task['creationDate']}\n"
+        if task.get('modificationDate'):
+            result += f"  Modified: {task['modificationDate']}\n"
+        if task.get('completionDate'):
+            result += f"  Completed: {task['completionDate']}\n"
+        if task.get('droppedDate'):
+            result += f"  Dropped: {task['droppedDate']}\n"
 
     return result
 
