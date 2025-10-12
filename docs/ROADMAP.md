@@ -366,7 +366,9 @@ These belong in separate services/servers, not the OmniFocus MCP server.
   - ✅ Timestamps on all projects/tasks
   - ✅ Tags as arrays on tasks
   - ✅ Configurable stalled project detection
-  - ⏳ **Remaining**: Batch operations (lower priority)
+  - ⏳ **Remaining**: Project reorganization operations
+    - `move_project(project_id, folder_path)` - Move project to different folder (MISSING PRIMITIVE)
+    - `move_projects(project_ids, folder_path)` - Batch move projects to folder
     - `merge_projects(source_ids, target_id)` - Merge multiple projects
     - `split_project(project_id, task_ids, new_project_name)` - Split off tasks
     - `archive_projects(project_ids)` - Batch archive/complete
