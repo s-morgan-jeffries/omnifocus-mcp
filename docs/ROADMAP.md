@@ -368,6 +368,18 @@ These belong in separate services/servers, not the OmniFocus MCP server.
   - **Impact**: GTD weekly review workflow broken - projects not properly marked as reviewed
   - **Priority**: HIGH - User actively using this for project cleanup workflow
 
+**Code Quality - Clarity Improvements:**
+- 📝 **Rename omnifocus_client.py to omnifocus_connector.py**
+  - **Current**: `omnifocus_client.py` / `OmniFocusClient` class
+  - **Proposed**: `omnifocus_connector.py` / `OmniFocusConnector` class
+  - **Rationale**: "Connector" is industry-standard terminology for system integrations
+  - **Benefits**:
+    - Clearer architecture: "MCP server uses OmniFocus connector"
+    - Avoids client/server confusion (server calling client sounds backwards)
+    - Matches terminology used in data pipelines, ETL tools, integration platforms
+  - **Scope**: Rename file, class, all references, update documentation
+  - **Impact**: LOW - No functionality changes, better clarity for maintainers
+
 **High Priority - Project Cleanup Use Case (IN PROGRESS):**
 - 🎯 **Project Cleanup & Reorganization Assistant** (USE CASE #16)
   - **Status**: Core features COMPLETE ✅
