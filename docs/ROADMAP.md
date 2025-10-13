@@ -360,6 +360,14 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 
 ### Upcoming Work
 
+**High Priority - Bug Fixes:**
+- 🐛 **mark_project_reviewed() bug** (USER REPORTED)
+  - **Issue**: Currently sets `next review date` to today instead of marking as reviewed
+  - **Correct behavior**: Should set `last review date` to today, which triggers OmniFocus to calculate next review date based on review interval
+  - **Fix**: Change AppleScript from `set next review date` to `set last review date`
+  - **Impact**: GTD weekly review workflow broken - projects not properly marked as reviewed
+  - **Priority**: HIGH - User actively using this for project cleanup workflow
+
 **High Priority - Project Cleanup Use Case (IN PROGRESS):**
 - 🎯 **Project Cleanup & Reorganization Assistant** (USE CASE #16)
   - **Status**: Core features COMPLETE ✅
