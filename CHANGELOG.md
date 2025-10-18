@@ -5,6 +5,106 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-10-18
+
+### Changed - BREAKING
+
+- **Major API Redesign** - Consolidated 40+ functions down to 16 core functions for optimal MCP tool calling
+  - **Comprehensive update functions** - All field updates now go through unified `update_task()` and `update_project()` functions
+  - **Batch-safe operations** - Separate single/batch update functions prevent accidentally giving multiple items the same name
+  - **Enhanced read functions** - `get_tasks()` and `get_projects()` now support direct ID lookup and full note retrieval
+  - **Removed 26 deprecated functions** - See migration guide below
+
+- **Removed Functions** (all functionality preserved in new API):
+  - **Projects**: `get_project()`, `set_project_status()`, `drop_project()`, `drop_projects()`, `get_stalled_projects()`, `get_projects_due_for_review()`, `set_review_interval()`, `mark_project_reviewed()`
+  - **Tasks**: `get_task()`, `get_subtasks()`, `add_task()`, `complete_task()`, `delete_task()`, `move_task()`, `drop_tasks()`, `create_inbox_task()`, `get_inbox_tasks()`, `search_tasks()`, `set_parent_task()`, `set_estimated_minutes()`, `add_tag_to_task()`
+  - **Batch operations**: `complete_tasks()`, `move_tasks()`, `add_tag_to_tasks()`, `remove_tag_from_tasks()`
+  - **Notes**: `add_note()`, `get_note()`
+
+- **Migration Guide**:
+  ```python
+  # Projects
+  get_project(id) → get_projects(project_id=id)[0]
+  set_project_status(id, "on_hold") → update_project(id, status="on_hold")
+  drop_project(id) → update_project(id, status="dropped")
+  set_review_interval(id, 14) → update_project(id, review_interval_weeks=2)
+  mark_project_reviewed(id) → update_project(id, last_reviewed="now")
+
+  # Tasks
+  get_task(id) → get_tasks(task_id=id)[0]
+  get_subtasks(parent_id) → get_tasks(parent_task_id=parent_id)
+  add_task(name, ...) → create_task(task_name=name, ...)
+  complete_task(id) → update_task(id, completed=True)
+  delete_task(id) → delete_tasks(id)
+  move_task(id, proj_id) → update_task(id, project_id=proj_id)
+  drop_tasks([ids]) → update_tasks([ids], status="dropped")
+  set_estimated_minutes(id, 30) → update_task(id, estimated_minutes=30)
+  add_tag_to_task(id, "urgent") → update_task(id, tags=["urgent"])
+
+  # Batch operations
+  complete_tasks([ids]) → update_tasks([ids], completed=True)
+  move_tasks([ids], proj_id) → update_tasks([ids], project_id=proj_id)
+
+  # Notes
+  add_note(id, note, type) → update_task/update_project(id, note=note)
+  get_note(id, type) → get_tasks/get_projects(id, include_full_notes=True)
+  ```
+
+### Added
+
+- **Enhanced `update_project()`** - Comprehensive single project updates
+  - All fields in one call: `project_name`, `note`, `folder_path`, `sequential`, `status`, `review_interval_weeks`, `last_reviewed`
+  - Returns structured dict: `{success, project_id, updated_fields, error}`
+  - Consolidates 8 specialized functions into one
+
+- **New `update_projects()`** - Batch update multiple projects
+  - Accepts single ID or list: `Union[str, list[str]]`
+  - Safe fields only: `folder_path`, `sequential`, `status`, `review_interval_weeks`, `last_reviewed`
+  - Excludes `project_name` and `note` (require unique values)
+  - Returns: `{updated_count, failed_count, updated_ids, failures}`
+
+- **Enhanced `update_task()`** - Comprehensive single task updates
+  - 15+ fields in one call: `task_name`, `note`, `project_id`, `completed`, `flagged`, `due_date`, `defer_date`, `estimated_minutes`, `tags`, `status`, etc.
+  - Returns structured dict: `{success, task_id, updated_fields, error}`
+  - Consolidates 10+ specialized functions into one
+
+- **New `update_tasks()`** - Batch update multiple tasks
+  - Accepts single ID or list: `Union[str, list[str]]`
+  - Safe fields only: `project_id`, `completed`, `flagged`, `due_date`, `defer_date`, `estimated_minutes`, `tags`, `status`, etc.
+  - Excludes `task_name` and `note` (require unique values)
+  - Returns: `{updated_count, failed_count, updated_ids, failures}`
+
+- **Enhanced `get_tasks()`** - Added 3 consolidation parameters
+  - `task_id` - Get single task directly: `get_tasks(task_id="abc123")`
+  - `parent_task_id` - Get subtasks: `get_tasks(parent_task_id="parent-id")`
+  - `include_full_notes` - Get complete notes instead of truncated
+
+- **Enhanced `get_projects()`** - Added 2 consolidation parameters
+  - `project_id` - Get single project directly: `get_projects(project_id="xyz789")`
+  - `include_full_notes` - Get complete notes instead of truncated
+
+- **`create_project()` enhancement** - Added `review_interval_weeks` parameter for setting GTD review cycles when creating projects
+
+### Fixed
+
+- **Parameter naming consistency** - `update_project()` uses `project_name` not `name` (matches `create_project`)
+- **Test coverage** - 328 tests passing, extensive test cleanup for deprecated functions
+- **Type safety** - All update functions use proper Enum types with string fallback for MCP compatibility
+
+### Removed
+
+- Deleted 4 deprecated test files (search_tasks, get_subtasks, stalled_projects, task_estimated_minutes)
+- Removed 1,600+ lines of deprecated test code
+- Cleaned up 32 deprecated server test methods
+
+### Documentation
+
+- Updated API_REFERENCE.md with implementation status
+- Created comprehensive API redesign plan (docs/API_REDESIGN_PLAN.md)
+- Updated ARCHITECTURE.md with design rationale
+- Enhanced TESTING.md with coverage details
+- See `docs/MIGRATION_v0.6.md` for detailed migration guide (TODO)
+
 ## [0.5.0] - 2025-10-09
 
 ### Changed - BREAKING
