@@ -46,18 +46,23 @@
 9. ✅ **Run tests → Confirm PASS** - All tests should pass
 
 ### Integration Layer (test_integration_real.py)
-10. ✅ **Write/update integration tests** - Tests against real OmniFocus (or mark skipped)
-11. ✅ **Run integration tests** - If test database available, run and verify
+10. ✅ **Write/update integration tests** - Tests client→AppleScript→OmniFocus
+11. ✅ **Run integration tests** - `make test-integration` (safety guards enabled)
+
+### End-to-End (E2E) Layer (test_e2e_real.py)
+12. **Write/update E2E tests** - Tests MCP tool→client→AppleScript→OmniFocus
+13. **Run E2E tests** - `make test-e2e` (full server stack with real OmniFocus)
 
 ### Documentation
-12. ✅ **Update CODE_QUALITY.md** - If complexity is D/F, document rationale
-13. ✅ **Update this plan** - Mark function as complete
+14. ✅ **Update CODE_QUALITY.md** - If complexity is D/F, document rationale
+15. **Update this plan** - Mark function as complete
 
 ### Commit
-14. ✅ **Commit all layers together** - Client + Server + Tests in one commit
+16. ✅ **Commit all layers together** - Client + Server + Tests in one commit
 
 **⚠️ NEVER skip steps 6-9 (server layer)!**
 **⚠️ NEVER skip steps 10-11 (integration tests)!**
+**⚠️ NEVER skip steps 12-13 (E2E tests)!**
 
 ---
 
