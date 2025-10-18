@@ -8,44 +8,17 @@ import omnifocus_mcp.server_fastmcp as server
 # Extract underlying functions from FunctionTool wrappers
 get_client = server.get_client
 get_projects = server.get_projects.fn
-get_project = server.get_project.fn
 create_project = server.create_project.fn
 update_project = server.update_project.fn
-set_project_status = server.set_project_status.fn
-get_stalled_projects = server.get_stalled_projects.fn
 get_tasks = server.get_tasks.fn
-get_task = server.get_task.fn
-get_subtasks = server.get_subtasks.fn
-add_task = server.add_task.fn
 update_task = server.update_task.fn
-complete_task = server.complete_task.fn
-delete_task = server.delete_task.fn
-delete_project = server.delete_project.fn
-move_task = server.move_task.fn
-drop_task = server.drop_task.fn
-create_inbox_task = server.create_inbox_task.fn
 get_tags = server.get_tags.fn
-add_tag_to_task = server.add_tag_to_task.fn
-add_note = server.add_note.fn
-get_note = server.get_note.fn
 get_folders = server.get_folders.fn
 create_folder = server.create_folder.fn
-set_parent_task = server.set_parent_task.fn
-set_review_interval = server.set_review_interval.fn
-mark_project_reviewed = server.mark_project_reviewed.fn
-get_projects_due_for_review = server.get_projects_due_for_review.fn
-set_estimated_minutes = server.set_estimated_minutes.fn
 get_perspectives = server.get_perspectives.fn
 switch_perspective = server.switch_perspective.fn
-complete_tasks = server.complete_tasks.fn
-move_tasks = server.move_tasks.fn
-add_tag_to_tasks = server.add_tag_to_tasks.fn
-remove_tag_from_tasks = server.remove_tag_from_tasks.fn
-drop_tasks = server.drop_tasks.fn
 delete_tasks = server.delete_tasks.fn
 delete_projects = server.delete_projects.fn
-drop_project = server.drop_project.fn
-drop_projects = server.drop_projects.fn
 
 
 @pytest.fixture(autouse=True)
