@@ -135,10 +135,16 @@ def update_tasks(
 - Test batch update with real OmniFocus
 - Test partial failures in real environment
 
+**E2E Tests (test_e2e_real.py):** ~2 tests
+- Test MCP tool with batch IDs
+- Test MCP tool with single ID string (Union type)
+- Verify human-readable response format
+
 **Implementation Notes:**
 - ✅ Client layer: 17 tests (all PASS)
 - ✅ Server layer: 7 tests (all PASS)
 - ✅ Integration layer: 1 test added
+- ✅ E2E layer: 2 tests added (test_update_tasks_batch_e2e, test_update_tasks_single_id_string_e2e)
 - Uses **kwargs to catch task_name/note and raise helpful ValueError
 - Calls update_task() internally for each task (simple loop implementation)
 - Proper partial failure handling (continues processing, reports failures)
@@ -182,10 +188,16 @@ def delete_tasks(
 **Integration Tests:** ~1 test
 - Test deletion with real OmniFocus
 
+**E2E Tests (test_e2e_real.py):** ~2 tests
+- Test MCP tool with batch delete
+- Test MCP tool with single ID (Union type)
+- Verify human-readable response format
+
 **Implementation Notes:**
 - ✅ Client layer: 8 tests (all PASS)
 - ✅ Server layer: 5 tests (all PASS)
 - ✅ Integration layer: 1 test updated
+- ✅ E2E layer: 2 tests added (test_delete_tasks_e2e, test_delete_single_task_e2e)
 - Changed return type from int to dict (consistency with new API)
 - AppleScript returns count, we infer which tasks succeeded (first N)
 - Complexity B (7) - excellent, well within acceptable range
@@ -220,15 +232,22 @@ def create_task(
 - ✅ Client layer: 9 tests (all PASS)
 - ✅ Server layer: 7 tests (all PASS)
 - ✅ Integration layer: 1 test added (test_create_task_real)
+- ✅ E2E layer: 5 tests added (project, inbox, tags, dates, error handling)
 - Three creation paths: inbox (project_id=None), project (project_id set), subtask (parent_task_id set)
 - Conflict validation: Raises ValueError if both project_id and parent_task_id specified
 - Returns task ID (string) instead of bool like legacy add_task()
 - Server handles JSON string tags parameter, converts to list for client
 - Fixed 4 legacy tests to handle delete_tasks() dict return format
+- **E2E tests caught AppleScript bug**: `inbox` vs `make new inbox task` syntax
 
 ---
 
 ## PHASE 2: Implement Project Functions (4 functions)
+
+**⚠️ IMPORTANT**: All Phase 2+ functions MUST include E2E tests in test_e2e_real.py!
+- Follow the same 16-step TDD checklist (including steps 12-13 for E2E)
+- Add E2E test strategy section to each function below
+- E2E tests verify: MCP tool → client → AppleScript → OmniFocus
 
 ### 2.1 update_project() - ENHANCE EXISTING
 **Priority:** HIGH (consolidates project updates)
@@ -284,6 +303,12 @@ def update_project(
 - Test review_interval update with real OmniFocus
 - Test status changes in real environment
 
+**E2E Tests (test_e2e_real.py):** ~3 tests
+- Test MCP tool with single field update
+- Test MCP tool with multiple fields
+- Test status enum via MCP layer
+- Verify human-readable response
+
 ---
 
 ### 2.2 update_projects() - NEW BATCH FUNCTION
@@ -334,6 +359,11 @@ def update_projects(
 **Integration Tests:** ~2 tests
 - Test batch project updates with real OmniFocus
 - Test partial failures
+
+**E2E Tests (test_e2e_real.py):** ~2 tests
+- Test MCP tool with batch project IDs
+- Test MCP tool with single ID string (Union type)
+- Verify human-readable response
 
 ---
 
