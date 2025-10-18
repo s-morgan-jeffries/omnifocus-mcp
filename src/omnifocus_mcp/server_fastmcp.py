@@ -554,66 +554,6 @@ def create_task(
     return result
 
 
-@mcp.tool()
-def add_task(
-    project_id: str,
-    task_name: str,
-    note: Optional[str] = None,
-    due_date: Optional[str] = None,
-    defer_date: Optional[str] = None,
-    flagged: bool = False,
-    tags: Optional[str] = None
-) -> str:
-    """Add a new task to a specific OmniFocus project with full properties support.
-
-    Args:
-        project_id: The ID of the project to add the task to
-        task_name: The name/title of the task
-        note: Optional note/description for the task (plain text only - rich text formatting is not supported via automation APIs)
-        due_date: Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
-        defer_date: Defer date in ISO 8601 format (when task becomes available)
-        flagged: Whether to flag the task (default: False)
-        tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist.
-
-    Returns:
-        Success message with task name, project, and all configured properties
-    """
-    client = get_client()
-
-    # Parse tags parameter - convert JSON string to list
-    tags_list = []
-    if tags:
-        try:
-            tags_list = json.loads(tags)
-            if not isinstance(tags_list, list):
-                return f"Error: tags must be a JSON array string, e.g., '[\"Computer\"]'"
-        except json.JSONDecodeError as e:
-            return f"Error: Invalid JSON for tags parameter: {e}"
-
-    success = client.add_task(
-        project_id=project_id,
-        task_name=task_name,
-        note=note or "",
-        due_date=due_date,
-        defer_date=defer_date,
-        flagged=flagged,
-        tags=tags_list
-    )
-
-    if success:
-        result = f"Successfully added task '{task_name}' to project {project_id}"
-        if due_date:
-            result += f"\nDue date: {due_date}"
-        if defer_date:
-            result += f"\nDefer date: {defer_date}"
-        if flagged:
-            result += "\nFlagged: Yes"
-        if tags_list:
-            result += f"\nTags: {', '.join(tags_list)}"
-        return result
-    else:
-        return f"Error: Failed to add task '{task_name}'"
-
 
 @mcp.tool()
 def update_task(
