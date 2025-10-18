@@ -653,6 +653,94 @@ def update_task(
 
 
 @mcp.tool()
+def update_tasks(
+    task_ids: Union[str, list[str]],
+    flagged: Optional[bool] = None,
+    status: Optional[str] = None,
+    completed: Optional[bool] = None,
+    project_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    add_tags: Optional[list[str]] = None,
+    remove_tags: Optional[list[str]] = None,
+    due_date: Optional[str] = None,
+    defer_date: Optional[str] = None,
+    estimated_minutes: Optional[int] = None
+) -> str:
+    """Update multiple tasks with the same field values (batch operation - NEW API).
+
+    This is the batch version of update_task(). It applies uniform changes to
+    multiple tasks simultaneously.
+
+    Key differences from update_task():
+    - Accepts Union[str, list[str]] for task_ids (single or multiple)
+    - Does NOT accept task_name or note (require unique values per task)
+    - Returns count-based summary instead of single success/failure
+    - Continues processing when individual tasks fail
+
+    Args:
+        task_ids: Single task ID (str) or list of task IDs to update
+        flagged: Flag/unflag all tasks (optional)
+        status: Set status for all tasks - "active" or "dropped" (optional)
+        completed: Mark all tasks complete/incomplete (optional)
+        project_id: Move all tasks to this project (optional, conflicts with parent_task_id)
+        parent_task_id: Make all tasks subtasks of this parent (optional, conflicts with project_id)
+        tags: Full replacement - set exact tag list for all tasks (optional, conflicts with add_tags)
+        add_tags: Add these tags to all tasks (optional, conflicts with tags)
+        remove_tags: Remove these tags from all tasks (optional)
+        due_date: Set due date for all tasks in ISO 8601 format, or empty string to clear (optional)
+        defer_date: Set defer date for all tasks in ISO 8601 format, or empty string to clear (optional)
+        estimated_minutes: Set estimated time in minutes for all tasks (optional)
+
+    Returns:
+        Summary message with counts of successful/failed updates
+
+    Examples:
+        update_tasks(["task-001", "task-002"], flagged=True)  # Flag multiple tasks
+        update_tasks("task-123", completed=True)  # Complete single task (Union type)
+        update_tasks(["task-001", "task-002", "task-003"], status="dropped")  # Drop multiple
+    """
+    client = get_client()
+    result = client.update_tasks(
+        task_ids=task_ids,
+        flagged=flagged,
+        status=status,
+        completed=completed,
+        project_id=project_id,
+        parent_task_id=parent_task_id,
+        tags=tags,
+        add_tags=add_tags,
+        remove_tags=remove_tags,
+        due_date=due_date,
+        defer_date=defer_date,
+        estimated_minutes=estimated_minutes
+    )
+
+    # Handle dict return with counts
+    updated_count = result["updated_count"]
+    failed_count = result["failed_count"]
+
+    # Build response message
+    if failed_count == 0:
+        # All succeeded
+        if updated_count == 1:
+            return f"Successfully updated 1 task"
+        else:
+            return f"Successfully updated {updated_count} tasks"
+    elif updated_count == 0:
+        # All failed
+        failures = result.get("failures", [])
+        if len(failures) == 1:
+            error = failures[0].get("error", "Unknown error")
+            return f"Failed to update task: {error}"
+        else:
+            return f"Failed to update all {failed_count} tasks"
+    else:
+        # Partial success
+        return f"Updated {updated_count} tasks successfully, {failed_count} failed"
+
+
+@mcp.tool()
 def complete_task(task_id: str) -> str:
     """Mark a task as completed in OmniFocus.
 

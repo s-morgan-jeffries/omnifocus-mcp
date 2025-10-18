@@ -345,3 +345,241 @@ class TestUpdateTaskRedesign:
             assert result["success"] is False
             assert "error" in result
             assert isinstance(result["error"], str)
+
+
+class TestUpdateTasksRedesign:
+    """Tests for update_tasks() batch function (NEW API).
+
+    Key differences from update_task():
+    - Accepts Union[str, list[str]] for task_ids
+    - EXCLUDES task_name and note (require unique values)
+    - Returns dict with counts (updated_count, failed_count, etc.)
+    - Continues processing on individual failures
+    """
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusClient(enable_safety_checks=False)
+
+    # ========================================================================
+    # Union Type Handling (Single vs Multiple IDs)
+    # ========================================================================
+
+    def test_update_tasks_accepts_single_id_string(self, client):
+        """NEW API: update_tasks() accepts single ID as string (Union type)."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks("task-001", flagged=True)
+
+            assert result["updated_count"] == 1
+            assert result["failed_count"] == 0
+            assert "task-001" in result["updated_ids"]
+
+    def test_update_tasks_accepts_list_of_ids(self, client):
+        """NEW API: update_tasks() accepts list of IDs."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(
+                ["task-001", "task-002", "task-003"],
+                flagged=True
+            )
+
+            assert result["updated_count"] == 3
+            assert result["failed_count"] == 0
+            assert len(result["updated_ids"]) == 3
+
+    # ========================================================================
+    # Field Exclusions (task_name, note NOT allowed)
+    # ========================================================================
+
+    def test_update_tasks_rejects_task_name_parameter(self, client):
+        """NEW API: update_tasks() raises ValueError if task_name provided."""
+        with pytest.raises(ValueError) as exc_info:
+            client.update_tasks(["task-001"], task_name="New Name")
+
+        assert "task_name" in str(exc_info.value).lower()
+        assert "unique" in str(exc_info.value).lower() or "not allowed" in str(exc_info.value).lower()
+
+    def test_update_tasks_rejects_note_parameter(self, client):
+        """NEW API: update_tasks() raises ValueError if note provided."""
+        with pytest.raises(ValueError) as exc_info:
+            client.update_tasks(["task-001"], note="New note")
+
+        assert "note" in str(exc_info.value).lower()
+        assert "unique" in str(exc_info.value).lower() or "not allowed" in str(exc_info.value).lower()
+
+    # ========================================================================
+    # Batch Operations (All Fields)
+    # ========================================================================
+
+    def test_update_tasks_with_flagged(self, client):
+        """NEW API: update_tasks() can set flagged on multiple tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(["task-001", "task-002"], flagged=True)
+
+            assert result["updated_count"] == 2
+            assert result["failed_count"] == 0
+
+    def test_update_tasks_with_completed(self, client):
+        """NEW API: update_tasks() can mark multiple tasks complete."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(
+                ["task-001", "task-002", "task-003"],
+                completed=True
+            )
+
+            assert result["updated_count"] == 3
+
+    def test_update_tasks_with_status(self, client):
+        """NEW API: update_tasks() can set status on multiple tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(
+                ["task-001", "task-002"],
+                status=TaskStatus.DROPPED
+            )
+
+            assert result["updated_count"] == 2
+
+    def test_update_tasks_with_project_id(self, client):
+        """NEW API: update_tasks() can move multiple tasks to project."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(
+                ["task-001", "task-002"],
+                project_id="proj-456"
+            )
+
+            assert result["updated_count"] == 2
+
+    def test_update_tasks_with_add_tags(self, client):
+        """NEW API: update_tasks() can add tags to multiple tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(
+                ["task-001", "task-002"],
+                add_tags=["urgent", "work"]
+            )
+
+            assert result["updated_count"] == 2
+
+    def test_update_tasks_with_estimated_minutes(self, client):
+        """NEW API: update_tasks() can set estimated time on multiple tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(
+                ["task-001", "task-002", "task-003"],
+                estimated_minutes=60
+            )
+
+            assert result["updated_count"] == 3
+
+    # ========================================================================
+    # Conflict Validation
+    # ========================================================================
+
+    def test_update_tasks_rejects_project_id_and_parent_task_id(self, client):
+        """NEW API: update_tasks() raises ValueError if both project_id and parent_task_id."""
+        with pytest.raises(ValueError) as exc_info:
+            client.update_tasks(
+                ["task-001"],
+                project_id="proj-456",
+                parent_task_id="task-parent"
+            )
+
+        assert "project_id" in str(exc_info.value).lower()
+        assert "parent_task_id" in str(exc_info.value).lower()
+
+    def test_update_tasks_rejects_tags_and_add_tags(self, client):
+        """NEW API: update_tasks() raises ValueError if both tags and add_tags."""
+        with pytest.raises(ValueError) as exc_info:
+            client.update_tasks(
+                ["task-001"],
+                tags=["tag1"],
+                add_tags=["tag2"]
+            )
+
+        assert "tags" in str(exc_info.value).lower()
+        assert "add_tags" in str(exc_info.value).lower()
+
+    # ========================================================================
+    # Return Format
+    # ========================================================================
+
+    def test_update_tasks_returns_dict_with_counts(self, client):
+        """NEW API: update_tasks() returns dict with success/failure counts."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(["task-001", "task-002"], flagged=True)
+
+            assert isinstance(result, dict)
+            assert "updated_count" in result
+            assert "failed_count" in result
+            assert "updated_ids" in result
+            assert "failures" in result
+
+    def test_update_tasks_includes_updated_ids_list(self, client):
+        """NEW API: update_tasks() includes list of successfully updated IDs."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            mock_run.return_value = "true"  # update_task expects "true"
+
+            result = client.update_tasks(["task-001", "task-002"], flagged=True)
+
+            assert isinstance(result["updated_ids"], list)
+            assert len(result["updated_ids"]) == 2
+
+    # ========================================================================
+    # Partial Failures
+    # ========================================================================
+
+    def test_update_tasks_continues_on_partial_failures(self, client):
+        """NEW API: update_tasks() continues processing when individual tasks fail."""
+        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            # Simulate 2 successes and 1 failure
+            def side_effect(*args):
+                script = args[0]
+                if "task-invalid" in script:
+                    raise subprocess.CalledProcessError(1, "osascript", stderr="Task not found")
+                return "true"
+
+            mock_run.side_effect = side_effect
+
+            result = client.update_tasks(
+                ["task-001", "task-002", "task-invalid"],
+                flagged=True
+            )
+
+            assert result["updated_count"] == 2
+            assert result["failed_count"] == 1
+            assert len(result["failures"]) == 1
+            assert result["failures"][0]["task_id"] == "task-invalid"
+
+    # ========================================================================
+    # Validation
+    # ========================================================================
+
+    def test_update_tasks_requires_task_ids(self, client):
+        """NEW API: update_tasks() raises ValueError if task_ids empty."""
+        with pytest.raises(ValueError) as exc_info:
+            client.update_tasks([], flagged=True)
+
+        assert "task_ids" in str(exc_info.value).lower()
+
+    def test_update_tasks_requires_at_least_one_field(self, client):
+        """NEW API: update_tasks() raises ValueError if no fields provided."""
+        with pytest.raises(ValueError) as exc_info:
+            client.update_tasks(["task-001"])
+
+        assert "at least one field" in str(exc_info.value).lower()

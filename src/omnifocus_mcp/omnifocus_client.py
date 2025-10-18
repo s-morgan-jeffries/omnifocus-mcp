@@ -3166,6 +3166,147 @@ class OmniFocusClient:
                 "error": str(e)
             }
 
+    def update_tasks(
+        self,
+        task_ids: Union[str, list[str]],
+        flagged: Optional[bool] = None,
+        status: Optional[Union[TaskStatus, str]] = None,
+        completed: Optional[bool] = None,
+        project_id: Optional[str] = None,
+        parent_task_id: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        add_tags: Optional[list[str]] = None,
+        remove_tags: Optional[list[str]] = None,
+        due_date: Optional[str] = None,
+        defer_date: Optional[str] = None,
+        estimated_minutes: Optional[int] = None,
+        **kwargs  # Catch unexpected arguments
+    ) -> dict:
+        """Update multiple tasks with the same field values (batch operation).
+
+        NEW API (Redesign): Batch version of update_task() for applying uniform changes.
+
+        Key differences from update_task():
+        - Accepts Union[str, list[str]] for task_ids (single or multiple)
+        - EXCLUDES task_name and note (require unique values per task)
+        - Returns dict with counts instead of single success/failure
+        - Continues processing on individual failures
+
+        Args:
+            task_ids: Single task ID (str) or list of task IDs
+            flagged: Mark as flagged (True) or unflagged (False)
+            status: Set status ("active" or "dropped", or TaskStatus enum)
+            completed: Mark as completed (True) or incomplete (False)
+            project_id: Move to project (use empty string "" for inbox)
+            parent_task_id: Set as child of parent task
+            tags: Replace all tags with this list (empty list removes all)
+            add_tags: Add these tags to existing tags
+            remove_tags: Remove these tags from existing tags
+            due_date: Set due date (ISO format or empty string to clear)
+            defer_date: Set defer date (ISO format or empty string to clear)
+            estimated_minutes: Set estimated time in minutes
+
+        Returns:
+            dict: {
+                "updated_count": int,
+                "failed_count": int,
+                "updated_ids": list[str],
+                "failures": list[dict] with "task_id" and "error"
+            }
+
+        Raises:
+            ValueError: If validation fails (task_name/note provided, conflicting params, etc.)
+
+        Example:
+            # Flag multiple tasks
+            result = client.update_tasks(
+                task_ids=["task-001", "task-002", "task-003"],
+                flagged=True
+            )
+            # Returns: {"updated_count": 3, "failed_count": 0, "updated_ids": [...], "failures": []}
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('update_tasks')
+
+        # Validation: task_name and note are NOT allowed (require unique values)
+        if 'task_name' in kwargs or 'name' in kwargs:
+            raise ValueError("task_name is not allowed in batch updates (requires unique values per task)")
+        if 'note' in kwargs:
+            raise ValueError("note is not allowed in batch updates (requires unique values per task)")
+
+        # Reject any other unexpected arguments
+        if kwargs:
+            unexpected = ', '.join(kwargs.keys())
+            raise ValueError(f"Unexpected arguments: {unexpected}")
+
+        # Normalize task_ids to list
+        if isinstance(task_ids, str):
+            ids_list = [task_ids]
+        else:
+            ids_list = task_ids
+
+        # Validation: task_ids must not be empty
+        if not ids_list:
+            raise ValueError("task_ids cannot be empty")
+
+        # Validation: Must provide at least one field to update
+        provided_fields = [
+            flagged, status, completed, project_id, parent_task_id,
+            tags, add_tags, remove_tags, due_date, defer_date, estimated_minutes
+        ]
+        if all(f is None for f in provided_fields):
+            raise ValueError("Must provide at least one field to update")
+
+        # Validation: Conflicting parameters
+        if project_id is not None and parent_task_id is not None:
+            raise ValueError("Cannot specify both project_id and parent_task_id")
+
+        if tags is not None and add_tags is not None:
+            raise ValueError("Cannot specify both tags and add_tags (use one or the other)")
+
+        # Process each task individually
+        updated_ids = []
+        failures = []
+
+        for task_id in ids_list:
+            try:
+                # Call update_task for each task
+                result = self.update_task(
+                    task_id=task_id,
+                    flagged=flagged,
+                    status=status,
+                    completed=completed,
+                    project_id=project_id,
+                    parent_task_id=parent_task_id,
+                    tags=tags,
+                    add_tags=add_tags,
+                    remove_tags=remove_tags,
+                    due_date=due_date,
+                    defer_date=defer_date,
+                    estimated_minutes=estimated_minutes
+                )
+
+                if result["success"]:
+                    updated_ids.append(task_id)
+                else:
+                    failures.append({
+                        "task_id": task_id,
+                        "error": result["error"]
+                    })
+            except Exception as e:
+                # Catch any unexpected errors and continue
+                failures.append({
+                    "task_id": task_id,
+                    "error": str(e)
+                })
+
+        return {
+            "updated_count": len(updated_ids),
+            "failed_count": len(failures),
+            "updated_ids": updated_ids,
+            "failures": failures
+        }
+
     def get_inbox_tasks(self) -> list[dict[str, Any]]:
         """Get all tasks from the inbox.
 

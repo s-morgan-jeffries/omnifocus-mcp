@@ -9,10 +9,9 @@ from unittest import mock
 # Import server module
 import omnifocus_mcp.server_fastmcp as server
 
-# Extract function from FunctionTool wrapper
-# Note: This will fail initially because we haven't updated the server yet
-# That's the point of TDD!
+# Extract functions from FunctionTool wrapper
 update_task = server.update_task.fn
+update_tasks = server.update_tasks.fn
 
 
 class TestUpdateTaskServerRedesign:
@@ -302,3 +301,168 @@ class TestUpdateTaskServerRedesign:
             call_kwargs = mock_client.update_task.call_args.kwargs
             assert call_kwargs.get("name") == "Legacy Name" or call_kwargs.get("task_name") == "Legacy Name"
             assert "Successfully updated task" in result
+
+
+class TestUpdateTasksServerRedesign:
+    """Tests for new update_tasks() MCP tool (batch operations).
+
+    The new server tool should:
+    - Accept Union[str, list[str]] for task_ids
+    - Pass all parameters to client.update_tasks()
+    - Handle dict return with counts
+    - Return structured response showing updated_count and failures
+    """
+
+    # ========================================================================
+    # Union Type Handling
+    # ========================================================================
+
+    def test_update_tasks_with_single_id_string(self):
+        """NEW API: Server handles single task ID as string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.return_value = {
+                "updated_count": 1,
+                "failed_count": 0,
+                "updated_ids": ["task-001"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks("task-001", flagged=True)
+
+            # Verify client was called
+            mock_client.update_tasks.assert_called_once()
+            call_kwargs = mock_client.update_tasks.call_args.kwargs
+            assert call_kwargs["task_ids"] == "task-001"
+            assert call_kwargs["flagged"] is True
+
+            # Verify response
+            assert "1 task" in result or "Successfully" in result
+
+    def test_update_tasks_with_list_of_ids(self):
+        """NEW API: Server handles list of task IDs."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.return_value = {
+                "updated_count": 3,
+                "failed_count": 0,
+                "updated_ids": ["task-001", "task-002", "task-003"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks(["task-001", "task-002", "task-003"], flagged=True)
+
+            call_kwargs = mock_client.update_tasks.call_args.kwargs
+            assert call_kwargs["task_ids"] == ["task-001", "task-002", "task-003"]
+            assert "3 tasks" in result
+
+    # ========================================================================
+    # Batch Operations
+    # ========================================================================
+
+    def test_update_tasks_with_flagged(self):
+        """NEW API: Server handles flagged parameter for batch update."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.return_value = {
+                "updated_count": 2,
+                "failed_count": 0,
+                "updated_ids": ["task-001", "task-002"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks(["task-001", "task-002"], flagged=True)
+
+            call_kwargs = mock_client.update_tasks.call_args.kwargs
+            assert call_kwargs["flagged"] is True
+            assert "2 tasks" in result
+
+    def test_update_tasks_with_completed(self):
+        """NEW API: Server handles completed parameter for batch update."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.return_value = {
+                "updated_count": 3,
+                "failed_count": 0,
+                "updated_ids": ["task-001", "task-002", "task-003"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks(
+                ["task-001", "task-002", "task-003"],
+                completed=True
+            )
+
+            call_kwargs = mock_client.update_tasks.call_args.kwargs
+            assert call_kwargs["completed"] is True
+            assert "3 tasks" in result
+
+    # ========================================================================
+    # Return Format and Error Handling
+    # ========================================================================
+
+    def test_update_tasks_shows_success_count(self):
+        """NEW API: Server response includes success count."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.return_value = {
+                "updated_count": 5,
+                "failed_count": 0,
+                "updated_ids": ["task-001", "task-002", "task-003", "task-004", "task-005"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks(
+                ["task-001", "task-002", "task-003", "task-004", "task-005"],
+                flagged=True
+            )
+
+            assert "5" in result or "5 tasks" in result
+
+    def test_update_tasks_handles_partial_failures(self):
+        """NEW API: Server shows both successes and failures."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.return_value = {
+                "updated_count": 2,
+                "failed_count": 1,
+                "updated_ids": ["task-001", "task-002"],
+                "failures": [
+                    {"task_id": "task-invalid", "error": "Task not found"}
+                ]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks(
+                ["task-001", "task-002", "task-invalid"],
+                flagged=True
+            )
+
+            # Should mention both successes and failures
+            assert "2" in result  # updated count
+            assert "1" in result or "failed" in result.lower()
+
+    def test_update_tasks_handles_all_failures(self):
+        """NEW API: Server handles case where all tasks fail."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.return_value = {
+                "updated_count": 0,
+                "failed_count": 2,
+                "updated_ids": [],
+                "failures": [
+                    {"task_id": "task-001", "error": "Task not found"},
+                    {"task_id": "task-002", "error": "Task not found"}
+                ]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks(["task-001", "task-002"], flagged=True)
+
+            assert "failed" in result.lower() or "Failed" in result
+            assert "2" in result  # 2 failed

@@ -269,6 +269,37 @@ class TestRealOmniFocusWriteOperations:
         assert task['flagged'] is False
         print("✓ Successfully set flag to False")
 
+    def test_update_tasks_batch(self, client, test_project_id):
+        """Test batch update of multiple tasks (NEW API: update_tasks)."""
+        # Create 3 tasks to update
+        client.add_task(test_project_id, "Batch Task 1")
+        client.add_task(test_project_id, "Batch Task 2")
+        client.add_task(test_project_id, "Batch Task 3")
+
+        # Get their IDs
+        tasks = client.get_tasks(project_id=test_project_id)
+        batch_task_ids = [
+            t['id'] for t in tasks
+            if t['name'].startswith("Batch Task")
+        ]
+        assert len(batch_task_ids) == 3
+        print(f"\n✓ Created 3 tasks for batch update: {batch_task_ids}")
+
+        # Batch update - flag all three
+        result = client.update_tasks(batch_task_ids, flagged=True)
+
+        # Verify result dict
+        assert result["updated_count"] == 3
+        assert result["failed_count"] == 0
+        assert len(result["updated_ids"]) == 3
+        print(f"✓ Batch updated {result['updated_count']} tasks")
+
+        # Verify all tasks are now flagged
+        tasks = client.get_tasks(project_id=test_project_id)
+        batch_tasks = [t for t in tasks if t['name'].startswith("Batch Task")]
+        assert all(t['flagged'] is True for t in batch_tasks)
+        print("✓ All batch tasks are now flagged")
+
     def test_add_tag_to_task_real(self, client, test_project_id):
         """Test adding a tag to a task in real OmniFocus."""
         # First, add a task
