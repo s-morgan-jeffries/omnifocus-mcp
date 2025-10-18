@@ -187,15 +187,16 @@ def delete_tasks(
 
 ---
 
-### 1.3 create_task() - MERGE WITH create_inbox_task()
+### 1.3 create_task() - MERGE WITH create_inbox_task() ✅ COMPLETED
 **Priority:** MEDIUM (completes task creation consolidation)
-**Estimated Complexity:** C (CC ~12)
+**Actual Complexity:** C (CC 20) - acceptable for complex business logic
+**Completion Date:** 2025-10-18
 
 **Consolidates:**
 - add_task() (rename to create_task)
 - create_inbox_task() ✅
 
-**Enhanced Signature:**
+**Implemented Signature:**
 ```python
 def create_task(
     task_name: str,  # REQUIRED
@@ -210,29 +211,15 @@ def create_task(
 ) -> str  # Returns task_id
 ```
 
-**Change Needed:**
-- Rename add_task() to create_task()
-- Make project_id optional (None = inbox)
-- Remove create_inbox_task() function
-
-**Test Strategy:**
-
-**Client Tests:** ~8 tests
-- Test creation in project
-- Test creation in inbox (project_id=None)
-- Test with parent_task_id
-- Test conflict (project_id + parent_task_id) → ValueError
-- Test all optional fields
-
-**Server Tests:** ~5 tests
-- Test MCP tool with project_id
-- Test MCP tool with project_id=None (inbox)
-- Test parent_task_id
-- Test all optional parameters
-
-**Integration Tests:** ~2 tests
-- Test real creation in project
-- Test real creation in inbox
+**Implementation Notes:**
+- ✅ Client layer: 9 tests (all PASS)
+- ✅ Server layer: 7 tests (all PASS)
+- ✅ Integration layer: 1 test added (test_create_task_real)
+- Three creation paths: inbox (project_id=None), project (project_id set), subtask (parent_task_id set)
+- Conflict validation: Raises ValueError if both project_id and parent_task_id specified
+- Returns task ID (string) instead of bool like legacy add_task()
+- Server handles JSON string tags parameter, converts to list for client
+- Fixed 4 legacy tests to handle delete_tasks() dict return format
 
 ---
 
