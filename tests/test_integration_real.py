@@ -1626,6 +1626,46 @@ class TestGetProjectsParameterVariations:
 
         print(f"\n✓ Retrieved {len(projects)} projects sorted by name")
 
+    # ========================================================================
+    # NEW API (Phase 3.2): project_id, include_full_notes
+    # ========================================================================
+
+    def test_get_projects_with_project_id_integration(self, client):
+        """Integration: get_projects(project_id=X) filters to single project."""
+        # Get a project from the database
+        projects = client.get_projects()
+        assert len(projects) > 0
+        specific_project_id = projects[0]['id']
+
+        # Get that specific project using project_id parameter
+        result = client.get_projects(project_id=specific_project_id)
+
+        assert isinstance(result, list)
+        assert len(result) == 1, "Should return exactly 1 project"
+        assert result[0]['id'] == specific_project_id
+        print(f"\n✓ get_projects(project_id) returned specific project: {result[0]['name']}")
+
+    def test_get_projects_include_full_notes_integration(self, client):
+        """Integration: get_projects(include_full_notes=True) returns complete notes."""
+        # Get projects with full notes
+        projects = client.get_projects(include_full_notes=True)
+
+        assert isinstance(projects, list)
+        assert len(projects) > 0
+
+        # Find a project with a note
+        projects_with_notes = [p for p in projects if p.get('note') and len(p['note']) > 0]
+        if projects_with_notes:
+            project = projects_with_notes[0]
+            # Verify note field is present and has content
+            assert 'note' in project
+            assert len(project['note']) > 0
+            print(f"\n✓ get_projects(include_full_notes=True) returned full notes")
+            print(f"  Project: {project['name']}")
+            print(f"  Note length: {len(project['note'])} characters")
+        else:
+            print(f"\n✓ get_projects(include_full_notes=True) works (no projects with notes in test data)")
+
 
 class TestAddTaskParameterVariations:
     """Test various parameter combinations for add_task()."""

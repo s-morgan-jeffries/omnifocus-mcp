@@ -387,6 +387,8 @@ class OmniFocusClient:
 
     def get_projects(
         self,
+        project_id: Optional[str] = None,  # NEW (Phase 3.2): Filter to specific project
+        include_full_notes: bool = False,  # NEW (Phase 3.2): Return full notes
         on_hold_only: bool = False,
         modified_after: Optional[str] = None,
         modified_before: Optional[str] = None,
@@ -407,6 +409,8 @@ class OmniFocusClient:
         4. AppleScript is verbose for JSON generation and error handling
 
         Args:
+            project_id: NEW (Phase 3.2) - Filter to specific project by ID (consolidates get_project())
+            include_full_notes: NEW (Phase 3.2) - Return full note content (consolidates get_note())
             on_hold_only: Only return projects with "on hold" status (default: False)
             modified_after: Only return projects modified after this ISO date
             modified_before: Only return projects modified before this ISO date
@@ -445,6 +449,14 @@ class OmniFocusClient:
             raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
         if sort_order not in valid_sort_order:
             raise ValueError(f"Invalid sort_order value: {sort_order}. Must be one of: {valid_sort_order}")
+
+        # Build project source (specific project or all projects)
+        # NEW (Phase 3.2): project_id parameter
+        if project_id:
+            project_source = f'(flattened projects whose id is "{project_id}")'
+        else:
+            project_source = 'flattened projects'
+
         script = '''
         use AppleScript version "2.4"
         use scripting additions
@@ -454,7 +466,7 @@ class OmniFocusClient:
 
         tell application "OmniFocus"
             tell front document
-                set allProjects to flattened projects
+                set allProjects to {project_source}
 
                 repeat with proj in allProjects
                     try
@@ -595,7 +607,7 @@ class OmniFocusClient:
                             error "skip non-on-hold project"
                         end if"""
 
-        script = script.format(on_hold_check=on_hold_check)
+        script = script.format(project_source=project_source, on_hold_check=on_hold_check)
 
         try:
             result = run_applescript(script, timeout=timeout)

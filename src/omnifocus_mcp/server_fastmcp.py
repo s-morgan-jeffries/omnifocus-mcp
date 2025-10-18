@@ -128,12 +128,19 @@ def _format_project(proj: dict) -> str:
 
 @mcp.tool()
 def get_projects(
+    project_id: Optional[str] = None,  # NEW (Phase 3.2)
+    include_full_notes: bool = False,  # NEW (Phase 3.2)
     on_hold_only: bool = False,
     query: Optional[str] = None
 ) -> str:
     """Retrieve ALL active projects with full details and hierarchy, optionally filtered by search query.
 
+    NEW (Phase 3.2): Added project_id and include_full_notes parameters to consolidate
+    get_project() and get_note() functionality.
+
     Args:
+        project_id: NEW - Filter to specific project by ID (consolidates get_project())
+        include_full_notes: NEW - Return full note content (consolidates get_note())
         on_hold_only: If True, only return projects with "on hold" status
         query: Optional search term to filter by name, note, or folder path (case-insensitive)
 
@@ -141,7 +148,12 @@ def get_projects(
         Formatted text with project list (one per line with ID, name, folder, status, and note preview)
     """
     client = get_client()
-    projects = client.get_projects(on_hold_only=on_hold_only, query=query)
+    projects = client.get_projects(
+        project_id=project_id,
+        include_full_notes=include_full_notes,
+        on_hold_only=on_hold_only,
+        query=query
+    )
 
     if not projects:
         if query:

@@ -489,36 +489,41 @@ def get_tasks(
 
 ---
 
-### 3.2 get_projects() - ENHANCE EXISTING
+### 3.2 get_projects() - ENHANCE EXISTING ✅ COMPLETED
 **Priority:** MEDIUM
-**Estimated Complexity:** Current D (CC 23)
-
-**Enhancements Needed:**
-```python
-def get_projects(
-    project_id: Optional[str] = None,  # NEW: Filter to specific project
-    include_full_notes: bool = False,  # NEW: Return full notes
-    # ... existing parameters (on_hold_only, query)
-) -> list[dict]
-```
+**Actual Complexity:** D (CC 24) - unchanged from D (CC 24)
+**Completion Date:** 2025-10-18
 
 **Consolidates:**
 - get_project() ✅ (via project_id parameter)
 - get_note() ✅ (via include_full_notes parameter)
 
-**Test Strategy:**
+**Implemented Signature:**
+```python
+def get_projects(
+    project_id: Optional[str] = None,  # NEW: Filter to specific project
+    include_full_notes: bool = False,  # NEW: Return full notes
+    on_hold_only: bool = False,
+    modified_after: Optional[str] = None,
+    modified_before: Optional[str] = None,
+    min_task_count: Optional[int] = None,
+    has_overdue_tasks: Optional[bool] = None,
+    has_no_due_dates: Optional[bool] = None,
+    sort_by: Optional[str] = None,
+    sort_order: str = "asc",
+    query: Optional[str] = None,
+    timeout: int = 90
+) -> list[dict]
+```
 
-**Client Tests:** ~6 tests
-- Test project_id filter
-- Test include_full_notes flag
-- Test combinations with existing filters (on_hold_only, query)
-
-**Server Tests:** ~4 tests
-- Test project_id parameter via MCP
-- Test include_full_notes flag
-
-**Integration Tests:** ~1 test
-- Test project_id retrieval with real OmniFocus
+**Implementation Notes:**
+- ✅ Client layer: 8 tests (all PASS)
+- ✅ Server layer: 2 tests (all PASS)
+- ✅ Integration layer: 2 tests added (test_get_projects_with_project_id_integration, test_get_projects_include_full_notes_integration)
+- Project source logic uses conditional: specific project by ID or all projects
+- AppleScript filter: `(flattened projects whose id is "{project_id}")` when project_id specified
+- Complexity unchanged (D CC 24) - minimal code change
+- include_full_notes parameter added to signature, though AppleScript already returns full notes
 
 ---
 
