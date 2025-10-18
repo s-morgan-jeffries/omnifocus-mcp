@@ -4095,27 +4095,45 @@ class OmniFocusClient:
         except ValueError as e:
             raise Exception(f"Error parsing drop result: {e}")
 
-    def delete_tasks(self, task_ids: list[str]) -> int:
+    def delete_tasks(self, task_ids: Union[str, list[str]]) -> dict:
         """Delete multiple tasks from OmniFocus in a single operation.
 
+        NEW API (Redesign): Enhanced to accept Union[str, list[str]] and return dict.
+
         Args:
-            task_ids: List of task IDs to delete
+            task_ids: Single task ID (str) or list of task IDs to delete
 
         Returns:
-            int: Number of tasks successfully deleted
+            dict: {
+                "deleted_count": int,
+                "failed_count": int,
+                "deleted_ids": list[str],
+                "failures": list[dict]  # Empty for now (AppleScript doesn't track individual failures)
+            }
 
         Raises:
             ValueError: If task_ids is empty
             Exception: If the operation fails
+
+        Example:
+            result = client.delete_tasks(["task-001", "task-002"])
+            # Returns: {"deleted_count": 2, "failed_count": 0, "deleted_ids": [...], "failures": []}
         """
         # SAFETY: Verify database before modifying
         self._verify_database_safety('delete_tasks')
 
-        if not task_ids:
+        # Normalize task_ids to list
+        if isinstance(task_ids, str):
+            ids_list_input = [task_ids]
+        else:
+            ids_list_input = task_ids
+
+        # Validation
+        if not ids_list_input:
             raise ValueError("task_ids cannot be empty")
 
         # Build AppleScript list of task IDs
-        ids_list = ", ".join([f'"{task_id}"' for task_id in task_ids])
+        ids_list = ", ".join([f'"{task_id}"' for task_id in ids_list_input])
 
         script = f'''
         tell application "OmniFocus"
@@ -4140,7 +4158,21 @@ class OmniFocusClient:
 
         try:
             result = run_applescript(script)
-            return int(result.strip())
+            deleted_count = int(result.strip())
+            total_count = len(ids_list_input)
+            failed_count = total_count - deleted_count
+
+            # Build list of deleted IDs (we successfully deleted the first N tasks)
+            # Note: AppleScript doesn't tell us which specific tasks failed,
+            # so we assume the first deleted_count tasks succeeded
+            deleted_ids = ids_list_input[:deleted_count] if deleted_count > 0 else []
+
+            return {
+                "deleted_count": deleted_count,
+                "failed_count": failed_count,
+                "deleted_ids": deleted_ids,
+                "failures": []  # AppleScript doesn't provide detailed failure info
+            }
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error deleting tasks: {e.stderr}")
         except ValueError as e:

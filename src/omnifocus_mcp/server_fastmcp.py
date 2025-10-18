@@ -998,21 +998,47 @@ def delete_project(project_id: str) -> str:
 
 
 @mcp.tool()
-def delete_tasks(task_ids: list[str]) -> str:
-    """Delete multiple tasks from OmniFocus in a single operation (batch operation for efficiency).
+def delete_tasks(task_ids: Union[str, list[str]]) -> str:
+    """Delete multiple tasks from OmniFocus in a single operation (NEW API - Enhanced).
 
     WARNING: This permanently deletes the tasks and cannot be undone.
 
+    NEW API (Redesign): Now accepts Union[str, list[str]] and handles dict return from client.
+
     Args:
-        task_ids: List of task IDs to delete
+        task_ids: Single task ID (str) or list of task IDs to delete
 
     Returns:
         Summary of deleted tasks with count and any errors encountered
+
+    Examples:
+        delete_tasks("task-123")  # Delete single task
+        delete_tasks(["task-001", "task-002", "task-003"])  # Delete multiple
     """
     client = get_client()
     try:
-        count = client.delete_tasks(task_ids)
-        return f"Successfully deleted {count} of {len(task_ids)} tasks"
+        result = client.delete_tasks(task_ids)
+
+        # Handle dict return from client (NEW API)
+        deleted_count = result["deleted_count"]
+        failed_count = result["failed_count"]
+
+        # Build response message
+        if failed_count == 0:
+            # All succeeded
+            if deleted_count == 1:
+                return f"Successfully deleted 1 task"
+            else:
+                return f"Successfully deleted {deleted_count} tasks"
+        elif deleted_count == 0:
+            # All failed
+            if failed_count == 1:
+                return f"Failed to delete task (not found or error)"
+            else:
+                return f"Failed to delete all {failed_count} tasks"
+        else:
+            # Partial success
+            return f"Deleted {deleted_count} tasks successfully, {failed_count} failed"
     except Exception as e:
         return f"Error deleting tasks: {str(e)}"
 

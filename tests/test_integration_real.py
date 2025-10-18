@@ -747,20 +747,24 @@ class TestTaskCRUD:
         print("\n✓ Deleted task")
 
     def test_delete_tasks_batch(self, client, test_project_id):
-        """Test batch deleting multiple tasks."""
+        """Test batch deleting multiple tasks (UPDATED for NEW API dict return)."""
         # Create multiple tasks
         client.add_task(test_project_id, "Batch Delete Task 1")
         client.add_task(test_project_id, "Batch Delete Task 2")
+        client.add_task(test_project_id, "Batch Delete Task 3")
 
         # Get their IDs
         tasks = client.get_tasks(project_id=test_project_id, query="Batch Delete Task")
         task_ids = [t['id'] for t in tasks]
-        assert len(task_ids) >= 2
+        assert len(task_ids) >= 3
+        print(f"\n✓ Created {len(task_ids)} tasks for deletion")
 
-        # Batch delete
-        count = client.delete_tasks(task_ids)
-        assert count >= 2
-        print(f"\n✓ Batch deleted {count} tasks")
+        # Batch delete (NEW API: returns dict)
+        result = client.delete_tasks(task_ids)
+        assert result["deleted_count"] >= 3
+        assert result["failed_count"] == 0
+        assert len(result["deleted_ids"]) >= 3
+        print(f"✓ Batch deleted {result['deleted_count']} tasks")
 
     def test_move_task_to_different_project(self, client, test_project_id):
         """Test moving a task to a different project."""
