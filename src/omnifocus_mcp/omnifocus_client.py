@@ -663,7 +663,8 @@ class OmniFocusClient:
         name: str,
         note: Optional[str] = None,
         folder_path: Optional[str] = None,
-        sequential: bool = False
+        sequential: bool = False,
+        review_interval_weeks: Optional[int] = None
     ) -> str:
         """Create a new project in OmniFocus.
 
@@ -672,6 +673,7 @@ class OmniFocusClient:
             note: Optional note/description for the project
             folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist
             sequential: If True, tasks must be completed in order (default: False, parallel)
+            review_interval_weeks: Optional review interval in weeks for GTD review cycle
 
         Returns:
             str: The ID of the created project
@@ -694,6 +696,10 @@ class OmniFocusClient:
             properties.append('sequential:true')
         else:
             properties.append('sequential:false')
+        if review_interval_weeks is not None:
+            # Convert weeks to days for OmniFocus review interval
+            review_days = review_interval_weeks * 7
+            properties.append(f'review interval:{review_days}')
 
         properties_str = ", ".join(properties)
 

@@ -177,7 +177,8 @@ def create_project(
     name: str,
     note: Optional[str] = None,
     folder_path: Optional[str] = None,
-    sequential: bool = False
+    sequential: bool = False,
+    review_interval_weeks: Optional[int] = None
 ) -> str:
     """Create a new project in OmniFocus.
 
@@ -186,6 +187,7 @@ def create_project(
         note: Optional note/description for the project (plain text only - rich text formatting is not supported via automation APIs)
         folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
         sequential: If True, tasks must be completed in order; if False, tasks can be done in parallel (default: False)
+        review_interval_weeks: Optional review interval in weeks for GTD review cycle
 
     Returns:
         Success message with project ID and configuration details
@@ -195,7 +197,8 @@ def create_project(
         name=name,
         note=note,
         folder_path=folder_path,
-        sequential=sequential
+        sequential=sequential,
+        review_interval_weeks=review_interval_weeks
     )
 
     result = f"Successfully created project '{name}'"
@@ -206,6 +209,8 @@ def create_project(
         result += "\nType: Sequential (tasks completed in order)"
     else:
         result += "\nType: Parallel (tasks can be done in any order)"
+    if review_interval_weeks:
+        result += f"\nReview Interval: Every {review_interval_weeks} week(s)"
     if note:
         result += f"\nNote: {_truncate_note(note)}"
 
