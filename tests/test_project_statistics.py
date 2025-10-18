@@ -30,7 +30,11 @@ class TestProjectStatistics:
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
-            project = client.get_project("proj-001")
+            projects = client.get_projects(project_id="proj-001")
+
+            assert len(projects) == 1
+
+            project = projects[0]
 
             assert project['id'] == "proj-001"
             assert project['name'] == "Test Project"
@@ -55,7 +59,11 @@ class TestProjectStatistics:
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
-            project = client.get_project("proj-002")
+            projects = client.get_projects(project_id="proj-002")
+
+            assert len(projects) == 1
+
+            project = projects[0]
 
             assert project['taskCount'] == 0
             assert project['completedTaskCount'] == 0
@@ -78,7 +86,11 @@ class TestProjectStatistics:
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
-            project = client.get_project("proj-003")
+            projects = client.get_projects(project_id="proj-003")
+
+            assert len(projects) == 1
+
+            project = projects[0]
 
             assert project['taskCount'] == 5
             assert project['completedTaskCount'] == 5

@@ -112,7 +112,11 @@ class TestProjectActivityDate:
 
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = mock_json
-            project = client.get_project("proj-123")
+            projects = client.get_projects(project_id="proj-123")
+
+            assert len(projects) == 1
+
+            project = projects[0]
 
         assert project['modificationDate'] == "2025-10-07T14:30:00Z"
         assert project['lastActivityDate'] == "2025-10-08T10:15:00Z"

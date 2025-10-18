@@ -33,7 +33,11 @@ class TestProjectReviewMetadata:
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
-            project = client.get_project("proj-001")
+            projects = client.get_projects(project_id="proj-001")
+
+            assert len(projects) == 1
+
+            project = projects[0]
 
             assert project['reviewInterval'] == "1 week"
             assert project['lastReviewDate'] == "2025-10-01T12:00:00"
@@ -58,7 +62,11 @@ class TestProjectReviewMetadata:
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
-            project = client.get_project("proj-002")
+            projects = client.get_projects(project_id="proj-002")
+
+            assert len(projects) == 1
+
+            project = projects[0]
 
             assert project['reviewInterval'] is None
             assert project['lastReviewDate'] is None
@@ -83,7 +91,11 @@ class TestProjectReviewMetadata:
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
-            project = client.get_project("proj-003")
+            projects = client.get_projects(project_id="proj-003")
+
+            assert len(projects) == 1
+
+            project = projects[0]
 
             assert project['reviewInterval'] == "2 weeks"
             assert project['lastReviewDate'] is None

@@ -29,13 +29,13 @@ class TestSafetyGuardsWithTestMode:
         os.environ.pop('OMNIFOCUS_TEST_DATABASE', None)
 
     def test_add_task_verifies_database_name(self, client_with_test_mode):
-        """Test that add_task verifies database name before proceeding."""
+        """Test that create_task verifies database name before proceeding."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # First call: database name verification (returns test database name)
             # Second call: actual add_task operation
             mock_run.side_effect = ["OmniFocus-TEST.ofocus", "true"]
 
-            result = client_with_test_mode.add_task("proj-001", "Task")
+            result = client_with_test_mode.create_task("proj-001", "Task")
             assert result is True
 
             # Verify database name was checked
@@ -44,13 +44,13 @@ class TestSafetyGuardsWithTestMode:
             assert "name of it" in first_call_script  # Database name check
 
     def test_add_task_blocked_if_wrong_database(self, client_with_test_mode):
-        """Test that add_task is blocked if database name doesn't match."""
+        """Test that create_task is blocked if database name doesn't match."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             # Return production database name instead of test database
             mock_run.return_value = "OmniFocus.ofocus"
 
             with pytest.raises(DatabaseSafetyError) as exc_info:
-                client_with_test_mode.add_task("proj-001", "Task")
+                client_with_test_mode.create_task("proj-001", "Task")
 
             assert "Database safety check FAILED" in str(exc_info.value)
             assert "PRODUCTION database" in str(exc_info.value)

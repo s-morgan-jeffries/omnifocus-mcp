@@ -19,7 +19,7 @@ class TestCreateRecurringTasksInProject:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.add_task(
+            success = client.create_task(
                 project_id="proj-123",
                 task_name="Weekly meeting",
                 recurrence="FREQ=WEEKLY",
@@ -39,7 +39,7 @@ class TestCreateRecurringTasksInProject:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.add_task(
+            success = client.create_task(
                 project_id="proj-123",
                 task_name="Daily task",
                 recurrence="FREQ=DAILY",
@@ -58,7 +58,7 @@ class TestCreateRecurringTasksInProject:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.add_task(
+            success = client.create_task(
                 project_id="proj-123",
                 task_name="Monthly review",
                 recurrence="FREQ=MONTHLY",
@@ -77,7 +77,7 @@ class TestCreateRecurringTasksInProject:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.add_task(
+            success = client.create_task(
                 project_id="proj-123",
                 task_name="Weekly task",
                 recurrence="FREQ=WEEKLY"
@@ -93,7 +93,7 @@ class TestCreateRecurringTasksInProject:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.add_task(
+            success = client.create_task(
                 project_id="proj-123",
                 task_name="Regular task"
             )
@@ -107,7 +107,7 @@ class TestCreateRecurringTasksInProject:
     def test_add_task_invalid_repetition_method(self, client):
         """Test that invalid repetition method raises ValueError."""
         with pytest.raises(ValueError, match="Invalid repetition_method"):
-            client.add_task(
+            client.create_task(
                 project_id="proj-123",
                 task_name="Test task",
                 recurrence="FREQ=DAILY",
@@ -117,7 +117,7 @@ class TestCreateRecurringTasksInProject:
     def test_add_task_method_without_recurrence_raises_error(self, client):
         """Test that providing repetition_method without recurrence raises ValueError."""
         with pytest.raises(ValueError, match="repetition_method requires recurrence"):
-            client.add_task(
+            client.create_task(
                 project_id="proj-123",
                 task_name="Test task",
                 repetition_method="fixed"
@@ -128,7 +128,7 @@ class TestCreateRecurringTasksInProject:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.add_task(
+            success = client.create_task(
                 project_id="proj-123",
                 task_name="Weekly report",
                 note="Submit by Friday",
@@ -151,7 +151,7 @@ class TestCreateRecurringTasksInProject:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.add_task(
+            success = client.create_task(
                 project_id="proj-123",
                 task_name="Bi-weekly standup",
                 recurrence="FREQ=WEEKLY;INTERVAL=2;BYDAY=MO",
@@ -172,7 +172,7 @@ class TestCreateRecurringInboxTasks:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.create_inbox_task(
+            success = client.create_task(
                 task_name="Daily check-in",
                 recurrence="FREQ=DAILY",
                 repetition_method="fixed"
@@ -189,7 +189,7 @@ class TestCreateRecurringInboxTasks:
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.create_inbox_task(
+            success = client.create_task(
                 task_name="One-time task"
             )
 
