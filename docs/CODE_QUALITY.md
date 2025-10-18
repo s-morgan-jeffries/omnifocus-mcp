@@ -64,6 +64,7 @@ Physical lines, logical lines, source lines, comments.
   - `get_tasks()` - **F (66)** - Intentionally complex (documented)
   - `update_task()` - **F (49)** - Intentionally complex (documented) - **INCREASED from D (27) due to API redesign**
   - `get_projects()` - **D (23)** - Intentionally complex (documented)
+  - `update_project()` - **D (22)** - Intentionally complex (documented) - **NEW in Phase 2**
 
 ### server_fastmcp.py
 - **Average Complexity**: A (3.8) ✅ Excellent!
@@ -109,6 +110,22 @@ Some functions have high complexity due to architectural constraints:
 - AppleScript verbosity for JSON generation
 
 **Documented in code:** See `omnifocus_client.py:382`
+
+### update_project() [D - CC 22]
+**Why it's complex:**
+- **NEW API (Redesign - Phase 2)**: Consolidates 4+ specialized functions into one comprehensive update function
+- Handles 7 optional project properties (project_name, folder_path, note, sequential, status, review_interval_weeks, last_reviewed)
+- Status enum handling (accepts both ProjectStatus enum and string: active, on_hold, done, dropped)
+- Review interval conversion (weeks → OmniFocus record format: `{unit:week, steps:N, fixed:true}`)
+- Date handling for last_reviewed ("now" or ISO date string)
+- Folder path parsing and hierarchy walking for nested folders (e.g., "Work > Projects > Client A")
+- AppleScript command building for different operation types (properties, status, review, reviewed, folder move)
+- Error handling returns dict instead of raising exceptions
+- Consolidates: `set_project_status()`, `drop_project()`, `set_review_interval()`, `mark_project_reviewed()` legacy functions
+
+**Documented in code:** See `omnifocus_client.py:1210`
+
+**Complexity is inherent:** This function intentionally consolidates specialized operations to minimize MCP tool call overhead and provide consistent API design. The alternative would be 4+ separate functions with simpler logic, but higher overall system complexity.
 
 ## Thresholds and Guidelines
 

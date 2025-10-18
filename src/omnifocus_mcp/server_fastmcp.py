@@ -203,43 +203,79 @@ def create_project(
 @mcp.tool()
 def update_project(
     project_id: str,
-    name: Optional[str] = None,
+    project_name: Optional[str] = None,
+    folder_path: Optional[str] = None,
     note: Optional[str] = None,
-    sequential: Optional[str] = None
+    sequential: Optional[str] = None,
+    status: Optional[str] = None,
+    review_interval_weeks: Optional[int] = None,
+    last_reviewed: Optional[str] = None
 ) -> str:
-    """Update an existing project in OmniFocus.
+    """Update an existing project in OmniFocus (NEW API - Phase 2).
+
+    NEW API changes:
+    - Renamed 'name' to 'project_name' for consistency
+    - Added status parameter (active, on_hold, done, dropped)
+    - Added review_interval_weeks parameter
+    - Added last_reviewed parameter
+    - Added folder_path parameter
+    - Returns structured response with updated fields
+    - Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_project_reviewed()
 
     Args:
         project_id: The ID of the project to update
-        name: New project name (optional)
-        note: New note content (optional). WARNING: If provided, this will remove any rich text formatting (bold, italics, links, etc.) and replace it with plain text. OmniFocus automation APIs only support plain text notes. If not provided, the existing note will be preserved unchanged.
-        sequential: New sequential setting (optional) - "true" for sequential (tasks completed in order), "false" for parallel, or omit to leave unchanged
+        project_name: New project name (optional)
+        folder_path: Folder path to move project to (e.g., "Work : Projects")
+        note: New note content (optional). WARNING: Removes rich text formatting.
+        sequential: Sequential setting (optional) - "true" or "false"
+        status: Project status - "active", "on_hold", "done", or "dropped"
+        review_interval_weeks: Review interval in weeks (0 to clear)
+        last_reviewed: Last reviewed date in ISO format or "now"
 
     Returns:
-        Success message listing all updated fields
+        Success message with project ID and updated fields, or error message
     """
-    # Convert string sequential parameter to boolean for client
+    # Convert sequential parameter to boolean for client (handle both string and bool)
     sequential_bool: Optional[bool] = None
     if sequential is not None:
-        if sequential.lower() == "true":
-            sequential_bool = True
-        elif sequential.lower() == "false":
-            sequential_bool = False
-        else:
-            return f"Error: Invalid sequential value '{sequential}'. Must be 'true' or 'false'."
+        if isinstance(sequential, bool):
+            # Direct boolean (from tests or Python calls)
+            sequential_bool = sequential
+        elif isinstance(sequential, str):
+            # String from MCP (Claude passes strings)
+            if sequential.lower() == "true":
+                sequential_bool = True
+            elif sequential.lower() == "false":
+                sequential_bool = False
+            else:
+                return f"Error: Invalid sequential value '{sequential}'. Must be 'true' or 'false'."
 
     client = get_client()
-    success = client.update_project(
+    result = client.update_project(
         project_id=project_id,
-        name=name,
+        project_name=project_name,
+        folder_path=folder_path,
         note=note,
-        sequential=sequential_bool
+        sequential=sequential_bool,
+        status=status,
+        review_interval_weeks=review_interval_weeks,
+        last_reviewed=last_reviewed
     )
 
-    if success:
-        return f"Successfully updated project {project_id}"
+    # Handle dict return from client
+    if result["success"]:
+        updated_fields = result["updated_fields"]
+        field_count = len(updated_fields)
+
+        if field_count == 1:
+            response = f"Successfully updated project {project_id}: {updated_fields[0]}"
+        else:
+            response = f"Successfully updated project {project_id}: {field_count} fields ({', '.join(updated_fields)})"
+
+        return response
     else:
-        return f"Error: Failed to update project {project_id}"
+        error_msg = result.get("error", "Unknown error")
+        return f"Error updating project {project_id}: {error_msg}"
 
 
 @mcp.tool()

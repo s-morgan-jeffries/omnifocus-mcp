@@ -1210,24 +1210,45 @@ class OmniFocusClient:
     def update_project(
         self,
         project_id: str,
-        name: Optional[str] = None,
+        project_name: Optional[str] = None,
+        folder_path: Optional[str] = None,
         note: Optional[str] = None,
-        sequential: Optional[bool] = None
-    ) -> bool:
-        """Update properties of an existing project.
+        sequential: Optional[bool] = None,
+        status: Optional[Union[ProjectStatus, str]] = None,
+        review_interval_weeks: Optional[int] = None,
+        last_reviewed: Optional[str] = None
+    ) -> dict:
+        """Update properties of an existing project (NEW API - Phase 2).
+
+        NEW API changes:
+        - Renamed 'name' parameter to 'project_name' for consistency
+        - Added status parameter (ProjectStatus enum or string)
+        - Added review_interval_weeks parameter
+        - Added last_reviewed parameter
+        - Added folder_path parameter
+        - Returns dict instead of bool
+        - Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_project_reviewed()
 
         Args:
             project_id: The ID of the project to update
-            name: New project name (optional)
+            project_name: New project name (optional)
+            folder_path: Folder path to move project to (e.g., "Work > Projects")
             note: New project note (optional)
             sequential: New sequential setting (optional)
+            status: Project status (ProjectStatus enum or string: "active", "on_hold", "done", "dropped")
+            review_interval_weeks: Review interval in weeks (0 to clear)
+            last_reviewed: Last reviewed date in ISO format or "now" (optional)
 
         Returns:
-            bool: True if successful
+            dict: {
+                "success": bool,
+                "project_id": str,
+                "updated_fields": list[str],
+                "error": Optional[str]
+            }
 
         Raises:
-            ValueError: If project_id is empty or no fields are provided
-            Exception: If the project cannot be updated
+            ValueError: If project_id is empty, no fields provided, or invalid status
         """
         # SAFETY: Verify database before modifying
         self._verify_database_safety('update_project')
@@ -1235,45 +1256,200 @@ class OmniFocusClient:
         if not project_id:
             raise ValueError("project_id is required")
 
+        # Collect all provided fields
+        all_fields = {
+            "project_name": project_name,
+            "folder_path": folder_path,
+            "note": note,
+            "sequential": sequential,
+            "status": status,
+            "review_interval_weeks": review_interval_weeks,
+            "last_reviewed": last_reviewed
+        }
+
         # Check if at least one field is provided
-        if all(v is None for v in [name, note, sequential]):
+        if all(v is None for v in all_fields.values()):
             raise ValueError("At least one field must be provided to update")
 
-        # Build properties to update
-        properties = []
+        # Validate and normalize status
+        status_str = None
+        if status is not None:
+            if isinstance(status, ProjectStatus):
+                status_str = status.value
+            elif isinstance(status, str):
+                # Validate string status
+                valid_statuses = ["active", "on_hold", "done", "dropped"]
+                if status.lower() not in valid_statuses:
+                    raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join(valid_statuses)}")
+                status_str = status.lower()
+            else:
+                raise ValueError(f"status must be ProjectStatus enum or string, got {type(status)}")
 
-        if name is not None:
-            escaped_name = self._escape_applescript_string(name)
+        # Track which fields we're updating
+        updated_fields = []
+
+        # Build properties for simple fields
+        properties = []
+        project_id_escaped = self._escape_applescript_string(project_id)
+
+        if project_name is not None:
+            escaped_name = self._escape_applescript_string(project_name)
             properties.append(f'name:"{escaped_name}"')
+            updated_fields.append("project_name")
 
         if note is not None:
             escaped_note = self._escape_applescript_string(note)
             properties.append(f'note:"{escaped_note}"')
+            updated_fields.append("note")
 
         if sequential is not None:
             properties.append(f'sequential:{str(sequential).lower()}')
+            updated_fields.append("sequential")
 
-        properties_str = ", ".join(properties)
-        project_id_escaped = self._escape_applescript_string(project_id)
+        # Build status command (separate from properties)
+        status_command = ""
+        if status_str is not None:
+            # Map status string to OmniFocus status
+            status_map = {
+                "active": "active",
+                "on_hold": "on hold",
+                "done": "done",
+                "dropped": "dropped"
+            }
+            of_status = status_map[status_str]
+            status_command = f'set status of theProject to {of_status}'
+            updated_fields.append("status")
 
+        # Build review interval command
+        review_command = ""
+        if review_interval_weeks is not None:
+            # Use OmniFocus record format for review interval
+            review_command = f'set review interval of theProject to {{unit:week, steps:{review_interval_weeks}, fixed:true}}'
+            updated_fields.append("review_interval_weeks")
+
+        # Build last reviewed command
+        reviewed_command = ""
+        if last_reviewed is not None:
+            if last_reviewed.lower() == "now" or last_reviewed == "":
+                reviewed_command = 'set next review date of theProject to (current date)'
+            else:
+                # Parse ISO date
+                reviewed_command = f'set next review date of theProject to date "{last_reviewed}"'
+            updated_fields.append("last_reviewed")
+
+        # Build folder path command
+        folder_command = ""
+        if folder_path is not None:
+            # Parse folder path (use ">" as delimiter like create_project)
+            folder_parts = [part.strip() for part in folder_path.split('>')]
+
+            if len(folder_parts) == 1:
+                # Top-level folder - simple case
+                folder_escaped = self._escape_applescript_string(folder_parts[0])
+                folder_command = f'''
+                    -- Move to top-level folder
+                    set targetFolder to first folder whose name is "{folder_escaped}"
+                    move theProject to end of projects of targetFolder
+                '''
+            else:
+                # Nested folder - walk the hierarchy
+                folder_names_list = ', '.join(f'"{self._escape_applescript_string(p)}"' for p in folder_parts)
+                folder_command = f'''
+                    -- Move to nested folder
+                    set folderNames to {{{folder_names_list}}}
+                    set targetFolder to missing value
+
+                    repeat with i from 1 to count of folderNames
+                        set folderName to item i of folderNames
+
+                        if i is 1 then
+                            -- First level: search in document folders
+                            repeat with f in folders
+                                if name of f is folderName then
+                                    set targetFolder to f
+                                    exit repeat
+                                end if
+                            end repeat
+                        else
+                            -- Subsequent levels: search in current folder's subfolders
+                            if targetFolder is not missing value then
+                                set found to false
+                                repeat with f in folders of targetFolder
+                                    if name of f is folderName then
+                                        set targetFolder to f
+                                        set found to true
+                                        exit repeat
+                                    end if
+                                end repeat
+                                if not found then
+                                    error "Folder path not found: {folder_path}"
+                                end if
+                            end if
+                        end if
+                    end repeat
+
+                    if targetFolder is missing value then
+                        error "Folder path not found: {folder_path}"
+                    end if
+
+                    move theProject to end of projects of targetFolder
+                '''
+            updated_fields.append("folder_path")
+
+        # Build properties string
+        properties_str = ", ".join(properties) if properties else ""
+        properties_command = f"set properties of theProject to {{{properties_str}}}" if properties_str else ""
+
+        # Build complete AppleScript
         script = f'''
         tell application "OmniFocus"
             tell front document
-                set theProject to first flattened project whose id is "{project_id_escaped}"
-                if theProject is missing value then
-                    error "Project not found: {project_id}"
-                end if
-                set properties of theProject to {{{properties_str}}}
-                return "true"
+                try
+                    set theProject to first flattened project whose id is "{project_id_escaped}"
+                    if theProject is missing value then
+                        return "false|Project not found"
+                    end if
+
+                    {properties_command}
+                    {status_command}
+                    {review_command}
+                    {reviewed_command}
+                    {folder_command}
+
+                    return "true"
+                on error errMsg
+                    return "false|" & errMsg
+                end try
             end tell
         end tell
         '''
 
         try:
             result = run_applescript(script)
-            return result.strip().lower() == "true"
+            result = result.strip()
+
+            if result.startswith("true"):
+                return {
+                    "success": True,
+                    "project_id": project_id,
+                    "updated_fields": updated_fields
+                }
+            else:
+                # Extract error message
+                error_msg = result.split("|", 1)[1] if "|" in result else "Update failed"
+                return {
+                    "success": False,
+                    "project_id": project_id,
+                    "updated_fields": [],
+                    "error": error_msg
+                }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error updating project: {e.stderr}")
+            return {
+                "success": False,
+                "project_id": project_id,
+                "updated_fields": [],
+                "error": f"AppleScript error: {e.stderr}"
+            }
 
     def set_project_status(self, project_id: str, status: str) -> bool:
         """Set the status of a project.

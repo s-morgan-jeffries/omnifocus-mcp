@@ -319,3 +319,88 @@ class TestDeleteTasksE2E:
         assert "deleted" in result.lower()
 
         print(f"\n✓ E2E delete single task: {result}")
+
+
+# ============================================================================
+# E2E Tests for update_project() (NEW API - Phase 2)
+# ============================================================================
+
+class TestUpdateProjectE2E:
+    """E2E tests for update_project() MCP tool with real OmniFocus.
+
+    Tests the full stack:
+    MCP tool → client.update_project() → AppleScript → OmniFocus
+    """
+
+    @pytest.fixture
+    def test_project_id(self):
+        """Create a test project for E2E tests."""
+        from omnifocus_mcp.omnifocus_client import OmniFocusClient
+        client = OmniFocusClient(enable_safety_checks=True)
+        project_id = client.create_project("E2E Test Project - update_project")
+        yield project_id
+        # Cleanup not needed - test database is reset regularly
+
+    def test_update_project_set_status_e2e(self, test_project_id):
+        """E2E: Set project status via MCP tool."""
+        # Import the MCP tool function
+        import omnifocus_mcp.server_fastmcp as server
+        update_project = server.update_project.fn
+
+        # Call the MCP tool to set status
+        result = update_project(project_id=test_project_id, status="on_hold")
+
+        # Verify MCP tool returns human-readable response
+        assert isinstance(result, str)
+        assert "success" in result.lower() or "updated" in result.lower()
+        assert test_project_id in result or "project" in result.lower()
+
+        print(f"\n✓ E2E update_project status: {result}")
+
+    def test_update_project_review_interval_e2e(self, test_project_id):
+        """E2E: Set review interval via MCP tool."""
+        import omnifocus_mcp.server_fastmcp as server
+        update_project = server.update_project.fn
+
+        # Call the MCP tool to set review interval
+        result = update_project(project_id=test_project_id, review_interval_weeks=3)
+
+        assert isinstance(result, str)
+        assert "success" in result.lower() or "updated" in result.lower()
+
+        print(f"\n✓ E2E update_project review interval: {result}")
+
+    def test_update_project_multiple_fields_e2e(self, test_project_id):
+        """E2E: Update multiple fields at once via MCP tool."""
+        import omnifocus_mcp.server_fastmcp as server
+        update_project = server.update_project.fn
+
+        # Call the MCP tool to update multiple fields
+        result = update_project(
+            project_id=test_project_id,
+            project_name="E2E Updated Project Name",
+            status="active",
+            review_interval_weeks=2,
+            sequential="true"
+        )
+
+        assert isinstance(result, str)
+        assert "success" in result.lower() or "updated" in result.lower()
+        # Should mention multiple fields
+        assert "4" in result or "fields" in result.lower()
+
+        print(f"\n✓ E2E update_project multiple fields: {result}")
+
+    def test_update_project_error_handling_e2e(self, test_project_id):
+        """E2E: Error handling when update fails."""
+        import omnifocus_mcp.server_fastmcp as server
+        update_project = server.update_project.fn
+
+        # Try to update with invalid status
+        result = update_project(project_id="invalid-id-999", status="active")
+
+        # Should return error message (not raise exception for runtime errors)
+        assert isinstance(result, str)
+        assert "error" in result.lower() or "failed" in result.lower()
+
+        print(f"\n✓ E2E update_project error handling: {result}")
