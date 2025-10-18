@@ -116,7 +116,7 @@ class TestSafetyGuardsDisabled:
         return OmniFocusClient(enable_safety_checks=False)
 
     def test_destructive_operations_allowed_when_disabled(self, client_without_safety):
-        """Test that destructive operations work when safety is disabled."""
+        """Test that destructive operations work when safety is disabled (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
@@ -130,8 +130,9 @@ class TestSafetyGuardsDisabled:
             result = client_without_safety.complete_task("task-001")
             assert result is True
 
+            # NEW API: update_task() now returns dict
             result = client_without_safety.update_task("task-001", name="New")
-            assert result is True
+            assert result["success"] is True
 
             result = client_without_safety.create_inbox_task("Task")
             assert result is True

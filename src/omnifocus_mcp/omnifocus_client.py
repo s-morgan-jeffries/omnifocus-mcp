@@ -2,7 +2,22 @@
 import subprocess
 import json
 import os
-from typing import Any, Optional
+from enum import Enum
+from typing import Any, Optional, Union
+
+
+class TaskStatus(Enum):
+    """Task status values for OmniFocus tasks."""
+    ACTIVE = "active"
+    DROPPED = "dropped"
+
+
+class ProjectStatus(Enum):
+    """Project status values for OmniFocus projects."""
+    ACTIVE = "active"
+    ON_HOLD = "on_hold"
+    DONE = "done"
+    DROPPED = "dropped"
 
 
 def run_applescript(script: str, timeout: int = 60) -> str:
@@ -2815,109 +2830,253 @@ class OmniFocusClient:
     def update_task(
         self,
         task_id: str,
-        name: Optional[str] = None,
         task_name: Optional[str] = None,
+        project_id: Optional[str] = None,
+        parent_task_id: Optional[str] = None,
         note: Optional[str] = None,
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
         flagged: Optional[bool] = None,
+        tags: Optional[list[str]] = None,
+        add_tags: Optional[list[str]] = None,
+        remove_tags: Optional[list[str]] = None,
+        estimated_minutes: Optional[int] = None,
+        completed: Optional[bool] = None,
+        status: Optional[Union[TaskStatus, str]] = None,
+        # Legacy parameters (kept for backwards compatibility)
         recurrence: Optional[str] = None,
-        repetition_method: Optional[str] = None
-    ) -> bool:
-        """Update properties of an existing task.
+        repetition_method: Optional[str] = None,
+        name: Optional[str] = None  # Deprecated: use task_name
+    ) -> dict:
+        """Update properties of an existing task (NEW API - Redesign).
+
+        This comprehensive update function consolidates multiple specialized functions:
+        - complete_task() -> update_task(task_id, completed=True)
+        - drop_task() -> update_task(task_id, status=TaskStatus.DROPPED)
+        - move_task() -> update_task(task_id, project_id=X)
+        - set_parent_task() -> update_task(task_id, parent_task_id=X)
+        - set_estimated_minutes() -> update_task(task_id, estimated_minutes=X)
+        - add_tag_to_task() -> update_task(task_id, add_tags=[...])
 
         Args:
-            task_id: The ID of the task to update
-            name: New task name (optional) - deprecated, use task_name
+            task_id: The ID of the task to update (required)
             task_name: New task name (optional)
-            note: New task note (optional)
-            due_date: New due date in ISO 8601 format, or None to clear (optional)
-            defer_date: New defer date in ISO 8601 format, or None to clear (optional)
+            project_id: Move task to this project (optional, conflicts with parent_task_id)
+            parent_task_id: Make task a subtask of this parent (optional, conflicts with project_id)
+            note: New task note (optional, WARNING: removes rich text formatting)
+            due_date: New due date in ISO 8601 format, or "" to clear (optional)
+            defer_date: New defer date in ISO 8601 format, or "" to clear (optional)
             flagged: New flagged status (optional)
-            recurrence: iCalendar RRULE string to set, or "" to remove recurrence (optional)
-            repetition_method: Repetition method - "fixed", "start_after_completion", "due_after_completion" (optional)
+            tags: Full replacement - set exact tag list (optional, conflicts with add_tags/remove_tags)
+            add_tags: Add these tags incrementally (optional, conflicts with tags)
+            remove_tags: Remove these tags (optional, conflicts with tags)
+            estimated_minutes: Estimated time in minutes (optional)
+            completed: Mark task complete/incomplete (optional)
+            status: Task status (TaskStatus enum or string: "active", "dropped") (optional)
+            recurrence: iCalendar RRULE string, or "" to remove (optional, legacy)
+            repetition_method: "fixed", "start_after_completion", "due_after_completion" (optional, legacy)
+            name: Deprecated - use task_name instead (optional)
 
         Returns:
-            bool: True if successful
+            dict: {
+                "success": bool,
+                "task_id": str,
+                "updated_fields": list[str],  # Names of fields that were updated
+                "error": Optional[str]  # Only present if success=False
+            }
 
         Raises:
-            ValueError: If task_id is empty, no fields are provided, or repetition_method is invalid
-            Exception: If the task cannot be updated
+            ValueError: If task_id is empty, no fields provided, or conflicting parameters
+
+        Error Handling:
+            - Parameter validation errors → Raises ValueError immediately
+            - OmniFocus errors (task not found, etc.) → Returns dict with success=False
+            - Never raises exceptions for runtime OmniFocus errors
         """
+        # NEW API (Redesign)
+
         # SAFETY: Verify database before modifying
         self._verify_database_safety('update_task')
 
         if not task_id:
             raise ValueError("task_id is required")
 
-        # Support both name and task_name for backwards compatibility
-        if task_name is not None:
-            name = task_name
+        # Support legacy 'name' parameter
+        if name is not None and task_name is None:
+            task_name = name
 
-        # Validate repetition parameters
+        # Validate conflict: project_id vs parent_task_id
+        if project_id is not None and parent_task_id is not None:
+            raise ValueError("Cannot specify both parent_task_id and project_id - parent task already determines the project.")
+
+        # Validate conflict: tags vs add_tags/remove_tags
+        if tags is not None and add_tags is not None:
+            raise ValueError("Cannot specify both tags and add_tags/remove_tags - use tags for full replacement or add_tags/remove_tags for incremental changes.")
+        if tags is not None and remove_tags is not None:
+            raise ValueError("Cannot specify both tags and remove_tags - use tags for full replacement or add_tags/remove_tags for incremental changes.")
+
+        # Validate status parameter (accept enum or string)
+        if status is not None:
+            if isinstance(status, str):
+                try:
+                    status = TaskStatus(status)
+                except ValueError:
+                    raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join([s.value for s in TaskStatus])}")
+
+        # Validate repetition parameters (legacy)
         if repetition_method:
             valid_methods = ["fixed", "start_after_completion", "due_after_completion"]
             if repetition_method not in valid_methods:
                 raise ValueError(f"Invalid repetition_method: {repetition_method}. Must be one of: {', '.join(valid_methods)}")
 
+        # Track which fields are being updated
+        updated_fields = []
+
         # Check if at least one field is provided
-        if all(v is None for v in [name, note, due_date, flagged, recurrence, repetition_method]) and defer_date is None:
+        all_params = [
+            task_name, project_id, parent_task_id, note, due_date, defer_date,
+            flagged, tags, add_tags, remove_tags, estimated_minutes, completed,
+            status, recurrence, repetition_method
+        ]
+        if all(v is None for v in all_params):
             raise ValueError("At least one field must be provided to update")
 
-        # Build properties to update
-        properties = []
+        # Build AppleScript
+        try:
+            # Build properties to update (for set properties of theTask)
+            properties = []
 
-        if name is not None:
-            escaped_name = self._escape_applescript_string(name)
-            properties.append(f'name:"{escaped_name}"')
+            if task_name is not None:
+                escaped_name = self._escape_applescript_string(task_name)
+                properties.append(f'name:"{escaped_name}"')
+                updated_fields.append("task_name")
 
-        if note is not None:
-            escaped_note = self._escape_applescript_string(note)
-            properties.append(f'note:"{escaped_note}"')
+            if note is not None:
+                escaped_note = self._escape_applescript_string(note)
+                properties.append(f'note:"{escaped_note}"')
+                updated_fields.append("note")
 
-        if flagged is not None:
-            properties.append(f'flagged:{str(flagged).lower()}')
+            if flagged is not None:
+                properties.append(f'flagged:{str(flagged).lower()}')
+                updated_fields.append("flagged")
 
-        # Build date update commands
-        date_commands = []
+            # Build separate commands (can't use set properties for these)
+            separate_commands = []
 
-        if due_date is not None:
-            if due_date == "":
-                date_commands.append("set due date of theTask to missing value")
-            else:
-                as_date = self._iso_to_applescript_date(due_date)
-                date_commands.append(f'set due date of theTask to date "{as_date}"')
+            # Handle dates
+            if due_date is not None:
+                if due_date == "":
+                    separate_commands.append("set due date of theTask to missing value")
+                else:
+                    as_date = self._iso_to_applescript_date(due_date)
+                    separate_commands.append(f'set due date of theTask to date "{as_date}"')
+                updated_fields.append("due_date")
 
-        if defer_date is not None:
-            if defer_date == "":
-                date_commands.append("set defer date of theTask to missing value")
-            else:
-                as_date = self._iso_to_applescript_date(defer_date)
-                date_commands.append(f'set defer date of theTask to date "{as_date}"')
+            if defer_date is not None:
+                if defer_date == "":
+                    separate_commands.append("set defer date of theTask to missing value")
+                else:
+                    as_date = self._iso_to_applescript_date(defer_date)
+                    separate_commands.append(f'set defer date of theTask to date "{as_date}"')
+                updated_fields.append("defer_date")
 
-        # Build repetition update commands
-        repetition_commands = []
-        if recurrence is not None:
-            if recurrence == "":
-                # Remove recurrence
-                repetition_commands.append("set repetition rule of theTask to missing value")
-            else:
-                # Add or update recurrence
-                as_method = "fixed repetition"  # default
-                if repetition_method:
-                    as_method = {
-                        "fixed": "fixed repetition",
-                        "start_after_completion": "start after completion",
-                        "due_after_completion": "due after completion"
-                    }[repetition_method]
+            # Handle estimated minutes
+            if estimated_minutes is not None:
+                separate_commands.append(f'set estimated minutes of theTask to {estimated_minutes}')
+                updated_fields.append("estimated_minutes")
 
-                recurrence_escaped = self._escape_applescript_string(recurrence)
+            # Handle completion (use "mark complete" for recurring task safety)
+            if completed is not None:
+                if completed:
+                    separate_commands.append("mark complete theTask")
+                else:
+                    # Uncomplete task
+                    separate_commands.append("set completed of theTask to false")
+                updated_fields.append("completed")
 
-                # Check if task already has a rule; if not, get template
-                repetition_commands.append(f'''
+            # Handle status (use "mark dropped" command)
+            if status is not None:
+                if status == TaskStatus.DROPPED:
+                    separate_commands.append("mark dropped theTask")
+                elif status == TaskStatus.ACTIVE:
+                    # Reactivate dropped task
+                    separate_commands.append("set dropped of theTask to false")
+                updated_fields.append("status")
+
+            # Handle hierarchy changes (project_id or parent_task_id)
+            if project_id is not None:
+                # Move to project
+                project_id_escaped = self._escape_applescript_string(project_id)
+                separate_commands.append(f'''
+                    set theProject to first flattened project whose id is "{project_id_escaped}"
+                    move theTask to end of tasks of theProject''')
+                updated_fields.append("project_id")
+
+            if parent_task_id is not None:
+                # Make subtask
+                parent_id_escaped = self._escape_applescript_string(parent_task_id)
+                separate_commands.append(f'''
+                    set theParent to first flattened task whose id is "{parent_id_escaped}"
+                    if id of theTask is id of theParent then
+                        error "Cannot set task as its own parent"
+                    end if
+                    move theTask to end of tasks of theParent''')
+                updated_fields.append("parent_task_id")
+
+            # Handle tags
+            if tags is not None:
+                # Full replacement: remove all tags, then add new ones
+                if len(tags) > 0:
+                    tag_adds = []
+                    for tag in tags:
+                        tag_escaped = self._escape_applescript_string(tag)
+                        tag_adds.append(f'''
+                        set tagObj to first flattened tag whose name is "{tag_escaped}"
+                        copy tagObj to end of newTags''')
+                    tag_adds_str = "\n                    ".join(tag_adds)
+                    separate_commands.append(f'''
+                    set newTags to {{}}
+                    {tag_adds_str}
+                    set tags of theTask to newTags''')
+                else:
+                    # Empty list = remove all tags
+                    separate_commands.append("set tags of theTask to {}")
+                updated_fields.append("tags")
+
+            if add_tags is not None:
+                # Add tags incrementally
+                for tag in add_tags:
+                    tag_escaped = self._escape_applescript_string(tag)
+                    separate_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theTask''')
+                updated_fields.append("add_tags")
+
+            if remove_tags is not None:
+                # Remove tags
+                for tag in remove_tags:
+                    tag_escaped = self._escape_applescript_string(tag)
+                    separate_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theTask''')
+                updated_fields.append("remove_tags")
+
+            # Handle recurrence (legacy)
+            if recurrence is not None:
+                if recurrence == "":
+                    separate_commands.append("set repetition rule of theTask to missing value")
+                else:
+                    as_method = "fixed repetition"
+                    if repetition_method:
+                        as_method = {
+                            "fixed": "fixed repetition",
+                            "start_after_completion": "start after completion",
+                            "due_after_completion": "due after completion"
+                        }[repetition_method]
+                    recurrence_escaped = self._escape_applescript_string(recurrence)
+                    separate_commands.append(f'''
                     set existingRule to repetition rule of theTask
                     if existingRule is missing value then
-                        -- Need to get a template rule
                         set templateRule to missing value
                         repeat with t in flattened tasks
                             try
@@ -2927,8 +3086,6 @@ class OmniFocusClient:
                                 end if
                             end try
                         end repeat
-
-                        -- Set up new rule from template
                         if templateRule is not missing value then
                             set repetition rule of theTask to templateRule
                             set theRule to repetition rule of theTask
@@ -2936,58 +3093,78 @@ class OmniFocusClient:
                             set repetition method of theRule to {as_method}
                         end if
                     else
-                        -- Modify existing rule
                         set recurrence of existingRule to "{recurrence_escaped}"
                         set repetition method of existingRule to {as_method}
                     end if''')
-        elif repetition_method is not None:
-            # Only updating the method, not the recurrence string
-            as_method = {
-                "fixed": "fixed repetition",
-                "start_after_completion": "start after completion",
-                "due_after_completion": "due after completion"
-            }[repetition_method]
-
-            repetition_commands.append(f'''
+                updated_fields.append("recurrence")
+            elif repetition_method is not None:
+                as_method = {
+                    "fixed": "fixed repetition",
+                    "start_after_completion": "start after completion",
+                    "due_after_completion": "due after completion"
+                }[repetition_method]
+                separate_commands.append(f'''
                     set existingRule to repetition rule of theTask
                     if existingRule is not missing value then
                         set repetition method of existingRule to {as_method}
                     end if''')
+                updated_fields.append("repetition_method")
 
-        # Build properties string
-        props_str = ", ".join(properties) if properties else ""
-        date_cmds_str = "\n                ".join(date_commands) if date_commands else ""
-        repetition_cmds_str = "\n                ".join(repetition_commands) if repetition_commands else ""
+            # Build final AppleScript
+            task_id_escaped = self._escape_applescript_string(task_id)
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    set theTask to first flattened task whose id is "{task_id_escaped}"
+                    '''
 
-        script = f'''
-        tell application "OmniFocus"
-            tell front document
-                set theTask to first flattened task whose id is "{task_id}"
-                '''
+            # Apply property updates
+            if properties:
+                props_str = ", ".join(properties)
+                script += f'\n                    set properties of theTask to {{{props_str}}}'
 
-        if props_str:
-            script += f'\n                set properties of theTask to {{{props_str}}}'
+            # Apply separate commands
+            if separate_commands:
+                cmds_str = "\n                    ".join(separate_commands)
+                script += f'\n                    {cmds_str}'
 
-        if date_cmds_str:
-            script += f'\n                {date_cmds_str}'
-
-        if repetition_cmds_str:
-            script += f'\n                {repetition_cmds_str}'
-
-        script += '''
-                return "true"
+            script += '''
+                    return "true"
+                end tell
             end tell
-        end tell
-        '''
+            '''
 
-        try:
             result = run_applescript(script)
             if result.strip() == "true":
-                return True
+                return {
+                    "success": True,
+                    "task_id": task_id,
+                    "updated_fields": updated_fields,
+                    "error": None
+                }
             else:
-                raise Exception(f"Error updating task: {result}")
+                return {
+                    "success": False,
+                    "task_id": task_id,
+                    "updated_fields": [],
+                    "error": f"Unexpected result: {result}"
+                }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error updating task: {e.stderr}")
+            # OmniFocus error (task not found, etc.) - return error dict
+            return {
+                "success": False,
+                "task_id": task_id,
+                "updated_fields": [],
+                "error": f"AppleScript error: {e.stderr}"
+            }
+        except Exception as e:
+            # Other runtime errors - return error dict
+            return {
+                "success": False,
+                "task_id": task_id,
+                "updated_fields": [],
+                "error": str(e)
+            }
 
     def get_inbox_tasks(self) -> list[dict[str, Any]]:
         """Get all tasks from the inbox.

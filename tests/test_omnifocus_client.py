@@ -1121,53 +1121,63 @@ class TestUpdateTask:
         return OmniFocusClient(enable_safety_checks=False)
 
     def test_update_task_name(self, client):
-        """Test updating task name."""
+        """Test updating task name (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
             result = client.update_task("task-001", name="Updated Task Name")
-            assert result is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
+            assert result["task_id"] == "task-001"
             call_args = mock_run.call_args[0][0]
             assert 'whose id is "task-001"' in call_args
             assert "Updated Task Name" in call_args
 
     def test_update_task_note(self, client):
-        """Test updating task note."""
+        """Test updating task note (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
             result = client.update_task("task-001", note="Updated note")
-            assert result is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
+            assert result["task_id"] == "task-001"
             call_args = mock_run.call_args[0][0]
             assert "Updated note" in call_args
 
     def test_update_task_due_date(self, client):
-        """Test updating task due date."""
+        """Test updating task due date (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
             result = client.update_task("task-001", due_date="2025-12-25")
-            assert result is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
+            assert result["task_id"] == "task-001"
             call_args = mock_run.call_args[0][0]
             assert "December 25, 2025" in call_args
 
     def test_update_task_defer_date(self, client):
-        """Test updating task defer date."""
+        """Test updating task defer date (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
             result = client.update_task("task-001", defer_date="2025-12-20")
-            assert result is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
+            assert result["task_id"] == "task-001"
             call_args = mock_run.call_args[0][0]
             assert "December 20, 2025" in call_args
 
     def test_update_task_flagged(self, client):
-        """Test updating task flagged status."""
+        """Test updating task flagged status (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
             result = client.update_task("task-001", flagged=True)
-            assert result is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
+            assert result["task_id"] == "task-001"
             call_args = mock_run.call_args[0][0]
             assert "flagged" in call_args
 
     def test_update_task_multiple_fields(self, client):
-        """Test updating multiple task fields at once."""
+        """Test updating multiple task fields at once (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
             result = client.update_task(
@@ -1177,7 +1187,9 @@ class TestUpdateTask:
                 due_date="2025-12-25T17:00:00",
                 flagged=True
             )
-            assert result is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
+            assert result["task_id"] == "task-001"
             call_args = mock_run.call_args[0][0]
             assert "New Name" in call_args
             assert "New note" in call_args
@@ -1197,27 +1209,31 @@ class TestUpdateTask:
         assert "task_id is required" in str(exc_info.value)
 
     def test_update_task_failure(self, client):
-        """Test handling of task update failure."""
+        """Test handling of task update failure (LEGACY TEST - updated for new API error handling)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "false: Task not found"
-            with pytest.raises(Exception) as exc_info:
-                client.update_task("invalid-id", name="New Name")
-            assert "Error updating task" in str(exc_info.value)
+            # NEW API: Returns error dict instead of raising exception
+            result = client.update_task("invalid-id", name="New Name")
+            assert result["success"] is False
+            assert "error" in result
 
     def test_update_task_subprocess_error(self, client):
-        """Test handling of subprocess errors during task update."""
+        """Test handling of subprocess errors during task update (LEGACY TEST - updated for new API error handling)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
-            with pytest.raises(Exception) as exc_info:
-                client.update_task("task-001", name="New Name")
-            assert "Error updating task" in str(exc_info.value)
+            # NEW API: Returns error dict instead of raising exception
+            result = client.update_task("task-001", name="New Name")
+            assert result["success"] is False
+            assert "error" in result
 
     def test_update_task_clear_date(self, client):
-        """Test clearing a task date by setting to empty string."""
+        """Test clearing a task date by setting to empty string (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
             result = client.update_task("task-001", due_date="")
-            assert result is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
+            assert result["task_id"] == "task-001"
             call_args = mock_run.call_args[0][0]
             assert "missing value" in call_args
 

@@ -15,17 +15,18 @@ class TestUpdateRecurringTasks:
     """Test updating tasks with recurrence rules."""
 
     def test_update_task_add_recurrence_to_non_recurring(self, client):
-        """Test adding recurrence to a non-recurring task."""
+        """Test adding recurrence to a non-recurring task (LEGACY TEST - updated for new API return format)."""
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.update_task(
+            result = client.update_task(
                 task_id="task-123",
                 recurrence="FREQ=WEEKLY",
                 repetition_method="fixed"
             )
 
-            assert success is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
 
             call_args = mock_run.call_args[0][0]
             assert "repetition rule" in call_args.lower()
@@ -33,59 +34,62 @@ class TestUpdateRecurringTasks:
             assert "fixed repetition" in call_args
 
     def test_update_task_modify_recurrence(self, client):
-        """Test modifying the recurrence of an existing recurring task."""
+        """Test modifying the recurrence of an existing recurring task (LEGACY TEST - updated for new API return format)."""
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.update_task(
+            result = client.update_task(
                 task_id="task-123",
                 recurrence="FREQ=DAILY",
                 repetition_method="start_after_completion"
             )
 
-            assert success is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
 
             call_args = mock_run.call_args[0][0]
             assert "FREQ=DAILY" in call_args
             assert "start after completion" in call_args
 
     def test_update_task_remove_recurrence(self, client):
-        """Test removing recurrence from a recurring task."""
+        """Test removing recurrence from a recurring task (LEGACY TEST - updated for new API return format)."""
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.update_task(
+            result = client.update_task(
                 task_id="task-123",
                 recurrence=""  # Empty string to remove
             )
 
-            assert success is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
 
             call_args = mock_run.call_args[0][0]
             # Should set repetition rule to missing value
             assert "missing value" in call_args.lower()
 
     def test_update_task_change_method_only(self, client):
-        """Test changing only the repetition method."""
+        """Test changing only the repetition method (LEGACY TEST - updated for new API return format)."""
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.update_task(
+            result = client.update_task(
                 task_id="task-123",
                 repetition_method="due_after_completion"
             )
 
-            assert success is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
 
             call_args = mock_run.call_args[0][0]
             assert "due after completion" in call_args
 
     def test_update_task_with_recurrence_and_other_params(self, client):
-        """Test updating recurrence along with other task properties."""
+        """Test updating recurrence along with other task properties (LEGACY TEST - updated for new API return format)."""
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.update_task(
+            result = client.update_task(
                 task_id="task-123",
                 task_name="Updated task",
                 note="Updated note",
@@ -93,7 +97,8 @@ class TestUpdateRecurringTasks:
                 repetition_method="fixed"
             )
 
-            assert success is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
 
             call_args = mock_run.call_args[0][0]
             assert "Updated task" in call_args
@@ -111,16 +116,17 @@ class TestUpdateRecurringTasks:
             )
 
     def test_update_task_no_changes(self, client):
-        """Test updating a task with no recurring changes works normally."""
+        """Test updating a task with no recurring changes works normally (LEGACY TEST - updated for new API return format)."""
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
-            success = client.update_task(
+            result = client.update_task(
                 task_id="task-123",
                 task_name="New name"
             )
 
-            assert success is True
+            # NEW API: Returns dict instead of bool
+            assert result["success"] is True
 
             call_args = mock_run.call_args[0][0]
             # Should not include repetition logic

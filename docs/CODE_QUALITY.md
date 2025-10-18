@@ -55,14 +55,14 @@ Composite score (0-100) based on complexity, lines of code, and Halstead volume.
 
 Physical lines, logical lines, source lines, comments.
 
-## Current Metrics (v0.5.0)
+## Current Metrics (v1.0.0-dev - API Redesign)
 
 ### omnifocus_client.py
-- **Average Complexity**: B (8.2) ✅
+- **Average Complexity**: B (~8.5) ✅
 - **Total Functions**: 53
 - **High Complexity Functions**:
   - `get_tasks()` - **F (66)** - Intentionally complex (documented)
-  - `update_task()` - **D (27)** - Intentionally complex (documented)
+  - `update_task()` - **F (49)** - Intentionally complex (documented) - **INCREASED from D (27) due to API redesign**
   - `get_projects()` - **D (23)** - Intentionally complex (documented)
 
 ### server_fastmcp.py
@@ -85,13 +85,22 @@ Some functions have high complexity due to architectural constraints:
 
 **Documented in code:** See `omnifocus_client.py:1612`
 
-### update_task() [D - CC 27]
+### update_task() [F - CC 49]
 **Why it's complex:**
-- Handles 10+ optional task properties
-- Extensive null-safety checks
+- **NEW API (Redesign)**: Consolidates 10+ specialized functions into one comprehensive update function
+- Handles 15+ optional task properties (task_name, project_id, parent_task_id, note, dates, tags, completion, status, etc.)
+- Tag operations support three modes: full replacement, incremental add, incremental remove
+- Hierarchy conflict validation (project_id vs parent_task_id)
+- Tag conflict validation (tags vs add_tags/remove_tags)
+- Extensive null-safety and parameter validation
+- Status enum handling (accepts both enum and string)
 - Date validation and conversion
+- AppleScript command building for different operation types
+- Error handling returns dict instead of raising exceptions
 
-**Documented in code:** See `omnifocus_client.py:2785`
+**Documented in code:** See `omnifocus_client.py:2830`
+
+**Complexity is inherent:** This function intentionally consolidates specialized operations to minimize MCP tool call overhead. The alternative would be 10+ separate functions with simpler logic, but higher overall system complexity.
 
 ### get_projects() [D - CC 23]
 **Why it's complex:**
