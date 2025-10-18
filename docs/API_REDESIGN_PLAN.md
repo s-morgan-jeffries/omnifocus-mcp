@@ -141,9 +141,10 @@ def update_tasks(
 
 ---
 
-### 1.2 delete_tasks() - ENHANCED WITH UNION TYPE
+### 1.2 delete_tasks() - ENHANCED WITH UNION TYPE ✅ COMPLETED
 **Priority:** HIGH (consolidates delete operations)
-**Estimated Complexity:** B (CC ~8)
+**Actual Complexity:** B (CC 7) - excellent
+**Completion Date:** 2025-10-18
 
 **Consolidates:**
 - delete_task() ✅
@@ -175,6 +176,14 @@ def delete_tasks(
 
 **Integration Tests:** ~1 test
 - Test deletion with real OmniFocus
+
+**Implementation Notes:**
+- ✅ Client layer: 8 tests (all PASS)
+- ✅ Server layer: 5 tests (all PASS)
+- ✅ Integration layer: 1 test updated
+- Changed return type from int to dict (consistency with new API)
+- AppleScript returns count, we infer which tasks succeeded (first N)
+- Complexity B (7) - excellent, well within acceptable range
 
 ---
 
