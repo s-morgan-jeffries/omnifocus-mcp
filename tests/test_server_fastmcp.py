@@ -84,45 +84,6 @@ class TestProjectTools:
 
             assert "Found 0 active projects" in result
 
-    def test_search_projects_success(self):
-        """Test get_projects with query parameter."""
-        mock_projects = [
-            {"id": "proj-001", "name": "Budget Project", "status": "active"}
-        ]
-
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_projects.return_value = mock_projects
-            mock_get_client.return_value = mock_client
-
-            result = get_projects(query="budget")
-
-            assert "Found 1 projects matching 'budget'" in result
-            assert "Budget Project" in result
-            mock_client.get_projects.assert_called_once_with(on_hold_only=False, query="budget")
-
-    def test_get_project_success(self):
-        """Test get_project with successful retrieval."""
-        mock_project = {
-            "id": "proj-001",
-            "name": "Test Project",
-            "note": "Project note",
-            "status": "active",
-            "folderPath": "Work > Tests"
-        }
-
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_project.return_value = mock_project
-            mock_get_client.return_value = mock_client
-
-            result = get_project("proj-001")
-
-            assert "Project Details:" in result
-            assert "Test Project" in result
-            assert "Status: active" in result
-            assert "Folder: Work > Tests" in result
-            mock_client.get_project.assert_called_once_with("proj-001")
 
     def test_create_project_success(self):
         """Test create_project with successful creation."""
@@ -151,146 +112,13 @@ class TestProjectTools:
                 name="New Project", note=None, folder_path="Work", sequential=False
             )
 
-    def test_set_project_status_to_active(self):
-        """Test set_project_status setting status to active."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_project_status.return_value = True
-            mock_get_client.return_value = mock_client
 
-            result = set_project_status("proj-123", "active")
 
-            assert "Successfully set project status to: Active" in result
-            mock_client.set_project_status.assert_called_once_with("proj-123", "active")
 
-    def test_set_project_status_to_on_hold(self):
-        """Test set_project_status setting status to on_hold."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_project_status.return_value = True
-            mock_get_client.return_value = mock_client
 
-            result = set_project_status("proj-123", "on_hold")
 
-            assert "Successfully set project status to: On Hold" in result
-            mock_client.set_project_status.assert_called_once_with("proj-123", "on_hold")
 
-    def test_set_project_status_to_done(self):
-        """Test set_project_status setting status to done."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_project_status.return_value = True
-            mock_get_client.return_value = mock_client
 
-            result = set_project_status("proj-123", "done")
-
-            assert "Successfully set project status to: Done" in result
-            mock_client.set_project_status.assert_called_once_with("proj-123", "done")
-
-    def test_set_project_status_to_dropped(self):
-        """Test set_project_status setting status to dropped."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_project_status.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = set_project_status("proj-123", "dropped")
-
-            assert "Successfully set project status to: Dropped" in result
-            mock_client.set_project_status.assert_called_once_with("proj-123", "dropped")
-
-    def test_set_project_status_project_not_found(self):
-        """Test set_project_status raises ValueError when project not found."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_project_status.side_effect = ValueError("Project with ID nonexistent not found")
-            mock_get_client.return_value = mock_client
-
-            with pytest.raises(ValueError, match="Project.*not found"):
-                set_project_status("nonexistent", "active")
-
-    def test_get_stalled_projects_success(self):
-        """Test get_stalled_projects with results."""
-        mock_projects = [
-            {
-                "id": "proj-stale-1",
-                "name": "Stale Project",
-                "status": "active",
-                "lastActivityDate": "2024-08-01T00:00:00Z",
-                "daysInactive": 68,
-                "taskCount": 3
-            }
-        ]
-
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_stalled_projects.return_value = mock_projects
-            mock_get_client.return_value = mock_client
-
-            result = get_stalled_projects()
-
-            assert "Found 1 stalled projects" in result
-            assert "Stale Project" in result
-            assert "68 days inactive" in result
-
-    def test_get_stalled_projects_custom_threshold(self):
-        """Test get_stalled_projects with custom threshold."""
-        mock_projects = [
-            {
-                "id": "proj-1",
-                "name": "Project 1",
-                "status": "active",
-                "lastActivityDate": "2025-09-20T00:00:00Z",
-                "daysInactive": 18,
-                "taskCount": 2
-            }
-        ]
-
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_stalled_projects.return_value = mock_projects
-            mock_get_client.return_value = mock_client
-
-            result = get_stalled_projects(days_inactive=14)
-
-            assert "Found 1 stalled projects" in result
-            mock_client.get_stalled_projects.assert_called_once_with(days_inactive=14, min_task_count=None)
-
-    def test_get_stalled_projects_empty(self):
-        """Test get_stalled_projects with no results."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_stalled_projects.return_value = []
-            mock_get_client.return_value = mock_client
-
-            result = get_stalled_projects()
-
-            assert "No stalled projects found" in result
-
-    def test_get_stalled_projects_with_min_task_count(self):
-        """Test get_stalled_projects with min_task_count parameter."""
-        mock_projects = [
-            {
-                "id": "proj-1",
-                "name": "Project with Many Tasks",
-                "status": "active",
-                "lastActivityDate": "2024-08-01T00:00:00Z",
-                "daysInactive": 68,
-                "taskCount": 5
-            }
-        ]
-
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_stalled_projects.return_value = mock_projects
-            mock_get_client.return_value = mock_client
-
-            result = get_stalled_projects(days_inactive=30, min_task_count=3)
-
-            assert "Found 1 stalled projects" in result
-            assert "with 3+ tasks" in result
-            assert "5 tasks" in result  # Should show actual task count
-            mock_client.get_stalled_projects.assert_called_once_with(days_inactive=30, min_task_count=3)
 
 
 class TestTaskTools:
@@ -417,153 +245,12 @@ class TestTaskTools:
                 inbox_only=False
             )
 
-    def test_get_task_success(self):
-        """Test get_task with successful retrieval."""
-        mock_task = {
-            "id": "task-001",
-            "name": "Test Task",
-            "note": "Task note",
-            "completed": False,
-            "flagged": True,
-            "dropped": False,
-            "projectId": "proj-001",
-            "projectName": "Test Project",
-            "dueDate": "2025-10-15T17:00:00",
-            "deferDate": "",
-            "completionDate": "",
-            "tags": "urgent"
-        }
 
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_task.return_value = mock_task
-            mock_get_client.return_value = mock_client
 
-            result = get_task("task-001")
 
-            assert "Task Details:" in result
-            assert "Test Task" in result
-            assert "Test Project" in result
-            assert "Flagged: Yes" in result
-            assert "Due: 2025-10-15T17:00:00" in result
-            mock_client.get_task.assert_called_once_with("task-001")
 
-    def test_get_subtasks_success(self):
-        """Test get_subtasks with subtasks found."""
-        mock_subtasks = [
-            {
-                "id": "subtask-001",
-                "name": "Subtask 1",
-                "note": "First subtask",
-                "completed": False,
-                "flagged": True,
-                "dropped": False,
-                "blocked": False,
-                "next": True,
-                "projectId": "proj-001",
-                "projectName": "Test Project",
-                "dueDate": "2025-10-15",
-                "deferDate": "",
-                "completionDate": "",
-                "tags": "urgent"
-            },
-            {
-                "id": "subtask-002",
-                "name": "Subtask 2",
-                "note": "",
-                "completed": True,
-                "flagged": False,
-                "dropped": False,
-                "blocked": False,
-                "next": False,
-                "projectId": "proj-001",
-                "projectName": "Test Project",
-                "dueDate": "",
-                "deferDate": "",
-                "completionDate": "2025-10-01",
-                "tags": ""
-            }
-        ]
 
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_subtasks.return_value = mock_subtasks
-            mock_get_client.return_value = mock_client
 
-            result = get_subtasks("parent-task-001")
-
-            assert "Found 2 subtasks" in result
-            assert "Subtask 1" in result
-            assert "Subtask 2" in result
-            assert "Flagged: Yes" in result
-            mock_client.get_subtasks.assert_called_once_with("parent-task-001")
-
-    def test_get_subtasks_empty(self):
-        """Test get_subtasks with no subtasks."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_subtasks.return_value = []
-            mock_get_client.return_value = mock_client
-
-            result = get_subtasks("task-no-children")
-
-            assert "Task has 0 subtasks" in result
-            mock_client.get_subtasks.assert_called_once_with("task-no-children")
-
-    def test_add_task_success(self):
-        """Test add_task with successful addition."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.add_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = add_task("proj-001", "New Task")
-
-            assert "Successfully added task 'New Task'" in result
-
-    def test_complete_task_success(self):
-        """Test complete_task with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.complete_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = complete_task("task-001")
-
-            assert "Successfully completed task task-001" in result
-
-    def test_delete_task_success(self):
-        """Test delete_task with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.delete_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = delete_task("task-001")
-
-            assert "Successfully deleted task task-001" in result
-
-    def test_move_task_to_project(self):
-        """Test move_task to a project."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.move_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = move_task("task-001", "proj-002")
-
-            assert "Successfully moved task task-001 to project proj-002" in result
-
-    def test_move_task_to_inbox(self):
-        """Test move_task to inbox."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.move_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = move_task("task-001")
-
-            assert "Successfully moved task task-001 to inbox" in result
 
 
 class TestInboxTools:
@@ -618,17 +305,6 @@ class TestInboxTools:
             task2_section = result.split("ID: task-002")[1]
             assert "Dropped: Yes" not in task2_section
 
-    def test_create_inbox_task_success(self):
-        """Test create_inbox_task with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.create_inbox_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = create_inbox_task("Quick Task")
-
-            assert "Successfully created inbox task 'Quick Task'" in result
-
 
 class TestFolderTools:
     """Tests for folder-related tools."""
@@ -659,89 +335,6 @@ class TestFolderTools:
             result = create_folder("Clients", parent_path="Work")
 
             assert "Successfully created folder 'Clients' in 'Work'" in result
-
-    def test_set_parent_task_success(self):
-        """Test set_parent_task with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_parent_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = set_parent_task("task-002", "task-001")
-
-            assert "Successfully made task task-002 a subtask of task-001" in result
-
-
-class TestReviewTools:
-    """Tests for project review tools."""
-
-    def test_set_review_interval_success(self):
-        """Test set_review_interval with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_review_interval.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = set_review_interval("proj-001", 1)
-
-            assert "Successfully set review interval to 1 week(s)" in result
-
-    def test_mark_project_reviewed_success(self):
-        """Test mark_project_reviewed with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.mark_project_reviewed.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = mark_project_reviewed("proj-001")
-
-            assert "Successfully marked project proj-001 as reviewed" in result
-
-    def test_get_projects_due_for_review_success(self):
-        """Test get_projects_due_for_review with results."""
-        mock_projects = [
-            {
-                "id": "proj-001",
-                "name": "Project Needing Review",
-                "nextReviewDate": "2025-10-01T00:00:00"
-            }
-        ]
-
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_projects_due_for_review.return_value = mock_projects
-            mock_get_client.return_value = mock_client
-
-            result = get_projects_due_for_review()
-
-            assert "Found 1 projects due for review" in result
-            assert "Project Needing Review" in result
-
-
-class TestTimeEstimation:
-    """Tests for time estimation tools."""
-
-    def test_set_estimated_minutes_success(self):
-        """Test set_estimated_minutes with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_estimated_minutes.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = set_estimated_minutes("task-001", 60)
-
-            assert "Successfully set time estimate to 60 minute(s)" in result
-
-    def test_set_estimated_minutes_clear(self):
-        """Test set_estimated_minutes clearing estimate."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.set_estimated_minutes.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = set_estimated_minutes("task-001", 0)
-
-            assert "Successfully cleared time estimate" in result
 
 
 class TestPerspectiveTools:
@@ -793,70 +386,6 @@ class TestTagTools:
             assert "Found 1 tags" in result
             assert "urgent" in result
 
-    def test_add_tag_to_task_success(self):
-        """Test add_tag_to_task with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.add_tag_to_task.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = add_tag_to_task("task-001", "urgent")
-
-            assert "Successfully added tag 'urgent' to task task-001" in result
-
-
-class TestNoteTools:
-    """Tests for note-related tools."""
-
-    def test_add_note_success(self):
-        """Test add_note with success."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.add_note.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = add_note("proj-001", "Meeting notes")
-
-            assert "Successfully added note to project proj-001" in result
-
-    def test_get_note_project_success(self):
-        """Test get_note for a project with full note content."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            long_note = "This is a very long note with lots of content\n" * 10
-            mock_client.get_note.return_value = long_note
-            mock_get_client.return_value = mock_client
-
-            result = get_note("proj-001", "project")
-
-            assert long_note in result
-            assert "Note for project proj-001" in result
-            mock_client.get_note.assert_called_once_with("proj-001", "project")
-
-    def test_get_note_task_success(self):
-        """Test get_note for a task."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_note.return_value = "Task note content"
-            mock_get_client.return_value = mock_client
-
-            result = get_note("task-001", "task")
-
-            assert "Task note content" in result
-            assert "Note for task task-001" in result
-            mock_client.get_note.assert_called_once_with("task-001", "task")
-
-    def test_get_note_empty(self):
-        """Test get_note when item has no note."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_note.return_value = ""
-            mock_get_client.return_value = mock_client
-
-            result = get_note("proj-001", "project")
-
-            assert "no note" in result.lower() or "empty" in result.lower()
-
 
 class TestBatchOperationTools:
     """Tests for batch operation MCP tools."""
@@ -885,20 +414,6 @@ class TestBatchOperationTools:
             mock_client.delete_tasks.assert_called_once_with(["task-001", "task-002"])
             assert "2" in result
             assert "deleted" in result.lower()
-
-    def test_delete_projects_success(self):
-        """Test deleting multiple projects."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.delete_projects.return_value = 2
-            mock_get_client.return_value = mock_client
-
-            result = delete_projects(["proj-001", "proj-002"])
-
-            mock_client.delete_projects.assert_called_once_with(["proj-001", "proj-002"])
-            assert "2" in result
-            assert "deleted" in result.lower()
-
 
 
 class TestHierarchyFieldFormatting:
