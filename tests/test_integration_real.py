@@ -200,6 +200,41 @@ class TestRealOmniFocusWriteOperations:
         inbox_names = [t['name'] for t in inbox]
         assert "Real Integration Test Inbox Task" in inbox_names
 
+    def test_create_task_real(self, client, test_project_id):
+        """Test create_task() in real OmniFocus (NEW API - consolidates add_task/create_inbox_task)."""
+        # Test 1: Create in inbox (project_id=None)
+        task_id_inbox = client.create_task(
+            task_name="Integration Test - Inbox Task",
+            project_id=None,
+            note="Created by integration test",
+            flagged=True
+        )
+        assert isinstance(task_id_inbox, str)
+        assert len(task_id_inbox) > 0
+        print(f"\n✓ Successfully created inbox task: {task_id_inbox}")
+
+        # Verify in inbox
+        inbox = client.get_inbox_tasks()
+        inbox_names = [t['name'] for t in inbox]
+        assert "Integration Test - Inbox Task" in inbox_names
+
+        # Test 2: Create in project
+        task_id_project = client.create_task(
+            task_name="Integration Test - Project Task",
+            project_id=test_project_id,
+            note="Created by integration test",
+            due_date="2025-12-31",
+            estimated_minutes=30
+        )
+        assert isinstance(task_id_project, str)
+        assert len(task_id_project) > 0
+        print(f"✓ Successfully created project task: {task_id_project}")
+
+        # Verify in project
+        tasks = client.get_tasks(project_id=test_project_id)
+        task_names = [t['name'] for t in tasks]
+        assert "Integration Test - Project Task" in task_names
+
     def test_complete_task_real(self, client, test_project_id):
         """Test completing a task in real OmniFocus."""
         # First, add a task to complete

@@ -1507,6 +1507,184 @@ class OmniFocusClient:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error adding task: {e.stderr}")
 
+    def create_task(
+        self,
+        task_name: str,
+        project_id: Optional[str] = None,
+        parent_task_id: Optional[str] = None,
+        note: Optional[str] = None,
+        due_date: Optional[str] = None,
+        defer_date: Optional[str] = None,
+        flagged: bool = False,
+        tags: Optional[list[str]] = None,
+        estimated_minutes: Optional[int] = None
+    ) -> str:
+        """Create a new task in OmniFocus (NEW API - consolidates add_task and create_inbox_task).
+
+        NEW API (Redesign): Unified task creation supporting project, inbox, or subtask creation.
+
+        Args:
+            task_name: The name/title of the task (required)
+            project_id: Project ID to add task to. None = inbox (optional, default: None)
+            parent_task_id: Parent task ID to create subtask (optional, conflicts with project_id)
+            note: Optional note/description for the task
+            due_date: Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00")
+            defer_date: Defer date in ISO 8601 format (when task becomes available)
+            flagged: Whether to flag the task (default: False)
+            tags: List of tag names to assign to the task
+            estimated_minutes: Estimated time in minutes
+
+        Returns:
+            str: The ID of the created task
+
+        Raises:
+            ValueError: If both project_id and parent_task_id are specified
+            Exception: If task creation fails
+
+        Examples:
+            # Create in project
+            task_id = client.create_task("Task name", project_id="proj-123")
+
+            # Create in inbox
+            task_id = client.create_task("Inbox task")
+            # or explicitly:
+            task_id = client.create_task("Inbox task", project_id=None)
+
+            # Create subtask
+            task_id = client.create_task("Subtask", parent_task_id="task-parent")
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('create_task')
+
+        # Validation: Cannot specify both project_id and parent_task_id
+        if project_id is not None and parent_task_id is not None:
+            raise ValueError("Cannot specify both project_id and parent_task_id")
+
+        # Escape strings for AppleScript
+        task_name_escaped = self._escape_applescript_string(task_name)
+        note_escaped = self._escape_applescript_string(note or "")
+
+        # Build properties
+        properties = [f'name:"{task_name_escaped}"']
+        if note:
+            properties.append(f'note:"{note_escaped}"')
+        if flagged:
+            properties.append('flagged:true')
+        if estimated_minutes is not None:
+            properties.append(f'estimated minutes:{estimated_minutes}')
+
+        # Build date commands
+        date_commands = []
+        if due_date:
+            date_commands.append(f'set due date of newTask to date "{self._iso_to_applescript_date(due_date)}"')
+        if defer_date:
+            date_commands.append(f'set defer date of newTask to date "{self._iso_to_applescript_date(defer_date)}"')
+
+        # Build tag assignment commands
+        tag_commands = []
+        if tags:
+            for tag in tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                tag_commands.append(f'''
+                    try
+                        set tagObj to first flattened tag whose name is "{tag_escaped}"
+                        add tagObj to tags of newTask
+                    on error
+                        -- Tag doesn't exist, skip it
+                    end try''')
+
+        properties_str = ", ".join(properties)
+        date_commands_str = "\n                    ".join(date_commands)
+        tag_commands_str = "\n                    ".join(tag_commands)
+
+        # Build script based on destination (project, inbox, or parent task)
+        if parent_task_id is not None:
+            # Create as subtask
+            parent_id_escaped = self._escape_applescript_string(parent_task_id)
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        -- Find parent task by ID
+                        set parentTask to first flattened task whose id is "{parent_id_escaped}"
+
+                        -- Create new task as child of parent
+                        tell parentTask
+                            set newTask to make new task with properties {{{properties_str}}}
+                        end tell
+
+                        -- Set dates if provided
+                        {date_commands_str if date_commands else ""}
+
+                        -- Add tags if provided
+                        {tag_commands_str if tag_commands else ""}
+
+                        return id of newTask
+                    on error errMsg
+                        error "Failed to create subtask: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+        elif project_id is not None:
+            # Create in specific project
+            project_id_escaped = self._escape_applescript_string(project_id)
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        -- Find project by ID
+                        set targetProject to first flattened project whose id is "{project_id_escaped}"
+
+                        -- Create new task in the project
+                        tell targetProject
+                            set newTask to make new task with properties {{{properties_str}}}
+                        end tell
+
+                        -- Set dates if provided
+                        {date_commands_str if date_commands else ""}
+
+                        -- Add tags if provided
+                        {tag_commands_str if tag_commands else ""}
+
+                        return id of newTask
+                    on error errMsg
+                        error "Failed to create task in project: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+        else:
+            # Create in inbox (project_id is None)
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        -- Create new task in inbox
+                        tell inbox
+                            set newTask to make new task with properties {{{properties_str}}}
+                        end tell
+
+                        -- Set dates if provided
+                        {date_commands_str if date_commands else ""}
+
+                        -- Add tags if provided
+                        {tag_commands_str if tag_commands else ""}
+
+                        return id of newTask
+                    on error errMsg
+                        error "Failed to create inbox task: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            return result.strip()
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error creating task: {e.stderr}")
+
     def _iso_to_applescript_date(self, iso_date: str) -> str:
         """Convert ISO 8601 date to AppleScript date format.
 

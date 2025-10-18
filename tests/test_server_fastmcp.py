@@ -964,7 +964,13 @@ class TestBatchOperationTools:
         """Test deleting multiple tasks."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.delete_tasks.return_value = 2
+            # Updated for NEW API - client returns dict instead of int
+            mock_client.delete_tasks.return_value = {
+                "deleted_count": 2,
+                "failed_count": 0,
+                "deleted_ids": ["task-001", "task-002"],
+                "failures": []
+            }
             mock_get_client.return_value = mock_client
 
             result = delete_tasks(["task-001", "task-002"])

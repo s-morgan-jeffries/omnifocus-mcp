@@ -281,7 +281,9 @@ class TestBatchDelete:
             task_ids = ["task-001", "task-002", "task-003"]
             result = client.delete_tasks(task_ids)
 
-            assert result == 3
+            # Updated for NEW API - returns dict instead of int
+            assert result["deleted_count"] == 3
+            assert result["failed_count"] == 0
             # Verify AppleScript was called
             call_args = mock_run.call_args[0][0]
             assert "task-001" in call_args
@@ -296,7 +298,9 @@ class TestBatchDelete:
 
             result = client.delete_tasks(["task-001"])
 
-            assert result == 1
+            # Updated for NEW API - returns dict instead of int
+            assert result["deleted_count"] == 1
+            assert result["failed_count"] == 0
 
     def test_delete_tasks_empty_list(self, client):
         """Test that empty list raises ValueError."""
@@ -311,7 +315,9 @@ class TestBatchDelete:
             task_ids = ["task-001", "task-002", "nonexistent"]
             result = client.delete_tasks(task_ids)
 
-            assert result == 2
+            # Updated for NEW API - returns dict instead of int
+            assert result["deleted_count"] == 2
+            assert result["failed_count"] == 1
 
     def test_delete_tasks_error(self, client):
         """Test error handling in batch deletion."""

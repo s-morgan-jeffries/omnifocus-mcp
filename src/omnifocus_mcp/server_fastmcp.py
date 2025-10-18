@@ -498,6 +498,92 @@ def get_subtasks(task_id: str) -> str:
 
 
 @mcp.tool()
+def create_task(
+    task_name: str,
+    project_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
+    note: Optional[str] = None,
+    due_date: Optional[str] = None,
+    defer_date: Optional[str] = None,
+    flagged: bool = False,
+    tags: Optional[str] = None,
+    estimated_minutes: Optional[int] = None
+) -> str:
+    """Create a new task in OmniFocus (NEW API - consolidates add_task and create_inbox_task).
+
+    This is the redesigned create function that unifies task creation across all contexts:
+    - If project_id is provided: Create task in that project
+    - If parent_task_id is provided: Create task as subtask under that parent
+    - If neither provided (or project_id=None): Create task in inbox
+
+    Args:
+        task_name: The name/title of the task (required)
+        project_id: Optional project ID. If None, creates in inbox (unless parent_task_id is set)
+        parent_task_id: Optional parent task ID to create as subtask. Cannot be used with project_id.
+        note: Optional note/description for the task (plain text only)
+        due_date: Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
+        defer_date: Defer date in ISO 8601 format (when task becomes available)
+        flagged: Whether to flag the task (default: False)
+        tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist.
+        estimated_minutes: Estimated time in minutes to complete the task
+
+    Returns:
+        Success message with task ID and location (project/inbox/parent)
+
+    Raises:
+        ValueError: If both project_id and parent_task_id are specified
+    """
+    client = get_client()
+
+    # Parse tags parameter - convert JSON string to list
+    tags_list = None
+    if tags:
+        try:
+            tags_list = json.loads(tags)
+            if not isinstance(tags_list, list):
+                return f"Error: tags must be a JSON array string, e.g., '[\"Computer\"]'"
+        except json.JSONDecodeError as e:
+            return f"Error: Invalid JSON for tags parameter: {e}"
+
+    # Validation errors should raise immediately (before calling client)
+    # This allows MCP to report them properly
+    task_id = client.create_task(
+        task_name=task_name,
+        project_id=project_id,
+        parent_task_id=parent_task_id,
+        note=note,
+        due_date=due_date,
+        defer_date=defer_date,
+        flagged=flagged,
+        tags=tags_list,
+        estimated_minutes=estimated_minutes
+    )
+
+    # Build human-readable response
+    if parent_task_id:
+        location = f"as subtask under {parent_task_id}"
+    elif project_id:
+        location = f"in project {project_id}"
+    else:
+        location = "in inbox"
+
+    result = f"Successfully created task '{task_name}' {location}\nTask ID: {task_id}"
+
+    if due_date:
+        result += f"\nDue date: {due_date}"
+    if defer_date:
+        result += f"\nDefer date: {defer_date}"
+    if flagged:
+        result += "\nFlagged: Yes"
+    if tags_list:
+        result += f"\nTags: {', '.join(tags_list)}"
+    if estimated_minutes:
+        result += f"\nEstimated time: {estimated_minutes} minutes"
+
+    return result
+
+
+@mcp.tool()
 def add_task(
     project_id: str,
     task_name: str,
