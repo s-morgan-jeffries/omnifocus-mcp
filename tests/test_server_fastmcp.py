@@ -390,6 +390,9 @@ class TestTaskTools:
             )
 
             mock_client.get_tasks.assert_called_once_with(
+                task_id=None,  # NEW (Phase 3.1)
+                parent_task_id=None,  # NEW (Phase 3.1)
+                include_full_notes=False,  # NEW (Phase 3.1)
                 project_id="proj-001",
                 flagged_only=True,
                 include_completed=False,
@@ -425,6 +428,9 @@ class TestTaskTools:
             assert "Found 1 tasks" in result
             assert "Dropped Task" in result
             mock_client.get_tasks.assert_called_once_with(
+                task_id=None,  # NEW (Phase 3.1)
+                parent_task_id=None,  # NEW (Phase 3.1)
+                include_full_notes=False,  # NEW (Phase 3.1)
                 project_id=None,
                 flagged_only=False,
                 include_completed=False,

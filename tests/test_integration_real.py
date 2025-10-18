@@ -1502,6 +1502,66 @@ class TestGetTasksParameterVariations:
 
         print(f"\n✓ Retrieved {len(sorted_tasks)} tasks sorted by due date")
 
+    # ========================================================================
+    # NEW API (Phase 3.1): task_id, parent_task_id, include_full_notes
+    # ========================================================================
+
+    def test_get_tasks_with_task_id_integration(self, client, test_project_id):
+        """Integration: get_tasks(task_id=X) filters to single task."""
+        # Get a task from the test project
+        tasks = client.get_tasks(project_id=test_project_id)
+        assert len(tasks) > 0
+        specific_task_id = tasks[0]['id']
+
+        # Get that specific task using task_id parameter
+        result = client.get_tasks(task_id=specific_task_id)
+
+        assert isinstance(result, list)
+        assert len(result) == 1, "Should return exactly 1 task"
+        assert result[0]['id'] == specific_task_id
+        print(f"\n✓ get_tasks(task_id) returned specific task: {result[0]['name']}")
+
+    def test_get_tasks_with_parent_task_id_integration(self, client):
+        """Integration: get_tasks(parent_task_id=X) returns subtasks."""
+        # Find the Parent Task (created by setup script)
+        tasks = client.get_tasks(query="Parent Task")
+        assert len(tasks) > 0
+        parent_id = tasks[0]['id']
+
+        # Get subtasks using parent_task_id parameter
+        subtasks = client.get_tasks(parent_task_id=parent_id)
+
+        assert isinstance(subtasks, list)
+        assert len(subtasks) >= 2, "Parent Task should have at least 2 subtasks"
+
+        # Verify all have correct parent
+        for subtask in subtasks:
+            assert subtask.get('parentTaskId') == parent_id, \
+                f"Subtask {subtask['name']} should have parentTaskId={parent_id}"
+
+        print(f"\n✓ get_tasks(parent_task_id) returned {len(subtasks)} subtasks")
+
+    def test_get_tasks_include_full_notes_integration(self, client, test_project_id):
+        """Integration: get_tasks(include_full_notes=True) returns complete notes."""
+        # Get tasks with full notes
+        tasks = client.get_tasks(project_id=test_project_id, include_full_notes=True)
+
+        assert isinstance(tasks, list)
+        assert len(tasks) > 0
+
+        # Find a task with a note
+        tasks_with_notes = [t for t in tasks if t.get('note') and len(t['note']) > 0]
+        if tasks_with_notes:
+            task = tasks_with_notes[0]
+            # Verify note field is present and has content
+            assert 'note' in task
+            assert len(task['note']) > 0
+            print(f"\n✓ get_tasks(include_full_notes=True) returned full notes")
+            print(f"  Task: {task['name']}")
+            print(f"  Note length: {len(task['note'])} characters")
+        else:
+            print(f"\n✓ get_tasks(include_full_notes=True) works (no tasks with notes in test data)")
+
 
 class TestGetProjectsParameterVariations:
     """Test various parameter combinations for get_projects()."""

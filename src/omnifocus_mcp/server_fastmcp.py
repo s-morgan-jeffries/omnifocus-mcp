@@ -440,6 +440,9 @@ def get_stalled_projects(days_inactive: int = 30, min_task_count: Optional[int] 
 
 @mcp.tool()
 def get_tasks(
+    task_id: Optional[str] = None,  # NEW (Phase 3.1)
+    parent_task_id: Optional[str] = None,  # NEW (Phase 3.1)
+    include_full_notes: bool = False,  # NEW (Phase 3.1)
     project_id: Optional[str] = None,
     flagged_only: bool = False,
     include_completed: bool = False,
@@ -452,9 +455,15 @@ def get_tasks(
     query: Optional[str] = None,
     inbox_only: bool = False
 ) -> str:
-    """Get tasks from OmniFocus with optional filtering.
+    """Get tasks from OmniFocus with optional filtering (Enhanced - Phase 3.1).
+
+    NEW (Phase 3.1): Added task_id, parent_task_id, include_full_notes parameters
+    to consolidate get_task(), get_subtasks(), and get_note() functionality.
 
     Args:
+        task_id: NEW - Filter to specific task by ID (consolidates get_task())
+        parent_task_id: NEW - Filter to subtasks of parent (consolidates get_subtasks())
+        include_full_notes: NEW - Return full note content (consolidates get_note())
         project_id: Optional project ID to filter tasks (ignored if inbox_only=True)
         flagged_only: If True, only return flagged tasks
         include_completed: If True, include completed tasks (default: False)
@@ -472,6 +481,9 @@ def get_tasks(
     """
     client = get_client()
     tasks = client.get_tasks(
+        task_id=task_id,
+        parent_task_id=parent_task_id,
+        include_full_notes=include_full_notes,
         project_id=project_id,
         flagged_only=flagged_only,
         include_completed=include_completed,

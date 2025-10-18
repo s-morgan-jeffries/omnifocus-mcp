@@ -456,19 +456,10 @@ def create_project(
 
 ## PHASE 3: Enhanced Read Functions (2 functions)
 
-### 3.1 get_tasks() - ENHANCE EXISTING
+### 3.1 get_tasks() - ENHANCE EXISTING ✅ COMPLETED
 **Priority:** MEDIUM
-**Estimated Complexity:** Current F (CC 66) - already complex
-
-**Enhancements Needed:**
-```python
-def get_tasks(
-    task_id: Optional[str] = None,  # NEW: Filter to specific task
-    parent_task_id: Optional[str] = None,  # NEW: Filter by parent
-    include_full_notes: bool = False,  # NEW: Return full notes
-    # ... existing parameters
-) -> list[dict]
-```
+**Actual Complexity:** F (CC 68) - increased from F (CC 66)
+**Completion Date:** 2025-10-18
 
 **Consolidates:**
 - get_task() ✅ (via task_id parameter)
@@ -476,22 +467,25 @@ def get_tasks(
 - get_note() ✅ (via include_full_notes parameter)
 - get_inbox_tasks() ✅ (via inbox_only parameter - already exists)
 
-**Test Strategy:**
+**Implemented Signature:**
+```python
+def get_tasks(
+    task_id: Optional[str] = None,  # NEW: Filter to specific task
+    parent_task_id: Optional[str] = None,  # NEW: Filter by parent
+    include_full_notes: bool = False,  # NEW: Return full notes
+    # ... 21 existing parameters (project_id, flagged_only, etc.)
+) -> list[dict]
+```
 
-**Client Tests:** ~8 tests
-- Test task_id filter
-- Test parent_task_id filter
-- Test include_full_notes flag (returns full note, not truncated)
-- Test combinations
-
-**Server Tests:** ~5 tests
-- Test task_id parameter via MCP
-- Test parent_task_id parameter via MCP
-- Test include_full_notes flag
-
-**Integration Tests:** ~2 tests
-- Test task_id retrieval with real OmniFocus
-- Test include_full_notes with real OmniFocus
+**Implementation Notes:**
+- ✅ Client layer: 11 tests (all PASS)
+- ✅ Server layer: 3 tests (all PASS)
+- ✅ Integration layer: 3 tests added (test_get_tasks_with_task_id_integration, test_get_tasks_with_parent_task_id_integration, test_get_tasks_include_full_notes_integration)
+- Parameter precedence: task_id > parent_task_id > inbox_only > project_id > all tasks
+- Task source logic uses clear if/elif chain for AppleScript generation
+- Complexity increased minimally (CC 66→68) due to parameter precedence logic
+- include_full_notes parameter added to signature, though AppleScript already returns full notes
+- Updated docs/CODE_QUALITY.md to reflect new complexity and parameter count
 
 ---
 

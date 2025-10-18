@@ -78,14 +78,18 @@ Physical lines, logical lines, source lines, comments.
 
 Some functions have high complexity due to architectural constraints:
 
-### get_tasks() [F - CC 66]
+### get_tasks() [F - CC 68]
 **Why it's complex:**
-- 21 parameters for comprehensive filtering
+- **UPDATED (Phase 3.1)**: Now 24 parameters for comprehensive filtering
+  - Added task_id, parent_task_id, include_full_notes (consolidates get_task(), get_subtasks(), get_note())
 - AppleScript must be self-contained (no imports)
 - Complex date handling and recurring task logic
 - Post-processing filters in Python
+- Dynamic task source generation based on parameter precedence
 
-**Documented in code:** See `omnifocus_client.py:1612`
+**Documented in code:** See `omnifocus_client.py:2120`
+
+**Complexity increased slightly (CC 66→68):** The 3 new parameters add minimal complexity with clear precedence logic (task_id > parent_task_id > inbox_only > project_id > all tasks).
 
 ### update_task() [F - CC 49]
 **Why it's complex:**

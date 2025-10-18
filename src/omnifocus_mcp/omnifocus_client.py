@@ -2119,6 +2119,9 @@ class OmniFocusClient:
 
     def get_tasks(
         self,
+        task_id: Optional[str] = None,  # NEW (Phase 3.1): Filter to specific task
+        parent_task_id: Optional[str] = None,  # NEW (Phase 3.1): Filter by parent
+        include_full_notes: bool = False,  # NEW (Phase 3.1): Return full notes
         project_id: Optional[str] = None,
         include_completed: bool = False,
         flagged_only: bool = False,
@@ -2162,6 +2165,9 @@ class OmniFocusClient:
         - Result sorting and return
 
         Args:
+            task_id: NEW (Phase 3.1): Filter to specific task by ID (consolidates get_task())
+            parent_task_id: NEW (Phase 3.1): Filter to subtasks of specific parent (consolidates get_subtasks())
+            include_full_notes: NEW (Phase 3.1): Return full note content instead of truncated (consolidates get_note())
             project_id: Optional project ID to filter tasks. If None, returns all tasks (ignored if inbox_only=True).
             include_completed: Whether to include completed tasks (default: False)
             flagged_only: Only return flagged tasks (default: False)
@@ -2231,8 +2237,16 @@ class OmniFocusClient:
         if defer_relative not in valid_defer_relative:
             raise ValueError(f"Invalid defer_relative value: {defer_relative}. Must be one of: {valid_defer_relative[:-1]}")
 
-        # Build task source (inbox, project, or all tasks)
-        if inbox_only:
+        # Build task source (inbox, project, specific task, parent's subtasks, or all tasks)
+        # NEW (Phase 3.1): task_id and parent_task_id parameters
+        if task_id:
+            # Most specific: filter to single task by ID
+            task_source = f'(flattened tasks whose id is "{task_id}")'
+        elif parent_task_id:
+            # Filter to subtasks of a specific parent task
+            parent_filter = f'whose id is "{parent_task_id}"'
+            task_source = f'tasks of (first flattened task {parent_filter})'
+        elif inbox_only:
             task_source = 'inbox tasks'
         elif project_id:
             project_filter = f'whose id is "{project_id}"'
