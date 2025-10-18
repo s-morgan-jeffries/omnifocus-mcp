@@ -561,49 +561,95 @@ def add_task(
 @mcp.tool()
 def update_task(
     task_id: str,
-    name: Optional[str] = None,
+    task_name: Optional[str] = None,
+    project_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
     note: Optional[str] = None,
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
-    flagged: Optional[str] = None
+    flagged: Optional[bool] = None,
+    tags: Optional[list[str]] = None,
+    add_tags: Optional[list[str]] = None,
+    remove_tags: Optional[list[str]] = None,
+    estimated_minutes: Optional[int] = None,
+    completed: Optional[bool] = None,
+    status: Optional[str] = None,
+    # Legacy parameters (backward compatibility)
+    name: Optional[str] = None
 ) -> str:
-    """Update an existing task in OmniFocus.
+    """Update an existing task in OmniFocus (NEW API - Redesign).
+
+    This comprehensive update function consolidates multiple specialized functions:
+    - complete_task() -> update_task(task_id, completed=True)
+    - drop_task() -> update_task(task_id, status="dropped")
+    - move_task() -> update_task(task_id, project_id=X)
+    - set_parent_task() -> update_task(task_id, parent_task_id=X)
+    - set_estimated_minutes() -> update_task(task_id, estimated_minutes=X)
+    - add_tag_to_task() -> update_task(task_id, add_tags=[...])
 
     Args:
         task_id: The ID of the task to update
-        name: New task name (optional)
-        note: New note content (optional). WARNING: If provided, this will remove any rich text formatting (bold, italics, links, etc.) and replace it with plain text. OmniFocus automation APIs only support plain text notes. If not provided, the existing note will be preserved unchanged.
+        task_name: New task name (optional)
+        project_id: Move task to this project (optional, conflicts with parent_task_id)
+        parent_task_id: Make task a subtask of this parent (optional, conflicts with project_id)
+        note: New note content (optional). WARNING: Removes rich text formatting
         due_date: New due date in ISO 8601 format, or empty string to clear (optional)
         defer_date: New defer date in ISO 8601 format, or empty string to clear (optional)
-        flagged: New flagged status - "true" to flag, "false" to unflag, or omit to leave unchanged (optional)
+        flagged: Flag/unflag the task (optional)
+        tags: Full replacement - set exact tag list (optional, conflicts with add_tags/remove_tags)
+        add_tags: Add these tags incrementally (optional, conflicts with tags)
+        remove_tags: Remove these tags (optional, conflicts with tags)
+        estimated_minutes: Estimated time in minutes (optional)
+        completed: Mark task complete/incomplete (optional)
+        status: Task status - "active" or "dropped" (optional)
+        name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
 
     Returns:
-        Success message listing all updated fields
+        Success message with updated fields, or error message
+
+    Examples:
+        update_task("task-123", completed=True)  # Mark complete
+        update_task("task-123", status="dropped")  # Drop task
+        update_task("task-123", project_id="proj-456")  # Move to project
+        update_task("task-123", add_tags=["urgent"])  # Add tag
+        update_task("task-123", task_name="New Name", flagged=True, due_date="2025-12-31")
     """
-    # Convert string flagged parameter to boolean for client
-    flagged_bool: Optional[bool] = None
-    if flagged is not None:
-        if flagged.lower() == "true":
-            flagged_bool = True
-        elif flagged.lower() == "false":
-            flagged_bool = False
-        else:
-            return f"Error: Invalid flagged value '{flagged}'. Must be 'true' or 'false'."
+    # Support legacy 'name' parameter for backward compatibility
+    if name is not None and task_name is None:
+        task_name = name
 
     client = get_client()
-    success = client.update_task(
+    result = client.update_task(
         task_id=task_id,
-        name=name,
+        task_name=task_name,
+        project_id=project_id,
+        parent_task_id=parent_task_id,
         note=note,
         due_date=due_date,
         defer_date=defer_date,
-        flagged=flagged_bool
+        flagged=flagged,
+        tags=tags,
+        add_tags=add_tags,
+        remove_tags=remove_tags,
+        estimated_minutes=estimated_minutes,
+        completed=completed,
+        status=status,
+        name=name  # Pass to client for its own backward compat handling
     )
 
-    if success:
-        return f"Successfully updated task {task_id}"
+    # Handle dict return from client (NEW API)
+    if result["success"]:
+        fields = result["updated_fields"]
+        if len(fields) == 0:
+            return f"Successfully updated task {task_id} (no changes detected)"
+        elif len(fields) == 1:
+            return f"Successfully updated task {task_id}: {fields[0]}"
+        else:
+            fields_str = ", ".join(fields)
+            return f"Successfully updated task {task_id}: {fields_str}"
     else:
-        return f"Error: Failed to update task {task_id}"
+        error_msg = result.get("error", "Unknown error")
+        return f"Error updating task {task_id}: {error_msg}"
 
 
 @mcp.tool()

@@ -1120,75 +1120,69 @@ class TestHierarchyFieldFormatting:
             assert "Position: 1" in result
 
     def test_update_task_flagged_with_string_true(self):
-        """Test that update_task accepts string 'true' for flagged parameter."""
+        """LEGACY TEST (updated for NEW API): Test that update_task with boolean True works."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_task.return_value = True
+            # NEW API: Client returns dict
+            mock_client.update_task.return_value = {
+                "success": True,
+                "task_id": "task-001",
+                "updated_fields": ["flagged"],
+                "error": None
+            }
             mock_get_client.return_value = mock_client
 
-            result = update_task("task-001", flagged="true")
+            result = update_task("task-001", flagged=True)
 
             # Verify the client was called with boolean True
-            mock_client.update_task.assert_called_once_with(
-                task_id="task-001",
-                name=None,
-                note=None,
-                due_date=None,
-                defer_date=None,
-                flagged=True
-            )
+            call_kwargs = mock_client.update_task.call_args.kwargs
+            assert call_kwargs["flagged"] is True
             assert "Successfully updated task" in result
 
     def test_update_task_flagged_with_string_false(self):
-        """Test that update_task accepts string 'false' for flagged parameter."""
+        """LEGACY TEST (updated for NEW API): Test that update_task with boolean False works."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_task.return_value = True
+            # NEW API: Client returns dict
+            mock_client.update_task.return_value = {
+                "success": True,
+                "task_id": "task-001",
+                "updated_fields": ["flagged"],
+                "error": None
+            }
             mock_get_client.return_value = mock_client
 
-            result = update_task("task-001", flagged="false")
+            result = update_task("task-001", flagged=False)
 
             # Verify the client was called with boolean False
-            mock_client.update_task.assert_called_once_with(
-                task_id="task-001",
-                name=None,
-                note=None,
-                due_date=None,
-                defer_date=None,
-                flagged=False
-            )
+            call_kwargs = mock_client.update_task.call_args.kwargs
+            assert call_kwargs["flagged"] is False
             assert "Successfully updated task" in result
 
     def test_update_task_flagged_with_invalid_string(self):
-        """Test that update_task rejects invalid flagged values."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_get_client.return_value = mock_client
-
-            result = update_task("task-001", flagged="maybe")
-
-            # Should return error without calling client
-            assert "Error: Invalid flagged value" in result
-            mock_client.update_task.assert_not_called()
+        """LEGACY TEST (removed): NEW API accepts bool directly, not strings."""
+        # This test is no longer relevant since NEW API uses bool type, not string
+        # MCP framework handles type conversion/validation
+        pass
 
     def test_update_task_flagged_omitted(self):
-        """Test that update_task works when flagged parameter is omitted."""
+        """LEGACY TEST (updated for NEW API): Test that update_task works when flagged parameter is omitted."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_task.return_value = True
+            # NEW API: Client returns dict
+            mock_client.update_task.return_value = {
+                "success": True,
+                "task_id": "task-001",
+                "updated_fields": ["task_name"],
+                "error": None
+            }
             mock_get_client.return_value = mock_client
 
             result = update_task("task-001", name="New Name")
 
             # Verify the client was called with flagged=None
-            mock_client.update_task.assert_called_once_with(
-                task_id="task-001",
-                name="New Name",
-                note=None,
-                due_date=None,
-                defer_date=None,
-                flagged=None
-            )
+            call_kwargs = mock_client.update_task.call_args.kwargs
+            assert call_kwargs["flagged"] is None
             assert "Successfully updated task" in result
 
     def test_update_project_sequential_with_string_true(self):

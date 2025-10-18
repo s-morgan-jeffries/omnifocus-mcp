@@ -215,7 +215,7 @@ class TestRealOmniFocusWriteOperations:
         print("\n✓ Successfully completed task")
 
     def test_update_task_real(self, client, test_project_id):
-        """Test updating a task in real OmniFocus."""
+        """Test updating a task in real OmniFocus (UPDATED for NEW API dict return)."""
         # First, add a task to update
         client.add_task(test_project_id, "Task to Update")
 
@@ -223,17 +223,19 @@ class TestRealOmniFocusWriteOperations:
         tasks = client.get_tasks(project_id=test_project_id)
         task_to_update = next(t for t in tasks if t['name'] == "Task to Update")
 
-        # Update it
+        # Update it (NEW API: returns dict)
         result = client.update_task(
             task_to_update['id'],
-            name="Updated Task Name",
+            task_name="Updated Task Name",
             note="This task was updated by integration test"
         )
-        assert result is True
+        assert result["success"] is True
+        assert "task_name" in result["updated_fields"]
+        assert "note" in result["updated_fields"]
         print("\n✓ Successfully updated task")
 
     def test_update_task_flag(self, client, test_project_id):
-        """Test setting and unsetting the flagged status on a task."""
+        """Test setting and unsetting the flagged status on a task (UPDATED for NEW API dict return)."""
         # Create a task (unflagged by default)
         client.add_task(test_project_id, "Task for Flag Test", flagged=False)
 
@@ -245,9 +247,10 @@ class TestRealOmniFocusWriteOperations:
         assert task['flagged'] is False
         print("\n✓ Task initially unflagged")
 
-        # Set flag to True
+        # Set flag to True (NEW API: returns dict)
         result = client.update_task(task['id'], flagged=True)
-        assert result is True
+        assert result["success"] is True
+        assert "flagged" in result["updated_fields"]
 
         # Verify flag was set
         tasks = client.get_tasks(project_id=test_project_id)
@@ -255,9 +258,10 @@ class TestRealOmniFocusWriteOperations:
         assert task['flagged'] is True
         print("✓ Successfully set flag to True")
 
-        # Unset flag back to False
+        # Unset flag back to False (NEW API: returns dict)
         result = client.update_task(task['id'], flagged=False)
-        assert result is True
+        assert result["success"] is True
+        assert "flagged" in result["updated_fields"]
 
         # Verify flag was unset
         tasks = client.get_tasks(project_id=test_project_id)
