@@ -21,7 +21,8 @@ test-unit:
 	./venv/bin/pytest tests/test_omnifocus_client.py tests/test_server_fastmcp.py
 
 test-integration:
-	./venv/bin/pytest tests/test_integration_real.py
+	OMNIFOCUS_TEST_MODE=true OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus" \
+	./venv/bin/pytest tests/test_integration_real.py -v
 
 test-verbose:
 	./venv/bin/pytest tests/ -v --tb=long

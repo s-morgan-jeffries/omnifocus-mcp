@@ -1661,9 +1661,7 @@ class OmniFocusClient:
                 tell front document
                     try
                         -- Create new task in inbox
-                        tell inbox
-                            set newTask to make new task with properties {{{properties_str}}}
-                        end tell
+                        set newTask to make new inbox task with properties {{{properties_str}}}
 
                         -- Set dates if provided
                         {date_commands_str if date_commands else ""}
