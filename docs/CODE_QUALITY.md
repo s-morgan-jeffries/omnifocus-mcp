@@ -59,12 +59,13 @@ Physical lines, logical lines, source lines, comments.
 
 ### omnifocus_client.py
 - **Average Complexity**: B (~8.5) ✅
-- **Total Functions**: 53
+- **Total Functions**: 54
 - **High Complexity Functions**:
   - `get_tasks()` - **F (66)** - Intentionally complex (documented)
   - `update_task()` - **F (49)** - Intentionally complex (documented) - **INCREASED from D (27) due to API redesign**
   - `get_projects()` - **D (23)** - Intentionally complex (documented)
-  - `update_project()` - **D (22)** - Intentionally complex (documented) - **NEW in Phase 2**
+  - `update_project()` - **D (22)** - Intentionally complex (documented) - **NEW in Phase 2.1**
+  - `update_projects()` - **C (12)** - Acceptable batch function - **NEW in Phase 2.2**
 
 ### server_fastmcp.py
 - **Average Complexity**: A (3.8) ✅ Excellent!

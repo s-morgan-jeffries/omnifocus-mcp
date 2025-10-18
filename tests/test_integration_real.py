@@ -699,6 +699,47 @@ class TestProjectCRUD:
         # NOTE: reviewInterval retrieval has a bug (returns None)
         # Just verify the operation succeeded
 
+    def test_update_projects_batch_integration(self, client):
+        """Integration: update_projects() can update multiple projects at once."""
+        # Create test projects
+        project_id_1 = client.create_project("Batch Update Test 1")
+        project_id_2 = client.create_project("Batch Update Test 2")
+        project_id_3 = client.create_project("Batch Update Test 3")
+
+        # Batch update status
+        result = client.update_projects(
+            [project_id_1, project_id_2, project_id_3],
+            status="on_hold"
+        )
+
+        assert result["updated_count"] == 3
+        assert result["failed_count"] == 0
+        assert len(result["updated_ids"]) == 3
+        print(f"\n✓ Batch updated 3 projects: {result}")
+
+        # Verify all were updated
+        proj1 = client.get_project(project_id_1)
+        proj2 = client.get_project(project_id_2)
+        proj3 = client.get_project(project_id_3)
+        assert proj1['status'] == 'on hold status'
+        assert proj2['status'] == 'on hold status'
+        assert proj3['status'] == 'on hold status'
+
+    def test_update_projects_single_id_string_integration(self, client):
+        """Integration: update_projects() accepts single ID as string (Union type)."""
+        project_id = client.create_project("Single ID Test")
+
+        # Use single string, not list
+        result = client.update_projects(project_id, sequential=True)
+
+        assert result["updated_count"] == 1
+        assert result["failed_count"] == 0
+        print(f"\n✓ Single ID update: {result}")
+
+        # Verify
+        project = client.get_project(project_id)
+        assert project['sequential'] is True
+
     def test_delete_project(self, client):
         """Test deleting a single project."""
         # Create a project to delete

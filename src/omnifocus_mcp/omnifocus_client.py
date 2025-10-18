@@ -1451,6 +1451,128 @@ class OmniFocusClient:
                 "error": f"AppleScript error: {e.stderr}"
             }
 
+    def update_projects(
+        self,
+        project_ids: Union[str, list[str]],
+        folder_path: Optional[str] = None,
+        sequential: Optional[bool] = None,
+        status: Optional[Union[ProjectStatus, str]] = None,
+        review_interval_weeks: Optional[int] = None,
+        last_reviewed: Optional[str] = None,
+        **kwargs  # Catch invalid parameters like project_name, note
+    ) -> dict:
+        """Update properties of multiple projects (NEW API - Phase 2, Batch Function).
+
+        This is the BATCH version of update_project(). It updates multiple projects
+        with the same values.
+
+        IMPORTANT: This function does NOT accept project_name or note parameters
+        because those require unique values for each project. Use update_project()
+        for those fields.
+
+        NEW API changes:
+        - Accepts Union[str, list[str]] for project_ids (single or batch)
+        - EXCLUDES project_name and note (require unique values)
+        - Returns dict with counts instead of success bool
+        - Continues processing even if some projects fail
+        - Consolidates: drop_projects() legacy function
+
+        Args:
+            project_ids: Single project ID (str) or list of project IDs
+            folder_path: Folder path to move projects to (e.g., "Work > Projects")
+            sequential: Sequential setting (optional)
+            status: Project status (ProjectStatus enum or string: "active", "on_hold", "done", "dropped")
+            review_interval_weeks: Review interval in weeks (0 to clear)
+            last_reviewed: Last review date ("now" or ISO format like "2025-01-15")
+
+        Returns:
+            dict: {
+                "updated_count": int,  # Number of successfully updated projects
+                "failed_count": int,    # Number of failed updates
+                "updated_ids": list[str],  # IDs of successfully updated projects
+                "failures": [{"project_id": str, "error": str}, ...]  # Failed updates with errors
+            }
+
+        Raises:
+            ValueError: If project_name or note parameters are provided, or no fields to update
+            TypeError: If project_ids is missing
+
+        Example:
+            # Drop multiple projects
+            result = client.update_projects(
+                ["proj-001", "proj-002", "proj-003"],
+                status="dropped"
+            )
+            # result = {"updated_count": 3, "failed_count": 0, "updated_ids": [...], "failures": []}
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('update_projects')
+
+        # Validate that project_name and note are NOT provided
+        if 'project_name' in kwargs:
+            raise ValueError(
+                "update_projects() does not accept 'project_name' parameter. "
+                "Project names require unique values - use update_project() for individual names."
+            )
+        if 'note' in kwargs:
+            raise ValueError(
+                "update_projects() does not accept 'note' parameter. "
+                "Notes require unique values - use update_project() for individual notes."
+            )
+
+        # Validate at least one field is provided
+        if (folder_path is None and sequential is None and status is None and
+                review_interval_weeks is None and last_reviewed is None):
+            raise ValueError("At least one field must be provided to update")
+
+        # Normalize project_ids to list
+        if isinstance(project_ids, str):
+            ids_list = [project_ids]
+        else:
+            ids_list = project_ids
+
+        # Track results
+        updated_count = 0
+        failed_count = 0
+        updated_ids: list[str] = []
+        failures: list[dict] = []
+
+        # Update each project individually
+        for project_id in ids_list:
+            try:
+                result = self.update_project(
+                    project_id=project_id,
+                    folder_path=folder_path,
+                    sequential=sequential,
+                    status=status,
+                    review_interval_weeks=review_interval_weeks,
+                    last_reviewed=last_reviewed
+                )
+
+                if result["success"]:
+                    updated_count += 1
+                    updated_ids.append(project_id)
+                else:
+                    failed_count += 1
+                    failures.append({
+                        "project_id": project_id,
+                        "error": result.get("error", "Unknown error")
+                    })
+
+            except Exception as e:
+                failed_count += 1
+                failures.append({
+                    "project_id": project_id,
+                    "error": str(e)
+                })
+
+        return {
+            "updated_count": updated_count,
+            "failed_count": failed_count,
+            "updated_ids": updated_ids,
+            "failures": failures
+        }
+
     def set_project_status(self, project_id: str, status: str) -> bool:
         """Set the status of a project.
 

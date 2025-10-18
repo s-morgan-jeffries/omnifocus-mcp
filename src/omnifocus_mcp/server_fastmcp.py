@@ -279,6 +279,97 @@ def update_project(
 
 
 @mcp.tool()
+def update_projects(
+    project_ids: Union[str, list[str]],
+    folder_path: Optional[str] = None,
+    sequential: Optional[str] = None,
+    status: Optional[str] = None,
+    review_interval_weeks: Optional[int] = None,
+    last_reviewed: Optional[str] = None
+) -> str:
+    """Update multiple projects with the same properties (NEW API - Phase 2, Batch Function).
+
+    This is the BATCH version of update_project(). It updates multiple projects
+    with the same values. This is more efficient than calling update_project()
+    multiple times.
+
+    IMPORTANT: This function does NOT accept project_name or note parameters
+    because those require unique values for each project.
+
+    Args:
+        project_ids: Single project ID (str) or list of project IDs to update
+        folder_path: Folder path to move projects to (e.g., "Work > Projects")
+        sequential: Sequential setting as string ("true" or "false")
+        status: Project status - one of: "active", "on_hold", "done", "dropped"
+        review_interval_weeks: Review interval in weeks
+        last_reviewed: Last review date ("now" or ISO format like "2025-01-15")
+
+    Returns:
+        Success message with updated and failed counts, or error message
+
+    Example:
+        # Drop multiple projects at once
+        update_projects(
+            project_ids=["proj-001", "proj-002", "proj-003"],
+            status="dropped"
+        )
+    """
+    # Convert sequential parameter to boolean for client (handle both string and bool)
+    sequential_bool: Optional[bool] = None
+    if sequential is not None:
+        if isinstance(sequential, bool):
+            # Direct boolean (from tests or Python calls)
+            sequential_bool = sequential
+        elif isinstance(sequential, str):
+            # String from MCP (Claude passes strings)
+            if sequential.lower() == "true":
+                sequential_bool = True
+            elif sequential.lower() == "false":
+                sequential_bool = False
+            else:
+                return f"Error: Invalid sequential value '{sequential}'. Must be 'true' or 'false'."
+
+    try:
+        client = get_client()
+        result = client.update_projects(
+            project_ids=project_ids,
+            folder_path=folder_path,
+            sequential=sequential_bool,
+            status=status,
+            review_interval_weeks=review_interval_weeks,
+            last_reviewed=last_reviewed
+        )
+
+        # Handle dict return from client
+        updated_count = result["updated_count"]
+        failed_count = result["failed_count"]
+        failures = result["failures"]
+
+        if failed_count == 0:
+            # All succeeded
+            if updated_count == 1:
+                return f"Successfully updated 1 project"
+            else:
+                return f"Successfully updated {updated_count} projects"
+        elif updated_count == 0:
+            # All failed
+            error_details = "; ".join([f"{f['project_id']}: {f['error']}" for f in failures])
+            return f"Error: Failed to update {failed_count} projects. {error_details}"
+        else:
+            # Partial success
+            error_details = "; ".join([f"{f['project_id']}: {f['error']}" for f in failures])
+            return (f"Partially updated: {updated_count} succeeded, {failed_count} failed. "
+                   f"Failures: {error_details}")
+
+    except ValueError as e:
+        # Parameter validation errors
+        return f"Error: {str(e)}"
+    except Exception as e:
+        # Other errors
+        return f"Error updating projects: {str(e)}"
+
+
+@mcp.tool()
 def set_project_status(project_id: str, status: str) -> str:
     """Change a project's status to active, on hold, done, or dropped.
 

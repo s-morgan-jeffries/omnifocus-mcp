@@ -404,3 +404,56 @@ class TestUpdateProjectE2E:
         assert "error" in result.lower() or "failed" in result.lower()
 
         print(f"\n✓ E2E update_project error handling: {result}")
+
+
+# ============================================================================
+# E2E Tests for update_projects() (NEW API - Phase 2, Function 2.2)
+# ============================================================================
+
+class TestUpdateProjectsE2E:
+    """E2E tests for update_projects() MCP tool with real OmniFocus.
+
+    Tests the full stack:
+    MCP tool → client.update_projects() → AppleScript → OmniFocus
+    """
+
+    def test_update_projects_batch_e2e(self):
+        """E2E: Update multiple projects via MCP tool."""
+        from omnifocus_mcp.omnifocus_client import OmniFocusClient
+        import omnifocus_mcp.server_fastmcp as server
+
+        # Create test projects
+        client = OmniFocusClient(enable_safety_checks=True)
+        proj_id_1 = client.create_project("E2E Batch 1")
+        proj_id_2 = client.create_project("E2E Batch 2")
+
+        # Call the MCP tool
+        update_projects = server.update_projects.fn
+        result = update_projects(
+            project_ids=[proj_id_1, proj_id_2],
+            status="on_hold"
+        )
+
+        # Verify MCP tool returns human-readable response
+        assert isinstance(result, str)
+        assert "2" in result  # Should mention 2 projects
+        assert "success" in result.lower() or "updated" in result.lower()
+
+        print(f"\n✓ E2E update_projects batch: {result}")
+
+    def test_update_projects_single_id_e2e(self):
+        """E2E: Update single project ID as string via MCP tool (Union type)."""
+        from omnifocus_mcp.omnifocus_client import OmniFocusClient
+        import omnifocus_mcp.server_fastmcp as server
+
+        client = OmniFocusClient(enable_safety_checks=True)
+        proj_id = client.create_project("E2E Single ID")
+
+        update_projects = server.update_projects.fn
+        result = update_projects(project_ids=proj_id, sequential="true")
+
+        assert isinstance(result, str)
+        assert "1" in result  # Should mention 1 project
+        assert "success" in result.lower() or "updated" in result.lower()
+
+        print(f"\n✓ E2E update_projects single ID: {result}")
