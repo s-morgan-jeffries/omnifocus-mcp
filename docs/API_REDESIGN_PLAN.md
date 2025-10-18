@@ -28,6 +28,39 @@
 
 ### 📋 REMAINING WORK
 
+## TDD Implementation Checklist (CRITICAL!)
+
+**For EVERY function, follow this complete TDD cycle:**
+
+### Client Layer (omnifocus_client.py)
+1. ✅ **Write client tests FIRST** - Unit tests with mocked AppleScript
+2. ✅ **Run tests → Confirm FAIL** - Tests should fail (function not implemented)
+3. ✅ **Implement client function** - Add/enhance function in omnifocus_client.py
+4. ✅ **Run tests → Confirm PASS** - All tests should pass
+5. ✅ **Check complexity** - Run `./scripts/check_complexity.sh`
+
+### Server Layer (server_fastmcp.py)
+6. ✅ **Write server tests FIRST** - MCP tool tests with mocked client
+7. ✅ **Run tests → Confirm FAIL** - Tests should fail (MCP tool not updated)
+8. ✅ **Implement/update MCP tool** - Add/enhance @mcp.tool() function
+9. ✅ **Run tests → Confirm PASS** - All tests should pass
+
+### Integration Layer (test_integration_real.py)
+10. ✅ **Write/update integration tests** - Tests against real OmniFocus (or mark skipped)
+11. ✅ **Run integration tests** - If test database available, run and verify
+
+### Documentation
+12. ✅ **Update CODE_QUALITY.md** - If complexity is D/F, document rationale
+13. ✅ **Update this plan** - Mark function as complete
+
+### Commit
+14. ✅ **Commit all layers together** - Client + Server + Tests in one commit
+
+**⚠️ NEVER skip steps 6-9 (server layer)!**
+**⚠️ NEVER skip steps 10-11 (integration tests)!**
+
+---
+
 ## Implementation Order & Analysis
 
 ---
@@ -75,14 +108,26 @@ def update_tasks(
 ```
 
 **Test Strategy:**
+
+**Client Tests (test_api_redesign_update.py):** ~15 tests
 - Test single ID (Union type handling)
 - Test multiple IDs
 - Test partial failures (continue processing)
 - Test all field combinations
 - Test conflict validation (project_id vs parent_task_id, tags vs add_tags)
-- Test that task_name/note are NOT accepted
+- Test that task_name/note are NOT accepted (ValueError)
+- Test dict return format with counts
 
-**Estimated Tests:** ~15 new tests
+**Server Tests (test_server_redesign_update.py):** ~10 tests
+- Test single ID string (Union type)
+- Test list of IDs
+- Test all field combinations
+- Test dict handling from client
+- Test formatted response for Claude
+
+**Integration Tests (test_integration_real.py):** ~2 tests
+- Test batch update with real OmniFocus
+- Test partial failures in real environment
 
 ---
 
@@ -105,13 +150,21 @@ def delete_tasks(
 **Change Needed:** Add Union[str, list[str]] support
 
 **Test Strategy:**
-- Test single ID string
+
+**Client Tests:** ~5 tests
+- Test single ID string (Union type)
 - Test list of IDs
-- Test empty list
+- Test empty list handling
 - Test partial failures
 - Test not found errors
 
-**Estimated Tests:** ~5 new tests (modify existing)
+**Server Tests:** ~3 tests
+- Test single ID via MCP
+- Test list of IDs via MCP
+- Test error handling
+
+**Integration Tests:** ~1 test
+- Test deletion with real OmniFocus
 
 ---
 
@@ -144,13 +197,23 @@ def create_task(
 - Remove create_inbox_task() function
 
 **Test Strategy:**
+
+**Client Tests:** ~8 tests
 - Test creation in project
 - Test creation in inbox (project_id=None)
 - Test with parent_task_id
-- Test conflict (project_id + parent_task_id)
+- Test conflict (project_id + parent_task_id) → ValueError
 - Test all optional fields
 
-**Estimated Tests:** ~8 new tests
+**Server Tests:** ~5 tests
+- Test MCP tool with project_id
+- Test MCP tool with project_id=None (inbox)
+- Test parent_task_id
+- Test all optional parameters
+
+**Integration Tests:** ~2 tests
+- Test real creation in project
+- Test real creation in inbox
 
 ---
 
@@ -192,13 +255,23 @@ def update_project(
 ```
 
 **Test Strategy:**
+
+**Client Tests:** ~15 tests
 - Test all new fields (status, review_interval, last_reviewed)
 - Test status enum and string acceptance
 - Test multiple field updates
 - Test error handling
-- Similar to update_task() testing
+- Test dict return format
 
-**Estimated Tests:** ~15 new tests
+**Server Tests:** ~10 tests
+- Test all new parameters via MCP
+- Test status enum handling
+- Test dict handling from client
+- Test formatted response
+
+**Integration Tests:** ~2 tests
+- Test review_interval update with real OmniFocus
+- Test status changes in real environment
 
 ---
 
@@ -233,13 +306,23 @@ def update_projects(
 ```
 
 **Test Strategy:**
+
+**Client Tests:** ~12 tests
 - Test single ID (Union type)
 - Test multiple IDs
 - Test partial failures
 - Test all field combinations
-- Test that project_name/note are NOT accepted
+- Test that project_name/note are NOT accepted (ValueError)
 
-**Estimated Tests:** ~12 new tests
+**Server Tests:** ~8 tests
+- Test single ID via MCP
+- Test list of IDs
+- Test all field combinations
+- Test error handling
+
+**Integration Tests:** ~2 tests
+- Test batch project updates with real OmniFocus
+- Test partial failures
 
 ---
 
@@ -260,7 +343,19 @@ def delete_projects(
 
 **Change Needed:** Add Union type support
 
-**Estimated Tests:** ~5 new tests
+**Test Strategy:**
+
+**Client Tests:** ~5 tests
+- Test single ID (Union type)
+- Test list of IDs
+- Test partial failures
+
+**Server Tests:** ~3 tests
+- Test single ID via MCP
+- Test list of IDs via MCP
+
+**Integration Tests:** ~1 test
+- Test deletion with real OmniFocus
 
 ---
 
@@ -283,7 +378,17 @@ def create_project(
 ) -> str
 ```
 
-**Estimated Tests:** ~3 new tests (if enhanced)
+**Test Strategy (if enhanced):**
+
+**Client Tests:** ~3 tests
+- Test new status parameter
+- Test new review_interval_weeks parameter
+
+**Server Tests:** ~2 tests
+- Test new parameters via MCP
+
+**Integration Tests:** ~1 test
+- Test enhanced creation with real OmniFocus
 
 ---
 
@@ -310,12 +415,21 @@ def get_tasks(
 - get_inbox_tasks() ✅ (via inbox_only parameter - already exists)
 
 **Test Strategy:**
+
+**Client Tests:** ~8 tests
 - Test task_id filter
 - Test parent_task_id filter
-- Test include_full_notes flag
+- Test include_full_notes flag (returns full note, not truncated)
 - Test combinations
 
-**Estimated Tests:** ~8 new tests
+**Server Tests:** ~5 tests
+- Test task_id parameter via MCP
+- Test parent_task_id parameter via MCP
+- Test include_full_notes flag
+
+**Integration Tests:** ~2 tests
+- Test task_id retrieval with real OmniFocus
+- Test include_full_notes with real OmniFocus
 
 ---
 
@@ -337,11 +451,18 @@ def get_projects(
 - get_note() ✅ (via include_full_notes parameter)
 
 **Test Strategy:**
+
+**Client Tests:** ~6 tests
 - Test project_id filter
 - Test include_full_notes flag
-- Test combinations with existing filters
+- Test combinations with existing filters (on_hold_only, query)
 
-**Estimated Tests:** ~6 new tests
+**Server Tests:** ~4 tests
+- Test project_id parameter via MCP
+- Test include_full_notes flag
+
+**Integration Tests:** ~1 test
+- Test project_id retrieval with real OmniFocus
 
 ---
 
@@ -487,21 +608,29 @@ All 27 corresponding @mcp.tool() decorated functions must be removed.
 
 ## Testing Summary
 
-**New Tests Needed:**
-- update_tasks(): ~15 tests
-- delete_tasks(): ~5 tests
-- create_task(): ~8 tests
-- update_project(): ~15 tests
-- update_projects(): ~12 tests
-- delete_projects(): ~5 tests
-- get_tasks() enhancements: ~8 tests
-- get_projects() enhancements: ~6 tests
+**CRITICAL: Every function must have ALL THREE layers tested!**
 
-**Total New Tests: ~74 tests**
+| Function | Client Tests | Server Tests | Integration Tests | Total |
+|----------|-------------|--------------|-------------------|-------|
+| update_tasks() | 15 | 10 | 2 | 27 |
+| delete_tasks() | 5 | 3 | 1 | 9 |
+| create_task() | 8 | 5 | 2 | 15 |
+| update_project() | 15 | 10 | 2 | 27 |
+| update_projects() | 12 | 8 | 2 | 22 |
+| delete_projects() | 5 | 3 | 1 | 9 |
+| create_project() (if enhanced) | 3 | 2 | 1 | 6 |
+| get_tasks() enhancements | 8 | 5 | 2 | 15 |
+| get_projects() enhancements | 6 | 4 | 1 | 11 |
+| **TOTAL** | **77** | **50** | **14** | **141 tests** |
 
 **Existing Tests to Update:**
 - Tests calling deprecated functions: ~100+ tests
-- Strategy: Add deprecation warnings, keep tests passing
+- Strategy: Update to use new dict return formats
+
+**Test Files:**
+- `tests/test_api_redesign_update.py` - Client layer tests
+- `tests/test_server_redesign_update.py` - Server layer tests
+- `tests/test_integration_real.py` - Integration tests (real OmniFocus)
 
 ---
 
