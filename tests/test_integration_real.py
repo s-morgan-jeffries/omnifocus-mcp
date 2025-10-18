@@ -520,14 +520,15 @@ class TestProjectCRUD:
         # Create a project to update
         project_id = client.create_project("Project to Update Name")
 
-        # Update the name
-        result = client.update_project(project_id, name="Updated Project Name")
-        assert result is True
-        print("\n✓ Updated project name")
+        # Update the name (NEW API uses project_name parameter)
+        result = client.update_project(project_id, project_name="Updated Project Name")
+        assert result["success"] is True  # NEW API returns dict
+        print(f"\n✓ Updated project name: {result}")
 
-        # Verify the change
-        project = client.get_project(project_id)
-        assert project['name'] == "Updated Project Name"
+        # Verify the change (NEW API uses get_projects with project_id filter)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        assert projects[0]['name'] == "Updated Project Name"
 
     def test_update_project_note(self, client):
         """Test updating project note."""
@@ -536,48 +537,53 @@ class TestProjectCRUD:
 
         # Update the note
         result = client.update_project(project_id, note="Updated note content")
-        assert result is True
-        print("\n✓ Updated project note")
+        assert result["success"] is True  # NEW API returns dict
+        print(f"\n✓ Updated project note: {result}")
 
-        # Verify the change
-        project = client.get_project(project_id)
-        assert project['note'] == "Updated note content"
+        # Verify the change (NEW API uses get_projects with project_id filter)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        assert projects[0]['note'] == "Updated note content"
 
     def test_update_project_sequential(self, client):
         """Test updating project sequential setting."""
         # Create a parallel project
         project_id = client.create_project("Project Sequential Test", sequential=False)
 
-        # Verify it's parallel
-        project = client.get_project(project_id)
-        assert project['sequential'] is False
+        # Verify it's parallel (NEW API uses get_projects with project_id filter)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        assert projects[0]['sequential'] is False
 
         # Change to sequential
         result = client.update_project(project_id, sequential=True)
-        assert result is True
-        print("\n✓ Updated project to sequential")
+        assert result["success"] is True  # NEW API returns dict
+        print(f"\n✓ Updated project to sequential: {result}")
 
         # Verify the change
-        project = client.get_project(project_id)
-        assert project['sequential'] is True
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        assert projects[0]['sequential'] is True
 
     def test_update_project_multiple_fields(self, client):
         """Test updating multiple project fields at once."""
         # Create a project
         project_id = client.create_project("Multi-field Update", note="Old note", sequential=False)
 
-        # Update multiple fields
+        # Update multiple fields (NEW API uses project_name instead of name)
         result = client.update_project(
             project_id,
-            name="New Multi-field Name",
+            project_name="New Multi-field Name",
             note="New note content",
             sequential=True
         )
-        assert result is True
-        print("\n✓ Updated multiple project fields")
+        assert result["success"] is True  # NEW API returns dict
+        print(f"\n✓ Updated multiple project fields: {result}")
 
-        # Verify all changes
-        project = client.get_project(project_id)
+        # Verify all changes (NEW API uses get_projects with project_id filter)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        project = projects[0]
         assert project['name'] == "New Multi-field Name"
         assert project['note'] == "New note content"
         assert project['sequential'] is True
@@ -587,13 +593,15 @@ class TestProjectCRUD:
         # Create a project with a note
         project_id = client.create_project("Note Preservation Test", note="Important note content")
 
-        # Update only the name (not the note)
-        result = client.update_project(project_id, name="Updated Name Only")
-        assert result is True
-        print("\n✓ Updated project name without touching note")
+        # Update only the name (not the note) - NEW API uses project_name
+        result = client.update_project(project_id, project_name="Updated Name Only")
+        assert result["success"] is True  # NEW API returns dict
+        print(f"\n✓ Updated project name without touching note: {result}")
 
-        # Verify note is preserved
-        project = client.get_project(project_id)
+        # Verify note is preserved (NEW API uses get_projects with project_id filter)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        project = projects[0]
         assert project['name'] == "Updated Name Only"
         assert project['note'] == "Important note content"
 
@@ -612,15 +620,19 @@ class TestProjectCRUD:
         assert "status" in result["updated_fields"]
         print(f"\n✓ Set project status to on_hold: {result}")
 
-        # Verify status was set
-        project = client.get_project(project_id)
-        # NOTE: get_project returns status with " status" suffix
+        # Verify status was set (NEW API uses get_projects with project_id filter)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        project = projects[0]
+        # NOTE: OmniFocus returns status with " status" suffix
         assert project['status'] == 'on hold status'
 
         # Set status to active
         result = client.update_project(project_id, status="active")
         assert result["success"] is True
-        project = client.get_project(project_id)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        project = projects[0]
         assert project['status'] == 'active status'
         print("\n✓ Changed status to active")
 
@@ -635,12 +647,13 @@ class TestProjectCRUD:
         print(f"\n✓ Set review interval to 2 weeks: {result}")
 
         # NOTE: reviewInterval retrieval currently has a bug (returns None)
-        # The interval IS set correctly (verified manually), but get_project()
+        # The interval IS set correctly (verified manually), but get_projects()
         # doesn't parse the {unit:week, steps:N, fixed:true} record format
         # For now, we just verify the operation succeeded
-        project = client.get_project(project_id)
-        # TODO: Fix get_project() to parse review interval correctly
-        # assert project['reviewInterval'] == "2 weeks"
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        # TODO: Fix get_projects() to parse review interval correctly
+        # assert projects[0]['reviewInterval'] == "2 weeks"
 
     def test_update_project_mark_reviewed_integration(self, client):
         """Integration: update_project() can mark project as reviewed."""
@@ -653,9 +666,14 @@ class TestProjectCRUD:
         print(f"\n✓ Marked project as reviewed: {result}")
 
         # Verify last_reviewed was set (should be a date string)
-        project = client.get_project(project_id)
-        assert project['lastReviewDate'] is not None
-        assert len(project['lastReviewDate']) > 0
+        # NEW API uses get_projects with project_id filter
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        project = projects[0]
+        # Field name is 'last_reviewed' not 'lastReviewDate' in NEW API
+        assert project.get('last_reviewed') is not None or project.get('lastReviewDate') is not None
+        last_review = project.get('last_reviewed') or project.get('lastReviewDate')
+        assert len(last_review) > 0
 
     def test_update_project_move_to_folder_integration(self, client):
         """Integration: update_project() can move project to folder."""
@@ -670,7 +688,10 @@ class TestProjectCRUD:
         print(f"\n✓ Moved project to folder: {result}")
 
         # Verify project is in folder (folder path uses " > " delimiter)
-        project = client.get_project(project_id)
+        # NEW API uses get_projects with project_id filter
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        project = projects[0]
         assert "Test Folder Move" in project.get('folderPath', '')
 
     def test_update_project_multiple_new_fields_integration(self, client):
@@ -692,8 +713,10 @@ class TestProjectCRUD:
         assert "review_interval_weeks" in result["updated_fields"]
         print(f"\n✓ Updated {len(result['updated_fields'])} fields: {result['updated_fields']}")
 
-        # Verify all changes
-        project = client.get_project(project_id)
+        # Verify all changes (NEW API uses get_projects with project_id filter)
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        project = projects[0]
         assert project['name'] == "Multi-field Test Updated"
         assert project['status'] == 'active status'
         # NOTE: reviewInterval retrieval has a bug (returns None)
@@ -1578,9 +1601,10 @@ class TestGetProjectsParameterVariations:
         assert isinstance(on_hold, list)
 
         # If we have on-hold projects, verify they are actually on hold
+        # NOTE: OmniFocus returns status with " status" suffix
         if on_hold:
             for project in on_hold:
-                assert project['status'] == 'on hold'
+                assert project['status'] == 'on hold status'
 
         print(f"\n✓ Found {len(on_hold)} on-hold projects")
 
@@ -1781,10 +1805,12 @@ class TestUpdateTaskParameterVariations:
             due_date=due_date,
             defer_date=defer_date
         )
-        assert result is True
+        assert result["success"] is True  # NEW API returns dict
 
-        # Verify dates were updated
-        task = client.get_task(test_task)
+        # Verify dates were updated (NEW API uses get_tasks with task_id filter)
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        task = tasks[0]
         assert task.get('dueDate') is not None
         assert task.get('deferDate') is not None
 
@@ -1797,10 +1823,12 @@ class TestUpdateTaskParameterVariations:
 
         # Then clear them
         result = client.update_task(test_task, note="", flagged=False)
-        assert result is True
+        assert result["success"] is True  # NEW API returns dict
 
-        # Verify properties were cleared
-        task = client.get_task(test_task)
+        # Verify properties were cleared (NEW API uses get_tasks with task_id filter)
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        task = tasks[0]
         assert task.get('note', '') == ''
         assert task.get('flagged', False) is False
 
