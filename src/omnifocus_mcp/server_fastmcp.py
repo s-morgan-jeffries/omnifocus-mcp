@@ -1257,21 +1257,40 @@ def delete_tasks(task_ids: Union[str, list[str]]) -> str:
 
 
 @mcp.tool()
-def delete_projects(project_ids: list[str]) -> str:
-    """Delete multiple projects from OmniFocus in a single operation (batch operation for efficiency).
+def delete_projects(project_ids: Union[str, list[str]]) -> str:
+    """Delete one or more projects from OmniFocus (NEW API - Enhanced with Union type).
 
     WARNING: This permanently deletes the projects and all their tasks. Cannot be undone.
 
+    NEW API changes:
+    - Accepts Union[str, list[str]] for project_ids (single or multiple)
+    - Returns detailed summary with success/failure counts
+
     Args:
-        project_ids: List of project IDs to delete
+        project_ids: Single project ID (str) or list of project IDs to delete
 
     Returns:
         Summary of deleted projects with count and any errors encountered
     """
     client = get_client()
     try:
-        count = client.delete_projects(project_ids)
-        return f"Successfully deleted {count} of {len(project_ids)} projects"
+        result = client.delete_projects(project_ids)
+        deleted_count = result["deleted_count"]
+        failed_count = result["failed_count"]
+
+        # Determine total count
+        if isinstance(project_ids, str):
+            total_count = 1
+        else:
+            total_count = len(project_ids)
+
+        if failed_count == 0:
+            if deleted_count == 1:
+                return f"Successfully deleted 1 project"
+            else:
+                return f"Successfully deleted {deleted_count} projects"
+        else:
+            return f"Deleted {deleted_count} of {total_count} projects ({failed_count} failed)"
     except Exception as e:
         return f"Error deleting projects: {str(e)}"
 

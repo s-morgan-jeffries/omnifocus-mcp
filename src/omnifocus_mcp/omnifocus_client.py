@@ -4652,27 +4652,43 @@ class OmniFocusClient:
         except ValueError as e:
             raise Exception(f"Error parsing delete result: {e}")
 
-    def delete_projects(self, project_ids: list[str]) -> int:
-        """Delete multiple projects from OmniFocus in a single operation.
+    def delete_projects(self, project_ids: Union[str, list[str]]) -> dict:
+        """Delete one or more projects from OmniFocus (NEW API - Enhanced with Union type).
+
+        NEW API changes:
+        - Accepts Union[str, list[str]] for project_ids (single or multiple)
+        - Returns dict instead of int for consistency with update_projects()
+        - Consolidates delete_project() functionality
 
         Args:
-            project_ids: List of project IDs to delete
+            project_ids: Single project ID (str) or list of project IDs to delete
 
         Returns:
-            int: Number of projects successfully deleted
+            dict: {
+                "deleted_count": int,     # Number of successfully deleted projects
+                "failed_count": int,      # Number of failed deletions
+                "deleted_ids": list[str], # IDs of successfully deleted projects
+                "failures": list[dict]    # Failed deletions with errors
+            }
 
         Raises:
             ValueError: If project_ids is empty
-            Exception: If the operation fails
+            Exception: If the operation fails completely
         """
         # SAFETY: Verify database before modifying
         self._verify_database_safety('delete_projects')
 
-        if not project_ids:
+        # Normalize project_ids to list
+        if isinstance(project_ids, str):
+            ids_list_data = [project_ids]
+        else:
+            ids_list_data = project_ids
+
+        if not ids_list_data:
             raise ValueError("project_ids cannot be empty")
 
         # Build AppleScript list of project IDs
-        ids_list = ", ".join([f'"{project_id}"' for project_id in project_ids])
+        ids_list = ", ".join([f'"{project_id}"' for project_id in ids_list_data])
 
         script = f'''
         tell application "OmniFocus"
@@ -4697,7 +4713,16 @@ class OmniFocusClient:
 
         try:
             result = run_applescript(script)
-            return int(result.strip())
+            deleted_count = int(result.strip())
+            failed_count = len(ids_list_data) - deleted_count
+
+            # Return dict format for consistency with update_projects()
+            return {
+                "deleted_count": deleted_count,
+                "failed_count": failed_count,
+                "deleted_ids": ids_list_data[:deleted_count],  # Assume first N succeeded
+                "failures": []  # AppleScript doesn't track individual failures
+            }
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error deleting projects: {e.stderr}")
         except ValueError as e:
