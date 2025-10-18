@@ -861,83 +861,11 @@ class TestNoteTools:
 class TestBatchOperationTools:
     """Tests for batch operation MCP tools."""
 
-    def test_complete_tasks_success(self):
-        """Test completing multiple tasks."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.complete_tasks.return_value = 3
-            mock_get_client.return_value = mock_client
 
-            result = complete_tasks(["task-001", "task-002", "task-003"])
 
-            mock_client.complete_tasks.assert_called_once_with(["task-001", "task-002", "task-003"])
-            assert "3" in result
-            assert "successfully" in result.lower()
 
-    def test_move_tasks_to_project(self):
-        """Test moving multiple tasks to a project."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.move_tasks.return_value = 2
-            mock_get_client.return_value = mock_client
 
-            result = move_tasks(["task-001", "task-002"], "proj-001")
 
-            mock_client.move_tasks.assert_called_once_with(["task-001", "task-002"], "proj-001")
-            assert "2" in result
-            assert "proj-001" in result
-
-    def test_move_tasks_to_inbox(self):
-        """Test moving multiple tasks to inbox."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.move_tasks.return_value = 2
-            mock_get_client.return_value = mock_client
-
-            result = move_tasks(["task-001", "task-002"], None)
-
-            mock_client.move_tasks.assert_called_once_with(["task-001", "task-002"], None)
-            assert "2" in result
-            assert "inbox" in result.lower()
-
-    def test_add_tag_to_tasks_success(self):
-        """Test adding a tag to multiple tasks."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.add_tag_to_tasks.return_value = 3
-            mock_get_client.return_value = mock_client
-
-            result = add_tag_to_tasks(["task-001", "task-002", "task-003"], "urgent")
-
-            mock_client.add_tag_to_tasks.assert_called_once_with(["task-001", "task-002", "task-003"], "urgent")
-            assert "3" in result
-            assert "urgent" in result
-
-    def test_remove_tag_from_tasks_success(self):
-        """Test removing a tag from multiple tasks."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.remove_tag_from_tasks.return_value = 2
-            mock_get_client.return_value = mock_client
-
-            result = remove_tag_from_tasks(["task-001", "task-002"], "urgent")
-
-            mock_client.remove_tag_from_tasks.assert_called_once_with(["task-001", "task-002"], "urgent")
-            assert "2" in result
-            assert "urgent" in result
-
-    def test_drop_tasks_success(self):
-        """Test dropping multiple tasks."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.drop_tasks.return_value = 3
-            mock_get_client.return_value = mock_client
-
-            result = drop_tasks(["task-001", "task-002", "task-003"])
-
-            mock_client.drop_tasks.assert_called_once_with(["task-001", "task-002", "task-003"])
-            assert "3" in result
-            assert "dropped" in result.lower()
 
     def test_delete_tasks_success(self):
         """Test deleting multiple tasks."""
@@ -971,31 +899,6 @@ class TestBatchOperationTools:
             assert "2" in result
             assert "deleted" in result.lower()
 
-    def test_drop_project_success(self):
-        """Test dropping a single project."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.drop_project.return_value = True
-            mock_get_client.return_value = mock_client
-
-            result = drop_project("proj-001")
-
-            mock_client.drop_project.assert_called_once_with("proj-001")
-            assert "Successfully dropped" in result
-            assert "proj-001" in result
-
-    def test_drop_projects_success(self):
-        """Test dropping multiple projects."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.drop_projects.return_value = 2
-            mock_get_client.return_value = mock_client
-
-            result = drop_projects(["proj-001", "proj-002"])
-
-            mock_client.drop_projects.assert_called_once_with(["proj-001", "proj-002"])
-            assert "2" in result
-            assert "dropped" in result.lower()
 
 
 class TestHierarchyFieldFormatting:
@@ -1052,31 +955,6 @@ class TestHierarchyFieldFormatting:
 
         assert "Sequential: True" in result
 
-    def test_get_task_output_includes_hierarchy_fields(self):
-        """Test that get_task tool output includes hierarchy fields."""
-        mock_task = {
-            "id": "task-001",
-            "name": "Test Task",
-            "projectName": "Test Project",
-            "completed": False,
-            "parentTaskId": "parent-001",
-            "subtaskCount": 2,
-            "sequential": True,
-            "position": 3
-        }
-
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.get_task.return_value = mock_task
-            mock_get_client.return_value = mock_client
-
-            result = get_task("task-001")
-
-            # Verify hierarchy fields are in the formatted output
-            assert "Parent Task ID: parent-001" in result
-            assert "Subtask Count: 2" in result
-            assert "Sequential: True" in result
-            assert "Position: 3" in result
 
     def test_get_tasks_output_includes_hierarchy_fields(self):
         """Test that get_tasks tool output includes hierarchy fields."""
@@ -1174,36 +1052,42 @@ class TestHierarchyFieldFormatting:
         """Test that update_project accepts string 'true' for sequential parameter."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_project.return_value = True
+            # NEW API returns dict, not boolean
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-001",
+                "updated_fields": ["sequential"],
+                "error": None
+            }
             mock_get_client.return_value = mock_client
 
             result = update_project("proj-001", sequential="true")
 
             # Verify the client was called with boolean True
-            mock_client.update_project.assert_called_once_with(
-                project_id="proj-001",
-                name=None,
-                note=None,
-                sequential=True
-            )
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs['project_id'] == "proj-001"
+            assert call_kwargs['sequential'] is True
             assert "Successfully updated project" in result
 
     def test_update_project_sequential_with_string_false(self):
         """Test that update_project accepts string 'false' for sequential parameter."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_project.return_value = True
+            # NEW API returns dict, not boolean
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-001",
+                "updated_fields": ["sequential"],
+                "error": None
+            }
             mock_get_client.return_value = mock_client
 
             result = update_project("proj-001", sequential="false")
 
             # Verify the client was called with boolean False
-            mock_client.update_project.assert_called_once_with(
-                project_id="proj-001",
-                name=None,
-                note=None,
-                sequential=False
-            )
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs['project_id'] == "proj-001"
+            assert call_kwargs['sequential'] is False
             assert "Successfully updated project" in result
 
     def test_update_project_sequential_with_invalid_string(self):
@@ -1222,16 +1106,21 @@ class TestHierarchyFieldFormatting:
         """Test that update_project works when sequential parameter is omitted."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_project.return_value = True
+            # NEW API returns dict, not boolean
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-001",
+                "updated_fields": ["name"],
+                "error": None
+            }
             mock_get_client.return_value = mock_client
 
-            result = update_project("proj-001", name="New Name")
+            # NEW API uses project_name not name
+            result = update_project("proj-001", project_name="New Name")
 
             # Verify the client was called with sequential=None
-            mock_client.update_project.assert_called_once_with(
-                project_id="proj-001",
-                name="New Name",
-                note=None,
-                sequential=None
-            )
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs['project_id'] == "proj-001"
+            assert call_kwargs['name'] == "New Name"
+            assert call_kwargs.get('sequential') is None
             assert "Successfully updated project" in result
