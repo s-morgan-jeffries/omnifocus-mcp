@@ -15,24 +15,15 @@ fi
 echo "   Authoritative version (pyproject.toml): $VERSION"
 echo ""
 
-# Files to check
-declare -A FILES=(
-    [".claude/CLAUDE.md"]="Current Version.*v?$VERSION"
-    ["CHANGELOG.md"]="## \[$VERSION\]"
-    ["README.md"]="v$VERSION"
-)
-
 MISMATCHES=0
 MATCHED=0
 
-for FILE in "${!FILES[@]}"; do
-    PATTERN="${FILES[$FILE]}"
-
-    if [ ! -f "$FILE" ]; then
-        echo "⚠️  $FILE not found (skipping)"
-        continue
-    fi
-
+# Check .claude/CLAUDE.md
+FILE=".claude/CLAUDE.md"
+PATTERN="Current Version.*v?$VERSION"
+if [ ! -f "$FILE" ]; then
+    echo "⚠️  $FILE not found (skipping)"
+else
     if grep -qE "$PATTERN" "$FILE"; then
         echo "✅ $FILE: v$VERSION found"
         ((MATCHED++))
@@ -41,7 +32,39 @@ for FILE in "${!FILES[@]}"; do
         echo "   Expected pattern: $PATTERN"
         ((MISMATCHES++))
     fi
-done
+fi
+
+# Check CHANGELOG.md
+FILE="CHANGELOG.md"
+PATTERN="## \[$VERSION\]"
+if [ ! -f "$FILE" ]; then
+    echo "⚠️  $FILE not found (skipping)"
+else
+    if grep -qE "$PATTERN" "$FILE"; then
+        echo "✅ $FILE: v$VERSION found"
+        ((MATCHED++))
+    else
+        echo "❌ $FILE: v$VERSION NOT found"
+        echo "   Expected pattern: $PATTERN"
+        ((MISMATCHES++))
+    fi
+fi
+
+# Check README.md
+FILE="README.md"
+PATTERN="v$VERSION"
+if [ ! -f "$FILE" ]; then
+    echo "⚠️  $FILE not found (skipping)"
+else
+    if grep -qE "$PATTERN" "$FILE"; then
+        echo "✅ $FILE: v$VERSION found"
+        ((MATCHED++))
+    else
+        echo "❌ $FILE: v$VERSION NOT found"
+        echo "   Expected pattern: $PATTERN"
+        ((MISMATCHES++))
+    fi
+fi
 
 echo ""
 

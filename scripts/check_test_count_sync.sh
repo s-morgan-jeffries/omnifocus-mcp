@@ -4,8 +4,8 @@
 
 echo "🧪 Checking test count synchronization..."
 
-# Get actual test count from pytest
-ACTUAL_COUNT=$(pytest --collect-only -q 2>/dev/null | tail -1 | grep -o "[0-9]\+ tests\?" | grep -o "[0-9]\+")
+# Get actual test count from pytest (via make test)
+ACTUAL_COUNT=$(make test 2>&1 | grep "collected" | grep -o "[0-9]\+ items" | grep -o "[0-9]\+")
 
 if [ -z "$ACTUAL_COUNT" ]; then
     echo "❌ Could not determine actual test count"
