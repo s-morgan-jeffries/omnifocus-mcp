@@ -38,6 +38,8 @@
 ```
 ## [MISTAKE-XXX] Brief Title (Date: YYYY-MM-DD)
 
+**Status:** `open` | `fixing` | `prevention-pending` | `monitoring` | `resolved` | `archived`
+
 **Category:** [missing-tests | missing-exposure | violated-tdd | violated-architecture | missing-docs | complexity-spike | other]
 
 **Severity:** [critical | high | medium | low]
@@ -45,6 +47,10 @@
 - **High:** Missing major functionality, violates core principles
 - **Medium:** Incomplete implementation, future maintenance burden
 - **Low:** Minor oversight, easily fixed
+
+**Discovery Date:** YYYY-MM-DD
+**Introduced In:** [Commit hash or "Unknown"]
+**Recurrence Count:** 0
 
 **What Happened:**
 [Detailed description of the mistake]
@@ -62,12 +68,17 @@
 
 **Fix:**
 [What was done to fix it?]
+- **Resolved in commit:** [pending]
+- **Prevention implemented in:** [file:line or pending]
 
 **Prevention:**
 [What could prevent this in the future? CLAUDE.md update? Checklist addition? New tooling?]
+- **Prevention Status:** [ ] Not Started  [ ] Implemented  [ ] Validated
 
 **Related Mistakes:**
-[Links to similar mistakes, if any]
+[Links to similar mistakes: MISTAKE-XXX, MISTAKE-YYY]
+
+**Effectiveness Score:** [pending | effective ✅ | partially-effective ⚠️ | ineffective ❌]
 ```
 
 ---

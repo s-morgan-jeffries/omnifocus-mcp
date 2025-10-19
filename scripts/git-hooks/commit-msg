@@ -1,0 +1,52 @@
+#!/bin/bash
+# Git commit-msg hook to validate mistake tracking references
+#
+# Install: cp scripts/git-hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Check if commit message claims to resolve/fix/address a mistake
+if echo "$COMMIT_MSG" | grep -qiE "(resolves|fixes|addresses|closes).*mistake"; then
+    # Check if it has proper "Resolves: MISTAKE-XXX" format
+    if ! echo "$COMMIT_MSG" | grep -qE "Resolves: MISTAKE-[0-9]{3}"; then
+        echo "❌ Commit message mentions a mistake but lacks proper reference"
+        echo ""
+        echo "Found: $(echo "$COMMIT_MSG" | grep -iE "(resolves|fixes|addresses|closes).*mistake")"
+        echo ""
+        echo "Expected format: Resolves: MISTAKE-XXX"
+        echo ""
+        echo "Example:"
+        echo "  fix: prevent test count sync issues"
+        echo "  "
+        echo "  Resolves: MISTAKE-002"
+        echo ""
+        exit 1
+    fi
+
+    # Extract MISTAKE-XXX reference
+    MISTAKE_ID=$(echo "$COMMIT_MSG" | grep -oE "MISTAKE-[0-9]{3}" | head -1)
+
+    # Verify the mistake exists in MISTAKES.md
+    if [ ! -f ".claude/MISTAKES.md" ]; then
+        echo "⚠️  Warning: .claude/MISTAKES.md not found"
+        echo "   Cannot validate ${MISTAKE_ID} exists"
+        echo ""
+        echo "Proceeding anyway..."
+        exit 0
+    fi
+
+    if ! grep -q "\[${MISTAKE_ID}\]" ".claude/MISTAKES.md"; then
+        echo "❌ ${MISTAKE_ID} not found in .claude/MISTAKES.md"
+        echo ""
+        echo "Please ensure the mistake is logged before referencing it."
+        echo "Run: ./scripts/log_mistake.sh"
+        echo ""
+        exit 1
+    fi
+
+    echo "✅ Valid mistake reference: ${MISTAKE_ID}"
+fi
+
+# Success
+exit 0

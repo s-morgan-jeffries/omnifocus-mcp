@@ -16,9 +16,15 @@ DATE=$(date +%Y-%m-%d)
 TEMPLATE="
 ## [MISTAKE-$NEXT_NUM] TITLE_HERE (Date: $DATE)
 
+**Status:** open
+
 **Category:** [missing-tests | missing-exposure | violated-tdd | violated-architecture | missing-docs | complexity-spike | other]
 
 **Severity:** [critical | high | medium | low]
+
+**Discovery Date:** $DATE
+**Introduced In:** [Commit hash or Unknown]
+**Recurrence Count:** 0
 
 **What Happened:**
 
@@ -36,11 +42,17 @@ TEMPLATE="
 
 **Fix:**
 
+- **Resolved in commit:** pending
+- **Prevention implemented in:** pending
 
 **Prevention:**
 
+- **Prevention Status:** [ ] Not Started  [ ] Implemented  [ ] Validated
 
 **Related Mistakes:**
+
+
+**Effectiveness Score:** pending
 
 ---
 "
