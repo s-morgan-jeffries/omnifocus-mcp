@@ -4,6 +4,10 @@ Utility scripts for development, testing, and maintenance of the OmniFocus MCP s
 
 ## Quick Reference
 
+> **Note:** All mistake tracking scripts now reference `.claude/mistakes/MISTAKES.md` (moved from `.claude/MISTAKES.md` in October 2025 reorganization).
+
+> **Test Setup:** Use `setup_test_database.sh` for integration testing. The v1/v2 variants are archived in `scripts/archive/` as experimental approaches.
+
 ### Mistake Tracking & Prevention
 
 | Script | Purpose | When to Use |
@@ -31,13 +35,13 @@ Utility scripts for development, testing, and maintenance of the OmniFocus MCP s
 
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
-| `setup_test_database.sh` | Create OmniFocus test database | First-time integration test setup |
-| `setup_clean_test_database.sh` | Create minimal test database | Integration test setup (v1) |
-| `setup_clean_test_database_v2.sh` | Create minimal test database | Integration test setup (v2) |
+| `setup_test_database.sh` | Create OmniFocus test database (PRIMARY) | First-time integration test setup |
 | `setup_comprehensive_test_data.sh` | Populate test database with data | Integration test data setup |
 | `cleanup_test_data.sh` | Remove test data from database | After integration tests |
 | `cleanup_comprehensive_test_data.sh` | Remove comprehensive test data | After comprehensive tests |
 | `run_integration_tests.sh` | Run integration tests with setup | Full integration test workflow |
+
+**Archived:** `setup_clean_test_database.sh` (v1) and `setup_clean_test_database_v2.sh` (v2) are in `scripts/archive/` - use `setup_test_database.sh` instead.
 
 ---
 
