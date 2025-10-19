@@ -494,5 +494,3 @@ For application-layer features:
 5. **Multi-user:** Individual-focused (as OmniFocus is)
 
 ---
-
-*This roadmap reflects the completed Phase 1 implementation. See [MCP_ROADMAP.md](MCP_ROADMAP.md) for future MCP server enhancements.*

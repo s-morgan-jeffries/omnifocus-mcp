@@ -48,37 +48,39 @@ The OmniFocus client includes multi-layer safety guards to prevent accidental co
    - Before each destructive operation, AppleScript verifies the active database name
    - Operations are blocked if the name doesn't match expectations
 
-**Protected Operations:**
-- `add_task`
-- `add_note`
-- `complete_task`
+**Protected Operations (v0.6.0 API):**
+- `create_task`
+- `create_project`
 - `update_task`
-- `create_inbox_task`
-- `add_tag_to_task`
+- `update_tasks`
+- `update_project`
+- `update_projects`
+- `delete_tasks`
+- `delete_projects`
 
 **Read-Only Operations** (always allowed):
 - `get_projects`
-- `search_projects`
 - `get_tasks`
-- `get_inbox_tasks`
 - `get_tags`
+- `get_folders`
+- `get_perspectives`
 
 ### How Safety Guards Work
 
 ```python
 # WITHOUT test mode - operations are blocked
 client = OmniFocusClient(enable_safety_checks=True)
-client.add_task(...)  # ❌ Raises DatabaseSafetyError
+client.create_task(...)  # ❌ Raises DatabaseSafetyError
 
 # WITH test mode - operations verify database name
 export OMNIFOCUS_TEST_MODE=true
 export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
 client = OmniFocusClient(enable_safety_checks=True)
-client.add_task(...)  # ✅ Verifies database, then proceeds
+client.create_task(...)  # ✅ Verifies database, then proceeds
 
 # For unit tests with mocked AppleScript
 client = OmniFocusClient(enable_safety_checks=False)
-client.add_task(...)  # ✅ No safety checks (for testing only!)
+client.create_task(...)  # ✅ No safety checks (for testing only!)
 ```
 
 ## Running Tests
@@ -96,7 +98,7 @@ pytest tests/ --cov=src/omnifocus_mcp --cov-report=term-missing
 pytest tests/test_omnifocus_client.py -v
 
 # Run specific test
-pytest tests/test_omnifocus_client.py::TestOmniFocusClient::test_add_task_success -v
+pytest tests/test_omnifocus_client.py::TestOmniFocusClient::test_create_task_success -v
 ```
 
 ### Safety Guard Tests
@@ -145,55 +147,51 @@ Tests individual client methods with mocked AppleScript execution.
 **Coverage**: 79 tests
 - AppleScript execution
 - Project operations (get, search)
-- Task operations (get, add, complete, update)
+- Task operations (get, create, update, delete)
 - Inbox operations
 - Tag operations
 - Edge cases (Unicode, special characters, long strings)
 - Error handling
 
-**Example:**
+**Example (v0.6.0 API):**
 ```python
-def test_add_task_success(self, client):
-    """Test successful task addition."""
+def test_create_task_success(self, client):
+    """Test successful task creation."""
     with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
-        mock_run.return_value = "true"
-        result = client.add_task("proj-001", "New Task", "Task note")
-        assert result is True
+        mock_run.return_value = json.dumps({"success": True, "task_id": "task-001"})
+        result = client.create_task(task_name="New Task", project_id="proj-001", note="Task note")
+        assert result["success"] is True
 ```
 
 ### FastMCP Server Tests (`test_server_fastmcp.py`)
 
 Tests MCP tool functions with mocked client.
 
-**Coverage**: 33 tests
-- Get client singleton pattern (3 tests)
-- Project tools (5 tests): get, search, create with folder
-- Task tools (8 tests): get with filters, add, complete, delete, move
-- Inbox tools (2 tests): get, create
-- Folder tools (3 tests): get, create, set parent task
-- Review tools (3 tests): set interval, mark reviewed, get due for review
-- Time estimation (2 tests): set, clear
-- Perspective tools (2 tests): get, switch
-- Tag tools (2 tests): get, add to task
-- Note tools (4 tests): add note, get note (project/task/empty)
-- **Coverage**: 73% of server_fastmcp.py
+**Coverage**: Tests for MCP tool layer (v0.6.0 API)
+- Get client singleton pattern
+- Project tools: get_projects, create_project, update_project, update_projects, delete_projects
+- Task tools: get_tasks, create_task, update_task, update_tasks, delete_tasks, reorder_task
+- Folder tools: get_folders, create_folder
+- Perspective tools: get_perspectives, switch_perspective
+- Tag tools: get_tags
+- **Coverage**: Server layer wrapping client functions
 
-**Example:**
+**Example (v0.6.0 API):**
 ```python
-async def test_full_flow_search_then_add_task(self):
-    """Test searching for a project and then adding a task to it."""
+async def test_full_flow_get_project_then_create_task(self):
+    """Test getting a project and then creating a task in it."""
     with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
-        # Search
+        # Get project
         mock_run.return_value = json.dumps([{"id": "proj-001", "name": "Project"}])
-        search_result = await server.call_tool("search_projects", {"query": "test"})
+        project_result = await server.call_tool("get_projects", {"query": "test"})
 
-        # Add task
-        mock_run.return_value = "true"
-        add_result = await server.call_tool("add_task", {
+        # Create task
+        mock_run.return_value = json.dumps({"success": True, "task_id": "task-001"})
+        create_result = await server.call_tool("create_task", {
             "project_id": "proj-001",
             "task_name": "Test Task"
         })
-        assert "Successfully added task" in add_result[0].text
+        assert create_result["success"] is True
 ```
 
 ### Safety Guard Tests (`test_safety_guards.py`)
@@ -207,12 +205,12 @@ Tests that verify the database safety system works correctly.
 - Safety checks can be disabled for unit tests
 - Read-only operations always allowed
 
-**Example:**
+**Example (v0.6.0 API):**
 ```python
-def test_add_task_blocked_without_test_mode(self, client_with_safety):
-    """Test that add_task is blocked without test mode."""
+def test_create_task_blocked_without_test_mode(self, client_with_safety):
+    """Test that create_task is blocked without test mode."""
     with pytest.raises(DatabaseSafetyError) as exc_info:
-        client_with_safety.add_task("proj-001", "Task Name")
+        client_with_safety.create_task(task_name="Task Name", project_id="proj-001")
     assert "Cannot perform destructive operation" in str(exc_info.value)
 ```
 
@@ -228,16 +226,16 @@ Tests that interact with actual OmniFocus via AppleScript.
 - Real tag operations
 - Safety guard verification with real database
 
-**Example:**
+**Example (v0.6.0 API):**
 ```python
-def test_add_task_real(self, client, test_project_id):
-    """Test adding a task to real OmniFocus."""
-    result = client.add_task(
-        test_project_id,
-        "Integration Test Task",
+def test_create_task_real(self, client, test_project_id):
+    """Test creating a task in real OmniFocus."""
+    result = client.create_task(
+        task_name="Integration Test Task",
+        project_id=test_project_id,
         note="Created by integration test"
     )
-    assert result is True
+    assert result["success"] is True
 
     # Verify it was created
     tasks = client.get_tasks(project_id=test_project_id)
