@@ -4,12 +4,30 @@ Utility scripts for development, testing, and maintenance of the OmniFocus MCP s
 
 ## Quick Reference
 
+### Mistake Tracking & Prevention
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `log_mistake.sh` | Log architectural mistakes for tracking | When catching high-level mistakes |
+| `update_mistake_status.sh` | Update mistake lifecycle status | During mistake resolution |
+| `update_metrics.sh` | Update METRICS.md statistics | After mistake changes |
+| `verify_prevention.sh` | Validate prevention implementation | Before marking mistake resolved |
+| `check_version_sync.sh` | Validate version across all files | Before version bumps / releases |
+| `check_test_count_sync.sh` | Validate TESTING.md matches pytest | Before commits with test changes |
+| `install-git-hooks.sh` | Install pre-commit/commit-msg hooks | First-time setup / hook updates |
+
+### Code Quality & Parity
+
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `analyze_tool_docs.py` | Analyze MCP tool documentation quality | After adding/updating tools |
 | `check_client_server_parity.sh` | Verify all client functions exposed in server | Before commits (in checklist) |
 | `check_complexity.sh` | Check code cyclomatic complexity | Before commits (in checklist) |
-| `log_mistake.sh` | Log architectural mistakes for tracking | When catching high-level mistakes |
+
+### Integration Testing
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
 | `setup_test_database.sh` | Create OmniFocus test database | First-time integration test setup |
 | `setup_clean_test_database.sh` | Create minimal test database | Integration test setup (v1) |
 | `setup_clean_test_database_v2.sh` | Create minimal test database | Integration test setup (v2) |
@@ -126,6 +144,169 @@ See `docs/reference/CODE_QUALITY.md` for complete guidelines.
 4. Reference in commit: `Resolves: MISTAKE-XXX`
 
 See `.claude/MISTAKES.md` and `.claude/METRICS.md` for the tracking system.
+
+---
+
+## update_mistake_status.sh
+
+**Purpose**: Update the lifecycle status of a logged mistake
+
+**Usage**:
+```bash
+./scripts/update_mistake_status.sh MISTAKE-XXX <status> [details]
+```
+
+**Status options**:
+- `open` - Newly logged, not being worked on
+- `fixing` - Currently implementing the fix
+- `prevention-pending` - Fix implemented, prevention not yet added
+- `monitoring` - Prevention implemented, monitoring effectiveness
+- `resolved` - Prevention validated, no recurrence
+- `archived` - Old mistake, moved to historical record
+
+**When to use**:
+- After fixing a mistake: Update to `prevention-pending`
+- After adding prevention: Update to `monitoring`
+- After validating prevention works: Update to `resolved`
+
+**Example**:
+```bash
+./scripts/update_mistake_status.sh MISTAKE-001 resolved
+```
+
+---
+
+## update_metrics.sh
+
+**Purpose**: Automatically update METRICS.md with statistics from MISTAKES.md
+
+**Usage**:
+```bash
+./scripts/update_metrics.sh
+```
+
+**When to use**:
+- After logging new mistakes
+- After changing mistake statuses
+- Before reviewing project metrics
+
+**What it updates**:
+- Total mistake count
+- Category breakdown
+- Status breakdown
+- Recurrence counts
+
+---
+
+## verify_prevention.sh
+
+**Purpose**: Validate that prevention measures were actually implemented
+
+**Usage**:
+```bash
+./scripts/verify_prevention.sh MISTAKE-XXX
+```
+
+**When to use**:
+- Before marking a mistake as `resolved`
+- During mistake reviews
+- To audit prevention implementation
+
+**What it checks**:
+- If prevention mentions CLAUDE.md, verifies it was updated
+- If prevention mentions CONTRIBUTING.md, verifies update after discovery
+- If prevention mentions scripts, verifies they exist
+- Validates Prevention Status checkbox is marked
+
+**Example**:
+```bash
+./scripts/verify_prevention.sh MISTAKE-001
+```
+
+---
+
+## check_version_sync.sh
+
+**Purpose**: Validate version numbers are synchronized across all files (Addresses MISTAKE-003)
+
+**Usage**:
+```bash
+./scripts/check_version_sync.sh
+```
+
+**When to use**:
+- Before version bumps
+- Before releases
+- During pre-commit checks
+
+**What it checks**:
+- `pyproject.toml` (authoritative source)
+- `.claude/CLAUDE.md` "Current Version" line
+- `CHANGELOG.md` version headers
+- `README.md` version references
+
+**Exit codes**:
+- `0`: All versions synchronized ✅
+- `1`: Version mismatch detected ❌
+
+---
+
+## check_test_count_sync.sh
+
+**Purpose**: Validate TESTING.md test count matches actual pytest output (Addresses MISTAKE-002)
+
+**Usage**:
+```bash
+./scripts/check_test_count_sync.sh
+```
+
+**When to use**:
+- Before commits that add/remove tests
+- During documentation updates
+- As part of CI/CD validation
+
+**What it checks**:
+- Runs `make test` to get actual test count
+- Compares with `docs/guides/TESTING.md` documented count
+- Reports mismatches with actionable fix instructions
+
+**Exit codes**:
+- `0`: Test counts match ✅
+- `1`: Test count mismatch detected ❌
+
+---
+
+## install-git-hooks.sh
+
+**Purpose**: Install git hooks for automated mistake detection and enforcement
+
+**Usage**:
+```bash
+./scripts/install-git-hooks.sh
+```
+
+**When to use**:
+- First-time repository setup
+- After updating git hook scripts
+- When hooks are accidentally removed
+
+**What it installs**:
+1. **pre-commit hook** - Detects 6 types of mistakes before commit:
+   - Missing tests (modified client without test changes)
+   - Missing server exposure (new function not in server)
+   - Missing migration guides (CHANGELOG references missing file)
+   - Version sync issues (version bump without doc updates)
+   - Test count sync issues (test changes without TESTING.md update)
+   - Complexity spikes (new high-complexity code)
+
+2. **commit-msg hook** - Enforces proper mistake resolution format:
+   - Validates "Resolves: MISTAKE-XXX" format
+   - Ensures referenced mistake exists in MISTAKES.md
+
+**To uninstall**:
+```bash
+rm .git/hooks/pre-commit .git/hooks/commit-msg
+```
 
 ---
 
