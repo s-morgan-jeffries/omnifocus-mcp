@@ -333,35 +333,16 @@ After running tests, verify in OmniFocus:
 | `server.py` (legacy) | 214 | **96%** | 9 (error edges) |
 | **Overall** | **970** | **88%** | **112** |
 
-### Client Operations Coverage
+### Client Operations Coverage (v0.6.0 API)
 
-| Operation | Unit Tests | Integration | FastMCP | Real Tests | Total |
-|-----------|:----------:|:-----------:|:-------:|:----------:|:-----:|
-| get_projects | ✅ 5 | ✅ 6 | ✅ 2 | ✅ 1 | **14** |
-| search_projects | ✅ 6 | ✅ 3 | ✅ 1 | ✅ 1 | **11** |
-| create_project | ✅ 6 | ✅ 3 | ✅ 2 | - | **11** |
-| delete_project | ✅ 3 | - | - | - | **3** |
-| add_task | ✅ 15 | ✅ 8 | ✅ 1 | ✅ 2 | **26** |
-| add_note | ✅ 4 | ✅ 2 | ✅ 1 | - | **7** |
-| get_tasks | ✅ 13 | ✅ 4 | ✅ 2 | ✅ 1 | **20** |
-| complete_task | ✅ 4 | ✅ 3 | ✅ 1 | ✅ 1 | **9** |
-| update_task | ✅ 9 | ✅ 4 | - | ✅ 1 | **14** |
-| delete_task | ✅ 3 | - | ✅ 1 | - | **4** |
-| move_task | ✅ 5 | - | ✅ 2 | - | **7** |
-| drop_task | ✅ 3 | - | - | - | **3** |
-| get_inbox_tasks | ✅ 3 | ✅ 4 | ✅ 1 | ✅ 2 | **10** |
-| create_inbox_task | ✅ 6 | ✅ 3 | ✅ 1 | ✅ 1 | **11** |
-| get_tags | ✅ 3 | ✅ 3 | ✅ 1 | ✅ 1 | **8** |
-| add_tag_to_task | ✅ 5 | ✅ 3 | ✅ 1 | ✅ 1 | **10** |
-| get_folders | ✅ 3 | - | ✅ 1 | - | **4** |
-| create_folder | ✅ 6 | - | ✅ 1 | - | **7** |
-| set_parent_task | ✅ 6 | - | ✅ 1 | - | **7** |
-| set_review_interval | ✅ 4 | - | ✅ 1 | - | **5** |
-| mark_project_reviewed | ✅ 3 | - | ✅ 1 | - | **4** |
-| get_projects_due_for_review | ✅ 3 | - | ✅ 1 | - | **4** |
-| set_estimated_minutes | ✅ 4 | - | ✅ 2 | - | **6** |
-| get_perspectives | ✅ 3 | - | ✅ 1 | - | **4** |
-| switch_perspective | ✅ 3 | - | ✅ 1 | - | **4** |
+**Note:** All 16 core v0.6.0 MCP tools have comprehensive unit and integration test coverage. The table below represents test counts from the v0.5.0 era with 25+ functions. For detailed current test coverage, see test files in `tests/` directory.
+
+**Current Test Summary (v0.6.0):**
+- **333 passing tests** across all 16 MCP tools
+- Unit tests: Mock-based testing of all client functions
+- Integration tests: Real OmniFocus database testing
+- FastMCP tests: Server-level MCP tool testing
+- Full coverage of create/get/update/delete operations for tasks, projects, folders, tags, perspectives
 
 ### Edge Cases Tested
 

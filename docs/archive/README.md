@@ -4,9 +4,11 @@ This directory contains historical documentation from the OmniFocus MCP Server d
 
 ## Purpose
 
-These documents were created during the planning and research phases (October 2025) but are now **obsolete** as the project has completed Phases 1 and 2 and moved into refinement (v0.5.0).
+These documents were created during the planning and research phases (October 2025) but are now **obsolete** as the project has completed the major API redesign (v0.6.0, October 2025).
 
 **They are preserved for historical reference only.**
+
+**Note:** This archive was created during v0.5.0 (October 11, 2025). The project has since advanced to v0.6.0 (October 19, 2025) with a major API redesign (40+ functions → 16 core tools). Some references below may be outdated. See main `docs/` directory for current information.
 
 ## Directory Structure
 
@@ -70,4 +72,5 @@ These documents provide valuable historical context:
 ## Last Updated
 
 Archive created: October 11, 2025
-Project version when archived: v0.5.0
+Project version when archive created: v0.5.0
+Last reviewed: October 19, 2025 (Project now at v0.6.0)

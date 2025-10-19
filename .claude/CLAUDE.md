@@ -140,7 +140,7 @@ See `docs/ARCHITECTURE.md` for complete anti-pattern catalog with rationale.
 
 **Current Version:** v0.6.0 (Maintenance Mode)
 **API Functions:** 16 core functions (redesign complete October 2025)
-**Test Coverage:** 89% overall (333 passing tests, 123 skipped)
+**Test Coverage:** 89% overall (see `docs/TESTING.md` for detailed breakdown)
 
 The API redesign (40→16 functions) completed October 2025.
 

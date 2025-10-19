@@ -1,10 +1,16 @@
 # Migration Guide: v0.5.0 → v0.6.0
 
+**Previous Migration:** For v0.4.0 → v0.5.0 changes (first consolidation, 36 tools → 26 tools), see [MIGRATION_v0.5.md](MIGRATION_v0.5.md).
+
+---
+
 ## Breaking Changes
 
 Version 0.6.0 represents a **major API redesign** that consolidates 40+ functions down to 16 core functions optimized for MCP tool calling. This is the largest breaking change in the project's history.
 
 **Key principle:** All updates now go through unified `update_task()` and `update_project()` functions instead of specialized operations.
+
+**Note:** v0.6.0 builds on the v0.5.0 consolidation pattern but is a much larger redesign (26 tools → 16 core functions).
 
 ---
 

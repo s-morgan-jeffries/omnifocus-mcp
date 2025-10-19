@@ -145,6 +145,14 @@ Consolidate redundant wrappers into unified, powerful tools:
 
 ---
 
+## Next Version
+
+For migration from v0.5.0 → v0.6.0 (major API redesign, 26 tools → 16 core functions), see [MIGRATION_v0.6.md](MIGRATION_v0.6.md).
+
+**Note:** v0.6.0 represents a much larger consolidation than v0.5.0, introducing comprehensive `update_task()` and `update_project()` functions that replace many specialized operations.
+
+---
+
 ## Need Help?
 
 If you encounter issues migrating:

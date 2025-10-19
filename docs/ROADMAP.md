@@ -240,16 +240,7 @@ All deprecated functions have been removed. See [docs/API_REFERENCE.md](API_REFE
 
 ### Test Coverage (v0.6.0):
 
-- **333 passing tests** (100% pass rate)
-- 149 unit tests (omnifocus_client.py)
-- 33 unit tests (server_fastmcp.py)
-- 3 integration tests (real OmniFocus, skipped by default)
-- 13 safety guard tests
-- 135+ redesign-specific tests
-- **Execution time**: ~1.7min (includes all tests)
-- **Code coverage**: 89% overall
-  - omnifocus_client.py: 95%
-  - server_fastmcp.py: 79%
+**333 passing tests** with 89% overall code coverage. See [docs/TESTING.md](TESTING.md) for detailed breakdown and procedures.
 
 ### Database Safety:
 
@@ -335,7 +326,7 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 - ✅ Consistent patterns across all entity types
 - ✅ Batch-safe operations (separate functions exclude name/note fields)
 
-**Current Tool Count:** 16 MCP tools (down from 26)
+**Current Tool Count:** 16 MCP tools (reduced from 40+ original functions through two consolidations: 40+ → 26 in v0.5.0 → 16 in v0.6.0)
 
 **Test Coverage:** 333 passing tests (100% pass rate)
 
@@ -383,6 +374,10 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 **Test Coverage:** 392 passing tests (up from 302)
 
 ### Upcoming Work
+
+**Status:** Project is in maintenance mode (v0.6.0). These items are logged for future consideration but not actively planned. The v0.6.0 API redesign is complete and stable.
+
+---
 
 **High Priority - Bug Fixes:**
 - 🐛 **mark_project_reviewed() bug** (USER REPORTED)

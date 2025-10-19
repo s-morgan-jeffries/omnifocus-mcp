@@ -163,7 +163,7 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 ### Running Tests
 
-The project has comprehensive test coverage with **333 tests passing (123 skipped integration tests)**:
+The project has comprehensive test coverage with **333 passing tests**. See [docs/TESTING.md](docs/TESTING.md) for detailed breakdown and procedures.
 
 ```bash
 # Activate virtual environment
@@ -178,14 +178,6 @@ pytest tests/ --cov=src/omnifocus_mcp --cov-report=term-missing
 # Run specific test file
 pytest tests/test_omnifocus_client.py -v
 ```
-
-**Test Suite Breakdown:**
-- 149 unit tests for OmniFocus client operations
-- 33 unit tests for FastMCP server
-- 22 safety guard tests
-- 13 real OmniFocus integration tests (skipped by default)
-
-See [docs/TESTING.md](docs/TESTING.md) for detailed testing documentation.
 
 ### Testing the Server
 
@@ -234,4 +226,10 @@ MIT
 
 ## Contributing
 
-Contributions welcome! Please open an issue or PR.
+Contributions welcome! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
+- Development workflow and TDD requirements
+- Before-commit checklist
+- Code quality standards
+- How to run tests
+
+For quick contributions: Open an issue or PR with your proposal.

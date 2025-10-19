@@ -103,7 +103,7 @@ Welcome to the OmniFocus MCP Server documentation! This directory contains compr
   - When to update documentation
   - Pull request process
 
-- **[Project Memory](.claude/CLAUDE.md)** - Daily development reference
+- **[Project Memory](../.claude/CLAUDE.md)** - Daily development reference
   - Critical rules (TDD, code quality)
   - Architecture quick reference
   - Decision tree for adding functions
@@ -116,7 +116,7 @@ Welcome to the OmniFocus MCP Server documentation! This directory contains compr
 
 **Historical documentation (reference only):**
 
-- **[Redesign-Phase Project Memory](.claude/CLAUDE-redesign-phase.md)** - Implementation guidance archive
+- **[Redesign-Phase Project Memory](../.claude/CLAUDE-redesign-phase.md)** - Implementation guidance archive
   - Preserved from active redesign phase
   - Detailed step-by-step implementation instructions
   - Migration patterns and strategies
