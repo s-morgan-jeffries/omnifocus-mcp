@@ -1,0 +1,12 @@
+# <type>: <subject>
+
+# <body>
+
+# <footer>
+# Resolves: MISTAKE-XXX (if applicable)
+# Related: MISTAKE-YYY (if related to previous mistake)
+
+# Type: feat, fix, docs, refactor, test, chore
+# Subject: 50 chars or less, imperative mood
+# Body: Wrap at 72 chars, explain WHAT and WHY
+# Footer: Reference issues, breaking changes, resolved mistakes

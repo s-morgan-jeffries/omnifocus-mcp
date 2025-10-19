@@ -48,12 +48,9 @@ make test-integration      # Real OmniFocus tests (~10-30s, requires setup)
 make test-e2e              # End-to-end MCP tool tests (requires setup)
 ```
 
-**⚠️ THREE LEVELS OF TESTING - ALL ARE REQUIRED:**
-1. **Unit Tests** - Mock AppleScript, fast, run always
-2. **Integration Tests** - Real OmniFocus via client, catches AppleScript bugs
-3. **E2E Tests** - Full MCP tool → client → OmniFocus stack, catches parameter conversion bugs
+**⚠️ THREE TIERS REQUIRED:** Unit (mock), Integration (real OmniFocus), E2E (full MCP stack)
 
-See `docs/INTEGRATION_TESTING.md` for real OmniFocus testing setup and troubleshooting.
+See `docs/TESTING.md` and `docs/INTEGRATION_TESTING.md` for setup and procedures.
 
 ### Code Quality Standards
 
@@ -71,10 +68,7 @@ See `docs/CODE_QUALITY.md` for complete metrics, Radon guidelines, and quality t
 
 ### Code Standards
 
-- Python 3.10+ required
-- Use type hints for all function parameters and return values
-- Follow existing code patterns in the codebase
-- AppleScript safety checks are enabled by default for production database protection
+Python 3.10+, type hints required, follow existing patterns, AppleScript safety checks enabled by default
 
 ---
 
@@ -258,6 +252,20 @@ See `docs/CONTRIBUTING.md` for complete workflow including:
 - Consider if this indicates an architectural problem
 
 See `docs/CONTRIBUTING.md` for complete pre-commit workflow.
+
+---
+
+## Caught a Mistake?
+
+If you discovered an architectural oversight (not a syntax error):
+
+1. **Fix it first** - Don't leave it broken
+2. **Log it** - Run `./scripts/log_mistake.sh` and edit `.claude/MISTAKES.md`
+3. **Reference in commit** - Use `Resolves: MISTAKE-XXX` footer
+
+**Log these:** Missing e2e tests, missing server exposure, violated TDD, ignored decision tree, missing docs
+
+**Why?** Patterns (3+ similar) trigger CLAUDE.md improvements to prevent recurrence.
 
 ---
 

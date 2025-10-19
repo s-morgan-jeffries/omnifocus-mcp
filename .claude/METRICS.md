@@ -44,7 +44,7 @@
 
 **CLAUDE.md Size:**
 - Baseline: 284 lines (2025-10-19)
-- Current: 284 lines
+- Current: 299 lines
 - Target: <300 lines
 
 ---
