@@ -97,6 +97,8 @@
 **Discovery Date:** 2025-10-19
 **Introduced In:** be794b4
 **Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-18 (30 days from 2025-10-19)
 
 **What Happened:**
 During v0.6.0 API redesign implementation, updated CHANGELOG.md to reference `docs/MIGRATION_v0.6.md` for detailed migration guide, marked it as "(TODO)", but never created the file before marking the redesign as complete. This created a broken link in documentation and violated the established pattern (MIGRATION_v0.5.md exists for the v0.5.0 release).
@@ -141,7 +143,7 @@ Alternative: Add to "Making a Breaking Change Release" workflow in docs/CONTRIBU
 **Related Mistakes:**
 None yet (first logged mistake in tracking system)
 
-**Effectiveness Score:** pending (verify 2025-11-18) (no recurrence since 2025-10-19)
+**Effectiveness Score:** pending (verify 2025-11-18 - need 30 days, not 48 hours)
 
 ---
 
@@ -231,6 +233,8 @@ Similar to MISTAKE-003 - both are "duplicated information that gets out of sync"
 **Discovery Date:** 2025-10-19
 **Introduced In:** Unknown (multiple commits over time)
 **Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-18 (30 days from 2025-10-19)
 
 **What Happened:**
 Version number is documented in multiple places (pyproject.toml, CHANGELOG.md, ROADMAP.md, README.md, CLAUDE.md, archive/README.md) and repeatedly gets out of sync. During v0.6.0 work, pyproject.toml showed 0.5.0 while all documentation claimed 0.6.0 was complete. Archive README still said "current version: v0.5.0" weeks after v0.6.0 completion. This has happened multiple times across different releases.
@@ -368,6 +372,8 @@ MISTAKE-005, MISTAKE-006 (other meta-mistakes in mistake tracking system found b
 **Discovery Date:** 2025-10-19
 **Introduced In:** 08acfa5
 **Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-18 (30 days from 2025-10-19)
 
 **What Happened:**
 Implemented Priority 1 and Priority 2 mistake tracking improvements, creating prevention scripts like `check_version_sync.sh` and `check_test_count_sync.sh`. These scripts were manually tested (they work when run directly), documented, and integrated into git hooks. However, there's no automated testing that validates the prevention scripts actually detect their target mistakes. This means we can't prove prevention works, and bugs in prevention scripts would go undetected.
@@ -431,6 +437,8 @@ MISTAKE-004 (metrics automation), MISTAKE-008 (no recurrence tracking)
 **Discovery Date:** 2025-10-19
 **Introduced In:** e141f53
 **Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-18 (30 days from 2025-10-19)
 
 **What Happened:**
 Updated MISTAKES.md template to include "Recurrence Count" field (commit e141f53) as part of Priority 1 improvements. However, there's no mechanism to actually detect when a prevented mistake recurs, no script to increment the recurrence count, and no validation timeline to determine when prevention can be marked as "effective." MISTAKE-001 is marked "Status: resolved" and "Effectiveness Score: effective ✅" but there's no data proving prevention worked - it's based on assumption, not measurement.
