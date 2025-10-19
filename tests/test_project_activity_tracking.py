@@ -92,8 +92,9 @@ class TestProjectActivityDate:
         assert projects[0]['lastActivityDate'] is None
 
     def test_get_project_single_includes_dates(self, client):
-        """get_project() should also include modification and activity dates."""
-        mock_json = json.dumps({
+        """get_projects() should also include modification and activity dates."""
+        # Mock returns a list of projects (get_projects returns list, not single dict)
+        mock_json = json.dumps([{
             "id": "proj-123",
             "name": "Test Project",
             "note": "",
@@ -108,7 +109,7 @@ class TestProjectActivityDate:
             "nextReviewDate": None,
             "modificationDate": "2025-10-07T14:30:00Z",
             "lastActivityDate": "2025-10-08T10:15:00Z"
-        })
+        }])
 
         with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = mock_json

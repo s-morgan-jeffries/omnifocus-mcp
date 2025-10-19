@@ -31,12 +31,21 @@ class TestSafetyGuardsWithTestMode:
     def test_add_task_verifies_database_name(self, client_with_test_mode):
         """Test that create_task verifies database name before proceeding."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
-            # First call: database name verification (returns test database name)
-            # Second call: actual add_task operation
-            mock_run.side_effect = ["OmniFocus-TEST.ofocus", "true"]
+            # Use a function to return different values based on the script content
+            def mock_applescript(script):
+                if "return name of it" in script:
+                    # Database name verification - return test database name
+                    return "OmniFocus-TEST"
+                else:
+                    # Actual task creation - return task ID
+                    return "task-123"
 
-            result = client_with_test_mode.create_task("proj-001", "Task")
-            assert result is True
+            mock_run.side_effect = mock_applescript
+
+            # NEW API signature: task_name first, then project_id
+            result = client_with_test_mode.create_task("Task", project_id="proj-001")
+            # create_task returns task ID string, not boolean
+            assert result == "task-123"
 
             # Verify database name was checked
             assert mock_run.call_count == 2
@@ -46,14 +55,17 @@ class TestSafetyGuardsWithTestMode:
     def test_add_task_blocked_if_wrong_database(self, client_with_test_mode):
         """Test that create_task is blocked if database name doesn't match."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
-            # Return production database name instead of test database
-            mock_run.return_value = "OmniFocus.ofocus"
+            # Return production database name instead of test database (without .ofocus extension)
+            # The safety check looks for "OmniFocus-TEST" in the result, so return "OmniFocus" to fail the check
+            mock_run.return_value = "OmniFocus"
 
             with pytest.raises(DatabaseSafetyError) as exc_info:
-                client_with_test_mode.create_task("proj-001", "Task")
+                # NEW API signature: task_name first, then project_id
+                client_with_test_mode.create_task("Task", project_id="proj-001")
 
             assert "Database safety check FAILED" in str(exc_info.value)
-            assert "PRODUCTION database" in str(exc_info.value)
+            # Check that expected database name is mentioned in error
+            assert "OmniFocus-TEST" in str(exc_info.value)
 
 
 class TestSafetyGuardsConfiguration:
@@ -116,52 +128,23 @@ class TestSafetyGuardsDisabled:
         return OmniFocusClient(enable_safety_checks=False)
 
     def test_destructive_operations_allowed_when_disabled(self, client_without_safety):
-        """Test that destructive operations work when safety is disabled (LEGACY TEST - updated for new API return format)."""
+        """Test that operations work when safety is disabled (NEW API)."""
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+            # Test create_task - returns task ID
+            mock_run.return_value = "task-123"
+            result = client_without_safety.create_task("Task", project_id="proj-001")
+            assert result == "task-123"
+
+            # Test update_task - AppleScript returns "true", update_task returns dict
             mock_run.return_value = "true"
-
-            # All of these should work without test mode
-            result = client_without_safety.add_task("proj-001", "Task")
-            assert result is True
-
-            result = client_without_safety.add_note("proj-001", "Note")
-            assert result is True
-
-            result = client_without_safety.complete_task("task-001")
-            assert result is True
-
-            # NEW API: update_task() now returns dict
-            result = client_without_safety.update_task("task-001", name="New")
+            result = client_without_safety.update_task("task-001", task_name="New")
             assert result["success"] is True
+            assert result["task_id"] == "task-001"
 
-            result = client_without_safety.create_inbox_task("Task")
-            assert result is True
+            # Test create_task for inbox (no project_id)
+            mock_run.return_value = "task-456"
+            result = client_without_safety.create_task("Inbox Task")
+            assert result == "task-456"
 
-            result = client_without_safety.add_tag_to_task("task-001", "tag")
-            assert result is True
-
-            result = client_without_safety.delete_task("task-001")
-            assert result is True
-
-            result = client_without_safety.delete_project("proj-001")
-            assert result is True
-
-            result = client_without_safety.move_task("task-001", "proj-002")
-            assert result is True
-
-            result = client_without_safety.drop_task("task-001")
-            assert result is True
-
-            client_without_safety.create_folder("Test Folder")
-
-            result = client_without_safety.set_parent_task("task-001", "task-002")
-            assert result is True
-
-            result = client_without_safety.set_review_interval("proj-001", interval_weeks=1)
-            assert result is True
-
-            result = client_without_safety.mark_project_reviewed("proj-001")
-            assert result is True
-
-            result = client_without_safety.set_estimated_minutes("task-001", 60)
-            assert result is True
+            # All operations work without safety checks - no DatabaseSafetyError raised
+            # Test passed - safety checks are disabled, operations succeed

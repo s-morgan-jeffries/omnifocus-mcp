@@ -102,11 +102,16 @@ class OmniFocusClient:
 
     # Operations that modify data (require safety checks)
     DESTRUCTIVE_OPERATIONS = {
-        'add_task', 'add_note', 'complete_task', 'update_task',
-        'create_inbox_task', 'add_tag_to_task', 'create_project',
+        # Legacy names (kept for backward compatibility in case they're still referenced)
+        'add_task', 'add_note', 'complete_task',
+        'create_inbox_task', 'add_tag_to_task',
         'delete_task', 'delete_project', 'move_task', 'drop_task',
-        'create_folder', 'set_parent_task', 'set_review_interval',
-        'mark_project_reviewed', 'set_estimated_minutes'
+        'set_parent_task', 'set_review_interval',
+        'mark_project_reviewed', 'set_estimated_minutes',
+        # NEW API function names
+        'create_task', 'update_task', 'update_tasks',
+        'create_project', 'update_project', 'update_projects',
+        'create_folder', 'delete_tasks', 'delete_projects'
     }
 
     def __init__(self, enable_safety_checks: bool = True):

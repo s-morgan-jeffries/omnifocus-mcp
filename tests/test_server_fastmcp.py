@@ -109,7 +109,7 @@ class TestProjectTools:
             assert "Successfully created project 'New Project'" in result
             assert "Folder: Work" in result
             mock_client.create_project.assert_called_once_with(
-                name="New Project", note=None, folder_path="Work", sequential=False
+                name="New Project", note=None, folder_path="Work", sequential=False, review_interval_weeks=None
             )
 
 
@@ -625,7 +625,7 @@ class TestHierarchyFieldFormatting:
             mock_client.update_project.return_value = {
                 "success": True,
                 "project_id": "proj-001",
-                "updated_fields": ["name"],
+                "updated_fields": ["project_name"],
                 "error": None
             }
             mock_get_client.return_value = mock_client
@@ -636,6 +636,6 @@ class TestHierarchyFieldFormatting:
             # Verify the client was called with sequential=None
             call_kwargs = mock_client.update_project.call_args[1]
             assert call_kwargs['project_id'] == "proj-001"
-            assert call_kwargs['name'] == "New Name"
+            assert call_kwargs['project_name'] == "New Name"  # Fixed: project_name not name
             assert call_kwargs.get('sequential') is None
             assert "Successfully updated project" in result

@@ -15,8 +15,9 @@ class TestProjectReviewMetadata:
     """Tests for review metadata in projects."""
 
     def test_get_project_includes_review_metadata(self, client):
-        """Test that get_project includes review interval and dates."""
-        project_json = json.dumps({
+        """Test that get_projects includes review interval and dates."""
+        # get_projects returns a list, not a single dict
+        project_json = json.dumps([{
             "id": "proj-001",
             "name": "Test Project",
             "note": "",
@@ -29,7 +30,7 @@ class TestProjectReviewMetadata:
             "reviewInterval": "1 week",
             "lastReviewDate": "2025-10-01T12:00:00",
             "nextReviewDate": "2025-10-08T12:00:00"
-        })
+        }])
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
@@ -45,7 +46,8 @@ class TestProjectReviewMetadata:
 
     def test_get_project_no_review_interval(self, client):
         """Test project with no review interval set."""
-        project_json = json.dumps({
+        # get_projects returns a list, not a single dict
+        project_json = json.dumps([{
             "id": "proj-002",
             "name": "No Review Project",
             "note": "",
@@ -58,7 +60,7 @@ class TestProjectReviewMetadata:
             "reviewInterval": None,
             "lastReviewDate": None,
             "nextReviewDate": None
-        })
+        }])
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
@@ -74,7 +76,8 @@ class TestProjectReviewMetadata:
 
     def test_get_project_never_reviewed(self, client):
         """Test project with review interval but never reviewed."""
-        project_json = json.dumps({
+        # get_projects returns a list, not a single dict
+        project_json = json.dumps([{
             "id": "proj-003",
             "name": "New Project",
             "note": "",
@@ -87,7 +90,7 @@ class TestProjectReviewMetadata:
             "reviewInterval": "2 weeks",
             "lastReviewDate": None,
             "nextReviewDate": "2025-10-15T12:00:00"
-        })
+        }])
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json

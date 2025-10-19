@@ -16,7 +16,7 @@ class TestProjectStatistics:
 
     def test_get_project_includes_statistics(self, client):
         """Test that get_project includes task counts and completion percentage."""
-        project_json = json.dumps({
+        project_json = json.dumps([{
             "id": "proj-001",
             "name": "Test Project",
             "note": "A test project",
@@ -26,7 +26,7 @@ class TestProjectStatistics:
             "completedTaskCount": 6,
             "remainingTaskCount": 4,
             "completionPercentage": 60.0
-        })
+        }])
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
@@ -45,7 +45,7 @@ class TestProjectStatistics:
 
     def test_get_project_zero_tasks(self, client):
         """Test project statistics with zero tasks."""
-        project_json = json.dumps({
+        project_json = json.dumps([{
             "id": "proj-002",
             "name": "Empty Project",
             "note": "",
@@ -55,7 +55,7 @@ class TestProjectStatistics:
             "completedTaskCount": 0,
             "remainingTaskCount": 0,
             "completionPercentage": 0.0
-        })
+        }])
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
@@ -72,7 +72,7 @@ class TestProjectStatistics:
 
     def test_get_project_all_completed(self, client):
         """Test project statistics with all tasks completed."""
-        project_json = json.dumps({
+        project_json = json.dumps([{
             "id": "proj-003",
             "name": "Completed Project",
             "note": "",
@@ -82,7 +82,7 @@ class TestProjectStatistics:
             "completedTaskCount": 5,
             "remainingTaskCount": 0,
             "completionPercentage": 100.0
-        })
+        }])
 
         with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
             mock_run.return_value = project_json
