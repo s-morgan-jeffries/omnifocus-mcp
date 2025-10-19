@@ -10,7 +10,7 @@
 
 ### By Month
 
-| Month | Total | Critical | High | Medium | Low |
+| Month | Total | Critical | High | 2 |
 |-------|-------|----------|------|--------|-----|
 | 2025-10 | 0 | 0 | 0 | 0 | 0 |
 
@@ -24,7 +24,7 @@
 | missing-exposure | 0 | - | Not enough data yet |
 | violated-tdd | 0 | - | Not enough data yet |
 | violated-architecture | 0 | - | Not enough data yet |
-| missing-docs | 0 | - | Not enough data yet |
+| missing-docs | 3 |
 | complexity-spike | 0 | - | Not enough data yet |
 | other | 0 | - | Not enough data yet |
 

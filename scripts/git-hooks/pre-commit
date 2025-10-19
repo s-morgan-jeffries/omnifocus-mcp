@@ -1,0 +1,116 @@
+#!/bin/bash
+# Git pre-commit hook for automated mistake detection
+#
+# Install: cp scripts/git-hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+echo "🔍 Running automated mistake detection..."
+
+WARNINGS=()
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+# Check 1: Missing Tests (missing-tests)
+# If omnifocus_client.py modified but no test file modified
+if echo "$STAGED_FILES" | grep -q "omnifocus_client.py"; then
+    if ! echo "$STAGED_FILES" | grep -q "test_omnifocus_client.py"; then
+        WARNINGS+=("⚠️  MISSING-TESTS: Modified omnifocus_client.py but no test file staged")
+        WARNINGS+=("   Consider: Did you write tests first? (TDD)")
+    fi
+fi
+
+# Check 2: Missing Server Exposure (missing-exposure)
+# If omnifocus_client.py has new functions but server_fastmcp.py not modified
+if echo "$STAGED_FILES" | grep -q "omnifocus_client.py"; then
+    # Check if new functions added (crude check: look for "def " additions)
+    NEW_FUNCTIONS=$(git diff --cached omnifocus_client.py | grep "^+.*def " | grep -v "^+++")
+    if [ -n "$NEW_FUNCTIONS" ] && ! echo "$STAGED_FILES" | grep -q "server_fastmcp.py"; then
+        WARNINGS+=("⚠️  MISSING-EXPOSURE: New function(s) in client but server not modified")
+        WARNINGS+=("   Run: ./scripts/check_client_server_parity.sh")
+        WARNINGS+=("   New functions detected:")
+        while IFS= read -r line; do
+            FUNC_NAME=$(echo "$line" | sed 's/^+.*def \([a-z_]*\).*/\1/')
+            WARNINGS+=("     - $FUNC_NAME()")
+        done <<< "$NEW_FUNCTIONS"
+    fi
+fi
+
+# Check 3: Breaking Changes Without Migration Guide (missing-docs)
+# If CHANGELOG.md references MIGRATION but file not staged
+if echo "$STAGED_FILES" | grep -q "CHANGELOG.md"; then
+    CHANGELOG_DIFF=$(git diff --cached CHANGELOG.md)
+    if echo "$CHANGELOG_DIFF" | grep -q "MIGRATION_v"; then
+        MIGRATION_FILE=$(echo "$CHANGELOG_DIFF" | grep -o "MIGRATION_v[0-9]\+\.[0-9]\+\.md" | head -1)
+        if [ -n "$MIGRATION_FILE" ] && ! echo "$STAGED_FILES" | grep -q "$MIGRATION_FILE"; then
+            WARNINGS+=("⚠️  MISSING-DOCS: CHANGELOG references $MIGRATION_FILE but file not staged")
+            WARNINGS+=("   Either stage the migration guide or mark as (TODO)")
+        fi
+    fi
+fi
+
+# Check 4: Version Sync (missing-docs)
+# If pyproject.toml version changed, check if CLAUDE.md also changed
+if echo "$STAGED_FILES" | grep -q "pyproject.toml"; then
+    VERSION_CHANGED=$(git diff --cached pyproject.toml | grep "^+version = ")
+    if [ -n "$VERSION_CHANGED" ]; then
+        if ! echo "$STAGED_FILES" | grep -q "CLAUDE.md"; then
+            NEW_VERSION=$(echo "$VERSION_CHANGED" | sed 's/^+version = "\(.*\)"/\1/')
+            WARNINGS+=("⚠️  MISSING-DOCS: Version bump to $NEW_VERSION but CLAUDE.md not updated")
+            WARNINGS+=("   Update .claude/CLAUDE.md 'Current Version' line")
+        fi
+        if ! echo "$STAGED_FILES" | grep -q "CHANGELOG.md"; then
+            WARNINGS+=("⚠️  MISSING-DOCS: Version bump but CHANGELOG.md not updated")
+            WARNINGS+=("   Add release notes to CHANGELOG.md")
+        fi
+    fi
+fi
+
+# Check 5: Test Count Sync (missing-docs)
+# If test files changed significantly, remind to update TESTING.md
+TEST_FILES_CHANGED=$(echo "$STAGED_FILES" | grep "test_.*\.py" | wc -l | tr -d ' ')
+if [ "$TEST_FILES_CHANGED" -gt 0 ]; then
+    # Check if many test changes (crude heuristic: >50 lines changed in tests)
+    LINES_CHANGED=$(git diff --cached --stat | grep "test_.*\.py" | awk '{sum += $4} END {print sum}')
+    if [ -n "$LINES_CHANGED" ] && [ "$LINES_CHANGED" -gt 50 ]; then
+        if ! echo "$STAGED_FILES" | grep -q "TESTING.md"; then
+            WARNINGS+=("ℹ️  INFO: Significant test changes ($LINES_CHANGED+ lines)")
+            WARNINGS+=("   Consider: Does TESTING.md test count need updating?")
+        fi
+    fi
+fi
+
+# Check 6: Complexity Documentation (complexity-spike)
+# If omnifocus_client.py changed, suggest running complexity check
+if echo "$STAGED_FILES" | grep -q "omnifocus_client.py"; then
+    WARNINGS+=("ℹ️  REMINDER: Run ./scripts/check_complexity.sh before commit")
+fi
+
+# Display warnings
+if [ ${#WARNINGS[@]} -gt 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚨 Potential Mistakes Detected:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    for warning in "${WARNINGS[@]}"; do
+        echo "$warning"
+    done
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "These are warnings, not errors. Review and decide:"
+    echo "  1. Fix the issue and re-stage"
+    echo "  2. Log as mistake: ./scripts/log_mistake.sh"
+    echo "  3. Proceed anyway (if false positive): git commit [continues]"
+    echo ""
+
+    # Count critical warnings (not INFO)
+    CRITICAL_COUNT=$(printf '%s\n' "${WARNINGS[@]}" | grep -c "⚠️" || echo "0")
+    if [ "$CRITICAL_COUNT" -gt 0 ]; then
+        echo "⚠️  $CRITICAL_COUNT potential mistake(s) detected"
+        echo ""
+        # Don't block commit, just warn
+        # To block: exit 1
+    fi
+fi
+
+# Always allow commit (warnings only, not errors)
+exit 0

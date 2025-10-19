@@ -259,15 +259,67 @@ See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
 ## Caught a Mistake?
 
+### What Qualifies as a Mistake (vs. a Bug)?
+
+**Mistakes** are architectural/process failures that violate established practices:
+- ❌ Forgot to write test first (violated TDD)
+- ❌ Added function without checking decision tree (violated architecture)
+- ❌ Implemented in client but didn't expose in server (missing exposure)
+- ❌ Breaking change without migration guide (missing docs)
+- ❌ Function has CC > 20 without documentation (complexity spike)
+- ❌ Test passes with mock but fails with real OmniFocus (missing integration test)
+
+**Bugs** are implementation errors in otherwise correct code:
+- ✅ Typo in variable name (`elifintervalDays`)
+- ✅ Off-by-one error in loop
+- ✅ Missing null check causing crash
+- ✅ Incorrect return type
+
+### Detection Criteria for AI Assistants
+
+**When to suggest logging a mistake:**
+
+1. **Missing Tests (missing-tests)**
+   - Added function but didn't modify test file in same commit
+   - Example: "Added `foo_task()` but `tests/test_foo.py` unchanged"
+   - Suggest: "This looks like MISTAKE category: missing-tests. Should we log it?"
+
+2. **Missing Server Exposure (missing-exposure)**
+   - Added function to `omnifocus_client.py` but not to `server_fastmcp.py`
+   - Can detect with: `./scripts/check_client_server_parity.sh`
+   - Suggest: "Function not exposed as MCP tool. Log as missing-exposure?"
+
+3. **Violated TDD (violated-tdd)**
+   - Implementation commit comes before test commit
+   - Large code addition without corresponding test changes
+   - Suggest: "Test should have been written first (TDD). Log as violated-tdd?"
+
+4. **Violated Architecture (violated-architecture)**
+   - Added new function without consulting decision tree
+   - Created field-specific setter instead of using `update_X()`
+   - Example: `set_due_date()` instead of `update_task(due_date=X)`
+   - Suggest: "This violates CRUD pattern. Check decision tree. Log as violated-architecture?"
+
+5. **Missing Docs (missing-docs)**
+   - CHANGELOG references file that doesn't exist
+   - Version number mismatches across files
+   - Test counts out of sync
+   - Suggest: "Documentation references are broken. Log as missing-docs?"
+
+6. **Complexity Spike (complexity-spike)**
+   - Function rated D or F (CC > 20) without documentation in CODE_QUALITY.md
+   - Suggest: "High complexity without documentation. Log as complexity-spike?"
+
+### Workflow
+
 If you discovered an architectural oversight (not a syntax error):
 
 1. **Fix it first** - Don't leave it broken
 2. **Log it** - Run `./scripts/log_mistake.sh` and edit `.claude/MISTAKES.md`
-3. **Reference in commit** - Use `Resolves: MISTAKE-XXX` footer
+3. **Update status** - Use `./scripts/update_mistake_status.sh MISTAKE-XXX <status>`
+4. **Reference in commit** - Use `Resolves: MISTAKE-XXX` footer
 
-**Log these:** Missing e2e tests, missing server exposure, violated TDD, ignored decision tree, missing docs
-
-**Why?** Patterns (3+ similar) trigger CLAUDE.md improvements to prevent recurrence.
+**Why?** Patterns (3+ similar) trigger CLAUDE.md improvements to prevent recurrence. The system measures effectiveness and improves detection over time.
 
 ---
 
