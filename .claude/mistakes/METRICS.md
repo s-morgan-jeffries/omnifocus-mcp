@@ -10,9 +10,9 @@
 
 ### By Month
 
-| Month | Total | Critical | 2 |
+| Month | Total | Critical | High | Medium | Low |
 |-------|-------|----------|------|--------|-----|
-| 2025-10 | 0 | 0 | 0 | 0 | 0 |
+| 2025-10 | 6 | 2 | 3 | 1 | 0 |
 
 *Update monthly with data from MISTAKES.md*
 

@@ -32,6 +32,13 @@ ARCHIVED=$(grep -c "^\*\*Status:\*\* archived$" "$MISTAKES_FILE" 2>/dev/null | t
 # Total (exclude template MISTAKE-XXX)
 TOTAL=$(grep "^## \[MISTAKE-" "$MISTAKES_FILE" | grep -v "MISTAKE-XXX" | wc -l | tr -d ' ')
 
+# Count by month for October 2025 (all current mistakes are from this month)
+OCT_2025_TOTAL=$(grep "^\*\*Discovery Date:\*\* 2025-10-" "$MISTAKES_FILE" | wc -l | tr -d ' \n')
+OCT_2025_CRITICAL=$(grep -B 3 "^\*\*Discovery Date:\*\* 2025-10-" "$MISTAKES_FILE" | grep "^\*\*Severity:\*\* critical" | wc -l | tr -d ' \n')
+OCT_2025_HIGH=$(grep -B 3 "^\*\*Discovery Date:\*\* 2025-10-" "$MISTAKES_FILE" | grep "^\*\*Severity:\*\* high" | wc -l | tr -d ' \n')
+OCT_2025_MEDIUM=$(grep -B 3 "^\*\*Discovery Date:\*\* 2025-10-" "$MISTAKES_FILE" | grep "^\*\*Severity:\*\* medium" | wc -l | tr -d ' \n')
+OCT_2025_LOW=$(grep -B 3 "^\*\*Discovery Date:\*\* 2025-10-" "$MISTAKES_FILE" | grep "^\*\*Severity:\*\* low" | wc -l | tr -d ' \n')
+
 # Update MISTAKES.md statistics block
 echo "📝 Updating $MISTAKES_FILE statistics..."
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -74,6 +81,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 
     # Update total
     sed -i '' "s/^- Total Mistakes: [0-9]*/- Total Mistakes: $TOTAL/" "$METRICS_FILE"
+
+    # Fix monthly table header and update October 2025 data
+    sed -i '' "s/| Month | Total | Critical | 2 |/| Month | Total | Critical | High | Medium | Low |/" "$METRICS_FILE"
+    sed -i '' "s/| 2025-10 |.*/| 2025-10 | $OCT_2025_TOTAL | $OCT_2025_CRITICAL | $OCT_2025_HIGH | $OCT_2025_MEDIUM | $OCT_2025_LOW |/" "$METRICS_FILE"
 else
     # Linux
     sed -i "s/| missing-tests.*/| missing-tests | $MISSING_TESTS |/" "$METRICS_FILE"
@@ -100,6 +111,10 @@ else
 
     # Update total
     sed -i "s/^- Total Mistakes: [0-9]*/- Total Mistakes: $TOTAL/" "$METRICS_FILE"
+
+    # Fix monthly table header and update October 2025 data
+    sed -i "s/| Month | Total | Critical | 2 |/| Month | Total | Critical | High | Medium | Low |/" "$METRICS_FILE"
+    sed -i "s/| 2025-10 |.*/| 2025-10 | $OCT_2025_TOTAL | $OCT_2025_CRITICAL | $OCT_2025_HIGH | $OCT_2025_MEDIUM | $OCT_2025_LOW |/" "$METRICS_FILE"
 fi
 
 echo "✅ Updated METRICS.md successfully!"
