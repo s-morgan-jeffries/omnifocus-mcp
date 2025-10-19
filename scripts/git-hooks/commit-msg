@@ -46,6 +46,17 @@ if echo "$COMMIT_MSG" | grep -qiE "(resolves|fixes|addresses|closes).*mistake"; 
     fi
 
     echo "✅ Valid mistake reference: ${MISTAKE_ID}"
+
+    # Auto-update metrics when mistake status changes
+    if [ -f "scripts/update_metrics.sh" ]; then
+        echo "📊 Updating metrics..."
+        ./scripts/update_metrics.sh > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo "✅ Metrics updated automatically"
+        else
+            echo "⚠️  Metrics update failed (non-blocking)"
+        fi
+    fi
 fi
 
 # Success
