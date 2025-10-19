@@ -28,16 +28,16 @@ if echo "$COMMIT_MSG" | grep -qiE "(resolves|fixes|addresses|closes).*mistake"; 
     MISTAKE_ID=$(echo "$COMMIT_MSG" | grep -oE "MISTAKE-[0-9]{3}" | head -1)
 
     # Verify the mistake exists in MISTAKES.md
-    if [ ! -f ".claude/MISTAKES.md" ]; then
-        echo "⚠️  Warning: .claude/MISTAKES.md not found"
+    if [ ! -f ".claude/mistakes/MISTAKES.md" ]; then
+        echo "⚠️  Warning: .claude/mistakes/MISTAKES.md not found"
         echo "   Cannot validate ${MISTAKE_ID} exists"
         echo ""
         echo "Proceeding anyway..."
         exit 0
     fi
 
-    if ! grep -q "\[${MISTAKE_ID}\]" ".claude/MISTAKES.md"; then
-        echo "❌ ${MISTAKE_ID} not found in .claude/MISTAKES.md"
+    if ! grep -q "\[${MISTAKE_ID}\]" ".claude/mistakes/MISTAKES.md"; then
+        echo "❌ ${MISTAKE_ID} not found in .claude/mistakes/MISTAKES.md"
         echo ""
         echo "Please ensure the mistake is logged before referencing it."
         echo "Run: ./scripts/log_mistake.sh"
