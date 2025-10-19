@@ -86,9 +86,15 @@
 
 ## [MISTAKE-001] Missing MIGRATION_v0.6.md despite CHANGELOG reference (Date: 2025-10-19)
 
+**Status:** resolved
+
 **Category:** missing-docs
 
 **Severity:** high
+
+**Discovery Date:** 2025-10-19
+**Introduced In:** be794b4
+**Recurrence Count:** 0
 
 **What Happened:**
 During v0.6.0 API redesign implementation, updated CHANGELOG.md to reference `docs/MIGRATION_v0.6.md` for detailed migration guide, marked it as "(TODO)", but never created the file before marking the redesign as complete. This created a broken link in documentation and violated the established pattern (MIGRATION_v0.5.md exists for the v0.5.0 release).
@@ -117,6 +123,9 @@ During v0.6.0 API redesign implementation, updated CHANGELOG.md to reference `do
 3. Documented all 26 removed functions with before/after examples
 4. Removed "(TODO)" marker from CHANGELOG.md line 107
 
+- **Resolved in commit:** 2ef5eaf
+- **Prevention implemented in:** .claude/CLAUDE.md:246
+
 **Prevention:**
 Add to "Before Every Commit" checklist or "Common Development Tasks":
 - **Breaking change releases:** If CHANGELOG documents removed/changed functions, verify migration guide exists
@@ -125,17 +134,27 @@ Add to "Before Every Commit" checklist or "Common Development Tasks":
 
 Alternative: Add to "Making a Breaking Change Release" workflow in docs/CONTRIBUTING.md
 
+- **Prevention Status:** [x] Implemented  [x] Validated
+
 **Related Mistakes:**
 None yet (first logged mistake in tracking system)
+
+**Effectiveness Score:** effective ✅ (no recurrence since 2025-10-19)
 
 ---
 
 
 ## [MISTAKE-002] TESTING.md test counts repeatedly get out of sync with actual tests (Date: 2025-10-19)
 
+**Status:** monitoring
+
 **Category:** missing-docs
 
 **Severity:** medium
+
+**Discovery Date:** 2025-10-19
+**Introduced In:** Unknown (multiple commits over time)
+**Recurrence Count:** 0
 
 **What Happened:**
 TESTING.md contains hardcoded test counts and breakdowns that repeatedly become stale as tests are added/removed/refactored. During v0.6.0 API redesign, the documentation showed 393 tests in some places, 333 in others, and the actual count was 333. The coverage table in TESTING.md still referenced v0.5.0 function names (complete_task, add_task, etc.) even after v0.6.0 redesign removed them. This happened multiple times throughout the project.
@@ -165,11 +184,16 @@ TESTING.md contains hardcoded test counts and breakdowns that repeatedly become 
 3. Updated all docs to say "See TESTING.md for detailed breakdown" instead of duplicating numbers
 4. Replaced obsolete coverage table with summary: "All 16 core v0.6.0 MCP tools have comprehensive coverage"
 
+- **Resolved in commit:** 2ef5eaf
+- **Prevention implemented in:** .claude/CLAUDE.md:247, docs/guides/CONTRIBUTING.md
+
 **Prevention:**
 **Short term (manual maintenance):**
 - Add to "Before Every Commit" checklist: "If tests added/removed, update test count in TESTING.md only"
 - TESTING.md is single source of truth; all other docs reference it
 - Don't duplicate test breakdowns; link to TESTING.md instead
+
+- **Prevention Status:** [x] Implemented  [ ] Validated (awaiting next test count change)
 
 **Long term (automation):**
 - Create script `scripts/generate_test_stats.sh` that runs pytest and extracts actual counts
@@ -185,16 +209,24 @@ pytest tests/ --cov --cov-report=term | grep "TOTAL"  # Coverage percentage
 ```
 
 **Related Mistakes:**
-Similar to MISTAKE-003 (if version numbers are tracked there) - both are "duplicated information that gets out of sync"
+Similar to MISTAKE-003 - both are "duplicated information that gets out of sync"
+
+**Effectiveness Score:** pending (prevention implemented, monitoring for recurrence)
 
 ---
 
 
 ## [MISTAKE-003] Version numbers duplicated across multiple files, get out of sync (Date: 2025-10-19)
 
+**Status:** monitoring
+
 **Category:** missing-docs
 
 **Severity:** high
+
+**Discovery Date:** 2025-10-19
+**Introduced In:** Unknown (multiple commits over time)
+**Recurrence Count:** 0
 
 **What Happened:**
 Version number is documented in multiple places (pyproject.toml, CHANGELOG.md, ROADMAP.md, README.md, CLAUDE.md, archive/README.md) and repeatedly gets out of sync. During v0.6.0 work, pyproject.toml showed 0.5.0 while all documentation claimed 0.6.0 was complete. Archive README still said "current version: v0.5.0" weeks after v0.6.0 completion. This has happened multiple times across different releases.
@@ -230,9 +262,14 @@ Version number is documented in multiple places (pyproject.toml, CHANGELOG.md, R
 3. Updated archive/README.md to clarify "version when archive created" vs "current project version"
 4. Consolidated version references where possible
 
+- **Resolved in commit:** 2ef5eaf
+- **Prevention implemented in:** docs/guides/CONTRIBUTING.md:313-343
+
 **Prevention:**
 **Short term (manual process):**
 - Add to "Making a Release" workflow in CONTRIBUTING.md:
+
+- **Prevention Status:** [x] Implemented  [ ] Validated (awaiting next version bump)
   1. Update pyproject.toml version (authoritative)
   2. Add CHANGELOG.md entry with new version header
   3. Update CLAUDE.md "Current Version" line
@@ -252,8 +289,10 @@ Version number is documented in multiple places (pyproject.toml, CHANGELOG.md, R
 - Consider using dynamic version from pyproject.toml in docs (e.g., include directive)
 
 **Related Mistakes:**
-Similar to MISTAKE-002 (test counts out of sync) - both are "duplicated information that gets out of sync"
+Similar to MISTAKE-002 - both are "duplicated information that gets out of sync"
 Pattern: **Documentation duplication without single source of truth**
+
+**Effectiveness Score:** pending (prevention implemented, monitoring for recurrence)
 
 ---
 
