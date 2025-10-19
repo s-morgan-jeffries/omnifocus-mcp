@@ -163,7 +163,7 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 ### Running Tests
 
-The project has comprehensive test coverage with **333 passing tests**. See [docs/TESTING.md](docs/TESTING.md) for detailed breakdown and procedures.
+The project has comprehensive test coverage with **333 passing tests**. See [docs/guides/TESTING.md](docs/guides/TESTING.md) for detailed breakdown and procedures.
 
 ```bash
 # Activate virtual environment
@@ -226,7 +226,7 @@ MIT
 
 ## Contributing
 
-Contributions welcome! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
+Contributions welcome! Please see [CONTRIBUTING.md](docs/guides/CONTRIBUTING.md) for:
 - Development workflow and TDD requirements
 - Before-commit checklist
 - Code quality standards

@@ -12,10 +12,10 @@ It contains:
 - Quick reference for common tasks
 
 **For complete details:**
-- Architecture decisions: @docs/ARCHITECTURE.md (auto-imported)
-- Testing procedures: docs/TESTING.md
-- Contribution workflow: docs/CONTRIBUTING.md
-- AppleScript gotchas: docs/APPLESCRIPT_GOTCHAS.md
+- Architecture decisions: @docs/reference/ARCHITECTURE.md (auto-imported)
+- Testing procedures: docs/guides/TESTING.md
+- Contribution workflow: docs/guides/CONTRIBUTING.md
+- AppleScript gotchas: docs/reference/APPLESCRIPT_GOTCHAS.md
 
 **For redesign implementation history:** `.claude/CLAUDE-redesign-phase.md` (archived)
 
@@ -39,7 +39,7 @@ This project follows Test-Driven Development (TDD).
 
 ### Testing Requirements
 
-**See `docs/TESTING.md` for complete testing strategy, procedures, and coverage details.**
+**See `docs/guides/TESTING.md` for complete testing strategy, procedures, and coverage details.**
 
 **Quick commands:**
 ```bash
@@ -50,7 +50,7 @@ make test-e2e              # End-to-end MCP tool tests (requires setup)
 
 **⚠️ THREE TIERS REQUIRED:** Unit (mock), Integration (real OmniFocus), E2E (full MCP stack)
 
-See `docs/TESTING.md` and `docs/INTEGRATION_TESTING.md` for setup and procedures.
+See `docs/guides/TESTING.md` and `docs/guides/INTEGRATION_TESTING.md` for setup and procedures.
 
 ### Code Quality Standards
 
@@ -64,7 +64,7 @@ See `docs/TESTING.md` and `docs/INTEGRATION_TESTING.md` for setup and procedures
 - **C rating (CC 11-20)**: Acceptable for complex business logic ⚠️
 - **D-F rating (CC 21+)**: Requires documentation or refactoring 🔴
 
-See `docs/CODE_QUALITY.md` for complete metrics, Radon guidelines, and quality thresholds.
+See `docs/reference/CODE_QUALITY.md` for complete metrics, Radon guidelines, and quality thresholds.
 
 ### Code Standards
 
@@ -76,7 +76,7 @@ Python 3.10+, type hints required, follow existing patterns, AppleScript safety 
 
 **📚 For complete architectural rationale, detailed examples, and full context:**
 
-@docs/ARCHITECTURE.md
+@docs/reference/ARCHITECTURE.md
 
 **Note:** The `@` syntax automatically imports this file into Claude Code's context. ARCHITECTURE.md contains:
 - Full design rationale explaining "why" behind decisions
@@ -140,12 +140,12 @@ See `docs/ARCHITECTURE.md` for complete anti-pattern catalog with rationale.
 
 **Current Version:** v0.6.0 (Maintenance Mode)
 **API Functions:** 16 core functions (redesign complete October 2025)
-**Test Coverage:** 89% overall (see `docs/TESTING.md` for detailed breakdown)
+**Test Coverage:** 89% overall (see `docs/guides/TESTING.md` for detailed breakdown)
 
 The API redesign (40→16 functions) completed October 2025.
 
 **See for details:**
-- `docs/ROADMAP.md` - Project history and phases
+- `docs/project/ROADMAP.md` - Project history and phases
 - `CHANGELOG.md` - Version history and migration guide
 - `.claude/CLAUDE-redesign-phase.md` - Implementation guidance (archived)
 
@@ -221,11 +221,11 @@ def update_task(
    - Integration tests (real OmniFocus)
    - **E2E tests** (`tests/test_e2e_mcp_tools.py` - test MCP tool invocation)
 4. **Expose in server** - Add corresponding tool in `server_fastmcp.py`
-5. See `docs/CONTRIBUTING.md` for full workflow
+5. See `docs/guides/CONTRIBUTING.md` for full workflow
 
 ### Modifying Existing Function
 
-See `docs/CONTRIBUTING.md` for complete workflow including:
+See `docs/guides/CONTRIBUTING.md` for complete workflow including:
 - Write test first (TDD)
 - Update both single and batch versions if applicable
 - Check complexity after changes
@@ -244,7 +244,7 @@ See `docs/CONTRIBUTING.md` for complete workflow including:
 - [ ] **Decision tree followed** - No new functions without consulting tree
 - [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
   - Verify cross-references exist; breaking changes need migration guide (MIGRATION_vX.Y.md pattern)
-  - If tests added/removed: Update count in `docs/TESTING.md` only (single source of truth)
+  - If tests added/removed: Update count in `docs/guides/TESTING.md` only (single source of truth)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
 
 **If tests are failing:**
@@ -253,7 +253,7 @@ See `docs/CONTRIBUTING.md` for complete workflow including:
 - Document why the test is failing in the test itself
 - Consider if this indicates an architectural problem
 
-See `docs/CONTRIBUTING.md` for complete pre-commit workflow.
+See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
 ---
 
@@ -275,27 +275,27 @@ If you discovered an architectural oversight (not a syntax error):
 
 ### Quick Decision Guide
 
-1. **Architecture questions** → See @docs/ARCHITECTURE.md (imported, always available)
+1. **Architecture questions** → See @docs/reference/ARCHITECTURE.md (imported, always available)
 2. **API design questions** → See `docs/API_REFERENCE.md` for complete function signatures
 3. **Can I add this function?** → NO, check the decision tree first
 4. **Should I write the test first?** → YES, always (TDD is non-negotiable)
 5. **Is this field safe for batch updates?** → If it requires unique values (name/note), NO
-6. **What's been implemented?** → See `docs/ROADMAP.md` for current status
+6. **What's been implemented?** → See `docs/project/ROADMAP.md` for current status
 7. **What changed recently?** → See `CHANGELOG.md` for version history
-8. **How do I test this?** → See `docs/TESTING.md` for complete guide
+8. **How do I test this?** → See `docs/guides/TESTING.md` for complete guide
 9. **Is my code too complex?** → Run `./scripts/check_complexity.sh`
-10. **How do I test with real OmniFocus?** → See `docs/INTEGRATION_TESTING.md` for setup
+10. **How do I test with real OmniFocus?** → See `docs/guides/INTEGRATION_TESTING.md` for setup
 
 ### Project Documentation Files
 
 - **This file:** `.claude/CLAUDE.md` - Project memory and critical rules
-- **Architecture:** @docs/ARCHITECTURE.md - Complete design rationale (auto-imported)
+- **Architecture:** @docs/reference/ARCHITECTURE.md - Complete design rationale (auto-imported)
 - **API Spec:** `docs/API_REFERENCE.md` - Complete API documentation
-- **Testing Guide:** `docs/TESTING.md` - Testing strategy, procedures, and coverage
-- **Code Quality:** `docs/CODE_QUALITY.md` - Complexity metrics and Radon guidelines
-- **Integration Tests:** `docs/INTEGRATION_TESTING.md` - Real OmniFocus testing setup
-- **AppleScript:** `docs/APPLESCRIPT_GOTCHAS.md` - Limitations and workarounds
-- **Contributing:** `docs/CONTRIBUTING.md` - Development workflow and guidelines
-- **Project Roadmap:** `docs/ROADMAP.md` - Project history, phases, and status
+- **Testing Guide:** `docs/guides/TESTING.md` - Testing strategy, procedures, and coverage
+- **Code Quality:** `docs/reference/CODE_QUALITY.md` - Complexity metrics and Radon guidelines
+- **Integration Tests:** `docs/guides/INTEGRATION_TESTING.md` - Real OmniFocus testing setup
+- **AppleScript:** `docs/reference/APPLESCRIPT_GOTCHAS.md` - Limitations and workarounds
+- **Contributing:** `docs/guides/CONTRIBUTING.md` - Development workflow and guidelines
+- **Project Roadmap:** `docs/project/ROADMAP.md` - Project history, phases, and status
 - **Release History:** `CHANGELOG.md` - Version history and technical changes
 - **Historical:** `.claude/CLAUDE-redesign-phase.md` - Redesign implementation guidance (archived)

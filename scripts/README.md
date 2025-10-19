@@ -96,7 +96,7 @@ python3 scripts/analyze_tool_docs.py
 - **C (CC 11-20)**: Acceptable for complex logic ⚠️
 - **D-F (CC 21+)**: Requires documentation or refactoring 🔴
 
-See `docs/CODE_QUALITY.md` for complete guidelines.
+See `docs/reference/CODE_QUALITY.md` for complete guidelines.
 
 ---
 
@@ -149,7 +149,7 @@ See `.claude/MISTAKES.md` and `.claude/METRICS.md` for the tracking system.
 - Prompts you to open it in OmniFocus
 - Provides instructions for test mode configuration
 
-See `docs/INTEGRATION_TESTING.md` for complete setup guide.
+See `docs/guides/INTEGRATION_TESTING.md` for complete setup guide.
 
 ---
 

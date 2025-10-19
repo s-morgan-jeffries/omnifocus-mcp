@@ -35,30 +35,25 @@ Analysis documents for features that were researched but determined to be out of
 
 ## Current Documentation
 
-For current, active documentation, see:
+For current, active documentation, see the new organized structure:
 
-### Core Documentation (Main `docs/` Directory)
-- **README.md** - Main project README with quick start and tool reference
-- **CHANGELOG.md** - Version history and release notes
-- **ROADMAP.md** - Current status and future plans
-- **TESTING.md** - Testing guide (updated with v0.5.0 test counts)
-- **MIGRATION_v0.5.md** - Migration guide for v0.4 → v0.5
-- **APPLESCRIPT_AUDIT_FINDINGS.md** - AppleScript interface audit results
-- **USE_CASES.md** - Comprehensive use case documentation (trimmed to in-scope features)
+### Developer Guides (`docs/guides/`)
+- **CONTRIBUTING.md** - Development workflow, TDD requirements, pre-commit checklist
+- **TESTING.md** - Testing strategy, coverage, and procedures
+- **INTEGRATION_TESTING.md** - Real OmniFocus testing setup and troubleshooting
 
-### Research Documentation (`docs/research/`)
-Active research documents for technical decisions:
-- **applescript-vs-omni-automation.md** - Comparison of automation approaches
-- **attachment-api-research.md** - File attachment capabilities research
-- **recurring-tasks-research.md** - Recurring task implementation research
-- **jxa-attachment-module-design.md** - JavaScript for Automation design
-- **mcp-unified-interface.md** - MCP interface design decisions
-- **tool-consolidation-analysis.md** - Tool consolidation decisions (v0.5.0)
-- **tool-documentation-audit.md** - Documentation audit results
+### Reference Documentation (`docs/reference/`)
+- **ARCHITECTURE.md** - Design decisions, CRUD patterns, decision tree
+- **API_REFERENCE.md** - Complete API documentation for all 16 core functions
+- **CODE_QUALITY.md** - Complexity metrics, Radon guidelines, quality standards
+- **APPLESCRIPT_GOTCHAS.md** - Known limitations, workarounds, common errors
 
-### Reference
-- **SCHEMA_REVIEW.md** - Canonical OmniFocus schema reference (main docs/)
-- **omnifocus-4.8.4-documentation.html** - Official OmniFocus 4.8.4 documentation
+### Migration Guides (`docs/migration/`)
+- **v0.5.md** - v0.4 → v0.5 migration guide
+- **v0.6.md** - v0.5 → v0.6 migration guide (major redesign)
+
+### Project Management (`docs/project/`)
+- **ROADMAP.md** - Project phases, history, and current status
 
 ## Why Archive Instead of Delete?
 

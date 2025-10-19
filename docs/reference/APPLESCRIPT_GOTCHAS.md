@@ -185,13 +185,13 @@ make test-integration  # Tests with real OmniFocus
 - Property access failures
 - Actual performance characteristics
 
-See `docs/INTEGRATION_TESTING.md` for setup and procedures.
+See `../guides/INTEGRATION_TESTING.md` for setup and procedures.
 
 ---
 
 ## Additional Resources
 
 - **OmniFocus AppleScript Dictionary:** Available in Script Editor (File → Open Dictionary → OmniFocus)
-- **Integration Testing Guide:** `docs/INTEGRATION_TESTING.md`
+- **Integration Testing Guide:** `../guides/INTEGRATION_TESTING.md`
 - **Bug History:** `CHANGELOG.md` (search for "AppleScript" to see past issues)
-- **Architecture Decisions:** `docs/ARCHITECTURE.md` (explains why certain patterns exist)
+- **Architecture Decisions:** `../reference/ARCHITECTURE.md` (explains why certain patterns exist)

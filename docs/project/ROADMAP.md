@@ -236,11 +236,11 @@ All Phase 2 deliverables have been implemented and tested.
 
 ### Deprecated Functions Removed (26)
 
-All deprecated functions have been removed. See [docs/API_REFERENCE.md](API_REFERENCE.md) for migration guide.
+All deprecated functions have been removed. See [../reference/API_REFERENCE.md](API_REFERENCE.md) for migration guide.
 
 ### Test Coverage (v0.6.0):
 
-**333 passing tests** with 89% overall code coverage. See [docs/TESTING.md](TESTING.md) for detailed breakdown and procedures.
+**333 passing tests** with 89% overall code coverage. See [../guides/TESTING.md](TESTING.md) for detailed breakdown and procedures.
 
 ### Database Safety:
 

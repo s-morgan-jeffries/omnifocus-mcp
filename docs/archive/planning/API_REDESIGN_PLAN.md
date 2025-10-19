@@ -485,7 +485,7 @@ def get_tasks(
 - Task source logic uses clear if/elif chain for AppleScript generation
 - Complexity increased minimally (CC 66→68) due to parameter precedence logic
 - include_full_notes parameter added to signature, though AppleScript already returns full notes
-- Updated docs/CODE_QUALITY.md to reflect new complexity and parameter count
+- Updated ../../reference/CODE_QUALITY.md to reflect new complexity and parameter count
 
 ---
 

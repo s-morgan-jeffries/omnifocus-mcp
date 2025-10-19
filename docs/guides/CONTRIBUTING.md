@@ -12,11 +12,11 @@ Thank you for your interest in contributing! This document outlines the developm
 
 - [ ] **Tests written first** - All new code has tests (see [Test-Driven Development](#test-driven-development) below)
 - [ ] **All tests pass** - Run `make test`
-- [ ] **Integration tests pass** - Run `make test-integration` (see `docs/INTEGRATION_TESTING.md` for setup)
+- [ ] **Integration tests pass** - Run `make test-integration` (see `../guides/INTEGRATION_TESTING.md` for setup)
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
-- [ ] **Decision tree followed** - No new functions without consulting tree (see `.claude/CLAUDE.md`)
+- [ ] **Decision tree followed** - No new functions without consulting tree (see `../../.claude/CLAUDE.md`)
 - [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
-- [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
+- [ ] **Architecture followed** - Reviewed relevant sections of `../reference/ARCHITECTURE.md`
 
 **If tests are failing:**
 - Don't commit until they pass
@@ -50,7 +50,7 @@ This project follows Test-Driven Development (TDD). **This is non-negotiable.**
 
 ### Three Levels of Testing
 
-See `docs/TESTING.md` for complete details on:
+See `../guides/TESTING.md` for complete details on:
 
 1. **Unit Tests** - Mock AppleScript, fast, run always (~333 tests, ~2 minutes)
 2. **Integration Tests** - Real OmniFocus via client, catches AppleScript bugs (3 tests, skipped by default)
@@ -80,7 +80,7 @@ pytest tests/test_file.py  # Specific test file
   - **Document** if complexity is inherent to the problem
   - **Refactor** if complexity is accidental (can be simplified)
 
-See `docs/CODE_QUALITY.md` for complete metrics and guidelines.
+See `../reference/CODE_QUALITY.md` for complete metrics and guidelines.
 
 **Code standards:**
 - Python 3.10+ required
@@ -108,13 +108,13 @@ See `docs/CODE_QUALITY.md` for complete metrics and guidelines.
    - Positioning? Recursive operations? UI state changes?
    - Example: `reorder_task()` has complex before/after logic
 
-**See `.claude/CLAUDE.md` for the full decision tree and anti-patterns.**
+**See `../../.claude/CLAUDE.md` for the full decision tree and anti-patterns.**
 
 **If you need a new function:**
-1. **Review `docs/ARCHITECTURE.md`** anti-patterns section
+1. **Review `../reference/ARCHITECTURE.md`** anti-patterns section
 2. **Write tests first** (see TDD above)
 3. **Document your reasoning** in the function docstring
-4. **Add example to `docs/ARCHITECTURE.md`** if it establishes a new pattern
+4. **Add example to `../reference/ARCHITECTURE.md`** if it establishes a new pattern
 5. **Check complexity** with `./scripts/check_complexity.sh` after implementation
 
 ### Modifying Existing Function
@@ -122,7 +122,7 @@ See `docs/CODE_QUALITY.md` for complete metrics and guidelines.
 1. **Write test first** demonstrating desired behavior
 2. **Run test** to confirm it fails
 3. **Implement minimal code** to pass the test
-4. **Ensure changes follow `docs/ARCHITECTURE.md`** principles
+4. **Ensure changes follow `../reference/ARCHITECTURE.md`** principles
 5. **Update both single and batch versions** if applicable (e.g., `update_task` and `update_tasks`)
 6. **Run all tests** to verify no regressions
 7. **Check complexity** hasn't increased significantly
@@ -138,7 +138,7 @@ See `docs/CODE_QUALITY.md` for complete metrics and guidelines.
 - 🛑 Test coverage drops below 85%
 - 🛑 Breaking more than 10 existing tests
 - 🛑 Unsure if a function should exist
-- 🛑 Considering modifying `docs/ARCHITECTURE.md` in a major way
+- 🛑 Considering modifying `../reference/ARCHITECTURE.md` in a major way
 
 ### Questions for Humans
 
@@ -299,12 +299,12 @@ omnifocus-mcp/
 
 ## Additional Resources
 
-- **Architecture Principles:** `docs/ARCHITECTURE.md`
+- **Architecture Principles:** `../reference/ARCHITECTURE.md`
 - **API Design Decisions:** `docs/API_REFERENCE.md`
-- **Testing Guide:** `docs/TESTING.md`
+- **Testing Guide:** `../guides/TESTING.md`
 - **AppleScript Issues:** `docs/APPLESCRIPT_GOTCHAS.md`
 - **Project Status:** `docs/ROADMAP.md`
-- **Daily Workflow:** `.claude/CLAUDE.md`
+- **Daily Workflow:** `../../.claude/CLAUDE.md`
 
 ---
 
@@ -356,7 +356,7 @@ omnifocus-mcp/
 
 If this document doesn't answer your question:
 
-1. Check `.claude/CLAUDE.md` for quick reference
+1. Check `../../.claude/CLAUDE.md` for quick reference
 2. Review relevant specialized docs listed above
 3. Search git history for similar changes
 4. Ask in GitHub issues
