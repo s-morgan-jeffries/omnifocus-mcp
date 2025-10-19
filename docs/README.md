@@ -86,11 +86,11 @@ Welcome to the OmniFocus MCP Server documentation! This directory contains compr
   - Migration guides for breaking changes
   - Bug fixes and improvements
 
-- **[API Redesign Plan](API_REDESIGN_PLAN.md)** - Historical implementation roadmap
+- **[API Redesign Plan](archive/planning/API_REDESIGN_PLAN.md)** - Historical implementation roadmap (archived)
   - Original 40-function analysis
   - Consolidation strategy
   - Implementation phases
-  - Completed checklist
+  - Completed v0.6.0 checklist
 
 ---
 
@@ -131,13 +131,18 @@ docs/
 ├── README.md                    # This file - documentation index
 ├── ARCHITECTURE.md              # Design decisions and patterns
 ├── API_REFERENCE.md             # Complete API documentation
-├── API_REDESIGN_PLAN.md         # Historical implementation plan
 ├── APPLESCRIPT_GOTCHAS.md       # Known limitations and workarounds
 ├── CODE_QUALITY.md              # Complexity guidelines
 ├── CONTRIBUTING.md              # Development workflow
 ├── INTEGRATION_TESTING.md       # Real OmniFocus testing setup
+├── MIGRATION_v0.5.md            # v0.4 → v0.5 migration guide
+├── MIGRATION_v0.6.md            # v0.5 → v0.6 migration guide
 ├── ROADMAP.md                   # Project phases and status
-└── TESTING.md                   # Testing strategy and coverage
+├── TESTING.md                   # Testing strategy and coverage
+├── archive/                     # Historical documentation
+│   └── planning/
+│       └── API_REDESIGN_PLAN.md # v0.6.0 implementation plan (complete)
+└── research/                    # Technical research documents
 ```
 
 ---

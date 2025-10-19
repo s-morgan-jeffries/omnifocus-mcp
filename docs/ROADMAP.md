@@ -4,7 +4,7 @@
 
 **Note**: This roadmap has been revised. The original vision included email forwarding, calendar integration, and other application-layer features. However, these don't belong in an MCP server - they should be separate services or applications that *use* the MCP server.
 
-**Phase 2 (Additional Primitives) is now COMPLETE**, bringing the server to **25 comprehensive MCP tools** covering all core OmniFocus functionality.
+**Phase 3 (API Redesign) is now COMPLETE**, consolidating the server to **16 comprehensive MCP tools** (v0.6.0) covering all core OmniFocus functionality with optimal tool-calling patterns.
 
 ---
 
