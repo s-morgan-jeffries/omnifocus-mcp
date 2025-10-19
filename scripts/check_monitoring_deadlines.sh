@@ -7,7 +7,7 @@
 # 2. Have passed their verification deadline (30 days after prevention)
 # 3. Should be transitioned to "resolved" if no recurrence detected
 
-MISTAKES_FILE=".claude/MISTAKES.md"
+MISTAKES_FILE=".claude/mistakes/MISTAKES.md"
 
 if [ ! -f "$MISTAKES_FILE" ]; then
     echo "❌ $MISTAKES_FILE not found"

@@ -31,7 +31,11 @@ htmlcov/
 *.swp
 *.swo
 *~
-.claude/
+
+# Claude Code - commit project context, ignore user settings
+.claude/settings.local.json
+.claude/hooks/
+.claude/hooks.json
 
 # OS
 .DS_Store

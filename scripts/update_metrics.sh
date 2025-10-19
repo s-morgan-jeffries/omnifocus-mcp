@@ -1,8 +1,8 @@
 #!/bin/bash
 # Automatically update METRICS.md from MISTAKES.md data
 
-MISTAKES_FILE=".claude/MISTAKES.md"
-METRICS_FILE=".claude/METRICS.md"
+MISTAKES_FILE=".claude/mistakes/MISTAKES.md"
+METRICS_FILE=".claude/mistakes/METRICS.md"
 
 echo "📊 Analyzing MISTAKES.md..."
 

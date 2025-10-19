@@ -1,7 +1,7 @@
 #!/bin/bash
 # Quick script to log a mistake with template
 
-MISTAKES_FILE=".claude/MISTAKES.md"
+MISTAKES_FILE=".claude/mistakes/MISTAKES.md"
 
 # Get next mistake number
 LAST_NUM=$(grep -o "MISTAKE-[0-9]\+" "$MISTAKES_FILE" | sed 's/MISTAKE-//' | sort -n | tail -1)

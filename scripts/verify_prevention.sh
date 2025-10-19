@@ -1,7 +1,7 @@
 #!/bin/bash
 # Verify that prevention measures from a logged mistake were actually implemented
 
-MISTAKES_FILE=".claude/MISTAKES.md"
+MISTAKES_FILE=".claude/mistakes/MISTAKES.md"
 
 # Usage
 if [ $# -lt 1 ]; then

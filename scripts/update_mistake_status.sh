@@ -1,7 +1,7 @@
 #!/bin/bash
 # Update the status of a logged mistake
 
-MISTAKES_FILE=".claude/MISTAKES.md"
+MISTAKES_FILE=".claude/mistakes/MISTAKES.md"
 
 # Usage
 if [ $# -lt 2 ]; then
