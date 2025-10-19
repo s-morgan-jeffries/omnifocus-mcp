@@ -236,11 +236,11 @@ All Phase 2 deliverables have been implemented and tested.
 
 ### Deprecated Functions Removed (26)
 
-All deprecated functions have been removed. See [../reference/API_REFERENCE.md](API_REFERENCE.md) for migration guide.
+All deprecated functions have been removed. See [../reference/API_REFERENCE.md](../reference/API_REFERENCE.md) for migration guide.
 
 ### Test Coverage (v0.6.0):
 
-**333 passing tests** with 89% overall code coverage. See [../guides/TESTING.md](TESTING.md) for detailed breakdown and procedures.
+**333 passing tests** with 89% overall code coverage. See [../guides/TESTING.md](../guides/TESTING.md) for detailed breakdown and procedures.
 
 ### Database Safety:
 
@@ -315,7 +315,7 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 - ✅ **Enum Types** - `TaskStatus` and `ProjectStatus` enums for type safety
 - ✅ **Structured Returns** - Consistent dict format for all operations
 - ✅ **Database Safety Guards** - Updated DESTRUCTIVE_OPERATIONS for new function names
-- ✅ **Removed 26 Deprecated Functions** - See [API_REFERENCE.md](API_REFERENCE.md) for migration guide
+- ✅ **Removed 26 Deprecated Functions** - See [API_REFERENCE.md](../reference/API_REFERENCE.md) for migration guide
 - ✅ **Test Cleanup** - 333 passing tests, all deprecated function tests removed/updated
 - ✅ **Code Reduction** - 2,681 lines of deprecated code deleted
 

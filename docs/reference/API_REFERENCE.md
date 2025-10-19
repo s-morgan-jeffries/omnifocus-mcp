@@ -13,7 +13,7 @@ This document shows the complete API surface that Claude Desktop sees when conne
 - Consolidated 40+ functions → 16 core functions
 - Removed 26 deprecated functions (functionality preserved in new API)
 - All proposals from this document have been **IMPLEMENTED ✅**
-- See [CHANGELOG.md](../CHANGELOG.md) for migration guide
+- See [CHANGELOG.md](../../CHANGELOG.md) for migration guide
 
 **Historical Note:** This document originally proposed the API redesign. All "Enhanced proposed signature" sections below have now been implemented and are the current production API.
 

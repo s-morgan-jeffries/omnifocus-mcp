@@ -280,7 +280,7 @@ After implementation:
 
 ## Resources
 
-- Full review: [SCHEMA_REVIEW.md](./SCHEMA_REVIEW.md)
+- Full review: [SCHEMA_REVIEW.md](../legacy/SCHEMA_REVIEW.md)
 - MCP Spec: https://modelcontextprotocol.io/specification/2025-06-18
 - OmniFocus AppleScript: https://inside.omnifocus.com/applescript
 - Python SDK: https://github.com/modelcontextprotocol/python-sdk
