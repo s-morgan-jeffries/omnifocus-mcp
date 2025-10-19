@@ -200,65 +200,56 @@ All Phase 2 deliverables have been implemented and tested.
 
 ---
 
-## Current State Summary
+## Current State Summary (v0.6.0 - October 2025)
 
-### Implemented (25 MCP Tools):
+### 🎉 API Redesign Complete - 16 Core MCP Tools
 
-**Projects (4 tools):**
-- ✅ `get_projects` - List all active projects
-- ✅ `search_projects` - Search by name/note/folder
-- ✅ `create_project` - Create new project with folder placement
-- ✅ `delete_project` - Delete a project
+**Current Version:** v0.6.0
+**Status:** ✅ API Redesign COMPLETE - All proposed functions implemented
+**API Reduction:** 40+ functions → 16 core functions (60% reduction)
 
-**Tasks (9 tools):**
-- ✅ `get_tasks` - Query tasks with advanced filtering (available, overdue, by tag)
-- ✅ `add_task` - Create task with full properties
-- ✅ `update_task` - Modify existing task
-- ✅ `complete_task` - Mark task complete
-- ✅ `delete_task` - Delete a task
-- ✅ `move_task` - Move task between projects or to inbox
-- ✅ `drop_task` - Remove task from project
-- ✅ `set_parent_task` - Create task hierarchies
-- ✅ `set_estimated_minutes` - Set time estimates
+**Projects (5 tools):**
+- ✅ `create_project` - Create with folder, status, and review interval
+- ✅ `get_projects` - Enhanced with `project_id`, `include_full_notes` parameters
+- ✅ `update_project` - Comprehensive single-project update (all fields)
+- ✅ `update_projects` - NEW: Batch update (safe fields, excludes name/note)
+- ✅ `delete_projects` - Union type: accepts single ID or list
 
-**Inbox (2 tools):**
-- ✅ `get_inbox_tasks` - List inbox items
-- ✅ `create_inbox_task` - Quick capture to inbox
-
-**Tags (2 tools):**
-- ✅ `get_tags` - List all tags
-- ✅ `add_tag_to_task` - Tag a task
+**Tasks (6 tools):**
+- ✅ `create_task` - Replaces `add_task` and `create_inbox_task` (project_id=None for inbox)
+- ✅ `get_tasks` - Enhanced with `task_id`, `parent_task_id`, `include_full_notes` parameters
+- ✅ `update_task` - Comprehensive single-task update (all fields)
+- ✅ `update_tasks` - NEW: Batch update (safe fields, excludes name/note)
+- ✅ `delete_tasks` - Union type: accepts single ID or list
+- ✅ `reorder_task` - Specialized positioning logic
 
 **Folders (2 tools):**
-- ✅ `get_folders` - List folder hierarchy
-- ✅ `create_folder` - Create folders with parent paths
+- ✅ `create_folder` - With optional parent path
+- ✅ `get_folders` - Returns folder hierarchy
 
-**Project Review (3 tools):**
-- ✅ `set_review_interval` - Configure review frequency
-- ✅ `mark_project_reviewed` - Mark as reviewed
-- ✅ `get_projects_due_for_review` - Find projects needing review
+**Tags (1 tool):**
+- ✅ `get_tags` - Returns all available tags
 
 **Perspectives (2 tools):**
 - ✅ `get_perspectives` - List custom perspectives
 - ✅ `switch_perspective` - Change active perspective
 
-**Notes (1 tool):**
-- ✅ `add_note` - Append to project notes
+### Deprecated Functions Removed (26)
 
-### Test Coverage:
+All deprecated functions have been removed. See [docs/API_REFERENCE.md](API_REFERENCE.md) for migration guide.
 
-- **302 passing tests**
-- 143 unit tests (omnifocus_client.py)
-- 79 unit tests (legacy server.py)
-- 30 unit tests (FastMCP server_fastmcp.py)
-- 40 integration tests (end-to-end workflows)
+### Test Coverage (v0.6.0):
+
+- **333 passing tests** (100% pass rate)
+- 149 unit tests (omnifocus_client.py)
+- 33 unit tests (server_fastmcp.py)
+- 3 integration tests (real OmniFocus, skipped by default)
 - 13 safety guard tests
-- 13 real OmniFocus tests (optional, require setup)
-- **Execution time**: ~1.01s
-- **Code coverage**: 88% (970 statements)
-  - omnifocus_client.py: 97%
-  - server_fastmcp.py: 73%
-  - server.py: 96%
+- 135+ redesign-specific tests
+- **Execution time**: ~1.7min (includes all tests)
+- **Code coverage**: 89% overall
+  - omnifocus_client.py: 95%
+  - server_fastmcp.py: 79%
 
 ### Database Safety:
 
@@ -313,7 +304,40 @@ These belong in separate services/servers, not the OmniFocus MCP server.
 
 ---
 
-## Phase 3: Refinement & Polish - 🚧 IN PROGRESS
+## Phase 3: API Redesign - ✅ COMPLETE
+
+### v0.6.0 (October 2025) - ✅ COMPLETE
+
+**Focus:** Major API redesign to optimize for MCP tool calling efficiency
+
+**Status:** ✅ ALL IMPLEMENTED - 16 core functions operational
+
+**Implemented:**
+- ✅ **API Consolidation** - Reduced from 40+ functions to 16 core functions (60% reduction)
+- ✅ **Comprehensive Update Functions** - `update_task()` and `update_project()` handle all field changes
+- ✅ **Batch Operations** - New `update_tasks()` and `update_projects()` for efficient bulk updates
+- ✅ **Union Types** - `delete_tasks()` and `delete_projects()` accept single ID or list
+- ✅ **Enhanced Get Functions** - `get_tasks()` and `get_projects()` now support:
+  - Direct ID lookup (consolidates `get_task()`, `get_project()`)
+  - Parent task filtering (consolidates `get_subtasks()`)
+  - Full note retrieval (consolidates `get_note()`)
+- ✅ **Enum Types** - `TaskStatus` and `ProjectStatus` enums for type safety
+- ✅ **Structured Returns** - Consistent dict format for all operations
+- ✅ **Database Safety Guards** - Updated DESTRUCTIVE_OPERATIONS for new function names
+- ✅ **Removed 26 Deprecated Functions** - See [API_REFERENCE.md](API_REFERENCE.md) for migration guide
+- ✅ **Test Cleanup** - 333 passing tests, all deprecated function tests removed/updated
+- ✅ **Code Reduction** - 2,681 lines of deprecated code deleted
+
+**Benefits Realized:**
+- ✅ Minimized tool call overhead (update multiple fields in one call)
+- ✅ Simpler API surface (easier to learn and use)
+- ✅ Type safety with enums and structured returns
+- ✅ Consistent patterns across all entity types
+- ✅ Batch-safe operations (separate functions exclude name/note fields)
+
+**Current Tool Count:** 16 MCP tools (down from 26)
+
+**Test Coverage:** 333 passing tests (100% pass rate)
 
 ### v0.5.0 (October 2025) - ✅ COMPLETE
 

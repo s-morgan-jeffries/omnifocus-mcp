@@ -88,8 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Parameter naming consistency** - `update_project()` uses `project_name` not `name` (matches `create_project`)
-- **Test coverage** - 328 tests passing, extensive test cleanup for deprecated functions
+- **Test coverage** - 333 tests passing (100% pass rate), extensive test cleanup for deprecated functions
 - **Type safety** - All update functions use proper Enum types with string fallback for MCP compatibility
+- **Database safety bug** - Fixed DESTRUCTIVE_OPERATIONS set to include new function names (`create_task`, `update_task`, etc.)
 
 ### Removed
 

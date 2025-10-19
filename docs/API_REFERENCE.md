@@ -1,23 +1,73 @@
 # OmniFocus MCP Server - API Reference
 
-**Total Tools:** 40
+**Current Version:** v0.6.0 (API Redesign - IMPLEMENTED)
+**Total MCP Tools:** 16 (reduced from 40+)
 
 This document shows the complete API surface that Claude Desktop sees when connecting to the OmniFocus MCP server. Each tool is exposed via the Model Context Protocol and can be invoked by Claude.
 
-**Last Updated:** 2025-10-17
+**Last Updated:** 2025-10-18
+
+## ⚠️ Version History Notice
+
+**v0.6.0 (Current - October 2025):** Major API redesign completed
+- Consolidated 40+ functions → 16 core functions
+- Removed 26 deprecated functions (functionality preserved in new API)
+- All proposals from this document have been **IMPLEMENTED ✅**
+- See [CHANGELOG.md](../CHANGELOG.md) for migration guide
+
+**Historical Note:** This document originally proposed the API redesign. All "Enhanced proposed signature" sections below have now been implemented and are the current production API.
 
 ---
 
 ## Table of Contents
 
-- [Projects](#projects) (10 tools)
-- [Tasks](#tasks) (18 tools)
-- [Folders](#folders) (2 tools)
-- [Tags](#tags) (1 tool)
-- [Review & GTD](#review--gtd) (4 tools)
-- [Perspectives](#perspectives) (2 tools)
-- [Notes](#notes) (2 tools)
-- [Inbox](#inbox) (1 tool)
+**Current API (v0.6.0 - 16 Core Functions):**
+- [Projects](#projects) (5 functions) - `create`, `get`, `update`, `update_batch`, `delete`
+- [Tasks](#tasks) (6 functions) - `create`, `get`, `update`, `update_batch`, `delete`, `reorder`
+- [Folders](#folders) (2 functions) - `create`, `get`
+- [Tags](#tags) (1 function) - `get`
+- [Perspectives](#perspectives) (2 functions) - `get`, `switch`
+
+**Deprecated Functions (Removed in v0.6.0):**
+- [Deprecated Functions](#deprecated-functions-removed-in-v060) - 26 functions consolidated into core API
+
+---
+
+## Implementation Status (v0.6.0)
+
+### ✅ Implemented Functions (16 Core Functions)
+
+All "Enhanced proposed signature" sections in this document have been **FULLY IMPLEMENTED** as of v0.6.0.
+
+**Projects (5):**
+- ✅ `create_project()` - With `review_interval_weeks` parameter
+- ✅ `get_projects()` - Enhanced with `project_id`, `include_full_notes` parameters
+- ✅ `update_project()` - Comprehensive single-project update
+- ✅ `update_projects()` - NEW: Batch update (safe fields only)
+- ✅ `delete_projects()` - Union type: accepts single ID or list
+
+**Tasks (6):**
+- ✅ `create_task()` - Replaces `add_task()` and `create_inbox_task()`
+- ✅ `get_tasks()` - Enhanced with `task_id`, `parent_task_id`, `include_full_notes` parameters
+- ✅ `update_task()` - Comprehensive single-task update
+- ✅ `update_tasks()` - NEW: Batch update (safe fields only)
+- ✅ `delete_tasks()` - Union type: accepts single ID or list
+- ✅ `reorder_task()` - Specialized positioning logic
+
+**Folders (2):**
+- ✅ `create_folder()` - With optional parent path
+- ✅ `get_folders()` - Returns folder hierarchy
+
+**Tags (1):**
+- ✅ `get_tags()` - Returns all available tags
+
+**Perspectives (2):**
+- ✅ `get_perspectives()` - Returns available perspectives
+- ✅ `switch_perspective()` - UI control function
+
+### ❌ Removed Functions (26 Deprecated)
+
+See [Deprecated Functions](#deprecated-functions-removed-in-v060) section below for full list and migration paths.
 
 ---
 
@@ -968,53 +1018,105 @@ Claude Desktop connects to the MCP server, which uses the OmniFocus connector to
 
 ---
 
-## Proposed API Reduction Summary
+## Deprecated Functions (Removed in v0.6.0)
 
-**Current API:** 40 functions
+### Migration Guide
 
-**Proposed changes:**
-1. **Consolidate into core CRUD operations** - Focus on create, read, update, delete for each entity type
-2. **Merge singular/batch operations** - Functions accept `Union[str, list[str]]` for flexibility
-3. **Remove specialized filters** - Functions like `get_stalled_projects()` removed (client-side filtering)
-4. **Consolidate all updates into update functions** - Single `update_task()` and `update_project()` handle all field changes
-5. **Remove redundant getters** - Functions like `get_note()` and `get_subtasks()` replaced with parameters on general get functions
-6. **Merge inbox creation** - `create_inbox_task()` merged into `create_task()`
+All 26 deprecated functions have been removed. Their functionality is preserved in the new API. Use this guide to migrate:
 
-**Core API Pattern:**
+**Read Operations (4 removed):**
+- ❌ `get_task(task_id)` → ✅ `get_tasks(task_id=X)` - Returns list with single task
+- ❌ `get_project(project_id)` → ✅ `get_projects(project_id=X)` - Returns list with single project
+- ❌ `get_subtasks(parent_id)` → ✅ `get_tasks(parent_task_id=X)` - Returns list of child tasks
+- ❌ `get_note(entity_id)` → ✅ `get_tasks/get_projects(entity_id=X, include_full_notes=True)` - Returns full note content
+
+**Task Update Operations (10 removed):**
+- ❌ `complete_task(task_id)` → ✅ `update_task(task_id, completed=True)`
+- ❌ `complete_tasks(task_ids)` → ✅ `update_tasks(task_ids, completed=True)`
+- ❌ `drop_task(task_id)` → ✅ `update_task(task_id, status=TaskStatus.DROPPED)`
+- ❌ `drop_tasks(task_ids)` → ✅ `update_tasks(task_ids, status=TaskStatus.DROPPED)`
+- ❌ `move_task(task_id, project_id)` → ✅ `update_task(task_id, project_id=X)`
+- ❌ `move_tasks(task_ids, project_id)` → ✅ `update_tasks(task_ids, project_id=X)`
+- ❌ `set_parent_task(task_id, parent_id)` → ✅ `update_task(task_id, parent_task_id=X)`
+- ❌ `set_estimated_minutes(task_id, minutes)` → ✅ `update_task(task_id, estimated_minutes=X)`
+- ❌ `add_tag_to_task(task_id, tag)` → ✅ `update_task(task_id, add_tags=[X])`
+- ❌ `remove_tag_from_tasks(task_ids, tag)` → ✅ `update_tasks(task_ids, remove_tags=[X])`
+
+**Project Update Operations (4 removed):**
+- ❌ `drop_project(project_id)` → ✅ `update_project(project_id, status=ProjectStatus.DROPPED)`
+- ❌ `drop_projects(project_ids)` → ✅ `update_projects(project_ids, status=ProjectStatus.DROPPED)`
+- ❌ `set_review_interval(project_id, weeks)` → ✅ `update_project(project_id, review_interval_weeks=X)`
+- ❌ `mark_project_reviewed(project_id)` → ✅ `update_project(project_id, last_reviewed="today")`
+- ❌ `set_project_status(project_id, status)` → ✅ `update_project(project_id, status=X)`
+
+**Delete Operations (2 removed):**
+- ❌ `delete_task(task_id)` → ✅ `delete_tasks(task_id)` - Now accepts single ID or list
+- ❌ `delete_project(project_id)` → ✅ `delete_projects(project_id)` - Now accepts single ID or list
+
+**Batch Tag Operations (1 removed):**
+- ❌ `add_tag_to_tasks(task_ids, tag)` → ✅ `update_tasks(task_ids, add_tags=[X])`
+
+**Note Operations (1 removed):**
+- ❌ `add_note(entity_id, note)` → ✅ Client-side: Fetch current note, concatenate, then `update_task/update_project(entity_id, note=combined)`
+
+**Inbox Operations (1 removed):**
+- ❌ `create_inbox_task(name, ...)` → ✅ `create_task(name, project_id=None, ...)` - Omit project_id to create in inbox
+
+**Specialized Filters (2 removed):**
+- ❌ `get_stalled_projects()` → ✅ Client-side filtering with `get_projects()` - Check for projects with no next actions
+- ❌ `get_projects_due_for_review()` → ✅ Client-side filtering with `get_projects()` - Compare review dates
+
+**Total Removed:** 26 functions
+
+---
+
+## API Reduction Summary (COMPLETED v0.6.0)
+
+**Previous API:** 40+ functions
+**Current API:** 16 functions (60% reduction)
+
+**Implemented changes:** ✅ ALL COMPLETE
+1. ✅ **Consolidate into core CRUD operations** - Focus on create, read, update, delete for each entity type
+2. ✅ **Merge singular/batch operations** - Functions accept `Union[str, list[str]]` for flexibility
+3. ✅ **Remove specialized filters** - Functions like `get_stalled_projects()` removed (client-side filtering)
+4. ✅ **Consolidate all updates into update functions** - Single `update_task()` and `update_project()` handle all field changes
+5. ✅ **Remove redundant getters** - Functions like `get_note()` and `get_subtasks()` replaced with parameters on general get functions
+6. ✅ **Merge inbox creation** - `create_inbox_task()` merged into `create_task()`
+
+**Core API Pattern (Implemented):**
 Following MCP best practices while minimizing overhead, the API follows a simple CRUD pattern:
 - `create_X()` - Create new entities
-- `get_X()` / `get_Xs()` - Read entities with filtering
-- `update_X()` - Update any field on an entity (handles all property changes)
+- `get_Xs()` - Read entities with filtering (supports single ID via parameter)
+- `update_X()` - Update any field on a single entity (handles all property changes)
+- `update_Xs()` - Batch update (safe fields only, excludes name/note)
 - `delete_Xs()` - Delete one or more entities (accepts single or multiple IDs)
 
-**Functions to DELETE:** 27
-- Dedicated operation functions consolidated into `update_task()`: `complete_task`, `complete_tasks`, `drop_task`, `drop_tasks`, `move_task`, `move_tasks`, `set_parent_task`, `set_estimated_minutes`, `add_tag_to_task`, `remove_tag_from_tasks` (10)
-- Dedicated operation functions consolidated into `update_project()`: `drop_project`, `drop_projects`, `set_review_interval`, `mark_project_reviewed` (4)
-- Singular deletion functions (batch versions enhanced with Union types): `delete_task`, `delete_project` (2)
-- Singular tag operation (batch version enhanced with Union types): `add_tag_to_task` (already counted above, so 0 additional)
-- Specialized filters: `get_stalled_projects`, `get_projects_due_for_review` (2)
-- Redundant getters replaced by enhanced get functions: `get_project`, `get_task`, `get_subtasks`, `get_note` (4)
-- Note operations: `add_note` (1)
-- Inbox creation: `create_inbox_task` (1)
-- Status-specific operations consolidated into update: `set_project_status` (1)
-- Batch tag operations consolidated into update: `add_tag_to_tasks` (1)
+**Functions DELETED:** 26 (See migration guide above)
 
-**Total functions deleted: 26**
+**Final count:** 16 core functions
 
-**Estimated final count:** ~15-17 core functions
+**Key architectural decisions (All Implemented):**
+- ✅ **Comprehensive update functions** - `update_task()` and `update_project()` handle ALL field updates to minimize tool call overhead
+- ✅ **Union types for batch operations** - `Union[str, list[str]]` allows single function to handle one or many items
+- ✅ **Structured returns for batch operations** - Consistent dict format with success/failure counts
+- ✅ **Enum types** - `TaskStatus` and `ProjectStatus` enums for status values
+- ✅ **Explicit ValueError** on conflicting parameters (e.g., can't set both `project_id` and `parent_task_id`)
+- ✅ **Keep create/update separate** - Clear distinction between creating and modifying (no upsert pattern)
+- ✅ **Simple, atomic operations** - Each tool has one clear purpose
+- ✅ **Separate single/batch updates** - Batch functions exclude `name` and `note` fields to prevent accidental overwrites
 
-**Key architectural decisions:**
-- **Comprehensive update functions** - `update_task()` and `update_project()` handle ALL field updates to minimize tool call overhead
-- **Union types for batch operations** - `Union[str, list[str]]` allows single function to handle one or many items
-- **Structured returns for batch operations** - Consistent dict format with success/failure counts
-- **Enum types** for status and other constrained values
-- **Explicit ValueError** on conflicting parameters
-- **Keep create/update separate** - Clear distinction between creating and modifying
-- **Simple, atomic operations** - Each tool has one clear purpose
+**Benefits (Realized):**
+- ✅ Minimizes tool call overhead (update multiple fields in one call)
+- ✅ Simpler API surface (16 vs 40+ functions - 60% reduction)
+- ✅ Flexible batch operations (one function handles any quantity)
+- ✅ Consistent patterns across all entity types
+- ✅ Easier to extend (add parameters vs add functions)
+- ✅ Type safety with enums and structured returns
+- ✅ Database safety guards enabled for all destructive operations
 
-**Benefits:**
-- Minimizes tool call overhead (update multiple fields in one call)
-- Simpler API surface (fewer functions to learn)
-- Flexible batch operations (one function handles any quantity)
-- Consistent patterns across all entity types
-- Easier to extend (add parameters vs add functions)
+**Implementation Details:**
+- **Code reduction:** 2,681 lines of deprecated code removed
+- **Test coverage:** 333 tests passing (100% pass rate)
+- **Safety guards:** All write operations verify database in test mode
+- **Backward compatibility:** Server layer handles legacy parameter names where needed
+- **Error handling:** Parameter validation (ValueError) vs runtime errors (dict with error field)
