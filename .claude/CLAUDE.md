@@ -222,7 +222,12 @@ def update_task(
 **STOP!** Before adding:
 1. Check the Quick Decision Tree above - can existing functions handle this?
 2. Review `docs/ARCHITECTURE.md` anti-patterns section
-3. See `docs/CONTRIBUTING.md` for full workflow
+3. **Write tests first** (TDD):
+   - Unit tests (mock AppleScript)
+   - Integration tests (real OmniFocus)
+   - **E2E tests** (`tests/test_e2e_mcp_tools.py` - test MCP tool invocation)
+4. **Expose in server** - Add corresponding tool in `server_fastmcp.py`
+5. See `docs/CONTRIBUTING.md` for full workflow
 
 ### Modifying Existing Function
 
@@ -236,9 +241,11 @@ See `docs/CONTRIBUTING.md` for complete workflow including:
 ## Before Every Commit
 
 **Run this checklist:**
-- [ ] **Tests written first** - All new code has tests
+- [ ] **Tests written first** - All new code has tests (unit, integration, AND e2e)
 - [ ] **All tests pass** - Run `make test`
 - [ ] **Integration tests pass** - Run `make test-integration`
+- [ ] **E2E tests pass** - Run `make test-e2e` (new/modified client functions need MCP tool tests)
+- [ ] **Server exposure verified** - Run `./scripts/check_client_server_parity.sh`
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree
 - [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
