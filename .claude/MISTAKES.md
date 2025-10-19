@@ -141,7 +141,7 @@ Alternative: Add to "Making a Breaking Change Release" workflow in docs/CONTRIBU
 **Related Mistakes:**
 None yet (first logged mistake in tracking system)
 
-**Effectiveness Score:** effective ✅ (no recurrence since 2025-10-19)
+**Effectiveness Score:** pending (verify 2025-11-18) (no recurrence since 2025-10-19)
 
 ---
 
@@ -157,6 +157,8 @@ None yet (first logged mistake in tracking system)
 **Discovery Date:** 2025-10-19
 **Introduced In:** Unknown (multiple commits over time)
 **Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-18 (30 days from 2025-10-19)
 
 **What Happened:**
 TESTING.md contains hardcoded test counts and breakdowns that repeatedly become stale as tests are added/removed/refactored. During v0.6.0 API redesign, the documentation showed 393 tests in some places, 333 in others, and the actual count was 333. The coverage table in TESTING.md still referenced v0.5.0 function names (complete_task, add_task, etc.) even after v0.6.0 redesign removed them. This happened multiple times throughout the project.
@@ -357,7 +359,7 @@ MISTAKE-005, MISTAKE-006 (other meta-mistakes in mistake tracking system found b
 
 ## [MISTAKE-007] No validation that prevention measures actually work (Date: 2025-10-19)
 
-**Status:** open
+**Status:** monitoring
 
 **Category:** missing-tests
 
@@ -420,7 +422,7 @@ MISTAKE-004 (metrics automation), MISTAKE-008 (no recurrence tracking)
 
 ## [MISTAKE-008] No recurrence tracking to measure prevention effectiveness (Date: 2025-10-19)
 
-**Status:** open
+**Status:** monitoring
 
 **Category:** missing-docs
 
