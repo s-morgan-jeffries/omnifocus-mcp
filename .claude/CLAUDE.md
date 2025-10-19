@@ -244,6 +244,7 @@ See `docs/CONTRIBUTING.md` for complete workflow including:
 - [ ] **Decision tree followed** - No new functions without consulting tree
 - [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
   - Verify cross-references exist; breaking changes need migration guide (MIGRATION_vX.Y.md pattern)
+  - If tests added/removed: Update count in `docs/TESTING.md` only (single source of truth)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
 
 **If tests are failing:**

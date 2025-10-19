@@ -308,6 +308,50 @@ omnifocus-mcp/
 
 ---
 
+## Making a Release
+
+**Version bumping workflow** (prevents MISTAKE-003 - version sync issues):
+
+1. **Update pyproject.toml** (authoritative source)
+   ```toml
+   version = "X.Y.Z"
+   ```
+
+2. **Add CHANGELOG.md entry** with new version header
+   ```markdown
+   ## [X.Y.Z] - YYYY-MM-DD
+   ### Added / Changed / Fixed
+   ```
+
+3. **Update CLAUDE.md** "Current Version" line
+   ```markdown
+   **Current Version:** vX.Y.Z
+   ```
+
+4. **Verify version consistency**
+   ```bash
+   # Future: scripts/check_version_sync.sh (not yet implemented)
+   grep 'version = ' pyproject.toml
+   grep 'Current Version' .claude/CLAUDE.md
+   head -20 CHANGELOG.md
+   ```
+
+5. **Commit version bump**
+   ```bash
+   git add pyproject.toml CHANGELOG.md .claude/CLAUDE.md
+   git commit -m "chore: bump version to vX.Y.Z"
+   ```
+
+6. **Tag release** (if publishing)
+   ```bash
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   git push --tags
+   ```
+
+**For breaking changes:** Create migration guide (MIGRATION_vX.Y.md) before release.
+
+---
+
 ## Questions?
 
 If this document doesn't answer your question:

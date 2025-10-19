@@ -5,7 +5,7 @@
 **Last Updated:** 2025-10-19
 
 **Statistics:**
-- Total Mistakes: 1
+- Total Mistakes: 3
 - By Category: missing-docs (1)
 - By Severity: high (1)
 
@@ -116,6 +116,133 @@ Alternative: Add to "Making a Breaking Change Release" workflow in docs/CONTRIBU
 
 **Related Mistakes:**
 None yet (first logged mistake in tracking system)
+
+---
+
+
+## [MISTAKE-002] TESTING.md test counts repeatedly get out of sync with actual tests (Date: 2025-10-19)
+
+**Category:** missing-docs
+
+**Severity:** medium
+
+**What Happened:**
+TESTING.md contains hardcoded test counts and breakdowns that repeatedly become stale as tests are added/removed/refactored. During v0.6.0 API redesign, the documentation showed 393 tests in some places, 333 in others, and the actual count was 333. The coverage table in TESTING.md still referenced v0.5.0 function names (complete_task, add_task, etc.) even after v0.6.0 redesign removed them. This happened multiple times throughout the project.
+
+**Context:**
+- **File(s):** docs/TESTING.md (lines 21, 166-187, 336-365), README.md (lines 166-187), ROADMAP.md (lines 241-252), .claude/CLAUDE.md (line 143)
+- **Function(s):** N/A (documentation)
+- **Commits:** Multiple throughout v0.5.0 and v0.6.0 development
+
+**Impact:**
+- Documentation shows incorrect test counts, confusing contributors
+- Coverage tables reference deprecated/removed functions
+- Test count is duplicated in 4+ files, requiring manual sync across all
+- Human readers get conflicting information
+- AI readers may reference wrong function names from outdated coverage tables
+
+**Root Cause:**
+1. Test counts are manually hardcoded in documentation instead of generated
+2. No automated check that TESTING.md matches actual pytest output
+3. Coverage breakdown by function is manually maintained
+4. Same information duplicated across 4+ files (TESTING.md, README.md, ROADMAP.md, CLAUDE.md)
+5. No single source of truth for test statistics
+
+**Fix:**
+1. Consolidated test counts to single source (TESTING.md) with all other docs referencing it
+2. Removed stale v0.5.0 coverage table from TESTING.md
+3. Updated all docs to say "See TESTING.md for detailed breakdown" instead of duplicating numbers
+4. Replaced obsolete coverage table with summary: "All 16 core v0.6.0 MCP tools have comprehensive coverage"
+
+**Prevention:**
+**Short term (manual maintenance):**
+- Add to "Before Every Commit" checklist: "If tests added/removed, update test count in TESTING.md only"
+- TESTING.md is single source of truth; all other docs reference it
+- Don't duplicate test breakdowns; link to TESTING.md instead
+
+**Long term (automation):**
+- Create script `scripts/generate_test_stats.sh` that runs pytest and extracts actual counts
+- Script outputs markdown snippet that can be pasted into TESTING.md
+- Pre-commit hook could warn if TESTING.md test count differs from actual pytest output
+- Even better: Generate TESTING.md statistics section automatically from pytest --collect-only
+
+**Example automation:**
+```bash
+# scripts/generate_test_stats.sh
+pytest --collect-only -q | tail -1  # "333 tests collected"
+pytest tests/ --cov --cov-report=term | grep "TOTAL"  # Coverage percentage
+```
+
+**Related Mistakes:**
+Similar to MISTAKE-003 (if version numbers are tracked there) - both are "duplicated information that gets out of sync"
+
+---
+
+
+## [MISTAKE-003] Version numbers duplicated across multiple files, get out of sync (Date: 2025-10-19)
+
+**Category:** missing-docs
+
+**Severity:** high
+
+**What Happened:**
+Version number is documented in multiple places (pyproject.toml, CHANGELOG.md, ROADMAP.md, README.md, CLAUDE.md, archive/README.md) and repeatedly gets out of sync. During v0.6.0 work, pyproject.toml showed 0.5.0 while all documentation claimed 0.6.0 was complete. Archive README still said "current version: v0.5.0" weeks after v0.6.0 completion. This has happened multiple times across different releases.
+
+**Context:**
+- **File(s):**
+  - pyproject.toml (line 7 - authoritative source)
+  - CHANGELOG.md (version headers)
+  - docs/ROADMAP.md (multiple version references)
+  - README.md (feature descriptions with versions)
+  - .claude/CLAUDE.md (line 141 - "Current Version")
+  - docs/archive/README.md (line 7, 73 - archive metadata)
+- **Function(s):** N/A (documentation/metadata)
+- **Commits:** Multiple throughout v0.5.0 and v0.6.0 development
+
+**Impact:**
+- Code says one version (pyproject.toml), docs say another
+- PyPI package would have wrong version if published
+- Users/contributors confused about actual project version
+- Archive documentation references "current version" that's outdated
+- No single source of truth for version number
+
+**Root Cause:**
+1. Version number manually duplicated in 6+ locations
+2. No automated synchronization between pyproject.toml and documentation
+3. No checklist reminder to update version across all files
+4. Version bumping is manual, easy to miss files
+5. Archive documentation says "current version" instead of "version when archived"
+
+**Fix:**
+1. Updated pyproject.toml from 0.5.0 to 0.6.0 (authoritative source)
+2. Verified all documentation references v0.6.0 correctly
+3. Updated archive/README.md to clarify "version when archive created" vs "current project version"
+4. Consolidated version references where possible
+
+**Prevention:**
+**Short term (manual process):**
+- Add to "Making a Release" workflow in CONTRIBUTING.md:
+  1. Update pyproject.toml version (authoritative)
+  2. Add CHANGELOG.md entry with new version header
+  3. Update CLAUDE.md "Current Version" line
+  4. Update README.md if version appears in feature descriptions
+  5. Commit with message: "chore: bump version to vX.Y.Z"
+
+**Long term (automation):**
+- Use `bump2version` or similar tool to automate version bumping
+- Script that reads version from pyproject.toml and validates docs match:
+  ```bash
+  # scripts/check_version_sync.sh
+  VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+  grep -l "Current Version.*$VERSION" .claude/CLAUDE.md || echo "CLAUDE.md out of sync"
+  grep -l "## \[$VERSION\]" CHANGELOG.md || echo "CHANGELOG.md missing version"
+  ```
+- Pre-commit hook that warns if CHANGELOG.md latest version ≠ pyproject.toml
+- Consider using dynamic version from pyproject.toml in docs (e.g., include directive)
+
+**Related Mistakes:**
+Similar to MISTAKE-002 (test counts out of sync) - both are "duplicated information that gets out of sync"
+Pattern: **Documentation duplication without single source of truth**
 
 ---
 
