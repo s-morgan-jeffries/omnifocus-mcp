@@ -104,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created comprehensive API redesign plan (docs/API_REDESIGN_PLAN.md)
 - Updated ARCHITECTURE.md with design rationale
 - Enhanced TESTING.md with coverage details
-- See `docs/MIGRATION_v0.6.md` for detailed migration guide (TODO)
+- See `docs/MIGRATION_v0.6.md` for detailed migration guide
 
 ## [0.5.0] - 2025-10-09
 

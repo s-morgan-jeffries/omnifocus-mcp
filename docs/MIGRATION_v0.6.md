@@ -1,0 +1,580 @@
+# Migration Guide: v0.5.0 → v0.6.0
+
+## Breaking Changes
+
+Version 0.6.0 represents a **major API redesign** that consolidates 40+ functions down to 16 core functions optimized for MCP tool calling. This is the largest breaking change in the project's history.
+
+**Key principle:** All updates now go through unified `update_task()` and `update_project()` functions instead of specialized operations.
+
+---
+
+## Removed Functions (26 total)
+
+### Projects (8 removed)
+
+#### 1. `get_project(project_id)` → Use `get_projects(project_id=...)`
+
+**Before (v0.5.0):**
+```python
+get_project("proj-123")
+```
+
+**After (v0.6.0):**
+```python
+get_projects(project_id="proj-123")[0]
+```
+
+**Benefits:**
+- Consistent with batch retrieval
+- Supports optional `include_full_notes=True`
+
+---
+
+#### 2. `set_project_status()` → Use `update_project()`
+
+**Before (v0.5.0):**
+```python
+set_project_status("proj-123", "on_hold")
+```
+
+**After (v0.6.0):**
+```python
+update_project("proj-123", status="on_hold")
+```
+
+---
+
+#### 3. `drop_project()` → Use `update_project()`
+
+**Before (v0.5.0):**
+```python
+drop_project("proj-123")
+```
+
+**After (v0.6.0):**
+```python
+update_project("proj-123", status="dropped")
+```
+
+---
+
+#### 4. `drop_projects()` → Use `update_projects()`
+
+**Before (v0.5.0):**
+```python
+drop_projects(["proj-1", "proj-2", "proj-3"])
+```
+
+**After (v0.6.0):**
+```python
+update_projects(["proj-1", "proj-2", "proj-3"], status="dropped")
+```
+
+---
+
+#### 5. `get_stalled_projects()` → Use `get_projects()` with client-side filtering
+
+**Before (v0.5.0):**
+```python
+stalled = get_stalled_projects()
+```
+
+**After (v0.6.0):**
+```python
+all_projects = get_projects(status="active")
+# Client-side filtering for stalled logic
+stalled = [p for p in all_projects if p.get("stalled")]
+```
+
+**Why removed:** "Stalled" is a computed property, better handled client-side.
+
+---
+
+#### 6. `get_projects_due_for_review()` → Use `get_projects()` with client-side filtering
+
+**Before (v0.5.0):**
+```python
+due = get_projects_due_for_review()
+```
+
+**After (v0.6.0):**
+```python
+all_projects = get_projects()
+# Client-side filtering for review due logic
+```
+
+**Why removed:** Complex computed property, better handled client-side.
+
+---
+
+#### 7. `set_review_interval()` → Use `update_project()`
+
+**Before (v0.5.0):**
+```python
+set_review_interval("proj-123", days=14)
+```
+
+**After (v0.6.0):**
+```python
+update_project("proj-123", review_interval_weeks=2)
+```
+
+**Note:** Parameter changed from `days` to `weeks` for consistency with OmniFocus UI.
+
+---
+
+#### 8. `mark_project_reviewed()` → Use `update_project()`
+
+**Before (v0.5.0):**
+```python
+mark_project_reviewed("proj-123")
+```
+
+**After (v0.6.0):**
+```python
+update_project("proj-123", last_reviewed="now")
+```
+
+---
+
+### Tasks (13 removed)
+
+#### 9. `get_task(task_id)` → Use `get_tasks(task_id=...)`
+
+**Before (v0.5.0):**
+```python
+get_task("task-456")
+```
+
+**After (v0.6.0):**
+```python
+get_tasks(task_id="task-456")[0]
+```
+
+---
+
+#### 10. `get_subtasks(parent_id)` → Use `get_tasks(parent_task_id=...)`
+
+**Before (v0.5.0):**
+```python
+get_subtasks("parent-task-id")
+```
+
+**After (v0.6.0):**
+```python
+get_tasks(parent_task_id="parent-task-id")
+```
+
+---
+
+#### 11. `add_task()` → Use `create_task()`
+
+**Before (v0.5.0):**
+```python
+add_task(
+    name="Buy groceries",
+    project_id="proj-123",
+    due_date="2025-10-25"
+)
+```
+
+**After (v0.6.0):**
+```python
+create_task(
+    task_name="Buy groceries",  # Note: 'task_name' not 'name'
+    project_id="proj-123",
+    due_date="2025-10-25"
+)
+```
+
+**Note:** Parameter renamed from `name` to `task_name` for consistency.
+
+---
+
+#### 12. `complete_task()` → Use `update_task()`
+
+**Before (v0.5.0):**
+```python
+complete_task("task-456")
+```
+
+**After (v0.6.0):**
+```python
+update_task("task-456", completed=True)
+```
+
+---
+
+#### 13. `delete_task()` → Use `delete_tasks()`
+
+**Before (v0.5.0):**
+```python
+delete_task("task-456")
+```
+
+**After (v0.6.0):**
+```python
+delete_tasks("task-456")  # Accepts single ID or list
+```
+
+**Note:** `delete_tasks()` accepts `Union[str, list[str]]` so single IDs work.
+
+---
+
+#### 14. `move_task()` → Use `update_task()`
+
+**Before (v0.5.0):**
+```python
+move_task("task-456", project_id="proj-789")
+```
+
+**After (v0.6.0):**
+```python
+update_task("task-456", project_id="proj-789")
+```
+
+---
+
+#### 15. `drop_tasks()` → Use `update_tasks()`
+
+**Before (v0.5.0):**
+```python
+drop_tasks(["task-1", "task-2"])
+```
+
+**After (v0.6.0):**
+```python
+update_tasks(["task-1", "task-2"], status="dropped")
+```
+
+---
+
+#### 16. `create_inbox_task()` → Use `create_task()` with no project
+
+**Before (v0.5.0):**
+```python
+create_inbox_task(name="Quick capture")
+```
+
+**After (v0.6.0):**
+```python
+create_task(task_name="Quick capture")  # No project_id = inbox
+```
+
+---
+
+#### 17. `search_tasks()` → Use `get_tasks(query=...)`
+
+**Before (v0.5.0):**
+```python
+search_tasks(query="mortgage")
+```
+
+**After (v0.6.0):**
+```python
+get_tasks(query="mortgage")
+```
+
+---
+
+#### 18. `set_parent_task()` → Use `update_task()`
+
+**Before (v0.5.0):**
+```python
+set_parent_task("child-task", parent_id="parent-task")
+```
+
+**After (v0.6.0):**
+```python
+update_task("child-task", parent_task_id="parent-task")
+```
+
+---
+
+#### 19. `set_estimated_minutes()` → Use `update_task()`
+
+**Before (v0.5.0):**
+```python
+set_estimated_minutes("task-456", minutes=30)
+```
+
+**After (v0.6.0):**
+```python
+update_task("task-456", estimated_minutes=30)
+```
+
+---
+
+#### 20. `add_tag_to_task()` → Use `update_task()`
+
+**Before (v0.5.0):**
+```python
+add_tag_to_task("task-456", tag="urgent")
+```
+
+**After (v0.6.0):**
+```python
+update_task("task-456", tags=["urgent"])
+```
+
+**Note:** v0.6.0 sets tags (replaces), doesn't append. Get existing tags first if needed.
+
+---
+
+#### 21. `complete_tasks()` → Use `update_tasks()`
+
+**Before (v0.5.0):**
+```python
+complete_tasks(["task-1", "task-2", "task-3"])
+```
+
+**After (v0.6.0):**
+```python
+update_tasks(["task-1", "task-2", "task-3"], completed=True)
+```
+
+---
+
+#### 22. `move_tasks()` → Use `update_tasks()`
+
+**Before (v0.5.0):**
+```python
+move_tasks(["task-1", "task-2"], project_id="proj-789")
+```
+
+**After (v0.6.0):**
+```python
+update_tasks(["task-1", "task-2"], project_id="proj-789")
+```
+
+---
+
+#### 23. `add_tag_to_tasks()` → Use `update_tasks()`
+
+**Before (v0.5.0):**
+```python
+add_tag_to_tasks(["task-1", "task-2"], tag="urgent")
+```
+
+**After (v0.6.0):**
+```python
+update_tasks(["task-1", "task-2"], tags=["urgent"])
+```
+
+---
+
+#### 24. `remove_tag_from_tasks()` → Client-side logic
+
+**Before (v0.5.0):**
+```python
+remove_tag_from_tasks(["task-1", "task-2"], tag="urgent")
+```
+
+**After (v0.6.0):**
+```python
+# Get current tags, remove one, update
+tasks = get_tasks(task_id="task-1")[0]
+current_tags = tasks["tags"]
+new_tags = [t for t in current_tags if t != "urgent"]
+update_task("task-1", tags=new_tags)
+```
+
+**Why removed:** Tag manipulation better handled client-side with full context.
+
+---
+
+### Notes (2 removed)
+
+#### 25. `add_note()` → Use `update_task()` or `update_project()`
+
+**Before (v0.5.0):**
+```python
+add_note(entity_id="task-456", note="Additional info", entity_type="task")
+```
+
+**After (v0.6.0):**
+```python
+update_task("task-456", note="Additional info")
+```
+
+**Note:** v0.6.0 replaces notes (doesn't append). Get current note first if appending.
+
+---
+
+#### 26. `get_note()` → Use `get_tasks()` or `get_projects()` with `include_full_notes=True`
+
+**Before (v0.5.0):**
+```python
+note = get_note(entity_id="task-456", entity_type="task")
+```
+
+**After (v0.6.0):**
+```python
+task = get_tasks(task_id="task-456", include_full_notes=True)[0]
+note = task["note"]
+```
+
+---
+
+## New Capabilities in v0.6.0
+
+### Comprehensive Update Functions
+
+**update_task()** - All task fields in one call:
+```python
+update_task(
+    task_id="task-456",
+    task_name="Updated name",
+    note="Full note content",
+    project_id="proj-789",
+    completed=True,
+    flagged=True,
+    due_date="2025-10-25",
+    defer_date="2025-10-20",
+    estimated_minutes=30,
+    tags=["urgent", "work"],
+    status="active",
+    parent_task_id="parent-task"
+)
+```
+
+**update_project()** - All project fields in one call:
+```python
+update_project(
+    project_id="proj-123",
+    project_name="Updated Project",
+    note="Project notes",
+    folder_path="Work/Current",
+    sequential=True,
+    status="active",
+    review_interval_weeks=2,
+    last_reviewed="now"
+)
+```
+
+### Batch Update Functions
+
+**update_tasks()** - Safe batch updates (excludes name/note):
+```python
+update_tasks(
+    task_ids=["task-1", "task-2", "task-3"],
+    project_id="proj-789",
+    flagged=True,
+    due_date="2025-10-25",
+    tags=["batch-updated"]
+)
+```
+
+**update_projects()** - Safe batch updates (excludes name/note):
+```python
+update_projects(
+    project_ids=["proj-1", "proj-2"],
+    status="on_hold",
+    folder_path="Archive"
+)
+```
+
+### Union Types for Delete
+
+**delete_tasks()** and **delete_projects()** accept single ID or list:
+```python
+delete_tasks("task-456")  # Single
+delete_tasks(["task-1", "task-2", "task-3"])  # Multiple
+```
+
+---
+
+## Migration Checklist
+
+### For MCP Clients (Claude Desktop, etc.)
+
+✅ **No action required** - Claude Desktop will automatically use the new consolidated API.
+
+The tool descriptions have been updated. Claude will naturally use:
+- `update_task()` instead of `complete_task()`, `move_task()`, etc.
+- `create_task()` instead of `add_task()` or `create_inbox_task()`
+- `update_project()` instead of `set_project_status()`, `drop_project()`, etc.
+
+### For Direct API Users (Python code)
+
+If you're calling these functions directly in Python code:
+
+1. **Search for deprecated functions:**
+   ```bash
+   grep -r "complete_task\|add_task\|move_task\|drop_task\|set_parent_task\|add_tag_to_task" your_code/
+   grep -r "get_project\|set_project_status\|drop_project\|set_review_interval" your_code/
+   ```
+
+2. **Update function calls** - Use the mapping tables above
+
+3. **Update parameter names:**
+   - `name` → `task_name` (create_task)
+   - `name` → `project_name` (create_project, update_project)
+
+4. **Handle note/tag semantics:**
+   - Notes are **replaced** not appended (get current note first if appending)
+   - Tags are **set** not added (get current tags first if appending)
+
+5. **Update tests:**
+   - Function names changed
+   - Some return formats changed (structured dicts)
+   - Test count reduced from 393 → 333 (deprecated function tests removed)
+
+---
+
+## Why This Change?
+
+### Problem
+
+With 40+ tools, MCP clients (especially Claude Desktop) had difficulty:
+- **Tool selection paralysis** - Too many overlapping options
+- **Inefficient multi-step operations** - Needed multiple tool calls for what should be one update
+- **Inconsistent patterns** - Some operations had dedicated functions, others didn't
+
+Example: To update a task's name, project, and flag status required:
+1. `update_task(id, name="New name")`
+2. `move_task(id, project_id="proj-123")`
+3. `flag_task(id, flagged=True)`
+
+**3 separate tool calls** for one logical operation.
+
+### Solution
+
+Consolidate into comprehensive, flexible functions:
+- **40+ functions → 16 core functions** (60% reduction)
+- **One call for complex updates**: `update_task(id, name="New", project_id="X", flagged=True)`
+- **Consistent patterns**: All updates go through `update_X()` functions
+- **Batch-safe design**: Separate single/batch updates prevent naming collisions
+
+### Impact
+
+- ✅ **Simpler API** - Fewer tools, clearer choices
+- ✅ **More efficient** - One tool call instead of many
+- ✅ **Type-safe** - Proper Enum types with MCP string compatibility
+- ✅ **Flexible** - Comprehensive update functions support any field combination
+- ✅ **333 tests passing** - All functionality preserved, deprecated tests removed
+- ⚠️ **Breaking change** - Hence v0.6.0 major version bump
+
+---
+
+## Need Help?
+
+If you encounter issues migrating:
+
+1. Check the [CHANGELOG.md](../CHANGELOG.md) for complete v0.6.0 details
+2. Review [API_REFERENCE.md](./API_REFERENCE.md) for full function signatures
+3. See [ARCHITECTURE.md](./ARCHITECTURE.md) for design rationale
+4. Open an issue on GitHub with your use case
+
+---
+
+## Summary
+
+**Key takeaways:**
+- All specialized update operations → `update_task()` or `update_project()`
+- All specialized getters → `get_tasks()` or `get_projects()` with parameters
+- Parameter naming: `task_name` and `project_name` (not just `name`)
+- Delete functions accept single ID or list: `Union[str, list[str]]`
+- Batch updates exclude name/note fields (require unique values)
+
+**Migration effort:** Most changes are simple 1:1 replacements. Complex cases (like tag/note appending) require getting current value first.

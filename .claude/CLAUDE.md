@@ -243,6 +243,7 @@ See `docs/CONTRIBUTING.md` for complete workflow including:
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree
 - [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
+  - Verify cross-references exist; breaking changes need migration guide (MIGRATION_vX.Y.md pattern)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
 
 **If tests are failing:**

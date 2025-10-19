@@ -60,7 +60,7 @@ echo "1. Edit $MISTAKES_FILE to fill in details"
 echo "2. Move entry from 'Active Mistakes' section when addressed"
 echo "3. Reference in commit message: 'Resolves: MISTAKE-$NEXT_NUM'"
 
-# Update statistics
-TOTAL=$(grep -c "^\[MISTAKE-" "$MISTAKES_FILE")
+# Update statistics (exclude template examples like MISTAKE-XXX)
+TOTAL=$(grep "^## \[MISTAKE-" "$MISTAKES_FILE" | grep -v "MISTAKE-XXX" | wc -l | tr -d ' ')
 sed -i.bak "s/^- Total Mistakes: [0-9]*/- Total Mistakes: $TOTAL/" "$MISTAKES_FILE"
 rm -f "$MISTAKES_FILE.bak"
