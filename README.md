@@ -4,48 +4,35 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **36 comprehensive tools** for managing OmniFocus:
+This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.0 API):
 
-### Project Management
-- **get_projects** - Get all active projects with folder hierarchy, names, notes, and status (supports query parameter for text search)
-- **create_project** - Create new projects with optional folder placement and sequential mode
-- **delete_project** - Delete a project and all its tasks
+### Project Management (5 tools)
+- **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
+- **create_project** - Create new projects with optional folder placement and review intervals
+- **update_project** - Update single project (all properties: name, note, status, folder, review interval, etc.)
+- **update_projects** - Batch update multiple projects (safe fields only: status, folder, review settings)
+- **delete_projects** - Delete one or multiple projects (accepts single ID or list)
 
-### Task Management
-- **get_tasks** - Get tasks with advanced filtering (flagged, available, overdue, by tag, text search, inbox-only)
-- **add_task** - Add new tasks with due dates, defer dates, flags, tags, and estimated time
-- **update_task** - Update any task properties (name, dates, flags, notes)
-- **complete_task** - Mark tasks as completed
-- **delete_task** - Delete tasks
-- **move_task** - Move tasks between projects or to inbox
-- **drop_task** - Mark task as dropped/on hold (task becomes inactive)
-- **set_parent_task** - Create task hierarchies with parent/child relationships
-- **set_estimated_minutes** - Set time estimates for tasks
+### Task Management (6 tools)
+- **get_tasks** - Get tasks with comprehensive filtering (by ID, project, parent, tags, status, dates, flags, text search, inbox-only)
+- **create_task** - Create tasks with all properties (due dates, defer dates, flags, tags, estimated time, notes, parent tasks)
+- **update_task** - Update single task (all properties: name, note, dates, flags, tags, status, project, parent, etc.)
+- **update_tasks** - Batch update multiple tasks (safe fields only: dates, flags, tags, status, project)
+- **delete_tasks** - Delete one or multiple tasks (accepts single ID or list)
+- **reorder_task** - Change task order relative to siblings (before/after positioning)
 
-### Inbox Operations
-- **create_inbox_task** - Quickly capture tasks to inbox
-- **Note:** Use `get_tasks(inbox_only=True)` to retrieve inbox tasks
+### Folder & Organization (2 tools)
+- **get_folders** - Get all folders with hierarchy
+- **create_folder** - Create folders with optional parent folder
 
-### Folder & Organization
-- **get_folders** - Get all folders and their hierarchy
-- **create_folder** - Create new folders with optional parent folders
-
-### Tags
+### Tags (1 tool)
 - **get_tags** - Get all available tags
-- **add_tag_to_task** - Add tags to tasks for better organization
 
-### Project Review (GTD)
-- **set_review_interval** - Set how often projects should be reviewed
-- **mark_project_reviewed** - Mark a project as reviewed (resets review timer)
-- **get_projects_due_for_review** - Find projects that need review
-
-### Perspectives (OmniFocus Pro)
+### Perspectives (2 tools - OmniFocus Pro)
 - **get_perspectives** - List all custom perspectives
 - **switch_perspective** - Switch to a different perspective view
 
-### Notes
-- **add_note** - Append notes to projects or tasks
-- **get_note** - Retrieve full note content from projects or tasks (no truncation)
+**Key Changes in v0.6.0:** Consolidated 40+ functions into 16 comprehensive tools. All updates now go through `update_task()` and `update_project()` instead of specialized functions. See [CHANGELOG.md](CHANGELOG.md) for migration guide.
 
 ## Prerequisites
 
@@ -176,7 +163,7 @@ Once configured, you can ask Claude (or any MCP client) to interact with OmniFoc
 
 ### Running Tests
 
-The project has comprehensive test coverage with **393 tests passing (13 skipped integration tests)**:
+The project has comprehensive test coverage with **333 tests passing (123 skipped integration tests)**:
 
 ```bash
 # Activate virtual environment
