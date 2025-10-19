@@ -6,8 +6,8 @@
 
 **Statistics:**
 - Total Mistakes: 6
-- By Category: missing-docs (1)
-- By Severity: high (1)
+- By Category: missing-docs (4), missing-tests (1), other (1)
+- By Severity: critical (2), high (3), medium (1)
 
 **Recent Patterns:** No patterns detected yet (need 3+ mistakes in same category)
 

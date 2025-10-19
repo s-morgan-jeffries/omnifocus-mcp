@@ -21,11 +21,11 @@
 | Category | Count | Trend | Notes |
 |----------|-------|-------|-------|
 | missing-tests | 1 |
-| missing-exposure | 0 | - | Not enough data yet |
-| violated-tdd | 0 | - | Not enough data yet |
-| violated-architecture | 0 | - | Not enough data yet |
+| missing-exposure | 0 |
+| violated-tdd | 0 |
+| violated-architecture | 0 |
 | missing-docs | 4 |
-| complexity-spike | 0 | - | Not enough data yet |
+| complexity-spike | 0 |
 | other | 1 |
 
 *Update monthly. Trend symbols: ↓ (improving), → (stable), ↑ (getting worse)*
