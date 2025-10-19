@@ -51,6 +51,8 @@
 **Discovery Date:** YYYY-MM-DD
 **Introduced In:** [Commit hash or "Unknown"]
 **Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** YYYY-MM-DD (30 days after prevention implemented)
 
 **What Happened:**
 [Detailed description of the mistake]

@@ -10,7 +10,7 @@
 
 ### By Month
 
-| Month | Total | Critical | High | 2 |
+| Month | Total | Critical | 2 |
 |-------|-------|----------|------|--------|-----|
 | 2025-10 | 0 | 0 | 0 | 0 | 0 |
 
@@ -20,13 +20,13 @@
 
 | Category | Count | Trend | Notes |
 |----------|-------|-------|-------|
-| missing-tests | 0 | - | Not enough data yet |
+| missing-tests | 1 |
 | missing-exposure | 0 | - | Not enough data yet |
 | violated-tdd | 0 | - | Not enough data yet |
 | violated-architecture | 0 | - | Not enough data yet |
-| missing-docs | 3 |
+| missing-docs | 4 |
 | complexity-spike | 0 | - | Not enough data yet |
-| other | 0 | - | Not enough data yet |
+| other | 1 |
 
 *Update monthly. Trend symbols: ↓ (improving), → (stable), ↑ (getting worse)*
 

@@ -25,6 +25,8 @@ TEMPLATE="
 **Discovery Date:** $DATE
 **Introduced In:** [Commit hash or Unknown]
 **Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** TBD (30 days after prevention implemented)
 
 **What Happened:**
 
