@@ -117,7 +117,7 @@ class TestUpdateProjectRedesign:
     # ========================================================================
 
     def test_update_project_mark_reviewed(self, client):
-        """NEW API: update_project() can mark project as reviewed with date."""
+        """NEW API: update_project() sets LAST review date (not next)."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
@@ -126,11 +126,14 @@ class TestUpdateProjectRedesign:
             assert result["success"] is True
             assert "last_reviewed" in result["updated_fields"]
 
+            # CRITICAL: Must set "last review date" not "next review date"
             call_args = mock_run.call_args[0][0]
-            assert "2025-10-18" in call_args or "reviewed" in call_args.lower()
+            assert "last review date" in call_args, "Should set 'last review date' property"
+            assert "next review date" not in call_args, "Should NOT set 'next review date'"
+            assert "2025-10-18" in call_args
 
     def test_update_project_mark_reviewed_now(self, client):
-        """NEW API: update_project() can mark project as reviewed now (empty string or 'now')."""
+        """NEW API: update_project() sets LAST review date to current date when 'now'."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
@@ -138,6 +141,44 @@ class TestUpdateProjectRedesign:
 
             assert result["success"] is True
             assert "last_reviewed" in result["updated_fields"]
+
+            # CRITICAL: Must set "last review date" not "next review date"
+            call_args = mock_run.call_args[0][0]
+            assert "last review date" in call_args, "Should set 'last review date' property"
+            assert "next review date" not in call_args, "Should NOT set 'next review date'"
+            assert "current date" in call_args
+
+    def test_update_project_next_review_date(self, client):
+        """NEW API: update_project() can set next review date explicitly."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+
+            result = client.update_project("proj-001", next_review_date="2025-12-01")
+
+            assert result["success"] is True
+            assert "next_review_date" in result["updated_fields"]
+
+            # Should set "next review date" for explicit override
+            call_args = mock_run.call_args[0][0]
+            assert "next review date" in call_args, "Should set 'next review date' property"
+            assert "2025-12-01" in call_args
+
+    def test_update_project_both_review_dates(self, client):
+        """NEW API: update_project() can set both last reviewed and next review date."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+
+            result = client.update_project("proj-001", last_reviewed="now", next_review_date="2025-12-15")
+
+            assert result["success"] is True
+            assert "last_reviewed" in result["updated_fields"]
+            assert "next_review_date" in result["updated_fields"]
+
+            # Should set BOTH properties
+            call_args = mock_run.call_args[0][0]
+            assert "last review date" in call_args
+            assert "next review date" in call_args
+            assert "2025-12-15" in call_args
 
     # ========================================================================
     # Existing Fields (Regression)

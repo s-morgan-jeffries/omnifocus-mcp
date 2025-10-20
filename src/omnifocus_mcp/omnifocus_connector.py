@@ -800,7 +800,8 @@ class OmniFocusConnector:
         sequential: Optional[bool] = None,
         status: Optional[Union[ProjectStatus, str]] = None,
         review_interval_weeks: Optional[int] = None,
-        last_reviewed: Optional[str] = None
+        last_reviewed: Optional[str] = None,
+        next_review_date: Optional[str] = None
     ) -> dict:
         """Update properties of an existing project (NEW API - Phase 2).
 
@@ -821,7 +822,8 @@ class OmniFocusConnector:
             sequential: New sequential setting (optional)
             status: Project status (ProjectStatus enum or string: "active", "on_hold", "done", "dropped")
             review_interval_weeks: Review interval in weeks (0 to clear)
-            last_reviewed: Last reviewed date in ISO format or "now" (optional)
+            last_reviewed: Last reviewed date in ISO format or "now" - OmniFocus calculates next review automatically (optional)
+            next_review_date: Next review date in ISO format - Explicit override of calculated date (optional)
 
         Returns:
             dict: {
@@ -848,7 +850,8 @@ class OmniFocusConnector:
             "sequential": sequential,
             "status": status,
             "review_interval_weeks": review_interval_weeks,
-            "last_reviewed": last_reviewed
+            "last_reviewed": last_reviewed,
+            "next_review_date": next_review_date
         }
 
         # Check if at least one field is provided
@@ -915,11 +918,18 @@ class OmniFocusConnector:
         reviewed_command = ""
         if last_reviewed is not None:
             if last_reviewed.lower() == "now" or last_reviewed == "":
-                reviewed_command = 'set next review date of theProject to (current date)'
+                reviewed_command = 'set last review date of theProject to (current date)'
             else:
                 # Parse ISO date
-                reviewed_command = f'set next review date of theProject to date "{last_reviewed}"'
+                reviewed_command = f'set last review date of theProject to date "{last_reviewed}"'
             updated_fields.append("last_reviewed")
+
+        # Build next review date command
+        next_review_command = ""
+        if next_review_date is not None:
+            # Parse ISO date
+            next_review_command = f'set next review date of theProject to date "{next_review_date}"'
+            updated_fields.append("next_review_date")
 
         # Build folder path command
         folder_command = ""
@@ -998,6 +1008,7 @@ class OmniFocusConnector:
                     {status_command}
                     {review_command}
                     {reviewed_command}
+                    {next_review_command}
                     {folder_command}
 
                     return "true"
@@ -1043,6 +1054,7 @@ class OmniFocusConnector:
         status: Optional[Union[ProjectStatus, str]] = None,
         review_interval_weeks: Optional[int] = None,
         last_reviewed: Optional[str] = None,
+        next_review_date: Optional[str] = None,
         **kwargs  # Catch invalid parameters like project_name, note
     ) -> dict:
         """Update properties of multiple projects (NEW API - Phase 2, Batch Function).
@@ -1067,7 +1079,8 @@ class OmniFocusConnector:
             sequential: Sequential setting (optional)
             status: Project status (ProjectStatus enum or string: "active", "on_hold", "done", "dropped")
             review_interval_weeks: Review interval in weeks (0 to clear)
-            last_reviewed: Last review date ("now" or ISO format like "2025-01-15")
+            last_reviewed: Last reviewed date in ISO format or "now" - OmniFocus calculates next review automatically (optional)
+            next_review_date: Next review date in ISO format - Explicit override of calculated date (optional)
 
         Returns:
             dict: {
@@ -1130,7 +1143,8 @@ class OmniFocusConnector:
                     sequential=sequential,
                     status=status,
                     review_interval_weeks=review_interval_weeks,
-                    last_reviewed=last_reviewed
+                    last_reviewed=last_reviewed,
+                    next_review_date=next_review_date
                 )
 
                 if result["success"]:
