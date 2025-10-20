@@ -1,7 +1,7 @@
 # OmniFocus MCP Server - Project Memory
 
-**Last Updated:** 2025-10-19
-**Current Version:** v0.6.0 (Maintenance Mode)
+**Last Updated:** 2025-10-20
+**Current Version:** v0.6.1 (Maintenance Mode)
 
 **This file is automatically loaded by Claude Code when working on this project.**
 
