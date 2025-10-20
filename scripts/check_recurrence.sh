@@ -135,10 +135,10 @@ check_mistake() {
 # Iterate through each mistake and check for recurrence
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 while IFS=: read -r mistake_id status; do
-    ((MISTAKES_CHECKED++))
+    ((MISTAKES_CHECKED++)) || true
 
     if ! check_mistake "$mistake_id"; then
-        ((RECURRENCE_DETECTED++))
+        ((RECURRENCE_DETECTED++)) || true
         echo "   📝 Action: Update MISTAKES.md recurrence count for MISTAKE-$mistake_id"
     fi
     echo ""
