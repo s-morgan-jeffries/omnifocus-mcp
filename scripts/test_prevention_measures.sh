@@ -59,18 +59,21 @@ test_version_sync_detects_mismatch() {
     echo 'v1.0.3' > "$test_dir/README.md"
 
     # Run check_version_sync.sh in test directory
-    cd "$test_dir"
-    cp "$PROJECT_ROOT/scripts/check_version_sync.sh" .
+    cp "$PROJECT_ROOT/scripts/check_version_sync.sh" "$test_dir/"
+
+    # Use subshell to avoid cd issues
+    (
+        cd "$test_dir" && ./check_version_sync.sh > /dev/null 2>&1
+    )
+    local result=$?
 
     # Script should FAIL (exit 1) because versions don't match
-    if ./check_version_sync.sh > /dev/null 2>&1; then
+    if [ $result -eq 0 ]; then
         # Script passed when it should have failed
-        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 1
     else
         # Script correctly detected mismatch
-        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 0
     fi
@@ -87,18 +90,21 @@ test_version_sync_allows_matching_versions() {
     echo '## [1.0.0]' > "$test_dir/CHANGELOG.md"
     echo 'v1.0.0' > "$test_dir/README.md"
 
-    cd "$test_dir"
-    cp "$PROJECT_ROOT/scripts/check_version_sync.sh" .
+    cp "$PROJECT_ROOT/scripts/check_version_sync.sh" "$test_dir/"
+
+    # Use subshell to avoid cd issues
+    (
+        cd "$test_dir" && ./check_version_sync.sh > /dev/null 2>&1
+    )
+    local result=$?
 
     # Script should PASS (exit 0) because all versions match
-    if ./check_version_sync.sh > /dev/null 2>&1; then
+    if [ $result -eq 0 ]; then
         # Script correctly allowed matching versions
-        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 0
     else
         # Script failed when it should have passed
-        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 1
     fi
@@ -124,16 +130,19 @@ test:
 	@echo "collecting ... collected 456 items"
 EOF
 
-    cd "$test_dir"
-    cp "$PROJECT_ROOT/scripts/check_test_count_sync.sh" .
+    cp "$PROJECT_ROOT/scripts/check_test_count_sync.sh" "$test_dir/"
+
+    # Use subshell to avoid cd issues
+    (
+        cd "$test_dir" && ./check_test_count_sync.sh > /dev/null 2>&1
+    )
+    local result=$?
 
     # Script should FAIL because counts don't match (100 vs 456)
-    if ./check_test_count_sync.sh > /dev/null 2>&1; then
-        cd "$PROJECT_ROOT"
+    if [ $result -eq 0 ]; then
         cleanup_test_dir "$test_dir"
         return 1
     else
-        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 0
     fi
@@ -154,16 +163,19 @@ test:
 	@echo "collecting ... collected 456 items"
 EOF
 
-    cd "$test_dir"
-    cp "$PROJECT_ROOT/scripts/check_test_count_sync.sh" .
+    cp "$PROJECT_ROOT/scripts/check_test_count_sync.sh" "$test_dir/"
+
+    # Use subshell to avoid cd issues
+    (
+        cd "$test_dir" && ./check_test_count_sync.sh > /dev/null 2>&1
+    )
+    local result=$?
 
     # Script should PASS because counts match
-    if ./check_test_count_sync.sh > /dev/null 2>&1; then
-        cd "$PROJECT_ROOT"
+    if [ $result -eq 0 ]; then
         cleanup_test_dir "$test_dir"
         return 0
     else
-        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 1
     fi
