@@ -2,8 +2,8 @@
 
 Welcome to the OmniFocus MCP Server documentation! This directory contains comprehensive guides for contributing to and understanding the project.
 
-**Last Updated:** 2025-10-19
-**Project Version:** v0.6.0 (Maintenance Mode)
+**Last Updated:** 2025-10-20
+**Project Version:** v0.6.1 (Maintenance Mode)
 
 ---
 

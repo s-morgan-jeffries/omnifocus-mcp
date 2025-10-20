@@ -52,4 +52,4 @@ For current, active documentation, see:
 ## Last Updated
 
 Archive consolidated: October 19, 2025
-Project version: v0.6.0
+Project version: v0.6.1 (renamed omnifocus_client → omnifocus_connector)

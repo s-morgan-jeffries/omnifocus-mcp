@@ -1,11 +1,12 @@
 # OmniFocus MCP Server - API Reference
 
-**Current Version:** v0.6.0 (API Redesign - IMPLEMENTED)
+**Current Version:** v0.6.1 (API Redesign - IMPLEMENTED)
 **Total MCP Tools:** 16 (reduced from 40+)
 
 This document shows the complete API surface that Claude Desktop sees when connecting to the OmniFocus MCP server. Each tool is exposed via the Model Context Protocol and can be invoked by Claude.
 
-**Last Updated:** 2025-10-18
+**Last Updated:** 2025-10-20
+**Latest Change:** v0.6.1 renamed `omnifocus_client` → `omnifocus_connector` (no API changes)
 
 ## ⚠️ Version History Notice
 
