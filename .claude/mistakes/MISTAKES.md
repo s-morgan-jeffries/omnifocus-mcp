@@ -158,9 +158,9 @@ None yet (first logged mistake in tracking system)
 
 **Discovery Date:** 2025-10-19
 **Introduced In:** Unknown (multiple commits over time)
-**Recurrence Count:** 0
-**Last Recurrence:** N/A
-**Verification Deadline:** 2025-11-18 (30 days from 2025-10-19)
+**Recurrence Count:** 1
+**Last Recurrence:** 2025-10-20 (added 2 tests for project review date fix, forgot to update TESTING.md)
+**Verification Deadline:** 2025-11-19 (30 days from last recurrence)
 
 **What Happened:**
 TESTING.md contains hardcoded test counts and breakdowns that repeatedly become stale as tests are added/removed/refactored. During v0.6.0 API redesign, the documentation showed 393 tests in some places, 333 in others, and the actual count was 333. The coverage table in TESTING.md still referenced v0.5.0 function names (complete_task, add_task, etc.) even after v0.6.0 redesign removed them. This happened multiple times throughout the project.
