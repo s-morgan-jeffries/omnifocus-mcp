@@ -65,10 +65,12 @@ test_version_sync_detects_mismatch() {
     # Script should FAIL (exit 1) because versions don't match
     if ./check_version_sync.sh > /dev/null 2>&1; then
         # Script passed when it should have failed
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 1
     else
         # Script correctly detected mismatch
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 0
     fi
@@ -91,10 +93,12 @@ test_version_sync_allows_matching_versions() {
     # Script should PASS (exit 0) because all versions match
     if ./check_version_sync.sh > /dev/null 2>&1; then
         # Script correctly allowed matching versions
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 0
     else
         # Script failed when it should have passed
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 1
     fi
@@ -125,9 +129,11 @@ EOF
 
     # Script should FAIL because counts don't match (100 vs 456)
     if ./check_test_count_sync.sh > /dev/null 2>&1; then
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 1
     else
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 0
     fi
@@ -153,9 +159,11 @@ EOF
 
     # Script should PASS because counts match
     if ./check_test_count_sync.sh > /dev/null 2>&1; then
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 0
     else
+        cd "$PROJECT_ROOT"
         cleanup_test_dir "$test_dir"
         return 1
     fi
