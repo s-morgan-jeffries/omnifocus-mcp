@@ -279,6 +279,61 @@ Major consolidation to optimize for MCP tool calling efficiency.
 
 **Status:** These items are logged for future consideration but not actively planned. The v0.6.0 API is feature-complete and stable.
 
+### Priority 1 - Automation Improvements (NEXT SESSION)
+
+**🤖 Recursive Self-Improvement System Enhancements**
+
+Based on research completed 2025-10-20, the following automation improvements are planned for the next session:
+
+**A. Claude Code Hooks Implementation** (30 min, 10x ROI - HIGHEST PRIORITY)
+- **Problem:** Claude can easily ignore instructions, relying on memory alone
+- **Solution:** Automatic enforcement via `.claude/hooks.json`
+- **Implementation:**
+  ```json
+  {
+    "pre_tool_use": {
+      "Edit": "./hooks/check_tests_exist.sh",
+      "Write": "./hooks/check_tests_exist.sh",
+      "Bash": "./hooks/check_git_push_monitoring.sh"
+    }
+  }
+  ```
+- **Impact:** Blocks edits/writes without tests, enforces CI monitoring after pushes
+- **Why it matters:** Prevents MISTAKE-009 (missing tests) and MISTAKE-011 (no CI monitoring)
+
+**B. GitHub Issues Migration** (4-5 hours) - **DIRECT CUTOVER**
+- **Problem:** MISTAKES.md is invisible to user, easy for Claude to ignore
+- **Solution:** Complete migration to GitHub Issues (no hybrid period)
+- **Decision:** Direct cutover is the right approach
+  - Everything MISTAKES.md does can be rebuilt with GitHub CLI (`gh`)
+  - Speed advantage of grep is negligible (~200ms API call vs instant)
+  - Offline access not needed (always online when using Claude Code)
+  - GitHub Issues advantages far outweigh markdown benefits
+- **Implementation:**
+  - One-time migration script (MISTAKES.md → GitHub Issues with labels)
+  - Rebuild check_recurrence.sh using `gh issue list` and `gh issue comment`
+  - Update all documentation references
+  - Delete MISTAKES.md after verification
+- **Benefits:**
+  - User can see open issues without asking Claude
+  - Labels, milestones, and grouping for better organization
+  - Native GitHub automation (Actions, notifications)
+  - Standard workflow (not reinventing the wheel)
+  - Programmatic access via GitHub CLI (same as grep, just via API)
+- **What we're rebuilding:**
+  - Recurrence tracking: `gh issue comment` for recurrence detection
+  - Statistics: `gh issue list --json | jq` for aggregation
+  - Prevention docs: Same markdown, stored in issue body
+  - Verification deadlines: Milestones or custom fields
+
+**Additional Quick Wins** (identified by research, defer until after A & B):
+- Pre-push git hooks (15 min) - Block pushes until checks pass
+- pytest-watcher (10 min) - Continuous test running for instant TDD feedback
+- VS Code task integration (20 min) - One-click buttons for common tasks
+- MISTAKES.md template automation (10 min) - Script to generate entries
+
+**Research completed:** Three independent agents analyzed current automation gaps. Full reports: [docs/research/2025-10-20-automation-research.md](../research/2025-10-20-automation-research.md)
+
 ### Immediate - Bug Fixes
 
 **🐛 Project Review Date Functionality (CRITICAL BUG)**
