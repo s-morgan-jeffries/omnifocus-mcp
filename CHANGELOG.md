@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.1] - 2025-10-20
 
+### Fixed
+
+- **Critical bug: Project review date functionality**
+  - Fixed `last_reviewed` parameter setting wrong OmniFocus property
+  - Was setting "next review date", now correctly sets "last review date"
+  - Added `next_review_date` parameter for explicit override of calculated review dates
+  - Both single (`update_project`) and batch (`update_projects`) functions support both parameters
+  - Tests: Added 2 new tests for review date functionality (458 total tests)
+
 ### Changed
 
 - **Renamed omnifocus_client.py → omnifocus_connector.py**
