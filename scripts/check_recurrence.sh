@@ -75,6 +75,13 @@ check_mistake() {
         002)
             # MISTAKE-002: Test count sync issues
             echo "📋 Checking MISTAKE-$mistake_id (test count synchronization)..."
+
+            # Skip in CI environment (requires full test suite installation)
+            if [ -n "$CI" ]; then
+                echo "   ⏭️  Skipped in CI (requires test execution)"
+                return 0
+            fi
+
             if ! ./scripts/check_test_count_sync.sh > /dev/null 2>&1; then
                 echo "   ❌ RECURRENCE: Test count mismatch detected"
                 echo "   Prevention: TESTING.md single source of truth"
