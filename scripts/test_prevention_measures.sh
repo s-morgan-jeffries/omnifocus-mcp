@@ -26,11 +26,11 @@ test_prevention() {
     echo "Testing: $test_name"
     if $test_func; then
         echo "  ✅ PASS"
-        ((TESTS_PASSED++))
+        ((TESTS_PASSED++)) || true
         TEST_RESULTS+=("✅ $test_name")
     else
         echo "  ❌ FAIL"
-        ((TESTS_FAILED++))
+        ((TESTS_FAILED++)) || true
         TEST_RESULTS+=("❌ $test_name")
     fi
     echo ""
