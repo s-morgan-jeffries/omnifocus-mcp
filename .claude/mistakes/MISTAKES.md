@@ -5,9 +5,9 @@
 **Last Updated:** 2025-10-19
 
 **Statistics:**
-- Total Mistakes: 7
-- By Category: missing-docs (4), missing-tests (1), other (1)
-- By Severity: critical (2), high (3), medium (1)
+- Total Mistakes: 8
+- By Category: missing-docs (5), missing-tests (1), other (2)
+- By Severity: critical (2), high (3), medium (3)
 
 **Recent Patterns:** No patterns detected yet (need 3+ mistakes in same category)
 
@@ -591,3 +591,100 @@ Jumped straight to implementation without considering:
 - `missing-docs` - Failed to update CHANGELOG, API_REFERENCE, etc.
 - `complexity-spike` - Function rated D or F without documentation
 - `other` - Other architectural/workflow mistakes
+
+---
+
+
+## [MISTAKE-010] No documented pattern for where completed roadmap items should go (Date: 2025-10-20)
+
+**Status:** resolved
+
+**Category:** missing-docs
+
+**Severity:** medium
+
+**Discovery Date:** 2025-10-20
+**Introduced In:** Unknown (documentation process gap)
+**Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-19 (30 days from fix)
+
+**What Happened:**
+
+When implementing client→connector rename (v0.6.1), unclear where completed "Upcoming Work" items should go:
+
+1. **First attempt:** Marked item as completed but left it in "Upcoming Work" section
+   - User stopped me: "You marked this as completed but it's still in upcoming work"
+2. **Second attempt:** Asked user: "Should I remove it or mark as complete?"
+   - User: "That's a real question, not rhetorical"
+3. **Final decision:** Remove from "Upcoming Work", add brief note to "Current State" + CHANGELOG
+
+**Context:**
+- **File(s):** docs/project/ROADMAP.md
+- **Task:** Documenting completion of client→connector rename
+- **Issue:** No documented pattern for handling completed roadmap items
+
+**Impact:**
+
+- **User experience:** Had to intervene to clarify documentation approach
+- **Process gap:** No clear guidance on where completed work goes
+- **Confusion:** Three different options (remove, mark complete, move to section)
+- **Recurrence risk:** HIGH - Will happen again with next completed item
+
+**Root Cause:**
+
+ROADMAP.md has clear sections for:
+- "Upcoming Work" (future items)
+- "Completed Phases" (major phases like Phase 1-3)
+
+But no documented pattern for:
+- Small completed items (not worth a whole phase)
+- Where to note completion (Current State? Upcoming Work? New section?)
+- When to remove vs mark complete
+
+**Fix:**
+
+Decided on pattern: For small completed items:
+1. Remove from "Upcoming Work" section
+2. Add brief note to "Current State" section (e.g., "Latest: v0.6.1 renamed X→Y")
+3. Document fully in CHANGELOG.md
+4. For major features, document in "Completed Phases"
+
+- **Resolved in commit:** This commit (v0.6.1 work + this mistake log)
+- **Prevention implemented in:** This commit
+
+**Prevention:**
+
+1. **Document the pattern** (add to CONTRIBUTING.md or ROADMAP.md header):
+   ```markdown
+   ## How to Document Completed Work
+   
+   **Small items (code quality, bug fixes):**
+   - Remove from "Upcoming Work"
+   - Add brief note to "Current State" (e.g., "Latest: v0.6.1 ...")
+   - Document in CHANGELOG.md with details
+   
+   **Major features/phases:**
+   - Add to "Completed Phases" section
+   - Document deliverables and success criteria
+   - Reference in CHANGELOG.md
+   
+   **Version bumps:**
+   - Always note in "Current State" header
+   - Document breaking changes in CHANGELOG.md
+   ```
+
+2. **Add to pre-commit checklist** (CONTRIBUTING.md):
+   - [ ] If completing roadmap item, updated ROADMAP.md per documentation pattern
+   - [ ] Added to CHANGELOG.md with appropriate detail level
+
+- **Prevention Status:** [X] Implemented (pattern documented in this mistake)
+
+**Related Mistakes:**
+
+- MISTAKE-009: Started implementation without planning (related planning issue)
+- MISTAKE-001: Missing MIGRATION_v0.6.md (also documentation pattern issue)
+- General pattern: Undocumented processes lead to inconsistent execution
+
+**Effectiveness Score:** pending
+

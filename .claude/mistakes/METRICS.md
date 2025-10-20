@@ -12,7 +12,7 @@
 
 | Month | Total | Critical | High | Medium | Low |
 |-------|-------|----------|------|--------|-----|
-| 2025-10 | 6 | 2 | 3 | 1 | 0 |
+| 2025-10 | 8 | 2 | 3 | 3 | 0 |
 
 *Update monthly with data from MISTAKES.md*
 
@@ -24,9 +24,9 @@
 | missing-exposure | 0 |
 | violated-tdd | 0 |
 | violated-architecture | 0 |
-| missing-docs | 4 |
+| missing-docs | 5 |
 | complexity-spike | 0 |
-| other | 1 |
+| other | 2 |
 
 *Update monthly. Trend symbols: ↓ (improving), → (stable), ↑ (getting worse)*
 
