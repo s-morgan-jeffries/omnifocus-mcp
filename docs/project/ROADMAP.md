@@ -1,225 +1,43 @@
 # OmniFocus MCP Server: Development Roadmap
 
-## Status: Phase 1 & 2 Complete ✅
+## Status: Phase 3 (API Redesign) Complete ✅
+
+**Current Version:** v0.6.0 (October 2025)
+
+**Project Status:** Maintenance mode - Core MCP server is feature-complete with 16 comprehensive tools covering all OmniFocus primitives.
 
 **Note**: This roadmap has been revised. The original vision included email forwarding, calendar integration, and other application-layer features. However, these don't belong in an MCP server - they should be separate services or applications that *use* the MCP server.
 
-**Phase 3 (API Redesign) is now COMPLETE**, consolidating the server to **16 comprehensive MCP tools** (v0.6.0) covering all core OmniFocus functionality with optimal tool-calling patterns.
-
 ---
 
-## Vision (Original)
+## Vision
 
-Transform OmniFocus from a manual task manager into an intelligent AI-powered productivity system that bridges the gap between unstructured information (emails, meetings, conversations) and structured GTD workflows.
+**Original Vision**: Transform OmniFocus from a manual task manager into an intelligent AI-powered productivity system.
 
 **Revised Vision**: Provide a clean, complete, well-tested MCP server that exposes all OmniFocus primitives to AI assistants like Claude.
 
----
-
-## Phase 1: Foundation - COMPLETE ✅
-
-### Goal
-Enable basic AI-powered task management with proper OmniFocus structure
-
-### Status: **COMPLETE**
-
-All Phase 1 deliverables have been implemented and tested.
+**Achieved**: ✅ 16 comprehensive MCP tools, 89% test coverage, type-safe API, batch operations, production-ready.
 
 ---
 
-### Week 1-2: Enhanced Task API - ✅ COMPLETE
-
-**What We Built:**
-```python
-# Full GTD support implemented
-add_task(
-    project_id="xyz",
-    task_name="Call client about Q3 results",
-    note="Discuss revenue targets and next steps",
-    tags=["@calls", "@priority-high"],
-    due_date="2025-10-15",
-    defer_date="2025-10-14",
-    flagged=True
-)
-```
-
-**Deliverables:**
-- ✅ Updated omnifocus_client.py with full property support
-- ✅ Extended AppleScript to handle tags, dates, flags
-- ✅ Added validation and error handling
-- ✅ Wrote comprehensive tests (79 unit tests for client)
-- ✅ Documentation with examples
-
-**Success Criteria:**
-- ✅ All GTD task properties supported
-- ✅ 100% AppleScript success rate
-- ✅ <1 second task creation time
-
----
-
-### Week 3-4: Task Query & Operations - ✅ COMPLETE
-
-**What We Built:**
-```python
-# Get tasks with filtering
-tasks = get_tasks(
-    project_id="xyz",
-    flagged_only=True,
-    include_completed=False
-)
-
-# Task operations
-update_task(task_id, due_date="2025-10-20", flagged=True)
-complete_task(task_id)
-```
-
-**Deliverables:**
-- ✅ Implemented get_tasks with filtering
-- ✅ Added update_task and complete_task
-- ✅ Comprehensive filtering options
-- ✅ Tests covering all query types (45 tests)
-
-**Success Criteria:**
-- ✅ Support all common filtering patterns
-- ✅ Accurate task status detection
-- ✅ Fast query performance
-
----
-
-### Week 5-6: Project Management - ✅ COMPLETE
-
-**What We Built:**
-```python
-# Create new project
-create_project(
-    name="Acme Corp - Website Redesign",
-    folder_path="Clients > Active",
-    note="8-week timeline, Team: Sarah (design), Mike (dev)",
-    sequential=False  # parallel project
-)
-```
-
-**Deliverables:**
-- ✅ Implemented create_project
-- ✅ Added get_project and search_projects
-- ✅ Folder hierarchy management
-- ✅ Tests and documentation (11 tests for create_project)
-
-**Success Criteria:**
-- ✅ Create complex project structures
-- ✅ Accurate folder path resolution
-- ✅ Proper sequential/parallel project types
-
----
-
-### Week 7-8: Email Integration MVP - ❌ OUT OF SCOPE
-
-**Status**: Not implemented - doesn't belong in MCP server.
-
-**Reasoning**: Email forwarding is application logic, not an MCP primitive. This should be:
-- A separate service that calls the MCP server, OR
-- Handled by Claude Desktop with the user forwarding emails to Claude manually
-
-The MCP server provides the primitives (`add_task`, `create_inbox_task`, etc.) but shouldn't run email receivers or parsers.
-
----
-
-## Phase 1 Success Metrics - ✅ ACHIEVED
-
-**Technical:**
-- ✅ All core tools implemented and tested
-- ✅ <1 second response time for operations
-- ✅ >95% API success rate (mocked tests)
-- ✅ Zero data loss bugs
-- ✅ 210 passing tests with comprehensive coverage
-- ✅ Multi-layer database safety system
-
-**Architecture:**
-- ✅ Migrated to FastMCP (38% code reduction)
-- ✅ Clean decorator-based tool definitions
-- ✅ Type-safe with auto-generated schemas
-- ✅ Production-ready error handling
-
----
-
-## Phase 2-4: Intelligence, Automation, Optimization - ⚠️ RECONSIDERED
-
-**Status**: These phases mixed MCP primitives with application logic.
-
-### What Belongs in MCP Server:
-- ✅ **Already implemented** - All OmniFocus primitives complete
-
-### What Doesn't Belong in MCP Server:
-- ❌ Email processing
-- ❌ Calendar integration
-- ❌ Meeting transcription
-- ❌ Analytics/dashboards
-- ❌ Template systems (can be handled by prompts)
-- ❌ GitHub/Jira integration (separate MCP servers)
-- ❌ Time tracking (separate service)
-- ❌ Voice interface
-- ❌ Pattern learning
-
-**These should be:**
-1. **Separate services** that use the MCP server as a client
-2. **Separate MCP servers** (e.g., calendar-mcp, github-mcp)
-3. **Claude Desktop workflows** using the existing tools
-4. **Prompt engineering** (templates, patterns)
-
----
-
-## Phase 2: Additional Primitives - ✅ COMPLETE
-
-### Goal
-Expand MCP server to cover all essential OmniFocus primitives beyond the Phase 1 basics.
-
-### Status: **COMPLETE** (v0.3.0)
-
-All Phase 2 deliverables have been implemented and tested.
-
-**What We Built:**
-- ✅ Task deletion and management (delete, move, drop)
-- ✅ Advanced task queries (available_only, overdue, tag filtering)
-- ✅ Folder management (get, create)
-- ✅ Task hierarchy (parent/child relationships)
-- ✅ Project review system (GTD methodology)
-- ✅ Time estimation
-- ✅ Perspectives (OmniFocus Pro feature)
-
-**Deliverables:**
-- ✅ 13 new primitives implemented in omnifocus_client.py
-- ✅ Enhanced existing tools (get_tasks with advanced filtering)
-- ✅ 64 additional tests (143 total client tests)
-- ✅ 30 FastMCP server tests (0% → 73% coverage)
-- ✅ Updated all documentation
-
-**Success Criteria:**
-- ✅ All tier 1 & 2 primitives covered
-- ✅ 88% overall code coverage
-- ✅ Production-ready test suite (302 passing tests)
-
----
-
-## Current State Summary (v0.6.0 - October 2025)
+## Current State (v0.6.0 - October 2025)
 
 ### 🎉 API Redesign Complete - 16 Core MCP Tools
 
-**Current Version:** v0.6.0
-**Status:** ✅ API Redesign COMPLETE - All proposed functions implemented
-**API Reduction:** 40+ functions → 16 core functions (60% reduction)
+**API Reduction:** 40+ functions → 16 core functions (60% reduction through two consolidations)
 
 **Projects (5 tools):**
 - ✅ `create_project` - Create with folder, status, and review interval
 - ✅ `get_projects` - Enhanced with `project_id`, `include_full_notes` parameters
 - ✅ `update_project` - Comprehensive single-project update (all fields)
-- ✅ `update_projects` - NEW: Batch update (safe fields, excludes name/note)
+- ✅ `update_projects` - Batch update (safe fields, excludes name/note)
 - ✅ `delete_projects` - Union type: accepts single ID or list
 
 **Tasks (6 tools):**
-- ✅ `create_task` - Replaces `add_task` and `create_inbox_task` (project_id=None for inbox)
+- ✅ `create_task` - Project tasks or inbox tasks (project_id=None)
 - ✅ `get_tasks` - Enhanced with `task_id`, `parent_task_id`, `include_full_notes` parameters
 - ✅ `update_task` - Comprehensive single-task update (all fields)
-- ✅ `update_tasks` - NEW: Batch update (safe fields, excludes name/note)
+- ✅ `update_tasks` - Batch update (safe fields, excludes name/note)
 - ✅ `delete_tasks` - Union type: accepts single ID or list
 - ✅ `reorder_task` - Specialized positioning logic
 
@@ -234,15 +52,11 @@ All Phase 2 deliverables have been implemented and tested.
 - ✅ `get_perspectives` - List custom perspectives
 - ✅ `switch_perspective` - Change active perspective
 
-### Deprecated Functions Removed (26)
+### Test Coverage
 
-All deprecated functions have been removed. See [../reference/API_REFERENCE.md](../reference/API_REFERENCE.md) for migration guide.
+**333 passing tests** with 89% overall code coverage. See [../guides/TESTING.md](../guides/TESTING.md) for detailed breakdown.
 
-### Test Coverage (v0.6.0):
-
-**333 passing tests** with 89% overall code coverage. See [../guides/TESTING.md](../guides/TESTING.md) for detailed breakdown and procedures.
-
-### Database Safety:
+### Database Safety
 
 - ✅ Multi-layer safety system
 - ✅ Environment variable checks
@@ -252,21 +66,331 @@ All deprecated functions have been removed. See [../reference/API_REFERENCE.md](
 
 ---
 
-## Technology Stack (Current)
+## What v0.6.0 Already Handles
+
+Many operations that might seem "missing" are already handled by the comprehensive update and get functions. Here are common patterns:
+
+### Project Operations via update_project()
+
+```python
+# Move project to different folder
+update_project(project_id, folder_path="Clients > Active")
+
+# ⚠️ BUG: Parameter name is misleading - actually sets NEXT review date, not last reviewed
+# See "Upcoming Work - Bug Fixes" section for details
+update_project(project_id, last_reviewed="now")  # Despite name, sets next review to today
+
+# Change project status (active/on-hold/done/dropped)
+update_project(project_id, status=ProjectStatus.DONE)  # Archives project
+
+# Set review interval
+update_project(project_id, review_interval_weeks=2)
+
+# Change project type
+update_project(project_id, sequential=True)  # Make sequential
+
+# Update multiple fields at once
+update_project(
+    project_id,
+    folder_path="Archive > 2025",
+    status=ProjectStatus.DONE,
+    last_reviewed="now"
+)
+```
+
+### Batch Project Operations via update_projects()
+
+```python
+# Move multiple projects to folder
+update_projects(project_ids, folder_path="Archive > Q4")
+
+# Archive multiple projects
+update_projects(project_ids, status=ProjectStatus.DONE)
+
+# ⚠️ BUG: Sets next review date (batch), not last reviewed (see Bug Fixes section)
+update_projects(project_ids, last_reviewed="now")
+
+# Set review interval for multiple projects
+update_projects(project_ids, review_interval_weeks=4)
+
+# Combine safe field updates
+update_projects(
+    project_ids,
+    status=ProjectStatus.DONE,
+    last_reviewed="now"
+)
+```
+
+### Task Operations via update_task()
+
+```python
+# Complete a task
+update_task(task_id, completed=True)
+
+# Flag/unflag a task
+update_task(task_id, flagged=True)
+
+# Move task to different project
+update_task(task_id, project_id=new_project_id)
+
+# Move task to inbox
+update_task(task_id, project_id=None)
+
+# Set task status
+update_task(task_id, status=TaskStatus.DROPPED)
+
+# Set parent task (create subtask relationship)
+update_task(task_id, parent_task_id=parent_id)
+
+# Set time estimate
+update_task(task_id, estimated_minutes=30)
+
+# Update multiple fields at once
+update_task(
+    task_id,
+    due_date="2025-10-25",
+    flagged=True,
+    estimated_minutes=45,
+    tags=["@priority-high", "@calls"]
+)
+```
+
+### Batch Task Operations via update_tasks()
+
+```python
+# Complete multiple tasks
+update_tasks(task_ids, completed=True)
+
+# Flag multiple tasks
+update_tasks(task_ids, flagged=True)
+
+# Move multiple tasks to project
+update_tasks(task_ids, project_id=new_project_id)
+
+# Set status for multiple tasks
+update_tasks(task_ids, status=TaskStatus.DROPPED)
+
+# Add tags to multiple tasks
+update_tasks(task_ids, tags=["@review", "@urgent"])
+
+# Set parent for multiple tasks
+update_tasks(task_ids, parent_task_id=parent_id)
+
+# Combine safe field updates
+update_tasks(
+    task_ids,
+    flagged=True,
+    estimated_minutes=30,
+    tags=["@batch-processed"]
+)
+```
+
+### Query Operations via get_tasks() and get_projects()
+
+```python
+# Get single task (replaces get_task)
+get_tasks(task_id="task-123")
+
+# Get single project (replaces get_project)
+get_projects(project_id="proj-456")
+
+# Get subtasks (replaces get_subtasks)
+get_tasks(parent_task_id="parent-task-id")
+
+# Get tasks in project
+get_tasks(project_id="proj-456")
+
+# Get full notes (replaces get_note)
+get_tasks(task_id="task-123", include_full_notes=True)
+get_projects(project_id="proj-456", include_full_notes=True)
+
+# Get available tasks only
+get_tasks(available_only=True)
+
+# Get flagged tasks
+get_tasks(flagged_only=True)
+
+# Combine filters
+get_tasks(
+    project_id="proj-456",
+    flagged_only=True,
+    available_only=True
+)
+```
+
+### Why This Design?
+
+**Minimizes Tool Call Overhead:**
+- Update multiple fields in one call instead of multiple calls
+- Example: Old way required 3 calls (flag_task, set_due_date, add_tag), new way needs 1 call (update_task)
+
+**Type Safety:**
+- Enums prevent invalid status values
+- Structured returns make parsing consistent
+- Optional parameters with sensible defaults
+
+**Batch Safety:**
+- Separate batch functions prevent accidentally giving multiple items the same name
+- `update_tasks()` excludes name/note (require unique values)
+- `update_task()` includes all fields (safe for single item)
+
+---
+
+## Completed Phases
+
+### Phase 1: Foundation ✅ COMPLETE
+
+All core OmniFocus primitives (tasks, projects, folders, tags) implemented with comprehensive test coverage.
+
+**Deliverables:**
+- ✅ Full GTD task/project property support
+- ✅ Database safety system
+- ✅ Migrated to FastMCP
+- ✅ 210 passing tests
+
+### Phase 2: Additional Primitives ✅ COMPLETE
+
+Expanded coverage to include advanced OmniFocus features (perspectives, project review, time estimates, task hierarchy).
+
+**Deliverables:**
+- ✅ 13 additional primitives
+- ✅ Advanced filtering and queries
+- ✅ Project review system (GTD)
+- ✅ Perspectives support
+- ✅ 302 passing tests (88% coverage)
+
+### Phase 3: API Redesign ✅ COMPLETE
+
+Major consolidation to optimize for MCP tool calling efficiency.
+
+**v0.6.0 Achievements:**
+- ✅ Reduced API surface: 40+ → 16 functions
+- ✅ Comprehensive update functions handle all field changes
+- ✅ Batch operations for efficiency
+- ✅ Type-safe enums and structured returns
+- ✅ Removed 26 deprecated functions
+- ✅ 333 passing tests (89% coverage)
+
+---
+
+## Upcoming Work
+
+**Status:** These items are logged for future consideration but not actively planned. The v0.6.0 API is feature-complete and stable.
+
+### Immediate - Bug Fixes
+
+**🐛 Project Review Date Functionality (CRITICAL BUG)**
+- **Current bug**: The `last_reviewed` parameter is misnamed and misleading
+  - **Actual behavior**: Sets the **next review date**, not the last reviewed date
+  - **Code location**: `omnifocus_client.py:918` - `set next review date of theProject to (current date)`
+  - **Impact**: Cannot properly mark projects as reviewed per GTD methodology
+  - **User sees**: Projects show future review date instead of being marked as "reviewed today"
+- **Required fixes**:
+  1. **Fix `last_reviewed` parameter**: Should set "last review date" property in OmniFocus
+     - Need to research correct AppleScript property name
+     - Test whether OmniFocus auto-calculates next review when last review is set
+  2. **Add `next_review_date` parameter**: For explicit next review date setting
+     - Should work in both `update_project()` and `update_projects()`
+     - Allows manual override of calculated review schedule
+  3. **Verify OmniFocus behavior**: Does setting "last review date" trigger auto-calculation?
+  4. **Add integration tests**: Verify both parameters set correct OmniFocus properties
+- **Priority**: CRITICAL - Blocks GTD weekly review workflow (user-reported)
+
+### Short-Term - Code Quality
+
+**📝 Rename omnifocus_client.py → omnifocus_connector.py**
+- **Rationale**: "Connector" is industry-standard terminology for system integrations
+- **Scope**: Rename file, class (`OmniFocusClient` → `OmniFocusConnector`), all references
+- **Impact**: LOW - No functionality changes, better clarity
+- **Effort**: 1-2 hours (34+ files affected)
+
+### Under Investigation - Design Review Needed
+
+These items need design discussion before implementation:
+
+**🤔 Complex Multi-Step Operations**
+- `merge_projects(source_ids, target_id)` - Merge multiple projects by moving all tasks
+- `split_project(project_id, task_ids, new_project_name)` - Split tasks into new project
+
+**Question:** Are these OmniFocus primitives or application workflows?
+- Can be done client-side with existing tools (get_tasks, update_tasks, create_project, delete_projects)
+- Should MCP server provide convenience wrappers for multi-step operations?
+- Precedent: v0.6.0 philosophy is "expose primitives, not workflows"
+
+**Decision needed before implementation.**
+
+**🤔 UI Navigation**
+- `show_project(project_id)` - Focus OmniFocus window on specific project
+- `show_task(task_id)` - Focus OmniFocus window on specific task
+
+**Question:** Does UI navigation belong in an MCP server?
+- Precedent: `switch_perspective()` exists (UI control)
+- AppleScript verified: `set focus of front document window to item` works
+- Use case: "Jump to this item" after querying/searching
+
+**Decision needed before implementation.**
+
+### Future Research - Technical Blockers
+
+**🔬 Attachments (File Handling)**
+- `get_attachments(item_id, item_type="task")` - List attachments
+- `add_attachment(item_id, file_path, item_type="task")` - Attach files
+- `remove_attachment(item_id, attachment_name, item_type="task")` - Remove attachments
+
+**Blocker:** How does MCP/Claude Desktop handle local file paths?
+- Can MCP tools receive file paths as arguments?
+- What's the security model?
+- How do file permissions work?
+
+**Research needed:** MCP file operation specification
+
+**🔬 Archive Access (SQLite)**
+- `search_archive(query)` - Search archived tasks/projects
+- `get_archived_project(project_id)` - Get archived project details
+- `get_archived_task(task_id)` - Get archived task details
+
+**Blocker:** Direct SQLite access to `ArchiveDatabase.db` is high-risk
+- Archive database structure is undocumented (reverse engineering needed)
+- Read-only safety must be guaranteed
+- OF3 vs OF4 schema differences
+- Corruption risk if not handled correctly
+
+**Research needed:**
+- Reverse-engineer archive schema
+- Build read-only safety layer
+- Test across OmniFocus versions
+
+---
+
+## Out of Scope
+
+These belong in separate services/applications that **use** the MCP server, not **in** the MCP server:
+
+❌ Email forwarding/processing
+❌ Calendar integration
+❌ Meeting transcription
+❌ GitHub/Jira integration (separate MCP servers)
+❌ Time tracking (separate service)
+❌ Analytics/dashboards (client applications)
+❌ Template systems (can be handled by prompts)
+❌ Voice interface
+❌ Pattern learning/AI features
+
+**These should be:**
+1. Separate services that use this MCP server as a client
+2. Separate MCP servers (e.g., calendar-mcp, github-mcp)
+3. Claude Desktop workflows using existing tools
+4. Prompt engineering (templates, patterns)
+
+---
+
+## Technology Stack
 
 ### Backend
 - **Language:** Python 3.10+
 - **Framework:** FastMCP 2.0
 - **OmniFocus API:** AppleScript bridge
-- **Testing:** pytest with comprehensive mocking
-
-### Not Implemented (Out of Scope)
-- ~~Email integration~~
-- ~~Calendar integration~~
-- ~~Meeting transcription~~
-- ~~Dev tool integrations~~
-- ~~Time tracking~~
-- ~~Cloud deployment~~
+- **Testing:** pytest with comprehensive mocking and integration tests
 
 ### Deployment
 - **Current:** Local-only (user's machine via Claude Desktop)
@@ -274,218 +398,55 @@ All deprecated functions have been removed. See [../reference/API_REFERENCE.md](
 
 ---
 
-## Success Criteria Summary
+## Success Criteria (All Achieved ✅)
 
 ### Phase 1 (Foundation) - ✅ COMPLETE
 - ✅ 100% GTD task properties supported
-- ✅ Core OmniFocus primitives (12 tools)
+- ✅ Core OmniFocus primitives
 - ✅ Database safety system
 - ✅ Migrated to FastMCP
 
 ### Phase 2 (Additional Primitives) - ✅ COMPLETE
-- ✅ All essential OmniFocus primitives (25 tools total)
+- ✅ All essential OmniFocus primitives
 - ✅ Advanced filtering and queries
-- ✅ Project review (GTD)
+- ✅ Project review (GTD methodology)
 - ✅ Perspectives support
-- ✅ Comprehensive test coverage (302 tests, 88% coverage)
-- ✅ FastMCP server tests (73% coverage)
+- ✅ Comprehensive test coverage
 
-### Future Phases - ⚠️ RECONSIDERED
-These belong in separate services/servers, not the OmniFocus MCP server.
-
----
-
-## Phase 3: API Redesign - ✅ COMPLETE
-
-### v0.6.0 (October 2025) - ✅ COMPLETE
-
-**Focus:** Major API redesign to optimize for MCP tool calling efficiency
-
-**Status:** ✅ ALL IMPLEMENTED - 16 core functions operational
-
-**Implemented:**
-- ✅ **API Consolidation** - Reduced from 40+ functions to 16 core functions (60% reduction)
-- ✅ **Comprehensive Update Functions** - `update_task()` and `update_project()` handle all field changes
-- ✅ **Batch Operations** - New `update_tasks()` and `update_projects()` for efficient bulk updates
-- ✅ **Union Types** - `delete_tasks()` and `delete_projects()` accept single ID or list
-- ✅ **Enhanced Get Functions** - `get_tasks()` and `get_projects()` now support:
-  - Direct ID lookup (consolidates `get_task()`, `get_project()`)
-  - Parent task filtering (consolidates `get_subtasks()`)
-  - Full note retrieval (consolidates `get_note()`)
-- ✅ **Enum Types** - `TaskStatus` and `ProjectStatus` enums for type safety
-- ✅ **Structured Returns** - Consistent dict format for all operations
-- ✅ **Database Safety Guards** - Updated DESTRUCTIVE_OPERATIONS for new function names
-- ✅ **Removed 26 Deprecated Functions** - See [API_REFERENCE.md](../reference/API_REFERENCE.md) for migration guide
-- ✅ **Test Cleanup** - 333 passing tests, all deprecated function tests removed/updated
-- ✅ **Code Reduction** - 2,681 lines of deprecated code deleted
-
-**Benefits Realized:**
-- ✅ Minimized tool call overhead (update multiple fields in one call)
-- ✅ Simpler API surface (easier to learn and use)
-- ✅ Type safety with enums and structured returns
-- ✅ Consistent patterns across all entity types
-- ✅ Batch-safe operations (separate functions exclude name/note fields)
-
-**Current Tool Count:** 16 MCP tools (reduced from 40+ original functions through two consolidations: 40+ → 26 in v0.5.0 → 16 in v0.6.0)
-
-**Test Coverage:** 333 passing tests (100% pass rate)
-
-### v0.5.0 (October 2025) - ✅ COMPLETE
-
-**Focus:** Claude Desktop compatibility improvements and API refinements
-
-**Implemented:**
-- ✅ Added `update_project()` tool (name, note, sequential)
-- ✅ Fixed `get_project()` to include `sequential` field
-- ✅ Fixed Optional[bool] parameter validation issues
-  - `update_task(flagged)` now accepts "true"/"false" strings
-  - `update_project(sequential)` now accepts "true"/"false" strings
-  - Workaround for FastMCP known issue with Optional[bool] parameters
-- ✅ Added plain text note warnings to all note-related tools
-  - Documented that OmniFocus automation APIs only support plain text
-  - Warned that updating notes removes rich text formatting
-- ✅ Added comprehensive tests
-  - 5 integration tests for update_project
-  - 8 unit tests for string boolean parameter handling
-  - 1 integration test for flag toggling
-- ✅ Migrated TDD practices from hooks to CLAUDE.md
-- ✅ Added availability status fields (`available`, `numberOfAvailableTasks`)
-  - Clarified why blocked tasks appear in Available filter
-- ✅ **Completed AppleScript audit** - Found all needed timestamps! (see `docs/APPLESCRIPT_AUDIT_FINDINGS.md`)
-- ✅ **Added timestamp fields to all project/task methods**:
-  - Projects: `creationDate`, `modificationDate`, `completionDate`, `droppedDate`
-  - Tasks: `creationDate`, `modificationDate`, `completionDate`, `droppedDate`
-  - All timestamps as ISO 8601 strings or null
-- ✅ **Fixed tags to be arrays instead of strings**:
-  - Tasks now return `tags: ["tag1", "tag2"]` instead of `"tag1, tag2"`
-  - Proper JSON arrays for filtering and organization
-- ✅ **Made `get_stalled_projects()` configurable**:
-  - Added `min_task_count` parameter for filtering
-  - Returns `lastActivityDate`, `daysInactive`, and `taskCount`
-  - Filters and sorts by inactivity (most stale first)
-
-**Known Limitations:**
-- ❌ Cannot retrieve formatted/rich text notes (OmniFocus API limitation)
-  - AppleScript only exposes plain text
-  - OmniAutomation has RTF access but cannot be called externally with result retrieval
-
-**Current Tool Count:** 26 MCP tools
-
-**Test Coverage:** 392 passing tests (up from 302)
-
-### Upcoming Work
-
-**Status:** Project is in maintenance mode (v0.6.0). These items are logged for future consideration but not actively planned. The v0.6.0 API redesign is complete and stable.
-
----
-
-**High Priority - Bug Fixes:**
-- 🐛 **mark_project_reviewed() bug** (USER REPORTED)
-  - **Issue**: Currently sets `next review date` to today instead of marking as reviewed
-  - **Correct behavior**: Should set `last review date` to today, which triggers OmniFocus to calculate next review date based on review interval
-  - **Fix**: Change AppleScript from `set next review date` to `set last review date`
-  - **Impact**: GTD weekly review workflow broken - projects not properly marked as reviewed
-  - **Priority**: HIGH - User actively using this for project cleanup workflow
-
-**Code Quality - Clarity Improvements:**
-- 📝 **Rename omnifocus_client.py to omnifocus_connector.py**
-  - **Current**: `omnifocus_client.py` / `OmniFocusClient` class
-  - **Proposed**: `omnifocus_connector.py` / `OmniFocusConnector` class
-  - **Rationale**: "Connector" is industry-standard terminology for system integrations
-  - **Benefits**:
-    - Clearer architecture: "MCP server uses OmniFocus connector"
-    - Avoids client/server confusion (server calling client sounds backwards)
-    - Matches terminology used in data pipelines, ETL tools, integration platforms
-  - **Scope**: Rename file, class, all references, update documentation
-  - **Impact**: LOW - No functionality changes, better clarity for maintainers
-
-**High Priority - Project Cleanup Use Case (IN PROGRESS):**
-- 🎯 **Project Cleanup & Reorganization Assistant** (USE CASE #16)
-  - **Status**: Core features COMPLETE ✅
-  - ✅ Timestamps on all projects/tasks
-  - ✅ Tags as arrays on tasks
-  - ✅ Configurable stalled project detection
-  - ⏳ **Remaining**: Project reorganization operations
-    - `move_project(project_id, folder_path)` - Move project to different folder (MISSING PRIMITIVE)
-    - `move_projects(project_ids, folder_path)` - Batch move projects to folder
-    - `merge_projects(source_ids, target_id)` - Merge multiple projects
-    - `split_project(project_id, task_ids, new_project_name)` - Split off tasks
-    - `archive_projects(project_ids)` - Batch archive/complete
-  - **Impact**: Very High for power users with mature databases
-  - **See**: `docs/USE_CASES.md` for detailed workflow
-
-**Under Consideration:**
-- **Batch operations** (systematic expansion for efficiency):
-  - **Currently implemented**:
-    - ✅ Tasks: complete_tasks, move_tasks, drop_tasks, delete_tasks, add_tag_to_tasks, remove_tag_from_tasks
-    - ✅ Projects: delete_projects, drop_projects
-  - **Missing - High Priority**:
-    - ❌ `mark_projects_reviewed(project_ids)` - Batch mark projects as reviewed (GTD workflow)
-    - ❌ `update_tasks(task_ids, properties)` - Batch update task properties
-    - ❌ `update_projects(project_ids, properties)` - Batch update project properties
-    - ❌ `set_project_statuses(project_ids, status)` - Batch change project status
-  - **Missing - Medium Priority**:
-    - ❌ `set_review_intervals(project_ids, interval)` - Batch set review intervals
-    - ❌ `set_estimated_minutes_batch(task_ids, minutes)` - Batch time estimates
-    - ❌ `set_parent_tasks(task_ids, parent_task_id)` - Batch reparenting
-  - **Rationale**: Reduce round-trip overhead for bulk operations, especially important for project cleanup/reorganization workflows
-- Additional filtering options based on user feedback
-- **UI navigation/focus commands**:
-  - `show_project(project_id)` - Focus on a project in the OmniFocus window
-  - `show_task(task_id)` - Focus on a task in the OmniFocus window
-  - **Implementation**: Uses AppleScript `set focus of front document window to item`
-  - **Rationale**: "Jump to this item" workflow after querying/searching
-  - **Verified**: AppleScript command works - tested successfully
-- **Task creation improvements**:
-  - Add `parent_task_id` parameter to `add_task()` - Create subtasks directly without needing two-step process
-  - **Current workaround**: Use `add_task()` then `set_parent_task()`
-  - **Rationale**: More efficient workflow for creating task hierarchies
-  - **Challenge**: AppleScript may require task to exist before setting parent (need to test)
-- **Attachments** (user priority - document management):
-  - `get_attachments(item_id, item_type="task")` - List attachments on tasks/projects
-  - `add_attachment(item_id, file_path, item_type="task")` - Attach files
-  - `remove_attachment(item_id, attachment_name, item_type="task")` - Remove attachments
-  - Add `attachmentCount` field to task/project responses
-  - **Rationale**: "Attach this PDF to my 'File taxes' task" workflow
-  - **Challenge**: Need to investigate how MCP/Claude Desktop handles local file paths
-- **Archive access** (challenging - requires direct SQLite access):
-  - `search_archive(query: str)` - Search archived tasks/projects
-  - `get_archived_project(project_id: str)` - Get archived project details
-  - `get_archived_task(task_id: str)` - Get archived task details
-  - **Rationale**: "Find that project I completed last year" workflow
-  - **Challenge**: Archive is separate SQLite database (`ArchiveDatabase.db`), not accessible via AppleScript
-  - **Research needed**: Reverse-engineer archive schema, ensure read-only safety, handle OF3/OF4 differences
-- **Note management improvements** (open design question):
-  - Should we add dedicated `set_note()` function (or `update_note()`) for explicit note-only updates?
-  - Single function for both tasks and projects: `set_note(item_id, note, item_type="task")`?
-  - Should note parameter remain in `update_task()` and `update_project()` for convenience?
-  - Alternative: `append_note()` for non-destructive incremental updates?
-  - **Rationale**: Updating notes is destructive (removes formatting), should be more intentional
-  - **User workflow**: Generate Markdown notes in Claude, copy/paste into OmniFocus manually
+### Phase 3 (API Redesign) - ✅ COMPLETE
+- ✅ Consolidated to 16 core functions
+- ✅ Minimized tool call overhead
+- ✅ Type-safe with enums
+- ✅ Batch operations
+- ✅ 89% test coverage
 
 ---
 
 ## Next Steps
 
-For the MCP server:
-1. ✅ Test with Claude Desktop
-2. ✅ Documentation updates
-3. ⏳ Complete property audit
-4. ⏭️ Additional enhancements based on usage patterns
+**For the MCP Server:**
+1. ✅ Core functionality complete
+2. ✅ Documentation complete
+3. ✅ Test coverage excellent (89%)
+4. ⏳ Bug fixes and enhancements based on real-world usage
 
-For application-layer features:
+**For Application-Layer Features:**
 1. Build separate services that use this MCP server
-2. Or use Claude Desktop with this server + manual workflows
-3. Or create separate MCP servers for other systems (calendar, email, etc.)
+2. Use Claude Desktop with this server + manual workflows
+3. Create separate MCP servers for other systems (calendar, email, etc.)
 
 ---
 
 ## Open Questions (Resolved)
 
-1. **Pricing Model:** Free, open source MCP server
-2. **OmniGroup Relationship:** Independent tool
-3. **Data Privacy:** Local-only, no cloud processing
-4. **Platform Support:** macOS only (OmniFocus limitation)
-5. **Multi-user:** Individual-focused (as OmniFocus is)
+1. **Pricing Model:** Free, open source MCP server ✅
+2. **OmniGroup Relationship:** Independent tool ✅
+3. **Data Privacy:** Local-only, no cloud processing ✅
+4. **Platform Support:** macOS only (OmniFocus limitation) ✅
+5. **Multi-user:** Individual-focused (as OmniFocus is) ✅
+6. **API Surface:** 16 core functions covering all primitives ✅
+7. **Application Features:** Out of scope - separate services ✅
 
 ---
+
+**Last Updated:** October 20, 2025
