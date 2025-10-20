@@ -5,7 +5,7 @@
 **Last Updated:** 2025-10-19
 
 **Statistics:**
-- Total Mistakes: 6
+- Total Mistakes: 7
 - By Category: missing-docs (4), missing-tests (1), other (1)
 - By Severity: critical (2), high (3), medium (1)
 
@@ -485,6 +485,87 @@ Need to implement:
 
 **Related Mistakes:**
 MISTAKE-004 (metrics automation), MISTAKE-007 (no prevention validation)
+
+**Effectiveness Score:** pending
+
+---
+
+
+## [MISTAKE-009] Started implementation without planning version bump and documentation (Date: 2025-10-20)
+
+**Status:** resolved
+
+**Category:** other
+
+**Severity:** medium
+
+**Discovery Date:** 2025-10-20
+**Introduced In:** refactor/rename-client-to-connector branch (during development)
+**Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-19 (30 days from fix)
+
+**What Happened:**
+
+When implementing the omnifocus_client → omnifocus_connector rename, I immediately started the rename without:
+1. Asking if this should be v0.6.1 or stay as v0.6.0
+2. Deciding on the roadmap documentation strategy first
+3. Planning the full scope (rename + version bump + CHANGELOG + roadmap update)
+
+User had to stop me twice:
+- First to point out I marked it completed but left it in "Upcoming Work"
+- Second to ask "should you log this as a mistake?"
+
+**Context:**
+- **File(s):** Multiple (rename affected 34+ files)
+- **Task:** Rename omnifocus_client.py → omnifocus_connector.py
+- **Commit:** In progress on refactor/rename-client-to-connector branch
+
+**Impact:**
+
+- **User experience:** Had to intervene twice to correct approach
+- **Process:** Violated planning-before-implementation principle
+- **Documentation:** Nearly shipped with inconsistent docs
+- **Severity:** Medium - Caught early, no code shipped, but wasted time
+
+**Root Cause:**
+
+Jumped straight to implementation without considering:
+- This is a breaking change requiring version bump
+- Documentation strategy needed to be decided first (remove vs mark complete vs note in version)
+- Full scope planning needed before execution
+
+**Fix:**
+
+- Paused implementation when user stopped me
+- Asked clarifying questions about versioning (should be v0.6.1)
+- Asked about documentation approach (Option A/B/C)
+- Got agreement on approach (Option B: note in Current State + CHANGELOG)
+- Now implementing properly with full scope
+
+- **Resolved in commit:** pending (will be in v0.6.1 commit)
+- **Prevention implemented in:** This commit (logged as mistake for awareness)
+
+**Prevention:**
+
+1. **Pre-implementation checklist** (add to CLAUDE.md):
+   - [ ] Is this a breaking change? → Requires version bump
+   - [ ] Does this need CHANGELOG entry? → Plan what goes in it
+   - [ ] Does this affect roadmap? → Decide documentation strategy
+   - [ ] What's the full scope? → List all affected files/docs
+
+2. **Breaking change protocol** (add to CONTRIBUTING.md):
+   - Always ask about versioning before implementing breaking changes
+   - Decide documentation strategy before starting
+   - Plan full scope including: code + tests + docs + CHANGELOG + version bump
+
+- **Prevention Status:** [X] Implemented (logged for awareness, checklist to be added to docs)
+
+**Related Mistakes:**
+
+- MISTAKE-001: Missing MIGRATION_v0.6.md (also a planning/docs issue)
+- General pattern: Jumping to implementation before planning docs/versioning
+
 
 **Effectiveness Score:** pending
 

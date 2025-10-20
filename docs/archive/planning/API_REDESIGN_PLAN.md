@@ -32,10 +32,10 @@
 
 **For EVERY function, follow this complete TDD cycle:**
 
-### Client Layer (omnifocus_client.py)
+### Client Layer (omnifocus_connector.py)
 1. ✅ **Write client tests FIRST** - Unit tests with mocked AppleScript
 2. ✅ **Run tests → Confirm FAIL** - Tests should fail (function not implemented)
-3. ✅ **Implement client function** - Add/enhance function in omnifocus_client.py
+3. ✅ **Implement client function** - Add/enhance function in omnifocus_connector.py
 4. ✅ **Run tests → Confirm PASS** - All tests should pass
 5. ✅ **Check complexity** - Run `./scripts/check_complexity.sh`
 
@@ -551,7 +551,7 @@ These functions are already well-designed and don't need changes:
 
 ## PHASE 5: Functions to DELETE (27 functions)
 
-### 5.1 Delete from omnifocus_client.py (client layer)
+### 5.1 Delete from omnifocus_connector.py (client layer)
 
 **Task Operations (10 functions):**
 1. complete_task() → update_task(completed=True)

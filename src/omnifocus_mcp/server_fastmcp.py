@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 from fastmcp import FastMCP
 
-from .omnifocus_client import OmniFocusClient
+from .omnifocus_connector import OmniFocusConnector
 
 # Create FastMCP server
 mcp = FastMCP("omnifocus-mcp")
@@ -15,16 +15,16 @@ mcp = FastMCP("omnifocus-mcp")
 NOTE_TRUNCATION_LENGTH = 100  # Maximum note length in get_projects/get_tasks responses
 
 # Initialize OmniFocus client (lazy)
-_client: Optional[OmniFocusClient] = None
+_client: Optional[OmniFocusConnector] = None
 
 
-def get_client() -> OmniFocusClient:
+def get_client() -> OmniFocusConnector:
     """Get or create the OmniFocus client."""
     global _client
     if _client is None:
         # Disable safety checks if in pytest environment (for integration tests with mocked AppleScript)
         _in_pytest = os.environ.get('PYTEST_CURRENT_TEST') is not None
-        _client = OmniFocusClient(enable_safety_checks=not _in_pytest)
+        _client = OmniFocusConnector(enable_safety_checks=not _in_pytest)
     return _client
 
 
@@ -47,7 +47,7 @@ def _format_task(task: dict) -> str:
     """Format a task dictionary as human-readable text.
 
     Args:
-        task: Task dictionary from omnifocus_client
+        task: Task dictionary from omnifocus_connector
 
     Returns:
         Formatted task text with all properties
@@ -102,7 +102,7 @@ def _format_project(proj: dict) -> str:
     """Format a project dictionary as human-readable text.
 
     Args:
-        proj: Project dictionary from omnifocus_client
+        proj: Project dictionary from omnifocus_connector
 
     Returns:
         Formatted project text with all properties

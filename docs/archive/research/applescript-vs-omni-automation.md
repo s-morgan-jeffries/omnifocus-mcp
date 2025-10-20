@@ -318,7 +318,7 @@ result = trigger_omnifocus_plugin(plugin_name, params)  # Much more complex
 
 ```python
 # Core functionality: AppleScript (as-is)
-class OmniFocusClient:
+class OmniFocusConnector:
     def get_tasks(self):
         # AppleScript implementation
 

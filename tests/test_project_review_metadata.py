@@ -2,13 +2,13 @@
 import json
 from unittest import mock
 import pytest
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
-    """Create an OmniFocusClient instance."""
-    return OmniFocusClient()
+    """Create an OmniFocusConnector instance."""
+    return OmniFocusConnector()
 
 
 class TestProjectReviewMetadata:
@@ -32,7 +32,7 @@ class TestProjectReviewMetadata:
             "nextReviewDate": "2025-10-08T12:00:00"
         }])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = project_json
             projects = client.get_projects(project_id="proj-001")
 
@@ -62,7 +62,7 @@ class TestProjectReviewMetadata:
             "nextReviewDate": None
         }])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = project_json
             projects = client.get_projects(project_id="proj-002")
 
@@ -92,7 +92,7 @@ class TestProjectReviewMetadata:
             "nextReviewDate": "2025-10-15T12:00:00"
         }])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = project_json
             projects = client.get_projects(project_id="proj-003")
 

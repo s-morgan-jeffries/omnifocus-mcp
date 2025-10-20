@@ -13,7 +13,7 @@ This will:
 SAFE: This only reads data, no writes.
 """
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 def test_query_search():
     """Test searching tasks by query."""
@@ -22,7 +22,7 @@ def test_query_search():
     print("=" * 60)
 
     # Create client (will connect to your real OmniFocus)
-    client = OmniFocusClient(enable_safety_checks=False)  # Safe - read-only
+    client = OmniFocusConnector(enable_safety_checks=False)  # Safe - read-only
 
     print("\n1. Getting ALL incomplete tasks...")
     try:

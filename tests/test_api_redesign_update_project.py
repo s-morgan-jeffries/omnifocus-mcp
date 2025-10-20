@@ -15,7 +15,7 @@ NEW API changes:
 """
 import pytest
 from unittest import mock
-from omnifocus_mcp.omnifocus_client import OmniFocusClient, ProjectStatus
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector, ProjectStatus
 
 
 class TestUpdateProjectRedesign:
@@ -24,7 +24,7 @@ class TestUpdateProjectRedesign:
     @pytest.fixture
     def client(self):
         """Create a client with safety checks disabled for unit testing."""
-        return OmniFocusClient(enable_safety_checks=False)
+        return OmniFocusConnector(enable_safety_checks=False)
 
     # ========================================================================
     # New Fields - Status
@@ -32,7 +32,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_set_status_enum(self, client):
         """NEW API: update_project() can set status using ProjectStatus enum."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", status=ProjectStatus.ON_HOLD)
@@ -47,7 +47,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_set_status_string(self, client):
         """NEW API: update_project() can set status using string."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", status="active")
@@ -60,7 +60,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_drop_status(self, client):
         """NEW API: update_project() can drop a project (status=ProjectStatus.DROPPED)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", status=ProjectStatus.DROPPED)
@@ -73,7 +73,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_complete_status(self, client):
         """NEW API: update_project() can mark project as done."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", status=ProjectStatus.DONE)
@@ -90,7 +90,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_set_review_interval(self, client):
         """NEW API: update_project() can set review interval in weeks."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", review_interval_weeks=2)
@@ -104,7 +104,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_clear_review_interval(self, client):
         """NEW API: update_project() can clear review interval (set to 0)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", review_interval_weeks=0)
@@ -118,7 +118,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_mark_reviewed(self, client):
         """NEW API: update_project() can mark project as reviewed with date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", last_reviewed="2025-10-18")
@@ -131,7 +131,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_mark_reviewed_now(self, client):
         """NEW API: update_project() can mark project as reviewed now (empty string or 'now')."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", last_reviewed="now")
@@ -145,7 +145,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_existing_fields_still_work(self, client):
         """NEW API: Existing fields (name, note, sequential) still work."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project(
@@ -166,7 +166,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_multiple_fields_at_once(self, client):
         """NEW API: update_project() can update multiple fields simultaneously."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project(
@@ -190,7 +190,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_returns_structured_dict(self, client):
         """NEW API: update_project() returns dict with success, project_id, updated_fields."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", status=ProjectStatus.ACTIVE)
@@ -203,7 +203,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_success_has_no_error_key(self, client):
         """NEW API: Successful updates don't include error key."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", status=ProjectStatus.ACTIVE)
@@ -213,7 +213,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_failure_has_error_key(self, client):
         """NEW API: Failed updates include error key with message."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "false"
 
             result = client.update_project("proj-999", status=ProjectStatus.ACTIVE)
@@ -247,7 +247,7 @@ class TestUpdateProjectRedesign:
 
     def test_update_project_folder_path(self, client):
         """NEW API: update_project() can move project to different folder."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_project("proj-001", folder_path="Work : Projects")

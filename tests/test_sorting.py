@@ -2,13 +2,13 @@
 import pytest
 from unittest import mock
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
     """Create a client with safety checks disabled."""
-    return OmniFocusClient(enable_safety_checks=False)
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestTaskSorting:
@@ -16,7 +16,7 @@ class TestTaskSorting:
 
     def test_sort_by_name_asc(self, client):
         """Test sorting tasks by name ascending."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t3", "name": "Charlie", "completed": false},
                 {"id": "t1", "name": "Alpha", "completed": false},
@@ -32,7 +32,7 @@ class TestTaskSorting:
 
     def test_sort_by_name_desc(self, client):
         """Test sorting tasks by name descending."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Alpha", "completed": false},
                 {"id": "t2", "name": "Bravo", "completed": false},
@@ -48,7 +48,7 @@ class TestTaskSorting:
 
     def test_sort_by_due_date_asc(self, client):
         """Test sorting tasks by due date ascending."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "dueDate": "2025-01-15T00:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "dueDate": ""},
@@ -65,7 +65,7 @@ class TestTaskSorting:
 
     def test_sort_by_defer_date(self, client):
         """Test sorting tasks by defer date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "deferDate": "2025-01-20T00:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "deferDate": "2025-01-10T00:00:00Z"}
@@ -88,7 +88,7 @@ class TestTaskSorting:
 
     def test_no_sort_returns_original_order(self, client):
         """Test that omitting sort parameters preserves original order."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t3", "name": "Charlie", "completed": false},
                 {"id": "t1", "name": "Alpha", "completed": false}
@@ -106,7 +106,7 @@ class TestProjectSorting:
 
     def test_sort_projects_by_name_asc(self, client):
         """Test sorting projects by name ascending."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p2", "name": "Bravo Project", "status": "active"},
                 {"id": "p1", "name": "Alpha Project", "status": "active"}
@@ -120,7 +120,7 @@ class TestProjectSorting:
 
     def test_sort_projects_by_name_desc(self, client):
         """Test sorting projects by name descending."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Alpha Project", "status": "active"},
                 {"id": "p2", "name": "Bravo Project", "status": "active"}

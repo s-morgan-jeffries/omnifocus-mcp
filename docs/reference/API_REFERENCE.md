@@ -994,7 +994,7 @@ This MCP server has a two-layer architecture:
    - Formats responses as human-readable text for Claude
    - Handles JSON-RPC communication with Claude Desktop
 
-2. **OmniFocus Connector Layer** (`omnifocus_client.py`) - Core business logic that:
+2. **OmniFocus Connector Layer** (`omnifocus_connector.py`) - Core business logic that:
    - Builds and executes AppleScript commands
    - Parses OmniFocus data
    - Returns structured Python dictionaries

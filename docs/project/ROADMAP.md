@@ -2,9 +2,11 @@
 
 ## Status: Phase 3 (API Redesign) Complete ✅
 
-**Current Version:** v0.6.0 (October 2025)
+**Current Version:** v0.6.1 (October 2025)
 
 **Project Status:** Maintenance mode - Core MCP server is feature-complete with 16 comprehensive tools covering all OmniFocus primitives.
+
+**Latest:** v0.6.1 renamed `omnifocus_client` → `omnifocus_connector` for industry-standard terminology.
 
 **Note**: This roadmap has been revised. The original vision included email forwarding, calendar integration, and other application-layer features. However, these don't belong in an MCP server - they should be separate services or applications that *use* the MCP server.
 
@@ -282,7 +284,7 @@ Major consolidation to optimize for MCP tool calling efficiency.
 **🐛 Project Review Date Functionality (CRITICAL BUG)**
 - **Current bug**: The `last_reviewed` parameter is misnamed and misleading
   - **Actual behavior**: Sets the **next review date**, not the last reviewed date
-  - **Code location**: `omnifocus_client.py:918` - `set next review date of theProject to (current date)`
+  - **Code location**: `omnifocus_connector.py:918` - `set next review date of theProject to (current date)`
   - **Impact**: Cannot properly mark projects as reviewed per GTD methodology
   - **User sees**: Projects show future review date instead of being marked as "reviewed today"
 - **Required fixes**:
@@ -295,14 +297,6 @@ Major consolidation to optimize for MCP tool calling efficiency.
   3. **Verify OmniFocus behavior**: Does setting "last review date" trigger auto-calculation?
   4. **Add integration tests**: Verify both parameters set correct OmniFocus properties
 - **Priority**: CRITICAL - Blocks GTD weekly review workflow (user-reported)
-
-### Short-Term - Code Quality
-
-**📝 Rename omnifocus_client.py → omnifocus_connector.py**
-- **Rationale**: "Connector" is industry-standard terminology for system integrations
-- **Scope**: Rename file, class (`OmniFocusClient` → `OmniFocusConnector`), all references
-- **Impact**: LOW - No functionality changes, better clarity
-- **Effort**: 1-2 hours (34+ files affected)
 
 ### Under Investigation - Design Review Needed
 

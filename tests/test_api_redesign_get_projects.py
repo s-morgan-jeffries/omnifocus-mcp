@@ -5,7 +5,7 @@ to consolidate get_project() and get_note() functionality.
 """
 import pytest
 from unittest import mock
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 class TestGetProjectsEnhancements:
@@ -13,12 +13,12 @@ class TestGetProjectsEnhancements:
 
     @pytest.fixture
     def client(self):
-        """Create OmniFocusClient with safety checks disabled."""
-        return OmniFocusClient(enable_safety_checks=False)
+        """Create OmniFocusConnector with safety checks disabled."""
+        return OmniFocusConnector(enable_safety_checks=False)
 
     def test_get_projects_with_project_id_returns_single_project(self, client):
         """NEW API: get_projects(project_id=X) returns single project in list."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "proj-001", "name": "Specific Project", "status": "active status"}
             ]'''
@@ -32,7 +32,7 @@ class TestGetProjectsEnhancements:
 
     def test_get_projects_with_project_id_filters_applescript(self, client):
         """NEW API: project_id parameter affects AppleScript source."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             client.get_projects(project_id="proj-001")
@@ -46,7 +46,7 @@ class TestGetProjectsEnhancements:
 
     def test_get_projects_project_id_with_other_filters(self, client):
         """NEW API: project_id can be combined with other parameters."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             # project_id takes precedence but include_full_notes still applies
@@ -56,7 +56,7 @@ class TestGetProjectsEnhancements:
 
     def test_get_projects_include_full_notes_false_by_default(self, client):
         """NEW API: include_full_notes defaults to False."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             # Call without include_full_notes parameter
@@ -67,7 +67,7 @@ class TestGetProjectsEnhancements:
 
     def test_get_projects_include_full_notes_true_returns_full_content(self, client):
         """NEW API: get_projects(include_full_notes=True) returns complete notes."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {
                     "id": "proj-001",
@@ -85,7 +85,7 @@ class TestGetProjectsEnhancements:
 
     def test_get_projects_include_full_notes_with_project_id(self, client):
         """NEW API: Combine include_full_notes with project_id."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {
                     "id": "proj-001",
@@ -103,7 +103,7 @@ class TestGetProjectsEnhancements:
 
     def test_get_projects_all_new_parameters_together(self, client):
         """NEW API: Can use both new parameters together."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             client.get_projects(
@@ -115,7 +115,7 @@ class TestGetProjectsEnhancements:
 
     def test_get_projects_backward_compatible_no_new_params(self, client):
         """Backward compatibility: Existing calls without new parameters still work."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             # Old-style call with existing parameters only

@@ -13,7 +13,7 @@
                           ├─────────────────────────────────┐
                           ▼                                 ▼
         ┌─────────────────────────────┐   ┌─────────────────────────────┐
-        │   OmniFocusClient           │   │  OmniFocusAttachments       │
+        │   OmniFocusConnector           │   │  OmniFocusAttachments       │
         │   (AppleScript-based)       │   │  (JXA-based)                │
         │   - Core functionality      │   │  - Attachment operations    │
         │   - Tasks, Projects, etc.   │   │  - Optional module          │
@@ -358,7 +358,7 @@ class OmniFocusAttachments:
 # src/omnifocus_mcp/server_fastmcp.py
 
 from mcp.server.fastmcp import FastMCP
-from .omnifocus_client import OmniFocusClient
+from .omnifocus_connector import OmniFocusConnector
 
 # Optional: Only import if user wants attachment support
 try:
@@ -370,15 +370,15 @@ except ImportError:
 mcp = FastMCP("OmniFocus MCP Server")
 
 # Singleton instances
-_client: OmniFocusClient | None = None
+_client: OmniFocusConnector | None = None
 _attachments: OmniFocusAttachments | None = None
 
 
-def get_client() -> OmniFocusClient:
+def get_client() -> OmniFocusConnector:
     """Get or create the OmniFocus client singleton."""
     global _client
     if _client is None:
-        _client = OmniFocusClient(enable_safety_checks=True)
+        _client = OmniFocusConnector(enable_safety_checks=True)
     return _client
 
 
@@ -453,7 +453,7 @@ def remove_attachment(task_id: str, attachment_name: str) -> str:
 
 ```python
 # Using the core client (AppleScript)
-client = OmniFocusClient()
+client = OmniFocusConnector()
 tasks = client.get_tasks()  # Works as before
 
 # Using the attachments module (JXA)
@@ -552,7 +552,7 @@ def get_attachments(...):
 
 ### Core Client Tests (Existing)
 ```python
-# tests/test_omnifocus_client.py
+# tests/test_omnifocus_connector.py
 # All existing tests continue to work unchanged
 def test_get_tasks(client):
     with patch('subprocess.run') as mock_run:

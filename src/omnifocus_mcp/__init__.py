@@ -2,6 +2,6 @@
 
 __version__ = "0.5.0"
 
-from .omnifocus_client import OmniFocusClient, run_applescript
+from .omnifocus_connector import OmniFocusConnector, run_applescript
 
-__all__ = ["OmniFocusClient", "run_applescript"]
+__all__ = ["OmniFocusConnector", "run_applescript"]

@@ -19,7 +19,7 @@ The project has two types of tests:
 2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
 **Total Test Coverage**: 456 tests (v0.6.0)
-- Unit tests (omnifocus_client.py core) ✅ All passing
+- Unit tests (omnifocus_connector.py core) ✅ All passing
 - Unit tests (FastMCP server) ✅ All passing
 - Integration tests (real OmniFocus) ⏭️ 123 skipped by default
 
@@ -69,17 +69,17 @@ The OmniFocus client includes multi-layer safety guards to prevent accidental co
 
 ```python
 # WITHOUT test mode - operations are blocked
-client = OmniFocusClient(enable_safety_checks=True)
+client = OmniFocusConnector(enable_safety_checks=True)
 client.create_task(...)  # ❌ Raises DatabaseSafetyError
 
 # WITH test mode - operations verify database name
 export OMNIFOCUS_TEST_MODE=true
 export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
-client = OmniFocusClient(enable_safety_checks=True)
+client = OmniFocusConnector(enable_safety_checks=True)
 client.create_task(...)  # ✅ Verifies database, then proceeds
 
 # For unit tests with mocked AppleScript
-client = OmniFocusClient(enable_safety_checks=False)
+client = OmniFocusConnector(enable_safety_checks=False)
 client.create_task(...)  # ✅ No safety checks (for testing only!)
 ```
 
@@ -95,10 +95,10 @@ pytest tests/
 pytest tests/ --cov=src/omnifocus_mcp --cov-report=term-missing
 
 # Run specific test file
-pytest tests/test_omnifocus_client.py -v
+pytest tests/test_omnifocus_connector.py -v
 
 # Run specific test
-pytest tests/test_omnifocus_client.py::TestOmniFocusClient::test_create_task_success -v
+pytest tests/test_omnifocus_connector.py::TestOmniFocusConnector::test_create_task_success -v
 ```
 
 ### Safety Guard Tests
@@ -140,7 +140,7 @@ pytest tests/test_integration_real.py -v
 
 ## Test Types
 
-### Unit Tests (`test_omnifocus_client.py`)
+### Unit Tests (`test_omnifocus_connector.py`)
 
 Tests individual client methods with mocked AppleScript execution.
 
@@ -157,7 +157,7 @@ Tests individual client methods with mocked AppleScript execution.
 ```python
 def test_create_task_success(self, client):
     """Test successful task creation."""
-    with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+    with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
         mock_run.return_value = json.dumps({"success": True, "task_id": "task-001"})
         result = client.create_task(task_name="New Task", project_id="proj-001", note="Task note")
         assert result["success"] is True
@@ -180,7 +180,7 @@ Tests MCP tool functions with mocked client.
 ```python
 async def test_full_flow_get_project_then_create_task(self):
     """Test getting a project and then creating a task in it."""
-    with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+    with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
         # Get project
         mock_run.return_value = json.dumps([{"id": "proj-001", "name": "Project"}])
         project_result = await server.call_tool("get_projects", {"query": "test"})
@@ -328,7 +328,7 @@ After running tests, verify in OmniFocus:
 
 | File | Statements | Coverage | Missing Lines |
 |------|:----------:|:--------:|:-------------:|
-| `omnifocus_client.py` | 425 | **97%** | 13 (mostly error handling) |
+| `omnifocus_connector.py` | 425 | **97%** | 13 (mostly error handling) |
 | `server_fastmcp.py` | 328 | **73%** | 90 (mostly optional formatting) |
 | `server.py` (legacy) | 214 | **96%** | 9 (error edges) |
 | **Overall** | **970** | **88%** | **112** |
@@ -390,7 +390,7 @@ After running tests, verify in OmniFocus:
 
 ### Adding New Tests
 
-1. **Unit tests** for new client methods go in `test_omnifocus_client.py`
+1. **Unit tests** for new client methods go in `test_omnifocus_connector.py`
 2. **FastMCP server tests** go in `test_server_fastmcp.py`
 3. **Real integration tests** go in `test_integration_real.py`
 4. **Safety guard tests** go in `test_safety_guards.py`
@@ -410,7 +410,7 @@ Always disable safety checks for mocked tests:
 @pytest.fixture
 def client(self):
     """Create a client instance for testing."""
-    return OmniFocusClient(enable_safety_checks=False)
+    return OmniFocusConnector(enable_safety_checks=False)
 ```
 
 Enable safety checks for real integration tests:
@@ -419,7 +419,7 @@ Enable safety checks for real integration tests:
 @pytest.fixture
 def client(self):
     """Create a client for real OmniFocus testing."""
-    return OmniFocusClient(enable_safety_checks=True)
+    return OmniFocusConnector(enable_safety_checks=True)
 ```
 
 ### Mocking AppleScript
@@ -430,7 +430,7 @@ Use `unittest.mock` to mock AppleScript execution:
 from unittest import mock
 
 def test_something(self, client):
-    with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+    with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
         mock_run.return_value = "expected output"
         result = client.some_method()
         assert result == expected
@@ -520,5 +520,5 @@ Before running real integration tests:
   - Unit tests (FastMCP server): 33 tests
   - Real OmniFocus tests: 3 tests (skipped by default)
 - **Code Coverage**: 89% overall
-  - `omnifocus_client.py`: 97%
+  - `omnifocus_connector.py`: 97%
   - `server_fastmcp.py`: 73%

@@ -5,6 +5,43 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2025-10-20
+
+### Changed
+
+- **Renamed omnifocus_client.py → omnifocus_connector.py**
+  - Renamed module file: `omnifocus_client.py` → `omnifocus_connector.py`
+  - Renamed class: `OmniFocusClient` → `OmniFocusConnector`
+  - Updated all imports and references across codebase (34+ files)
+  - **Rationale**: "Connector" is industry-standard terminology for system integrations
+  - **Migration**: Update imports in your code:
+    ```python
+    # Old
+    from omnifocus_mcp.omnifocus_client import OmniFocusClient
+
+    # New
+    from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+    ```
+  - **Impact**: No functionality changes, purely naming clarity
+
+### Documentation
+
+- Added comprehensive README files to all documentation subdirectories
+  - `docs/archive/legacy/README.md` - Explains pre-v0.5.0 documentation
+  - `docs/archive/planning/README.md` - Documents v0.6.0 API redesign planning phase
+  - `docs/reference/README.md` - Technical reference navigation guide
+  - `docs/guides/README.md` - Developer guide navigation and quick start
+- Updated ROADMAP.md with accurate bug documentation for `last_reviewed` parameter
+  - Documented that `last_reviewed` actually sets next review date (not last reviewed)
+  - Added "What v0.6.0 Already Handles" section with comprehensive code examples
+  - Removed 12+ outdated items already implemented in v0.6.0
+  - Restructured into clear categories: Bug Fixes, Design Review, Research
+- Moved ROADMAP_REVIEW_2025-10-19.md to docs/archive/planning/
+
+### Tests
+
+- All 333 tests passing with renamed module
+
 ## [0.6.0] - 2025-10-18
 
 ### Changed - BREAKING

@@ -2,13 +2,13 @@
 import json
 from unittest import mock
 import pytest
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
-    """Create an OmniFocusClient instance."""
-    return OmniFocusClient()
+    """Create an OmniFocusConnector instance."""
+    return OmniFocusConnector()
 
 
 class TestGetProjectsOnHold:
@@ -25,7 +25,7 @@ class TestGetProjectsOnHold:
                 "note": "Waiting for approval"
             }
         ])
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = on_hold_projects_json
             projects = client.get_projects(on_hold_only=True)
             assert len(projects) == 1

@@ -262,7 +262,7 @@ add_task(
 ```
 
 **Implementation Steps**:
-- [ ] Extend omnifocus_client.py add_task method
+- [ ] Extend omnifocus_connector.py add_task method
 - [ ] Update AppleScript to set tags, dates, flags
 - [ ] Add parameter validation
 - [ ] Test with 10 sample tasks
@@ -498,7 +498,7 @@ PERSONA TARGETS (10 total users):
                             │ Python API
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│            OmniFocus Client (omnifocus_client.py)           │
+│            OmniFocus Client (omnifocus_connector.py)           │
 │                                                              │
 │  Methods:                                                    │
 │  ├─ get_projects()       → AppleScript → OmniFocus         │
@@ -631,7 +631,7 @@ Calendar┘
 ### Step 1: Review Current Code
 ```bash
 cd /Users/Morgan/Development/claude-code-test/omnifocus-mcp
-cat omnifocus_client.py
+cat omnifocus_connector.py
 cat server.py
 ```
 

@@ -16,7 +16,7 @@ class TestAppleScriptSyntax:
 
         This test caught the 'elifintervalDays' typo that mocked tests missed.
         """
-        client_file = Path('src/omnifocus_mcp/omnifocus_client.py')
+        client_file = Path('src/omnifocus_mcp/omnifocus_connector.py')
 
         if not client_file.exists():
             pytest.skip(f"File not found: {client_file}")
@@ -72,7 +72,7 @@ class TestAppleScriptSyntax:
 
     def test_applescript_block_structure(self):
         """Check that AppleScript blocks have proper structure."""
-        client_file = Path('src/omnifocus_mcp/omnifocus_client.py')
+        client_file = Path('src/omnifocus_mcp/omnifocus_connector.py')
 
         if not client_file.exists():
             pytest.skip(f"File not found: {client_file}")
@@ -106,7 +106,7 @@ class TestAppleScriptSyntax:
 
     def test_applescript_tell_blocks_balanced(self):
         """Check that 'tell' and 'end tell' statements are balanced."""
-        client_file = Path('src/omnifocus_mcp/omnifocus_client.py')
+        client_file = Path('src/omnifocus_mcp/omnifocus_connector.py')
 
         if not client_file.exists():
             pytest.skip(f"File not found: {client_file}")

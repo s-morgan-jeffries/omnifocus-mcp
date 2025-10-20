@@ -59,7 +59,7 @@ pytest tests/test_file.py  # Specific test file
 **⚠️ For integration/E2E tests:** Setup required - see "Testing Strategy for Redesign" section later in this file or `docs/INTEGRATION_TESTING.md`
 
 **Key testing files:**
-- `tests/test_omnifocus_client.py` - Core client unit tests (149 tests)
+- `tests/test_omnifocus_connector.py` - Core client unit tests (149 tests)
 - `tests/test_server_fastmcp.py` - MCP server tests (33 tests)
 - `tests/test_integration_real.py` - Real OmniFocus integration (3 tests, skipped by default)
 - `tests/test_e2e_real.py` - Full stack E2E tests (skipped by default)

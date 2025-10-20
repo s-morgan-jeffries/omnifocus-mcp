@@ -103,7 +103,7 @@ Response: "The task has 1 attachment: Q4-budget.xlsx (125KB)"
 # src/omnifocus_mcp/server_fastmcp.py
 
 from mcp.server.fastmcp import FastMCP
-from .omnifocus_client import OmniFocusClient
+from .omnifocus_connector import OmniFocusConnector
 from .attachments import OmniFocusAttachments
 
 mcp = FastMCP("OmniFocus")
@@ -115,7 +115,7 @@ _attachments = None
 def get_client():
     global _client
     if _client is None:
-        _client = OmniFocusClient()
+        _client = OmniFocusConnector()
     return _client
 
 def get_attachments():

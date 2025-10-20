@@ -2,13 +2,13 @@
 import pytest
 from unittest import mock
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
     """Create a client with safety checks disabled."""
-    return OmniFocusClient(enable_safety_checks=False)
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestConditionalProjectFilters:
@@ -17,7 +17,7 @@ class TestConditionalProjectFilters:
     def test_min_task_count_filter(self, client):
         """Test filtering projects by minimum task count."""
         # Mock get_projects to return base projects
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Project 1", "status": "active"},
                 {"id": "p2", "name": "Project 2", "status": "active"},
@@ -46,7 +46,7 @@ class TestConditionalProjectFilters:
 
     def test_has_overdue_tasks_filter(self, client):
         """Test filtering projects that have overdue tasks."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Project 1", "status": "active"},
                 {"id": "p2", "name": "Project 2", "status": "active"}
@@ -72,7 +72,7 @@ class TestConditionalProjectFilters:
 
     def test_has_no_due_dates_filter(self, client):
         """Test filtering projects with no upcoming deadlines."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Project 1", "status": "active"},
                 {"id": "p2", "name": "Project 2", "status": "active"},
@@ -100,7 +100,7 @@ class TestConditionalProjectFilters:
 
     def test_combined_conditional_filters(self, client):
         """Test combining multiple conditional filters."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Project 1", "status": "active"},
                 {"id": "p2", "name": "Project 2", "status": "active"}
@@ -137,7 +137,7 @@ class TestConditionalProjectFilters:
 
     def test_no_conditional_filters(self, client):
         """Test that omitting filters returns all projects."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Project 1", "status": "active"},
                 {"id": "p2", "name": "Project 2", "status": "active"}

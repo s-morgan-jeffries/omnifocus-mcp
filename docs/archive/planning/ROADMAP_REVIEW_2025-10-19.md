@@ -22,7 +22,7 @@ The roadmap contains significant outdated content from pre-v0.6.0 phases. Of 20+
 - **Effort:** 5 minutes (one-line AppleScript fix)
 - **Recommendation:** Implement immediately
 
-**2. Rename omnifocus_client.py → omnifocus_connector.py**
+**2. Rename omnifocus_connector.py → omnifocus_connector.py**
 - Code quality improvement
 - Industry-standard terminology
 - **Effort:** 1-2 hours
@@ -207,7 +207,7 @@ Replace "Upcoming Work" section with:
 1. Fix mark_project_reviewed() bug (CRITICAL - 5 min)
 
 **Short-Term:**
-2. Rename omnifocus_client → omnifocus_connector (LOW - 1-2 hours)
+2. Rename omnifocus_connector → omnifocus_connector (LOW - 1-2 hours)
 
 **Under Investigation:**
 3. merge_projects() - Multi-step operation (design review)

@@ -7,13 +7,13 @@ import subprocess
 from unittest import mock
 import pytest
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
     """Create a test client with safety checks disabled."""
-    return OmniFocusClient(enable_safety_checks=False)
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestDeleteTasksRedesign:
@@ -31,7 +31,7 @@ class TestDeleteTasksRedesign:
 
     def test_delete_tasks_accepts_single_id_string(self, client):
         """NEW API: delete_tasks() accepts single ID as string (Union type)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "1"  # 1 task deleted
 
             result = client.delete_tasks("task-001")
@@ -42,7 +42,7 @@ class TestDeleteTasksRedesign:
 
     def test_delete_tasks_accepts_list_of_ids(self, client):
         """NEW API: delete_tasks() accepts list of IDs."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "3"  # 3 tasks deleted
 
             result = client.delete_tasks(["task-001", "task-002", "task-003"])
@@ -57,7 +57,7 @@ class TestDeleteTasksRedesign:
 
     def test_delete_tasks_returns_dict_with_counts(self, client):
         """NEW API: delete_tasks() returns dict instead of int."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
 
             result = client.delete_tasks(["task-001", "task-002"])
@@ -70,7 +70,7 @@ class TestDeleteTasksRedesign:
 
     def test_delete_tasks_includes_deleted_ids_list(self, client):
         """NEW API: delete_tasks() includes list of successfully deleted IDs."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
 
             result = client.delete_tasks(["task-001", "task-002"])
@@ -86,7 +86,7 @@ class TestDeleteTasksRedesign:
 
     def test_delete_tasks_handles_partial_failures(self, client):
         """NEW API: delete_tasks() continues processing when individual tasks fail."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Simulate 2 out of 3 deleted (1 not found)
             mock_run.return_value = "2"
 
@@ -100,7 +100,7 @@ class TestDeleteTasksRedesign:
 
     def test_delete_tasks_handles_all_failures(self, client):
         """NEW API: delete_tasks() handles case where all tasks fail to delete."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Simulate 0 deleted (all not found)
             mock_run.return_value = "0"
 
@@ -127,7 +127,7 @@ class TestDeleteTasksRedesign:
 
     def test_delete_tasks_with_single_id_in_list(self, client):
         """NEW API: delete_tasks() handles single-item list correctly."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "1"
 
             result = client.delete_tasks(["task-001"])

@@ -8,7 +8,7 @@ import subprocess
 from unittest import mock
 import pytest
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient, TaskStatus, ProjectStatus
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector, TaskStatus, ProjectStatus
 
 
 class TestUpdateTaskRedesign:
@@ -26,7 +26,7 @@ class TestUpdateTaskRedesign:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient(enable_safety_checks=False)
+        return OmniFocusConnector(enable_safety_checks=False)
 
     # ========================================================================
     # Core Functionality Tests
@@ -34,7 +34,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_single_field_task_name(self, client):
         """NEW API: update_task() can update just the task name."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -49,7 +49,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_multiple_fields_at_once(self, client):
         """NEW API: update_task() can update multiple fields in a single call."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -69,7 +69,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_move_to_project(self, client):
         """NEW API: update_task() can move task to different project (replaces move_task)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -82,7 +82,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_make_subtask(self, client):
         """NEW API: update_task() can make task a subtask (replaces set_parent_task)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -95,7 +95,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_set_completion(self, client):
         """NEW API: update_task() can mark task complete (replaces complete_task)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -108,7 +108,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_set_status_enum(self, client):
         """NEW API: update_task() can set status using enum (replaces drop_task)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -121,7 +121,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_set_status_string(self, client):
         """NEW API: update_task() accepts status as string (flexible MCP client support)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -134,7 +134,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_add_tags(self, client):
         """NEW API: update_task() can add tags incrementally (replaces add_tag_to_task)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -147,7 +147,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_remove_tags(self, client):
         """NEW API: update_task() can remove tags incrementally."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -160,7 +160,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_replace_tags(self, client):
         """NEW API: update_task() can replace all tags at once."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -173,7 +173,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_estimated_minutes(self, client):
         """NEW API: update_task() can set estimated time (replaces set_estimated_minutes)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -186,7 +186,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_clear_due_date(self, client):
         """NEW API: update_task() can clear dates by passing empty string."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -199,7 +199,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_clear_defer_date(self, client):
         """NEW API: update_task() can clear defer date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -253,7 +253,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_returns_error_dict_on_not_found(self, client):
         """NEW API: update_task() returns error dict (not exception) when task not found."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(
                 1, 'osascript', stderr="Task not found"
             )
@@ -288,7 +288,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_returns_structured_dict(self, client):
         """NEW API: update_task() returns dict, not bool."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -303,7 +303,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_includes_updated_fields_list(self, client):
         """NEW API: update_task() includes list of fields that were updated."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -319,7 +319,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_success_has_no_error_key(self, client):
         """NEW API: Successful update_task() returns dict with no error key."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -332,7 +332,7 @@ class TestUpdateTaskRedesign:
 
     def test_update_task_failure_has_error_key(self, client):
         """NEW API: Failed update_task() returns dict with error key."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(
                 1, 'osascript', stderr="Something went wrong"
             )
@@ -360,7 +360,7 @@ class TestUpdateTasksRedesign:
     @pytest.fixture
     def client(self):
         """Create a client instance for testing."""
-        return OmniFocusClient(enable_safety_checks=False)
+        return OmniFocusConnector(enable_safety_checks=False)
 
     # ========================================================================
     # Union Type Handling (Single vs Multiple IDs)
@@ -368,7 +368,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_accepts_single_id_string(self, client):
         """NEW API: update_tasks() accepts single ID as string (Union type)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks("task-001", flagged=True)
@@ -379,7 +379,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_accepts_list_of_ids(self, client):
         """NEW API: update_tasks() accepts list of IDs."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(
@@ -417,7 +417,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_with_flagged(self, client):
         """NEW API: update_tasks() can set flagged on multiple tasks."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(["task-001", "task-002"], flagged=True)
@@ -427,7 +427,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_with_completed(self, client):
         """NEW API: update_tasks() can mark multiple tasks complete."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(
@@ -439,7 +439,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_with_status(self, client):
         """NEW API: update_tasks() can set status on multiple tasks."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(
@@ -451,7 +451,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_with_project_id(self, client):
         """NEW API: update_tasks() can move multiple tasks to project."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(
@@ -463,7 +463,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_with_add_tags(self, client):
         """NEW API: update_tasks() can add tags to multiple tasks."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(
@@ -475,7 +475,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_with_estimated_minutes(self, client):
         """NEW API: update_tasks() can set estimated time on multiple tasks."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(
@@ -519,7 +519,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_returns_dict_with_counts(self, client):
         """NEW API: update_tasks() returns dict with success/failure counts."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(["task-001", "task-002"], flagged=True)
@@ -532,7 +532,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_includes_updated_ids_list(self, client):
         """NEW API: update_tasks() includes list of successfully updated IDs."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"  # update_task expects "true"
 
             result = client.update_tasks(["task-001", "task-002"], flagged=True)
@@ -546,7 +546,7 @@ class TestUpdateTasksRedesign:
 
     def test_update_tasks_continues_on_partial_failures(self, client):
         """NEW API: update_tasks() continues processing when individual tasks fail."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Simulate 2 successes and 1 failure
             def side_effect(*args):
                 script = args[0]

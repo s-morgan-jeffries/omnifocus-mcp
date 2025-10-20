@@ -1,10 +1,10 @@
 """End-to-End (E2E) integration tests for OmniFocus MCP Server.
 
 These tests verify the COMPLETE flow:
-- MCP Tool (server_fastmcp.py) → Client (omnifocus_client.py) → AppleScript → Real OmniFocus
+- MCP Tool (server_fastmcp.py) → Client (omnifocus_connector.py) → AppleScript → Real OmniFocus
 
 Unlike other test files:
-- test_omnifocus_client.py: Tests client with mocked AppleScript
+- test_omnifocus_connector.py: Tests client with mocked AppleScript
 - test_server_fastmcp.py: Tests MCP tools with mocked client
 - test_integration_real.py: Tests client with real OmniFocus (bypasses MCP layer)
 - test_e2e_real.py (THIS FILE): Tests MCP tools with real OmniFocus (full stack)
@@ -57,8 +57,8 @@ class TestCreateTaskE2E:
         result = server.get_projects.fn()
         # Parse the response (it's a formatted string from MCP tool)
         # For now, we'll use the client directly to get a project ID
-        from omnifocus_mcp.omnifocus_client import OmniFocusClient
-        client = OmniFocusClient(enable_safety_checks=True)
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+        client = OmniFocusConnector(enable_safety_checks=True)
         projects = client.get_projects()
         if not projects:
             pytest.skip("No projects found in test database")
@@ -173,8 +173,8 @@ class TestUpdateTaskE2E:
     @pytest.fixture(scope="class")
     def test_project_id(self):
         """Get a test project ID."""
-        from omnifocus_mcp.omnifocus_client import OmniFocusClient
-        client = OmniFocusClient(enable_safety_checks=True)
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+        client = OmniFocusConnector(enable_safety_checks=True)
         projects = client.get_projects()
         if not projects:
             pytest.skip("No projects found")
@@ -228,8 +228,8 @@ class TestUpdateTasksE2E:
     @pytest.fixture(scope="class")
     def test_project_id(self):
         """Get a test project ID."""
-        from omnifocus_mcp.omnifocus_client import OmniFocusClient
-        client = OmniFocusClient(enable_safety_checks=True)
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+        client = OmniFocusConnector(enable_safety_checks=True)
         projects = client.get_projects()
         if not projects:
             pytest.skip("No projects found")
@@ -283,8 +283,8 @@ class TestDeleteTasksE2E:
     @pytest.fixture(scope="class")
     def test_project_id(self):
         """Get a test project ID."""
-        from omnifocus_mcp.omnifocus_client import OmniFocusClient
-        client = OmniFocusClient(enable_safety_checks=True)
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+        client = OmniFocusConnector(enable_safety_checks=True)
         projects = client.get_projects()
         if not projects:
             pytest.skip("No projects found")
@@ -335,8 +335,8 @@ class TestUpdateProjectE2E:
     @pytest.fixture
     def test_project_id(self):
         """Create a test project for E2E tests."""
-        from omnifocus_mcp.omnifocus_client import OmniFocusClient
-        client = OmniFocusClient(enable_safety_checks=True)
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+        client = OmniFocusConnector(enable_safety_checks=True)
         project_id = client.create_project("E2E Test Project - update_project")
         yield project_id
         # Cleanup not needed - test database is reset regularly
@@ -419,11 +419,11 @@ class TestUpdateProjectsE2E:
 
     def test_update_projects_batch_e2e(self):
         """E2E: Update multiple projects via MCP tool."""
-        from omnifocus_mcp.omnifocus_client import OmniFocusClient
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
         import omnifocus_mcp.server_fastmcp as server
 
         # Create test projects
-        client = OmniFocusClient(enable_safety_checks=True)
+        client = OmniFocusConnector(enable_safety_checks=True)
         proj_id_1 = client.create_project("E2E Batch 1")
         proj_id_2 = client.create_project("E2E Batch 2")
 
@@ -443,10 +443,10 @@ class TestUpdateProjectsE2E:
 
     def test_update_projects_single_id_e2e(self):
         """E2E: Update single project ID as string via MCP tool (Union type)."""
-        from omnifocus_mcp.omnifocus_client import OmniFocusClient
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
         import omnifocus_mcp.server_fastmcp as server
 
-        client = OmniFocusClient(enable_safety_checks=True)
+        client = OmniFocusConnector(enable_safety_checks=True)
         proj_id = client.create_project("E2E Single ID")
 
         update_projects = server.update_projects.fn

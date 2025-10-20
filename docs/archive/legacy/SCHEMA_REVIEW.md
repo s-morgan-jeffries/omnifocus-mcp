@@ -1401,7 +1401,7 @@ def test_add_task_invalid_project():
    - Add standardized error handling
    - Enhance tool descriptions
 
-2. **`omnifocus_client.py`**
+2. **`omnifocus_connector.py`**
    - Add `get_projects_enhanced()` method
    - Add `add_task_enhanced()` method
    - Add validation helper methods

@@ -17,7 +17,7 @@ from pathlib import Path
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 def time_operation(description: str, operation):
@@ -53,7 +53,7 @@ def main():
     print("OmniFocus AppleScript Performance Test")
     print("=" * 60)
 
-    client = OmniFocusClient()
+    client = OmniFocusConnector()
 
     # Test 1: Get all incomplete tasks (the problematic query)
     elapsed1, tasks = time_operation(

@@ -68,7 +68,7 @@ Essential guides for daily development work on the OmniFocus MCP Server.
 **Test count:** 333 passing tests
 
 **Coverage breakdown:**
-- omnifocus_client.py: 94% (core implementation)
+- omnifocus_connector.py: 94% (core implementation)
 - server_fastmcp.py: 82% (MCP server)
 - Overall: 89%
 
@@ -146,10 +146,10 @@ make test
 make test-integration
 
 # Specific test file
-pytest tests/test_omnifocus_client.py -v
+pytest tests/test_omnifocus_connector.py -v
 
 # Specific test
-pytest tests/test_omnifocus_client.py::test_create_task -v
+pytest tests/test_omnifocus_connector.py::test_create_task -v
 ```
 
 See [TESTING.md](#testingmd) for more commands and options.

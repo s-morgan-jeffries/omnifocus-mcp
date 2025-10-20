@@ -285,10 +285,10 @@ omnifocus-mcp/
 │   ├── ROADMAP.md                   # Project phases and status
 │   └── TESTING.md                   # Testing strategy and coverage
 ├── src/omnifocus_mcp/
-│   ├── omnifocus_client.py          # Core OmniFocus client (16 functions)
+│   ├── omnifocus_connector.py          # Core OmniFocus client (16 functions)
 │   └── server_fastmcp.py            # FastMCP server (MCP tool wrappers)
 ├── tests/
-│   ├── test_omnifocus_client.py     # Client unit tests
+│   ├── test_omnifocus_connector.py     # Client unit tests
 │   ├── test_server_fastmcp.py       # Server unit tests
 │   ├── test_integration_real.py     # Real OmniFocus integration tests
 │   └── test_e2e_real.py             # End-to-end MCP tests

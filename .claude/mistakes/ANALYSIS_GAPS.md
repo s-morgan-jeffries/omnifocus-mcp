@@ -191,8 +191,8 @@ Heuristic: Check if test file was modified AFTER implementation file in git hist
 ```bash
 # In pre-commit hook
 # Get timestamp of last modification for implementation and test files
-IMPL_TIME=$(git log -1 --format=%ct -- src/omnifocus_client.py)
-TEST_TIME=$(git log -1 --format=%ct -- tests/test_omnifocus_client.py)
+IMPL_TIME=$(git log -1 --format=%ct -- src/omnifocus_connector.py)
+TEST_TIME=$(git log -1 --format=%ct -- tests/test_omnifocus_connector.py)
 
 if [ "$IMPL_TIME" -gt "$TEST_TIME" ]; then
     echo "⚠️  Implementation modified after tests (violated-tdd)"

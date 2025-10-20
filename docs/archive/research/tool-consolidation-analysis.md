@@ -19,7 +19,7 @@ Reviewing all @mcp.tool() decorated functions to identify:
 
 **Evidence of redundancy:**
 ```python
-# omnifocus_client.py:1414
+# omnifocus_connector.py:1414
 def search_projects(self, query: str):
     all_projects = self.get_projects()  # Just calls get_projects!
     # ... Python filtering by query string
@@ -38,7 +38,7 @@ def search_projects(self, query: str):
 
 **Evidence of redundancy:**
 ```applescript
-# omnifocus_client.py:2556
+# omnifocus_connector.py:2556
 set allInboxTasks to inbox tasks  # Special AppleScript property
 ```
 
@@ -51,7 +51,7 @@ set allInboxTasks to inbox tasks  # Special AppleScript property
 
 ### 3. `search_tasks()` - NOT exposed as MCP tool
 **Status:** Already hidden from Claude Desktop
-- Exists in omnifocus_client.py but NOT in server_fastmcp.py
+- Exists in omnifocus_connector.py but NOT in server_fastmcp.py
 - No action needed (not contributing to tool count/confusion)
 
 ---

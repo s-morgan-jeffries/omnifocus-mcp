@@ -3,13 +3,13 @@
 import json
 import pytest
 from unittest.mock import patch
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
-    """Create an OmniFocusClient instance."""
-    return OmniFocusClient(enable_safety_checks=False)
+    """Create an OmniFocusConnector instance."""
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestRecurringTaskFields:
@@ -39,7 +39,7 @@ class TestRecurringTaskFields:
             "repetitionMethod": ""
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             tasks = client.get_tasks()
 
@@ -73,7 +73,7 @@ class TestRecurringTaskFields:
             "repetitionMethod": "fixed repetition"
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             tasks = client.get_tasks()
 
@@ -106,7 +106,7 @@ class TestRecurringTaskFields:
             "repetitionMethod": "start after completion"
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             tasks = client.get_tasks()
 
@@ -135,7 +135,7 @@ class TestRecurringTaskFields:
             "repetitionMethod": "due after completion"
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             tasks = client.get_tasks()
 
@@ -210,7 +210,7 @@ class TestRecurringOnlyFilter:
             }
         ])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             tasks = client.get_tasks(recurring_only=True)
 
@@ -263,7 +263,7 @@ class TestRecurringOnlyFilter:
             }
         ])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             tasks = client.get_tasks(recurring_only=False)
 
@@ -316,7 +316,7 @@ class TestRecurringOnlyFilter:
             }
         ])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             tasks = client.get_tasks(recurring_only=None)
 

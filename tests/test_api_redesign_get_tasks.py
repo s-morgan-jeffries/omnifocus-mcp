@@ -8,7 +8,7 @@ New parameters being added:
 import pytest
 from unittest import mock
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 class TestGetTasksEnhancements:
@@ -17,7 +17,7 @@ class TestGetTasksEnhancements:
     @pytest.fixture
     def client(self):
         """Create a client for testing."""
-        return OmniFocusClient(enable_safety_checks=False)
+        return OmniFocusConnector(enable_safety_checks=False)
 
     # ========================================================================
     # task_id Parameter Tests (Consolidates get_task())
@@ -25,7 +25,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_with_task_id_returns_single_task(self, client):
         """NEW API: get_tasks(task_id=X) returns single task in list."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "task-001", "name": "Specific Task", "note": "Details"}
             ]'''
@@ -39,7 +39,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_with_task_id_filters_applescript(self, client):
         """NEW API: get_tasks(task_id=X) adds filter to AppleScript."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             client.get_tasks(task_id="task-123")
@@ -51,7 +51,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_task_id_with_other_filters(self, client):
         """NEW API: get_tasks(task_id=X) can combine with other filters."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             # task_id should override other filters (most specific)
@@ -66,7 +66,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_with_parent_task_id_returns_subtasks(self, client):
         """NEW API: get_tasks(parent_task_id=X) returns subtasks."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "sub-1", "name": "Subtask 1", "parentTaskId": "parent-001"},
                 {"id": "sub-2", "name": "Subtask 2", "parentTaskId": "parent-001"}
@@ -80,7 +80,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_with_parent_task_id_filters_applescript(self, client):
         """NEW API: get_tasks(parent_task_id=X) adds parent filter to AppleScript."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             client.get_tasks(parent_task_id="parent-123")
@@ -91,7 +91,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_parent_task_id_with_other_filters(self, client):
         """NEW API: get_tasks(parent_task_id=X) can combine with other filters."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             client.get_tasks(parent_task_id="parent-001", flagged_only=True, available_only=True)
@@ -105,7 +105,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_include_full_notes_false_by_default(self, client):
         """NEW API: get_tasks() truncates notes by default (backward compatible)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Simulate truncated note from AppleScript
             mock_run.return_value = '''[
                 {"id": "task-001", "name": "Task", "note": "Short note..."}
@@ -118,7 +118,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_include_full_notes_true_returns_full_content(self, client):
         """NEW API: get_tasks(include_full_notes=True) returns complete notes."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Simulate full note retrieval
             long_note = "This is a very long note with lots of details. " * 50
             mock_run.return_value = f'''[
@@ -135,7 +135,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_include_full_notes_with_task_id(self, client):
         """NEW API: get_tasks(task_id=X, include_full_notes=True) combines both."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "task-001", "name": "Task", "note": "Full content here"}
             ]'''
@@ -151,7 +151,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_all_new_parameters_together(self, client):
         """NEW API: All three new parameters can be used together (edge case)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             # This is unusual but should work
@@ -167,7 +167,7 @@ class TestGetTasksEnhancements:
 
     def test_get_tasks_backward_compatible_no_new_params(self, client):
         """NEW API: Existing usage without new params still works (backward compatible)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
 
             # Existing call patterns should work unchanged

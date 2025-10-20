@@ -2,13 +2,13 @@
 import pytest
 from unittest import mock
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
     """Create a client with safety checks disabled."""
-    return OmniFocusClient(enable_safety_checks=False)
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestBooleanTagLogic:
@@ -16,7 +16,7 @@ class TestBooleanTagLogic:
 
     def test_tag_filter_and_mode(self, client):
         """Test AND mode - task must have all tags."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "tags": "work,urgent"},
                 {"id": "t2", "name": "Task 2", "completed": false, "tags": "work"},
@@ -31,7 +31,7 @@ class TestBooleanTagLogic:
 
     def test_tag_filter_or_mode(self, client):
         """Test OR mode - task must have at least one tag."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "tags": "work,urgent"},
                 {"id": "t2", "name": "Task 2", "completed": false, "tags": "work"},
@@ -47,7 +47,7 @@ class TestBooleanTagLogic:
 
     def test_tag_filter_not_mode(self, client):
         """Test NOT mode - task must NOT have any of these tags."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "tags": "work"},
                 {"id": "t2", "name": "Task 2", "completed": false, "tags": "home"},
@@ -62,7 +62,7 @@ class TestBooleanTagLogic:
 
     def test_tag_filter_default_and_mode(self, client):
         """Test that default mode is AND (backward compatible)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "tags": "work,urgent"},
                 {"id": "t2", "name": "Task 2", "completed": false, "tags": "work"}
@@ -81,7 +81,7 @@ class TestBooleanTagLogic:
 
     def test_tag_filter_empty_tags(self, client):
         """Test filtering with no tags."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "tags": "work"},
                 {"id": "t2", "name": "Task 2", "completed": false, "tags": ""}
@@ -95,7 +95,7 @@ class TestBooleanTagLogic:
 
     def test_tag_filter_case_insensitive(self, client):
         """Test that tag filtering is case-insensitive."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "tags": "Work,URGENT"}
             ]'''
@@ -107,7 +107,7 @@ class TestBooleanTagLogic:
 
     def test_tag_filter_single_tag_or_mode(self, client):
         """Test OR mode with single tag."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "tags": "work"}
             ]'''

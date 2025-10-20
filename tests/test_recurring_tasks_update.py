@@ -2,13 +2,13 @@
 
 import pytest
 from unittest.mock import patch
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
-    """Create an OmniFocusClient instance."""
-    return OmniFocusClient(enable_safety_checks=False)
+    """Create an OmniFocusConnector instance."""
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestUpdateRecurringTasks:
@@ -16,7 +16,7 @@ class TestUpdateRecurringTasks:
 
     def test_update_task_add_recurrence_to_non_recurring(self, client):
         """Test adding recurrence to a non-recurring task (LEGACY TEST - updated for new API return format)."""
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -35,7 +35,7 @@ class TestUpdateRecurringTasks:
 
     def test_update_task_modify_recurrence(self, client):
         """Test modifying the recurrence of an existing recurring task (LEGACY TEST - updated for new API return format)."""
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -53,7 +53,7 @@ class TestUpdateRecurringTasks:
 
     def test_update_task_remove_recurrence(self, client):
         """Test removing recurrence from a recurring task (LEGACY TEST - updated for new API return format)."""
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -70,7 +70,7 @@ class TestUpdateRecurringTasks:
 
     def test_update_task_change_method_only(self, client):
         """Test changing only the repetition method (LEGACY TEST - updated for new API return format)."""
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -86,7 +86,7 @@ class TestUpdateRecurringTasks:
 
     def test_update_task_with_recurrence_and_other_params(self, client):
         """Test updating recurrence along with other task properties (LEGACY TEST - updated for new API return format)."""
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(
@@ -117,7 +117,7 @@ class TestUpdateRecurringTasks:
 
     def test_update_task_no_changes(self, client):
         """Test updating a task with no recurring changes works normally (LEGACY TEST - updated for new API return format)."""
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
 
             result = client.update_task(

@@ -83,7 +83,7 @@ class DatabaseSafetyError(Exception):
     pass
 
 
-class OmniFocusClient:
+class OmniFocusConnector:
     """Client for OmniFocus app operations using AppleScript.
 
     SAFETY: For integration testing with real OmniFocus, set environment variables:

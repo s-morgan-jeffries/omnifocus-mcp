@@ -34,7 +34,7 @@
                              │ Python function calls
                              │
 ┌────────────────────────────▼────────────────────────────────┐
-│                  omnifocus_client.py                         │
+│                  omnifocus_connector.py                         │
 │                                                               │
 │  get_projects() → Returns:                                   │
 │    [                                                          │
@@ -137,7 +137,7 @@
                              │ Python function calls
                              │
 ┌────────────────────────────▼────────────────────────────────┐
-│              omnifocus_client.py (Enhanced)                  │
+│              omnifocus_connector.py (Enhanced)                  │
 │                                                               │
 │  get_projects_enhanced(status, folder_path, ...) →          │
 │    [                                                          │

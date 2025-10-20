@@ -57,7 +57,7 @@ Physical lines, logical lines, source lines, comments.
 
 ## Current Metrics (v1.0.0-dev - API Redesign)
 
-### omnifocus_client.py
+### omnifocus_connector.py
 - **Average Complexity**: B (~8.5) ✅
 - **Total Functions**: 54
 - **High Complexity Functions**:
@@ -87,7 +87,7 @@ Some functions have high complexity due to architectural constraints:
 - Post-processing filters in Python
 - Dynamic task source generation based on parameter precedence
 
-**Documented in code:** See `omnifocus_client.py:2120`
+**Documented in code:** See `omnifocus_connector.py:2120`
 
 **Complexity increased slightly (CC 66→68):** The 3 new parameters add minimal complexity with clear precedence logic (task_id > parent_task_id > inbox_only > project_id > all tasks).
 
@@ -104,7 +104,7 @@ Some functions have high complexity due to architectural constraints:
 - AppleScript command building for different operation types
 - Error handling returns dict instead of raising exceptions
 
-**Documented in code:** See `omnifocus_client.py:2830`
+**Documented in code:** See `omnifocus_connector.py:2830`
 
 **Complexity is inherent:** This function intentionally consolidates specialized operations to minimize MCP tool call overhead. The alternative would be 10+ separate functions with simpler logic, but higher overall system complexity.
 
@@ -114,7 +114,7 @@ Some functions have high complexity due to architectural constraints:
 - Multiple filter conditions
 - AppleScript verbosity for JSON generation
 
-**Documented in code:** See `omnifocus_client.py:382`
+**Documented in code:** See `omnifocus_connector.py:382`
 
 ### update_project() [D - CC 22]
 **Why it's complex:**
@@ -128,7 +128,7 @@ Some functions have high complexity due to architectural constraints:
 - Error handling returns dict instead of raising exceptions
 - Consolidates: `set_project_status()`, `drop_project()`, `set_review_interval()`, `mark_project_reviewed()` legacy functions
 
-**Documented in code:** See `omnifocus_client.py:1210`
+**Documented in code:** See `omnifocus_connector.py:1210`
 
 **Complexity is inherent:** This function intentionally consolidates specialized operations to minimize MCP tool call overhead and provide consistent API design. The alternative would be 4+ separate functions with simpler logic, but higher overall system complexity.
 

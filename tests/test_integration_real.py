@@ -25,7 +25,7 @@ Usage:
 import os
 import pytest
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 # Skip all tests in this file unless explicitly in test mode
@@ -45,7 +45,7 @@ class TestRealOmniFocusIntegration:
 
         Safety checks are enabled - will verify test database before operations.
         """
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_get_projects_real(self, client):
         """Test getting projects from real OmniFocus."""
@@ -146,7 +146,7 @@ class TestRealOmniFocusWriteOperations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     @pytest.fixture(scope="class")
     def test_project_id(self, client):
@@ -357,7 +357,7 @@ class TestRealOmniFocusSafetyVerification:
         """Test that safety guards actually check the database name."""
         # This test verifies the safety system works
         # Client should successfully verify we're using test database
-        client = OmniFocusClient(enable_safety_checks=True)
+        client = OmniFocusConnector(enable_safety_checks=True)
 
         # This should succeed because we're in test mode with test database
         # The safety check will verify the database name via AppleScript
@@ -368,7 +368,7 @@ class TestRealOmniFocusSafetyVerification:
 
     def test_destructive_operation_checks_database_name(self):
         """Test that destructive operations verify database name."""
-        client = OmniFocusClient(enable_safety_checks=True)
+        client = OmniFocusConnector(enable_safety_checks=True)
 
         # Get a test project
         projects = client.search_projects("Test Project")
@@ -392,7 +392,7 @@ class TestProjectCRUD:
 
     @pytest.fixture(scope="class")
     def client(self):
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_create_project_basic(self, client):
         """Test creating a basic project."""
@@ -804,7 +804,7 @@ class TestTaskCRUD:
 
     @pytest.fixture(scope="class")
     def client(self):
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     @pytest.fixture(scope="class")
     def test_project_id(self, client):
@@ -1075,7 +1075,7 @@ class TestFolderOperations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_get_folders(self, client):
         """Test retrieving all folders."""
@@ -1121,7 +1121,7 @@ class TestNoteOperations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_add_note_to_project(self, client):
         """Test adding a note to a project."""
@@ -1163,7 +1163,7 @@ class TestTagBatchOperations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     @pytest.fixture
     def test_tasks_for_tagging(self, client):
@@ -1228,7 +1228,7 @@ class TestReviewSystem:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_set_review_interval(self, client):
         """Test setting a review interval on a project."""
@@ -1276,7 +1276,7 @@ class TestTimeEstimation:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_set_estimated_minutes(self, client):
         """Test setting estimated time on a task."""
@@ -1305,7 +1305,7 @@ class TestStalledProjects:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_get_stalled_projects(self, client):
         """Test retrieving stalled projects with default parameters."""
@@ -1369,7 +1369,7 @@ class TestGetTasksParameterVariations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     @pytest.fixture(scope="class")
     def test_project_id(self, client):
@@ -1592,7 +1592,7 @@ class TestGetProjectsParameterVariations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_get_projects_on_hold_only(self, client):
         """Test get_projects with on_hold_only=True."""
@@ -1697,7 +1697,7 @@ class TestAddTaskParameterVariations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     @pytest.fixture(scope="class")
     def test_project_id(self, client):
@@ -1773,7 +1773,7 @@ class TestUpdateTaskParameterVariations:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     @pytest.fixture
     def test_task(self, client):
@@ -1845,7 +1845,7 @@ class TestHierarchyFields:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_project_has_sequential_field(self, client):
         """Test that projects expose sequential field."""
@@ -1978,7 +1978,7 @@ class TestTaskReordering:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_reorder_task_before_another(self, client):
         """Test moving a task before another task."""
@@ -2093,7 +2093,7 @@ class TestAvailabilityFields:
     @pytest.fixture(scope="class")
     def client(self):
         """Create a client for real OmniFocus testing."""
-        return OmniFocusClient(enable_safety_checks=True)
+        return OmniFocusConnector(enable_safety_checks=True)
 
     def test_task_has_available_and_number_of_available_tasks(self, client):
         """Test that tasks include available and numberOfAvailableTasks fields."""

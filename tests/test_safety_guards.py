@@ -7,7 +7,7 @@ import os
 import pytest
 from unittest import mock
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient, DatabaseSafetyError
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector, DatabaseSafetyError
 
 
 class TestSafetyGuardsWithTestMode:
@@ -20,7 +20,7 @@ class TestSafetyGuardsWithTestMode:
         os.environ['OMNIFOCUS_TEST_MODE'] = 'true'
         os.environ['OMNIFOCUS_TEST_DATABASE'] = 'OmniFocus-TEST.ofocus'
 
-        client = OmniFocusClient(enable_safety_checks=True)
+        client = OmniFocusConnector(enable_safety_checks=True)
 
         yield client
 
@@ -30,7 +30,7 @@ class TestSafetyGuardsWithTestMode:
 
     def test_add_task_verifies_database_name(self, client_with_test_mode):
         """Test that create_task verifies database name before proceeding."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Use a function to return different values based on the script content
             def mock_applescript(script):
                 if "return name of it" in script:
@@ -54,7 +54,7 @@ class TestSafetyGuardsWithTestMode:
 
     def test_add_task_blocked_if_wrong_database(self, client_with_test_mode):
         """Test that create_task is blocked if database name doesn't match."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Return production database name instead of test database (without .ofocus extension)
             # The safety check looks for "OmniFocus-TEST" in the result, so return "OmniFocus" to fail the check
             mock_run.return_value = "OmniFocus"
@@ -78,7 +78,7 @@ class TestSafetyGuardsConfiguration:
 
         try:
             with pytest.raises(DatabaseSafetyError) as exc_info:
-                OmniFocusClient(enable_safety_checks=True)
+                OmniFocusConnector(enable_safety_checks=True)
 
             assert "OMNIFOCUS_TEST_DATABASE is not set" in str(exc_info.value)
         finally:
@@ -91,7 +91,7 @@ class TestSafetyGuardsConfiguration:
 
         try:
             with pytest.raises(DatabaseSafetyError) as exc_info:
-                OmniFocusClient(enable_safety_checks=True)
+                OmniFocusConnector(enable_safety_checks=True)
 
             assert "not in the allowed test databases list" in str(exc_info.value)
         finally:
@@ -112,7 +112,7 @@ class TestSafetyGuardsConfiguration:
 
             try:
                 # Should not raise an error
-                client = OmniFocusClient(enable_safety_checks=True)
+                client = OmniFocusConnector(enable_safety_checks=True)
                 assert client is not None
             finally:
                 os.environ.pop('OMNIFOCUS_TEST_MODE', None)
@@ -125,11 +125,11 @@ class TestSafetyGuardsDisabled:
     @pytest.fixture
     def client_without_safety(self):
         """Create a client with safety checks disabled."""
-        return OmniFocusClient(enable_safety_checks=False)
+        return OmniFocusConnector(enable_safety_checks=False)
 
     def test_destructive_operations_allowed_when_disabled(self, client_without_safety):
         """Test that operations work when safety is disabled (NEW API)."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             # Test create_task - returns task ID
             mock_run.return_value = "task-123"
             result = client_without_safety.create_task("Task", project_id="proj-001")

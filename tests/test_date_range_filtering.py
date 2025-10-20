@@ -2,13 +2,13 @@
 import pytest
 from unittest import mock
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
     """Create a client with safety checks disabled."""
-    return OmniFocusClient(enable_safety_checks=False)
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestTaskDateRangeFiltering:
@@ -16,7 +16,7 @@ class TestTaskDateRangeFiltering:
 
     def test_created_after_filter(self, client):
         """Test filtering tasks created after a date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "creationDate": "2025-01-15T10:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "creationDate": "2025-01-20T10:00:00Z"},
@@ -31,7 +31,7 @@ class TestTaskDateRangeFiltering:
 
     def test_created_before_filter(self, client):
         """Test filtering tasks created before a date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "creationDate": "2025-01-15T10:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "creationDate": "2025-01-05T10:00:00Z"}
@@ -44,7 +44,7 @@ class TestTaskDateRangeFiltering:
 
     def test_created_date_range(self, client):
         """Test filtering tasks within a creation date range."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "creationDate": "2025-01-15T10:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "creationDate": "2025-01-20T10:00:00Z"},
@@ -58,7 +58,7 @@ class TestTaskDateRangeFiltering:
 
     def test_modified_after_filter(self, client):
         """Test filtering tasks modified after a date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "modificationDate": "2025-01-15T10:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "modificationDate": "2025-01-20T10:00:00Z"}
@@ -71,7 +71,7 @@ class TestTaskDateRangeFiltering:
 
     def test_modified_before_filter(self, client):
         """Test filtering tasks modified before a date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "modificationDate": "2025-01-15T10:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "modificationDate": "2025-01-20T10:00:00Z"}
@@ -84,7 +84,7 @@ class TestTaskDateRangeFiltering:
 
     def test_no_creation_date(self, client):
         """Test that tasks without creation dates are handled."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "t1", "name": "Task 1", "completed": false, "creationDate": "2025-01-15T10:00:00Z"},
                 {"id": "t2", "name": "Task 2", "completed": false, "creationDate": ""}
@@ -107,7 +107,7 @@ class TestProjectDateRangeFiltering:
 
     def test_modified_after_filter(self, client):
         """Test filtering projects modified after a date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Project 1", "status": "active", "modificationDate": "2025-01-15T10:00:00Z"},
                 {"id": "p2", "name": "Project 2", "status": "active", "modificationDate": "2025-01-20T10:00:00Z"}
@@ -120,7 +120,7 @@ class TestProjectDateRangeFiltering:
 
     def test_modified_before_filter(self, client):
         """Test filtering projects modified before a date."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '''[
                 {"id": "p1", "name": "Project 1", "status": "active", "modificationDate": "2025-01-15T10:00:00Z"},
                 {"id": "p2", "name": "Project 2", "status": "active", "modificationDate": "2025-01-20T10:00:00Z"}

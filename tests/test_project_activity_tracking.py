@@ -3,13 +3,13 @@
 import json
 import pytest
 from unittest.mock import patch
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
-    """Create an OmniFocusClient instance."""
-    return OmniFocusClient(enable_safety_checks=False)
+    """Create an OmniFocusConnector instance."""
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestProjectModificationDate:
@@ -26,7 +26,7 @@ class TestProjectModificationDate:
             "modificationDate": "2025-10-07T14:30:00Z"
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             projects = client.get_projects()
 
@@ -44,7 +44,7 @@ class TestProjectModificationDate:
             "modificationDate": None
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             projects = client.get_projects()
 
@@ -66,7 +66,7 @@ class TestProjectActivityDate:
             "lastActivityDate": "2025-10-08T10:15:00Z"
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             projects = client.get_projects()
 
@@ -85,7 +85,7 @@ class TestProjectActivityDate:
             "lastActivityDate": None
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             projects = client.get_projects()
 
@@ -111,7 +111,7 @@ class TestProjectActivityDate:
             "lastActivityDate": "2025-10-08T10:15:00Z"
         }])
 
-        with patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = mock_json
             projects = client.get_projects(project_id="proj-123")
 

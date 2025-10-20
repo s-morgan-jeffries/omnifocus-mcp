@@ -2,13 +2,13 @@
 import json
 from unittest import mock
 import pytest
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
-    """Create an OmniFocusClient instance."""
-    return OmniFocusClient()
+    """Create an OmniFocusConnector instance."""
+    return OmniFocusConnector()
 
 
 class TestRelativeDateFilters:
@@ -36,7 +36,7 @@ class TestRelativeDateFilters:
             }
         ])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = tasks_json
             tasks = client.get_tasks(due_relative="today")
 
@@ -68,7 +68,7 @@ class TestRelativeDateFilters:
             }
         ])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = tasks_json
             tasks = client.get_tasks(due_relative="tomorrow")
 
@@ -97,7 +97,7 @@ class TestRelativeDateFilters:
             }
         ])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = tasks_json
             tasks = client.get_tasks(due_relative="this_week")
 
@@ -125,7 +125,7 @@ class TestRelativeDateFilters:
             }
         ])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = tasks_json
             tasks = client.get_tasks(due_relative="overdue")
 
@@ -154,7 +154,7 @@ class TestRelativeDateFilters:
             }
         ])
 
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = tasks_json
             tasks = client.get_tasks(defer_relative="today")
 

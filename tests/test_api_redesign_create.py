@@ -6,13 +6,13 @@ documented in docs/ARCHITECTURE.md and docs/API_REFERENCE.md.
 from unittest import mock
 import pytest
 
-from omnifocus_mcp.omnifocus_client import OmniFocusClient
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
 
 
 @pytest.fixture
 def client():
     """Create a test client with safety checks disabled."""
-    return OmniFocusClient(enable_safety_checks=False)
+    return OmniFocusConnector(enable_safety_checks=False)
 
 
 class TestCreateTaskRedesign:
@@ -33,7 +33,7 @@ class TestCreateTaskRedesign:
 
     def test_create_task_in_project(self, client):
         """NEW API: create_task() creates task in specified project."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "task-001"
 
             result = client.create_task(
@@ -48,7 +48,7 @@ class TestCreateTaskRedesign:
 
     def test_create_task_in_inbox(self, client):
         """NEW API: create_task() with project_id=None creates in inbox."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "task-002"
 
             result = client.create_task(
@@ -63,7 +63,7 @@ class TestCreateTaskRedesign:
 
     def test_create_task_defaults_to_inbox(self, client):
         """NEW API: create_task() without project_id defaults to inbox."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "task-003"
 
             result = client.create_task(task_name="Default Inbox Task")
@@ -78,7 +78,7 @@ class TestCreateTaskRedesign:
 
     def test_create_task_with_parent_task_id(self, client):
         """NEW API: create_task() can create subtask with parent_task_id."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "task-004"
 
             result = client.create_task(
@@ -108,7 +108,7 @@ class TestCreateTaskRedesign:
 
     def test_create_task_with_all_optional_fields(self, client):
         """NEW API: create_task() supports all optional fields."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "task-005"
 
             result = client.create_task(
@@ -129,7 +129,7 @@ class TestCreateTaskRedesign:
 
     def test_create_task_with_estimated_minutes(self, client):
         """NEW API: create_task() supports estimated_minutes parameter."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "task-006"
 
             result = client.create_task(
@@ -147,7 +147,7 @@ class TestCreateTaskRedesign:
 
     def test_create_task_returns_task_id(self, client):
         """NEW API: create_task() returns task ID string."""
-        with mock.patch('omnifocus_mcp.omnifocus_client.run_applescript') as mock_run:
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "task-new-id"
 
             result = client.create_task(task_name="New Task")

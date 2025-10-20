@@ -410,7 +410,7 @@ def validate_project_exists(client, project_id: str) -> tuple[bool, Optional[str
     Validate that a project exists and is accessible.
 
     Args:
-        client: OmniFocusClient instance
+        client: OmniFocusConnector instance
         project_id: Project ID to validate
 
     Returns:
@@ -583,7 +583,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
 ### Example 6: Enhanced `get_projects` in Client
 
-**File: `omnifocus_client.py`**
+**File: `omnifocus_connector.py`**
 
 ```python
 from datetime import datetime
@@ -866,7 +866,7 @@ def get_projects_enhanced(
 
 ### Example 7: Enhanced `add_task` Method
 
-**File: `omnifocus_client.py`**
+**File: `omnifocus_connector.py`**
 
 ```python
 def add_task_enhanced(
@@ -1267,5 +1267,5 @@ All changes are **backward compatible** and follow **MCP 2025 best practices**.
 **Files to Create/Modify:**
 - `error_codes.py` (new)
 - `server.py` (enhance)
-- `omnifocus_client.py` (enhance)
+- `omnifocus_connector.py` (enhance)
 - `test_*.py` (update)

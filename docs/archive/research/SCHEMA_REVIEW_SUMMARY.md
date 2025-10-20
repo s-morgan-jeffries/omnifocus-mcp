@@ -223,13 +223,13 @@ Migration is **opt-in**:
 
 ### Files to Modify
 1. `server.py` - Add schemas, structured responses, error handling
-2. `omnifocus_client.py` - Enhanced data retrieval, validation
+2. `omnifocus_connector.py` - Enhanced data retrieval, validation
 3. `test_*.py` - Update for structured data
 4. New: `error_codes.py` - Error constants and helpers
 
 ### Lines of Code Impact
 - `server.py`: ~300 lines (schemas + structured responses)
-- `omnifocus_client.py`: ~500 lines (enhanced AppleScript)
+- `omnifocus_connector.py`: ~500 lines (enhanced AppleScript)
 - `error_codes.py`: ~100 lines (new file)
 - Tests: ~200 lines (validation tests)
 
