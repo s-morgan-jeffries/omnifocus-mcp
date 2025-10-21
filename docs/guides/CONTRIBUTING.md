@@ -26,6 +26,48 @@ Thank you for your interest in contributing! This document outlines the developm
 
 ---
 
+## Issue Tracking
+
+This project uses GitHub Issues for tracking bugs, features, documentation gaps, and AI process failures.
+
+### Before Starting Work
+
+**Create a feature branch:**
+```bash
+git checkout -b feature/description  # New features
+git checkout -b fix/description      # Bug fixes
+git checkout -b docs/description     # Documentation
+```
+
+**Only work on main for:** Hotfixes, trivial typo fixes, emergency rollbacks
+
+### Filing Issues
+
+**File issues immediately when you encounter:**
+- **Bugs** → `bug` label
+- **Feature requests** → `enhancement` label
+- **Documentation gaps** → `documentation` label
+- **AI process failures** (forgot tests, violated TDD, missed docs) → `ai-process` label
+
+**AI process failure example:**
+```bash
+gh issue create \
+  --title "[AI-PROCESS] Worked directly on main instead of feature branch" \
+  --label "ai-process,tdd-violation,medium"
+```
+
+Use template `.github/ISSUE_TEMPLATE/ai-process-failure.md` for structured reporting.
+
+### Version Planning Workflow
+
+1. **Issues filed** → Start in Backlog (no milestone)
+2. **Version planning** → Review issues, assign to milestone (e.g., "v0.7.0")
+3. **Development** → Work on milestone issues
+4. **Pre-release** → Verify all milestone issues closed
+5. **Release** → Close milestone, tag version
+
+---
+
 ## Test-Driven Development (TDD)
 
 This project follows Test-Driven Development (TDD). **This is non-negotiable.**
@@ -310,7 +352,7 @@ omnifocus-mcp/
 
 ## Making a Release
 
-**Version bumping workflow** (prevents MISTAKE-003 - version sync issues):
+**Version bumping workflow** (prevents issue #29 - version sync issues):
 
 1. **Update pyproject.toml** (authoritative source)
    ```toml

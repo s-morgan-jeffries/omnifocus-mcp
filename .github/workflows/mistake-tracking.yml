@@ -41,6 +41,8 @@ jobs:
           ./scripts/test_prevention_measures.sh
 
       - name: Check for recurrences
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           chmod +x scripts/check_recurrence.sh
           ./scripts/check_recurrence.sh

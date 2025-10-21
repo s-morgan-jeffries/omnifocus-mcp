@@ -301,30 +301,28 @@ Based on research completed 2025-10-20, the following automation improvements ar
 - **Impact:** Blocks edits/writes without tests, enforces CI monitoring after pushes
 - **Why it matters:** Prevents MISTAKE-009 (missing tests) and MISTAKE-011 (no CI monitoring)
 
-**B. GitHub Issues Migration** (4-5 hours) - **DIRECT CUTOVER**
-- **Problem:** MISTAKES.md is invisible to user, easy for Claude to ignore
-- **Solution:** Complete migration to GitHub Issues (no hybrid period)
-- **Decision:** Direct cutover is the right approach
-  - Everything MISTAKES.md does can be rebuilt with GitHub CLI (`gh`)
-  - Speed advantage of grep is negligible (~200ms API call vs instant)
-  - Offline access not needed (always online when using Claude Code)
-  - GitHub Issues advantages far outweigh markdown benefits
-- **Implementation:**
-  - One-time migration script (MISTAKES.md → GitHub Issues with labels)
-  - Rebuild check_recurrence.sh using `gh issue list` and `gh issue comment`
-  - Update all documentation references
-  - Delete MISTAKES.md after verification
+**B. GitHub Issues Migration** (5-6 hours) - **DIRECT CUTOVER**
+- **Problem:** MISTAKES.md is invisible to user; need centralized tracking for bugs, features, and AI process failures
+- **Solution:** Complete migration to GitHub Issues with standard workflow (no hybrid period)
+- **Full plan:** [docs/project/GITHUB_ISSUES_MIGRATION_PLAN.md](GITHUB_ISSUES_MIGRATION_PLAN.md)
+- **Key decisions (finalized 2025-10-21):**
+  - Label: `ai-process` for AI process failures
+  - Recurrence handling: File new issue every time, mark duplicates during triage (standard GitHub practice)
+  - No custom fields: Keep simple with labels + issue state + body
+  - Version workflow: Backlog → Planning → Milestone → Sprint → Release
+- **Implementation (6 phases):**
+  1. Setup: Labels, templates, GitHub Project with 4 views (1 hour)
+  2. Migration script: MISTAKES.md → GitHub Issues (2 hours)
+  3. Rebuild check_recurrence.sh for GitHub Issues (2 hours)
+  4. Documentation updates: CLAUDE.md, CONTRIBUTING.md, etc. (1 hour)
+  5. Testing & verification (30 min)
+  6. Cleanup & archive MISTAKES.md (30 min)
 - **Benefits:**
-  - User can see open issues without asking Claude
-  - Labels, milestones, and grouping for better organization
-  - Native GitHub automation (Actions, notifications)
-  - Standard workflow (not reinventing the wheel)
-  - Programmatic access via GitHub CLI (same as grep, just via API)
-- **What we're rebuilding:**
-  - Recurrence tracking: `gh issue comment` for recurrence detection
-  - Statistics: `gh issue list --json | jq` for aggregation
-  - Prevention docs: Same markdown, stored in issue body
-  - Verification deadlines: Milestones or custom fields
+  - User visibility: See all issues (bugs, features, AI process) in GitHub UI
+  - Standard workflow: Everyone knows GitHub Issues
+  - Version planning: Milestones for grouping issues by version
+  - Natural recurrence tracking: Duplicates = recurrences
+  - Native automation: GitHub Actions, CLI, notifications
 
 **Additional Quick Wins** (identified by research, defer until after A & B):
 - Pre-push git hooks (15 min) - Block pushes until checks pass
