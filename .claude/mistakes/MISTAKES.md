@@ -2,11 +2,11 @@
 
 **Purpose:** Track high-level architectural and workflow mistakes to improve development process.
 
-**Last Updated:** 2025-10-20
+**Last Updated:** 2025-10-21
 
 **Statistics:**
 - Total Mistakes: 11
-- By Category: missing-docs (5), missing-tests (1), missing-automation (1), other (4)
+- By Category: missing-docs (6), missing-tests (1), missing-automation (1), other (3)
 - By Severity: critical (2), high (3), medium (6)
 
 **Recent Patterns:** No patterns detected yet (need 3+ mistakes in same category)
@@ -566,6 +566,97 @@ Jumped straight to implementation without considering:
 - MISTAKE-001: Missing MIGRATION_v0.6.md (also a planning/docs issue)
 - General pattern: Jumping to implementation before planning docs/versioning
 
+
+**Effectiveness Score:** pending
+
+---
+
+
+## [MISTAKE-012] Failed to update ROADMAP.md after fixing critical bug (Date: 2025-10-21)
+
+**Status:** monitoring
+
+**Category:** missing-docs
+
+**Severity:** medium
+
+**Discovery Date:** 2025-10-21
+**Introduced In:** 080de69 (bug fix commit from 2025-10-20)
+**Recurrence Count:** 0
+**Last Recurrence:** N/A
+**Verification Deadline:** 2025-11-21 (30 days after prevention implemented on 2025-10-21)
+
+**What Happened:**
+
+On 2025-10-20, I fixed a critical bug in the project review date functionality (commit 080de69). The bug was documented in ROADMAP.md under "Upcoming Work - Bug Fixes" as a CRITICAL priority item. I:
+
+1. Fixed the bug (added `next_review_date` parameter, fixed `last_reviewed` to set correct property)
+2. Updated CHANGELOG.md with full details (v0.6.1 section)
+3. Added 2 new tests for the functionality
+4. Updated all related documentation
+
+BUT: I never removed the bug from the ROADMAP.md "Upcoming Work" section. On 2025-10-21, when user asked "what's in the current roadmap?", they saw the bug still listed as CRITICAL even though it was fixed yesterday.
+
+User had to point out: "That's weird, I thought we already fixed that critical bug."
+
+**Context:**
+- **File(s):** docs/project/ROADMAP.md (lines 337-355 still show bug as unfixed)
+- **Function(s):** update_project(), update_projects() (bug was fixed in these)
+- **Commit:** 080de69 (fixed bug), e4c28fb (documented in CHANGELOG), but ROADMAP.md never updated
+
+**Impact:**
+
+- **User confusion:** Sees resolved bug still listed as CRITICAL TODO
+- **Stale documentation:** ROADMAP doesn't reflect current project state
+- **Lost trust:** Makes it look like bug isn't actually fixed
+- **Duplicate work risk:** Could start working on "fixing" already-fixed bug
+- **Pattern:** This is exactly like MISTAKE-010 (the other one about roadmap documentation patterns)
+
+**Root Cause:**
+
+1. **No checklist item:** "Before Every Commit" doesn't include "Update ROADMAP.md if completing roadmap items"
+2. **Focus on CHANGELOG:** Assumed CHANGELOG.md was sufficient for documenting fixes
+3. **Incomplete mental model:** Thought of bug fix as "code change" not "roadmap change"
+4. **No cross-reference check:** CHANGELOG mentions bug fix but didn't verify ROADMAP shows same status
+5. **Recurrence of MISTAKE-010:** Same pattern - completed work not removed from "Upcoming Work"
+
+**Fix:**
+
+Remove the "Immediate - Bug Fixes" section from ROADMAP.md since the bug is fixed. The fix is already documented in:
+- CHANGELOG.md v0.6.1 section (full technical details)
+- Code itself (omnifocus_connector.py has both parameters working correctly)
+- Tests (2 new tests verify functionality)
+
+- **Resolved in commit:** c77538f
+- **Prevention implemented in:** .claude/CLAUDE.md:248-249
+
+**Prevention:**
+
+1. **Add to "Before Every Commit" checklist in CLAUDE.md:**
+   - [ ] If fixing a bug documented in ROADMAP.md, remove it from "Upcoming Work"
+   - [ ] If completing a roadmap item, update ROADMAP.md per documentation pattern
+
+2. **Add to bug fix workflow in CONTRIBUTING.md:**
+   - When fixing bugs listed in ROADMAP.md:
+     1. Fix the bug
+     2. Update CHANGELOG.md
+     3. Update ROADMAP.md (remove from "Upcoming Work")
+     4. Verify all three are consistent
+
+3. **Create cross-reference check script:**
+   ```bash
+   # scripts/check_roadmap_sync.sh
+   # Check if CHANGELOG mentions items still in ROADMAP "Upcoming Work"
+   ```
+
+- **Prevention Status:** [X] Implemented  [ ] Validated (monitoring until 2025-11-21)
+
+**Related Mistakes:**
+
+- MISTAKE-001: Missing MIGRATION_v0.6.md (documentation not updated)
+- MISTAKE-002: Test counts get out of sync (documentation drift)
+- MISTAKE-003: Version numbers get out of sync (documentation drift)
+- **Pattern: Documentation updates are inconsistently applied across related files**
 
 **Effectiveness Score:** pending
 
