@@ -574,7 +574,7 @@ Jumped straight to implementation without considering:
 
 ## [MISTAKE-012] Failed to update ROADMAP.md after fixing critical bug (Date: 2025-10-21)
 
-**Status:** open
+**Status:** resolved
 
 **Category:** missing-docs
 
@@ -627,8 +627,8 @@ Remove the "Immediate - Bug Fixes" section from ROADMAP.md since the bug is fixe
 - Code itself (omnifocus_connector.py has both parameters working correctly)
 - Tests (2 new tests verify functionality)
 
-- **Resolved in commit:** pending (will fix in this session)
-- **Prevention implemented in:** pending
+- **Resolved in commit:** c77538f
+- **Prevention implemented in:** pending (need to update CLAUDE.md checklist)
 
 **Prevention:**
 
