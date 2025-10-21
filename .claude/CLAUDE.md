@@ -232,6 +232,31 @@ See `docs/guides/CONTRIBUTING.md` for complete workflow including:
 
 ---
 
+## Before Starting Work
+
+**Create a feature branch for any non-trivial work:**
+
+```bash
+git checkout -b feature/description  # For new features
+git checkout -b fix/description      # For bug fixes
+git checkout -b docs/description     # For documentation
+```
+
+**Only work directly on main for:**
+- Hotfixes that need immediate deployment
+- Trivial documentation typos (single-line README fixes, etc.)
+- Emergency rollbacks
+
+**Why:** Feature branches allow you to:
+- Test changes in isolation before merging
+- Get feedback via PR before affecting main
+- Easily roll back if something goes wrong
+- Keep main branch stable and deployable
+
+**See:** Issue #37 (ai-process) for why this matters
+
+---
+
 ## Before Every Commit
 
 **Run this checklist:**
@@ -259,25 +284,81 @@ See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
 ---
 
-## Mistake Tracking Infrastructure
+## Issue Tracking
 
-This project uses systematic mistake tracking to improve development practices over time.
+This project uses GitHub Issues for all tracking: bugs, features, documentation, and AI process failures.
 
-**Quick start:**
-- Log mistake: `./scripts/log_mistake.sh`
-- View mistakes: `cat .claude/mistakes/MISTAKES.md`
-- Check system health: `./scripts/check_recurrence.sh`
+### When to File Issues
 
-**Mistake vs Bug:**
-- **Mistake**: Process/architecture failure (forgot tests, violated TDD, missing docs)
-- **Bug**: Implementation error (typo, null check, off-by-one)
+**File immediately when you encounter:**
+- **Bug:** Something not working as expected → label: `bug`
+- **AI Process Failure:** Violated TDD, forgot tests, missed docs, workflow errors → label: `ai-process`
+- **Feature Idea:** New functionality to consider → label: `enhancement`
+- **Documentation Gap:** Missing or outdated docs → label: `documentation`
 
-**For detailed information:**
-- Full workflow and categories → [@.claude/mistakes/README.md](.claude/mistakes/README.md)
-- Current mistakes and metrics → [@.claude/mistakes/MISTAKES.md](.claude/mistakes/MISTAKES.md)
-- Analysis history → [@.claude/mistakes/analyses/](.claude/mistakes/analyses/)
+**All issues start in Backlog (no milestone assigned). They will be reviewed during version planning.**
 
-**Why?** Patterns (3+ similar mistakes) trigger CLAUDE.md improvements. System is at 75-80% functional, 85-90% closed feedback loop.
+### Filing AI Process Failures
+
+Use the "AI Process Failure" issue template:
+
+```bash
+gh issue create \
+  --title "[AI-PROCESS] Brief description of what went wrong" \
+  --label "ai-process,category,severity"
+```
+
+**Required labels:**
+- `ai-process` (type)
+- **Category:** `missing-docs`, `missing-tests`, `missing-automation`, `architecture-violation`, `tdd-violation`, or `other`
+- **Severity:** `critical`, `high`, `medium`, or `low`
+
+**Template includes:**
+- What happened (clear description)
+- Context (files, functions, commits, date)
+- Impact on project/user
+- Root cause analysis
+- Prevention measures (immediate fix + long-term)
+- Prevention script (executable bash for automated checking)
+
+### Recurrence Handling
+
+**Standard GitHub practice:** File new issue every time (don't search first)
+
+During triage, human reviews and marks duplicates:
+- Search for similar issues
+- If duplicate: Add `duplicate` label, comment "Duplicate of #X", close
+- Original issue tracks recurrences via linked duplicates
+- Recurrence count = number of duplicate issues
+
+### Automatic Recurrence Detection
+
+The `check_recurrence.sh` script runs in CI to verify prevention measures:
+
+```bash
+./scripts/check_recurrence.sh
+```
+
+**How it works:**
+- Fetches all open `ai-process` issues
+- Extracts "Prevention Script" from each issue body
+- Runs the script - if it fails, prevention has failed
+- Reports which issues have recurred
+- Human then files new issue, marks as duplicate
+
+**Prevention scripts must be executable bash** in issue body:
+```markdown
+## Prevention Script
+
+```bash
+# Check if prevention is in place
+if grep -q "checklist item" .claude/CLAUDE.md; then
+    exit 0  # Prevention holding
+else
+    exit 1  # Prevention failed
+fi
+```
+```
 
 ---
 
