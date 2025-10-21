@@ -245,6 +245,8 @@ See `docs/guides/CONTRIBUTING.md` for complete workflow including:
 - [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
   - Verify cross-references exist; breaking changes need migration guide (MIGRATION_vX.Y.md pattern)
   - If tests added/removed: Update count in `docs/guides/TESTING.md` only (single source of truth)
+  - **If fixing bug listed in ROADMAP.md:** Remove from "Upcoming Work" section after fix
+  - **If completing roadmap item:** Update ROADMAP.md status (remove or move to "Completed" as appropriate)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
 
 **If tests are failing:**

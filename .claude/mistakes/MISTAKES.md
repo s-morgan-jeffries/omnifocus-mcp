@@ -574,7 +574,7 @@ Jumped straight to implementation without considering:
 
 ## [MISTAKE-012] Failed to update ROADMAP.md after fixing critical bug (Date: 2025-10-21)
 
-**Status:** resolved
+**Status:** monitoring
 
 **Category:** missing-docs
 
@@ -584,7 +584,7 @@ Jumped straight to implementation without considering:
 **Introduced In:** 080de69 (bug fix commit from 2025-10-20)
 **Recurrence Count:** 0
 **Last Recurrence:** N/A
-**Verification Deadline:** 2025-11-20 (30 days after prevention implemented)
+**Verification Deadline:** 2025-11-21 (30 days after prevention implemented on 2025-10-21)
 
 **What Happened:**
 
@@ -628,7 +628,7 @@ Remove the "Immediate - Bug Fixes" section from ROADMAP.md since the bug is fixe
 - Tests (2 new tests verify functionality)
 
 - **Resolved in commit:** c77538f
-- **Prevention implemented in:** pending (need to update CLAUDE.md checklist)
+- **Prevention implemented in:** .claude/CLAUDE.md:248-249
 
 **Prevention:**
 
@@ -649,7 +649,7 @@ Remove the "Immediate - Bug Fixes" section from ROADMAP.md since the bug is fixe
    # Check if CHANGELOG mentions items still in ROADMAP "Upcoming Work"
    ```
 
-- **Prevention Status:** [ ] Not Started  [ ] Implemented  [ ] Validated
+- **Prevention Status:** [X] Implemented  [ ] Validated (monitoring until 2025-11-21)
 
 **Related Mistakes:**
 
