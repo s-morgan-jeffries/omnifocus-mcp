@@ -6,7 +6,7 @@
 
 **Project Status:** Maintenance mode - Core MCP server is feature-complete with 16 comprehensive tools covering all OmniFocus primitives.
 
-**Latest:** v0.6.1 renamed `omnifocus_client` → `omnifocus_connector` for industry-standard terminology.
+**Latest:** v0.6.1 fixed project review date bug and renamed `omnifocus_client` → `omnifocus_connector` for industry-standard terminology.
 
 **Note**: This roadmap has been revised. The original vision included email forwarding, calendar integration, and other application-layer features. However, these don't belong in an MCP server - they should be separate services or applications that *use* the MCP server.
 
@@ -334,25 +334,6 @@ Based on research completed 2025-10-20, the following automation improvements ar
 
 **Research completed:** Three independent agents analyzed current automation gaps. Full reports: [docs/research/2025-10-20-automation-research.md](../research/2025-10-20-automation-research.md)
 
-### Immediate - Bug Fixes
-
-**🐛 Project Review Date Functionality (CRITICAL BUG)**
-- **Current bug**: The `last_reviewed` parameter is misnamed and misleading
-  - **Actual behavior**: Sets the **next review date**, not the last reviewed date
-  - **Code location**: `omnifocus_connector.py:918` - `set next review date of theProject to (current date)`
-  - **Impact**: Cannot properly mark projects as reviewed per GTD methodology
-  - **User sees**: Projects show future review date instead of being marked as "reviewed today"
-- **Required fixes**:
-  1. **Fix `last_reviewed` parameter**: Should set "last review date" property in OmniFocus
-     - Need to research correct AppleScript property name
-     - Test whether OmniFocus auto-calculates next review when last review is set
-  2. **Add `next_review_date` parameter**: For explicit next review date setting
-     - Should work in both `update_project()` and `update_projects()`
-     - Allows manual override of calculated review schedule
-  3. **Verify OmniFocus behavior**: Does setting "last review date" trigger auto-calculation?
-  4. **Add integration tests**: Verify both parameters set correct OmniFocus properties
-- **Priority**: CRITICAL - Blocks GTD weekly review workflow (user-reported)
-
 ### Under Investigation - Design Review Needed
 
 These items need design discussion before implementation:
@@ -498,4 +479,4 @@ These belong in separate services/applications that **use** the MCP server, not 
 
 ---
 
-**Last Updated:** October 20, 2025
+**Last Updated:** October 21, 2025
