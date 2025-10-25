@@ -26,6 +26,11 @@ check_no_commits_to_main() {
     # Get current branch
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
+    # Allow commits to release/* branches (for release preparation)
+    if [[ "$CURRENT_BRANCH" =~ ^release/ ]]; then
+        return 0
+    fi
+
     # Block commits to main/master unless it's a hotfix
     if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
         # Check if commit message contains "hotfix" or "emergency"
@@ -34,7 +39,7 @@ check_no_commits_to_main() {
             cat >&2 <<'EOF'
 {
   "permissionDecision": "deny",
-  "permissionDecisionReason": "❌ Cannot commit directly to main branch.\n\nPlease create a feature branch first:\n  git checkout -b feature/description  # For features\n  git checkout -b fix/description      # For bug fixes\n  git checkout -b docs/description     # For documentation\n\nOnly commit to main for:\n  - Hotfixes (include 'hotfix' in commit message)\n  - Emergency rollbacks (include 'emergency' in message)\n\nSee .claude/CLAUDE.md 'Before Starting Work' section."
+  "permissionDecisionReason": "❌ Cannot commit directly to main branch.\n\nPlease create a feature branch first:\n  git checkout -b feature/description  # For features\n  git checkout -b fix/description      # For bug fixes\n  git checkout -b docs/description     # For documentation\n  git checkout -b release/v0.6.x       # For release preparation\n\nOnly commit to main for:\n  - Hotfixes (include 'hotfix' in commit message)\n  - Emergency rollbacks (include 'emergency' in message)\n\nSee .claude/CLAUDE.md 'Before Starting Work' section."
 }
 EOF
             return 2

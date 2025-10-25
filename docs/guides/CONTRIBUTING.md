@@ -163,47 +163,65 @@ git branch -d feature/my-feature
 
 ### Release Workflow (Maintainers Only)
 
-```bash
-# 1. All milestone features merged to main
-# Each PR has passed CI individually
+**Architecture:** Release branches + Branch protection on main
 
-# 2. Bump version and update CHANGELOG
+```bash
+# 1. All milestone features merged to main via PRs
+# Milestone shows 0 open issues
+
+# 2. Create release branch from main
+git checkout main
+git pull
+git checkout -b release/v0.6.4
+
+# 3. Bump version and update CHANGELOG (on release branch)
 ./scripts/sync_version.sh  # Or manual edit of pyproject.toml
-# Edit CHANGELOG.md to add new version entry
+# Edit CHANGELOG.md to add v0.6.4 entry
 git commit -m "chore: bump version to v0.6.4"
 
-# 3. Create release candidate tag
-# This triggers git pre-tag hook which:
-# - Runs all 9 hygiene checks
-# - Captures detailed results to .hygiene-check-results-v0.6.4-rc1.txt
-# - Displays summary with critical/warning counts
-# - Prompts to review warnings if any found
+# 4. Create RC tag (MUST be on release/* branch)
+# Pre-tag hook enforces: RC tags only on release branches
+# Hook runs all 9 hygiene checks:
+# - Captures results to .hygiene-check-results-v0.6.4-rc1.txt
+# - Shows summary with critical/warning counts
+# - Prompts to review warnings if found
 # - Requires acknowledgment before proceeding
 git tag v0.6.4-rc1
 
-# 4. Review hygiene check results
-# If warnings found, hook prompts:
+# 5. Review hygiene results
+# Hook prompts if warnings found:
 #   "Review detailed results? (y/n)"
 #   "Have you reviewed the warnings and decided they are acceptable? (y/n)"
-#
-# Review the full results file:
-less .hygiene-check-results-v0.6.4-rc1.txt
+less .hygiene-check-results-v0.6.4-rc1.txt  # If needed
 
-# 5. Push RC tag to trigger GitHub Actions
+# 6. Push release branch + RC tag
+git push origin release/v0.6.4
 git push origin v0.6.4-rc1
+# GitHub Actions runs same checks
 
-# 6. If issues found, fix and create rc2
-# The hook will compare rc2 vs rc1:
-# - Shows improvement/regression in warning counts
-# - Tracks progress across iterations
-git commit -m "fix: address hygiene warnings"
-git tag v0.6.4-rc2
-git push origin v0.6.4-rc2
+# 7. If RC finds issues, fix on release branch
+git commit -m "fix: address RC findings"
+git tag v0.6.4-rc2  # Hook compares vs rc1, shows improvement
+git push origin release/v0.6.4 v0.6.4-rc2
 
-# 7. When all checks pass, tag final release
+# 8. When RC passes, create PR: release/v0.6.4 → main
+gh pr create --base main --head release/v0.6.4 \
+  --title "Release v0.6.4" \
+  --body "Release v0.6.4\n\nRC testing complete: v0.6.4-rc2 passed all checks"
+
+# 9. After PR merged (via GitHub UI or gh pr merge)
+git checkout main
+git pull
+
+# 10. Tag final release (MUST be on main)
+# Pre-tag hook enforces: final tags only on main
 git tag v0.6.4
 git push origin v0.6.4
-# GitHub Actions auto-creates release and closes milestone
+# GitHub Actions creates release, closes milestone
+
+# 11. Clean up
+git branch -d release/v0.6.4
+git push origin --delete release/v0.6.4
 ```
 
 **Hygiene Checks Run on RC Tags:**

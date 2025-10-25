@@ -12,13 +12,39 @@ fi
 
 echo "🔍 Checking release hygiene for tag: $TAG_NAME"
 
+# Get current branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
 # Determine if this is RC or final release
 if [[ "$TAG_NAME" =~ -rc[0-9]+$ ]]; then
     echo "📦 RC tag detected - running comprehensive hygiene checks..."
     IS_RC=true
+
+    # RC tags must be on release/* branches
+    if [[ ! "$CURRENT_BRANCH" =~ ^release/ ]]; then
+        echo "❌ RC tags must be created on release/* branches"
+        echo "   Current branch: $CURRENT_BRANCH"
+        echo ""
+        echo "Create a release branch first:"
+        echo "  git checkout -b release/${TAG_NAME%-rc*}"
+        echo "  git tag $TAG_NAME"
+        exit 1
+    fi
 else
     echo "🚀 Final release tag detected - verifying RC passed..."
     IS_RC=false
+
+    # Final tags must be on main
+    if [ "$CURRENT_BRANCH" != "main" ]; then
+        echo "❌ Final release tags must be created on main branch"
+        echo "   Current branch: $CURRENT_BRANCH"
+        echo ""
+        echo "Merge release branch to main first:"
+        echo "  git checkout main"
+        echo "  git merge release/${TAG_NAME}"
+        echo "  git tag $TAG_NAME"
+        exit 1
+    fi
 fi
 
 # ============================================
