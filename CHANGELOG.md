@@ -5,6 +5,57 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2025-10-25
+
+### Added
+
+- **Release workflow automation and validation** (#46)
+  - GitHub Actions workflow for RC tags (`v*-rc*`) that validates release readiness
+  - GitHub Actions workflow for final tags that creates releases and manages milestones
+  - Git pre-tag hook that enforces hygiene checks locally before tag creation
+  - Version sync automation through `scripts/sync_version.sh`
+  - RC tag workflow: create `v0.6.3-rc1`, run checks, fix issues, create `v0.6.3-rc2`, repeat until clean, then create final `v0.6.3` tag
+
+- **Milestone planning enforcement** (#45)
+  - SessionStart hook now dynamically calculates current milestone from version
+  - Shows active milestone with open issues list
+  - Warns if no milestone exists for next version
+
+- **Issue tracking workflow enforcement** (#44)
+  - Pre-commit hook validates commit messages reference issue numbers
+  - Exceptions for merge/revert/version bump commits
+  - Prevents commits without proper tracking
+
+### Documentation
+
+- **Trunk-based development workflow** (#56)
+  - Comprehensive documentation in README.md, CONTRIBUTING.md, ROADMAP.md
+  - Single main branch strategy, tags mark releases, RC tags for validation
+  - Contributor workflow and release workflow documented
+
+- **Directory cleanup Sprint 1** (#49)
+  - Archived 8 legacy mistake tracking scripts to `scripts/archive/mistake-tracking-legacy/`
+  - Updated scripts/README.md and scripts/archive/README.md with migration notes
+  - Documented dual hook systems (git vs Claude Code) in hook documentation
+
+### Fixed
+
+- **Hanging Bash hook tests** (#47)
+  - Replaced `tests/test_hooks.sh` with Python pytest suite `tests/test_claude_code_hooks.py`
+  - 11 comprehensive tests using temporary git repos for isolation
+  - All tests pass in <1 second vs hanging indefinitely
+
+- **Version synchronization** (#29, MISTAKE-003)
+  - Automated version sync across pyproject.toml, CLAUDE.md, CHANGELOG.md, README.md
+  - Version source of truth: pyproject.toml
+  - Integrated into git pre-tag hook to prevent version drift
+
+### Changed
+
+- Migrated from GitFlow to trunk-based development
+- RC tags now trigger comprehensive hygiene checks before final release
+- Current version: v0.6.3 (Release Automation)
+
 ## [0.6.2] - 2025-10-25
 
 ### Added
