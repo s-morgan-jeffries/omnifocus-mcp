@@ -58,6 +58,48 @@ gh issue create \
 
 Use template `.github/ISSUE_TEMPLATE/ai-process-failure.md` for structured reporting.
 
+### Issue Labeling Requirements
+
+**Every issue MUST have labels.** Labels enable search, filtering, and project organization.
+
+**Required: Type label (choose at least one):**
+- `bug` - Something not working as expected
+- `enhancement` - New feature or improvement
+- `documentation` - Docs updates, missing docs, doc fixes
+- `ai-process` - Process failure (forgot tests, violated TDD, etc.)
+- `question` - Request for information or clarification
+
+**Optional: Workflow labels (add all that apply):**
+- `workflow` - Branch strategy, release process, CI/CD
+- `release-process` - Version management, tagging, milestones
+- `testing` - Test infrastructure, coverage, test fixes
+- `technical-debt` - Code cleanup, refactoring, maintenance
+- `security` - Security improvements, vulnerability fixes
+- `performance` - Speed, efficiency, resource usage
+
+**Optional: Priority labels (for bugs and ai-process only):**
+- `critical` - Blocks release, major functionality broken
+- `high` - Significant impact, needs attention soon
+- `medium` - Moderate impact, normal priority
+- `low` - Minor impact, nice to have
+
+**Examples:**
+```bash
+# Bug with priority
+gh issue create --label "bug,security,critical"
+
+# Enhancement with workflow categories
+gh issue create --label "enhancement,performance,release-process"
+
+# Documentation update
+gh issue create --label "documentation,workflow"
+
+# AI process failure
+gh issue create --label "ai-process,missing-tests,high"
+```
+
+**Enforcement:** Claude Code session hooks may warn about unlabeled issues.
+
 ### Version Planning Workflow
 
 1. **Issues filed** → Start in Backlog (no milestone)

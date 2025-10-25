@@ -346,6 +346,7 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
   - Test happy path (automation allows correct behavior)
   - Test failure path (automation catches intentional errors)
   - Don't release automation that only has placeholder text
+- [ ] **Issues filed with labels** - All new issues have appropriate labels (see Issue Tracking section)
 
 **If tests are failing:**
 - Don't commit until they pass
@@ -370,6 +371,45 @@ This project uses GitHub Issues for all tracking: bugs, features, documentation,
 - **Documentation Gap:** Missing or outdated docs → label: `documentation`
 
 **All issues start in Backlog (no milestone assigned). They will be reviewed during version planning.**
+
+### Labels (REQUIRED)
+
+**Every issue MUST have labels applied.** Labels enable search, filtering, and project organization.
+
+**Type labels (choose one):**
+- `bug` - Something not working as expected
+- `enhancement` - New feature or improvement
+- `documentation` - Docs updates, missing docs, doc fixes
+- `ai-process` - Process failure (forgot tests, violated TDD, etc.)
+
+**Additional labels (choose all that apply):**
+- `workflow` - Branch strategy, release process, CI/CD
+- `release-process` - Version management, tagging, milestones
+- `testing` - Test infrastructure, coverage, test fixes
+- `technical-debt` - Code cleanup, refactoring, maintenance
+- `security` - Security improvements, vulnerability fixes
+- `performance` - Speed, efficiency, resource usage
+
+**Severity labels (for bugs and ai-process only):**
+- `critical` - Blocks release, major functionality broken
+- `high` - Significant impact, needs attention soon
+- `medium` - Moderate impact, normal priority
+- `low` - Minor impact, nice to have
+
+**Examples:**
+```bash
+# Bug with severity
+gh issue create --label "bug,security,critical"
+
+# Enhancement with categories
+gh issue create --label "enhancement,performance,release-process"
+
+# Documentation update
+gh issue create --label "documentation,workflow"
+
+# AI process failure
+gh issue create --label "ai-process,missing-tests,high"
+```
 
 ### Filing AI Process Failures
 
