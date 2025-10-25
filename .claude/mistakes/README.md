@@ -1,10 +1,26 @@
 # Mistake Tracking Infrastructure
 
+> **⚠️ HISTORICAL ARCHIVE**
+>
+> This entire directory (.claude/mistakes/) is a **historical archive** from the early development phase (pre-v0.6.2).
+>
+> **Current practice:** Mistake tracking has migrated to **GitHub Issues** with the `ai-process` label.
+> - File issues immediately when mistakes occur
+> - Use issue templates for consistency
+> - Track recurrence through duplicate issue detection
+> - Prevention measures documented in issue bodies
+>
+> This archive is preserved for reference but is **no longer actively maintained**.
+
+---
+
+## Original Documentation (Archive)
+
 **Purpose:** Track, prevent, and learn from architectural and workflow mistakes in the OmniFocus MCP Server project.
 
-**Status:** B+ grade, 75-80% functional, 85-90% closed feedback loop
+**Status:** B+ grade, 75-80% functional, 85-90% closed feedback loop (as of 2025-10-19)
 **Last Analysis:** Fourth (2025-10-19)
-**Next Verification:** 2025-11-18 (30-day effectiveness assessment)
+**Migration:** System migrated to GitHub Issues in v0.6.2
 
 ---
 
