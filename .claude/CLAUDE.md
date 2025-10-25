@@ -17,7 +17,7 @@ It contains:
 - Contribution workflow: docs/guides/CONTRIBUTING.md
 - AppleScript gotchas: docs/reference/APPLESCRIPT_GOTCHAS.md
 
-**For redesign implementation history:** `.claude/CLAUDE-redesign-phase.md` (archived)
+**For redesign implementation history:** `docs/archive/CLAUDE-redesign-phase.md` (archived)
 
 ---
 
