@@ -342,6 +342,10 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
   - **If fixing bug listed in ROADMAP.md:** Remove from "Upcoming Work" section after fix
   - **If completing roadmap item:** Update ROADMAP.md status (remove or move to "Completed" as appropriate)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
+- [ ] **Automation tested end-to-end** - If adding workflow automation (hooks, scripts), verify it actually works:
+  - Test happy path (automation allows correct behavior)
+  - Test failure path (automation catches intentional errors)
+  - Don't release automation that only has placeholder text
 
 **If tests are failing:**
 - Don't commit until they pass

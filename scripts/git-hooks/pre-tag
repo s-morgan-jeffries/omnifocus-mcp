@@ -40,13 +40,13 @@ if [ "$IS_RC" = true ]; then
         echo "   ✅ Version sync passed"
     fi
 
-    # Check 2: All tests pass
+    # Check 2: All tests pass (unit, integration, e2e)
     echo "2. Running all tests..."
-    if ! make test > /dev/null 2>&1; then
+    if ! ./scripts/run_all_tests.sh > /dev/null 2>&1; then
         echo "   ❌ Tests failed"
         ((FAILED_CHECKS++))
     else
-        echo "   ✅ Tests passed"
+        echo "   ✅ All tests passed"
     fi
 
     # Check 3: Code complexity
@@ -90,61 +90,65 @@ if [ "$IS_RC" = true ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
-    # Now run subagent reviews
-    echo "Running subagent reviews (may take 1-2 minutes)..."
+    # Now run hygiene reviews
+    echo "Running hygiene reviews..."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-    # Create temp file for review results
-    REVIEW_RESULTS=$(mktemp)
+    # Check 6: Test coverage
+    echo "6. Reviewing test coverage..."
+    if ./scripts/check_test_coverage.sh > /dev/null 2>&1; then
+        echo "   ✅ Test coverage check passed"
+    else
+        echo "   ⚠️  Test coverage has gaps (see above)"
+        # Don't fail on coverage gaps, just warn
+    fi
 
-    # Coverage gaps review
-    echo "6. Reviewing test coverage gaps..."
-    # This would use Task tool to launch subagent, but we're in a git hook
-    # For now, note this as TODO and allow
-    echo "   ⚠️  Manual review required: Check test coverage gaps"
-    echo "      Run: grep -r 'TODO.*test' src/" >> "$REVIEW_RESULTS"
+    # Check 7: Documentation completeness
+    echo "7. Reviewing documentation..."
+    if ./scripts/check_documentation.sh "$VERSION" > /dev/null 2>&1; then
+        echo "   ✅ Documentation check passed"
+    else
+        echo "   ❌ Documentation check failed"
+        ((FAILED_CHECKS++))
+    fi
 
-    # Documentation review
-    echo "7. Reviewing documentation completeness..."
-    echo "   ⚠️  Manual review required: Check documentation"
-    echo "      - Verify CHANGELOG.md has entry for $VERSION" >> "$REVIEW_RESULTS"
-    echo "      - Verify README.md reflects new features" >> "$REVIEW_RESULTS"
-    echo "      - Verify migration guide exists if breaking changes" >> "$REVIEW_RESULTS"
-
-    # Code quality review
+    # Check 8: Code quality
     echo "8. Reviewing code quality..."
-    echo "   ⚠️  Manual review required: Check code quality"
-    echo "      - Review any D-F rated functions (complexity > 20)" >> "$REVIEW_RESULTS"
+    if ./scripts/check_code_quality.sh > /dev/null 2>&1; then
+        echo "   ✅ Code quality check passed"
+    else
+        echo "   ⚠️  Code quality has issues (see above)"
+        # Don't fail on code quality warnings, just inform
+    fi
 
-    # Directory organization review
+    # Check 9: Directory organization
     echo "9. Reviewing directory organization..."
-    echo "   ⚠️  Manual review required: Check directory organization"
-    echo "      - Check for orphaned files in .claude/, scripts/, docs/" >> "$REVIEW_RESULTS"
+    if ./scripts/check_directory_organization.sh > /dev/null 2>&1; then
+        echo "   ✅ Directory organization check passed"
+    else
+        echo "   ⚠️  Directory organization could be improved"
+        # Don't fail on organization issues, just warn
+    fi
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
     # Display results
     if [ $FAILED_CHECKS -gt 0 ]; then
-        echo "❌ $FAILED_CHECKS automated check(s) failed"
+        echo "❌ $FAILED_CHECKS critical check(s) failed"
         echo ""
         echo "Fix issues and try again:"
         echo "  # Fix issues, then:"
         echo "  git tag $TAG_NAME"
         echo ""
-        rm "$REVIEW_RESULTS"
         exit 1
     fi
 
-    echo "✅ All automated checks passed"
+    echo "✅ All critical checks passed"
     echo ""
-    echo "⚠️  Manual review items (verify before final release):"
-    cat "$REVIEW_RESULTS"
+    echo "RC tag will be created. Push to trigger GitHub Actions:"
+    echo "  git push origin $TAG_NAME"
     echo ""
-    echo "If you've verified the manual items, RC tag will be created."
-    echo "GitHub Actions will run the same automated checks on push."
-    echo ""
-    rm "$REVIEW_RESULTS"
 
     # Allow RC tag creation
     exit 0
