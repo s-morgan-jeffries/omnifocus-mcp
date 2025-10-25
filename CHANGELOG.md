@@ -5,6 +5,47 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2025-10-25
+
+### Added
+
+- **Claude Code hooks for process enforcement** (#40, #41, #42, #43)
+  - Implemented modular hook system in `scripts/hooks/` directory
+  - **PreToolUse(Bash)**: Blocks commits to main branch (addresses #37)
+    - Allows hotfixes with "hotfix" or "emergency" in commit message
+    - Modular design with `check_*` functions for easy extension
+  - **PostToolUse(Bash)**: Monitors GitHub Actions after git push (addresses #36, #39)
+    - Automatically watches CI runs until completion
+    - Blocks Claude if CI fails, requiring fixes before continuing
+    - ~1-5ms overhead on non-push commands, intentional blocking on push
+  - **SessionStart**: Loads project context at session start
+    - Shows current branch, warns if on main
+    - Displays open issues and milestone progress
+    - Sets up environment variables
+  - Configuration in `.claude/settings.json` (checked into version control)
+  - Test suite in `tests/test_hooks.sh` (known issue #47 with test 2 hanging)
+
+### Documentation
+
+- **Comprehensive hook documentation** (2,500+ lines)
+  - `docs/reference/CLAUDE_CODE_HOOKS.md` - Complete implementation guide (9 hook types, examples, best practices)
+  - `docs/reference/HOOKS_COMPARISON.md` - Strategic comparison of hook systems (Git, GitHub Actions, Claude Code, pre-commit)
+  - `docs/reference/HOOK_SOLUTIONS_FOR_ALL_ISSUES.md` - Analysis of how to prevent all 13 ai-process issues using hooks
+- Updated `.claude/CLAUDE.md` with "Claude Code Hooks" section documenting active hooks
+- Updated prevention scripts in issues #37 and #39 to check for hook implementation
+
+### Fixed
+
+- Improved `tests/test_hooks.sh` to avoid branch switching that caused hooks to disappear
+  - Previous version tried to switch to main to test blocking, but hooks only exist on feature branch
+  - New approach tests hooks on current branch without switching
+  - Known issue: Test 2 hangs due to command substitution + nested quotes (#47)
+
+### Changed
+
+- Migrated issue #29 (version sync) to v0.6.3 milestone for release automation
+- Current version: v0.6.2 (Claude Code Hooks)
+
 ## [0.6.1] - 2025-10-20
 
 ### Fixed

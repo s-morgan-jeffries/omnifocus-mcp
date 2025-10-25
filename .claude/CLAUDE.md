@@ -1,7 +1,7 @@
 # OmniFocus MCP Server - Project Memory
 
-**Last Updated:** 2025-10-20
-**Current Version:** v0.6.1 (Maintenance Mode)
+**Last Updated:** 2025-10-25
+**Current Version:** v0.6.2 (Claude Code Hooks)
 
 **This file is automatically loaded by Claude Code when working on this project.**
 
@@ -254,6 +254,58 @@ git checkout -b docs/description     # For documentation
 - Keep main branch stable and deployable
 
 **See:** Issue #37 (ai-process) for why this matters
+
+**Automated enforcement:** Claude Code hooks automatically prevent commits to main branch (see below).
+
+---
+
+## Claude Code Hooks (Automated Enforcement)
+
+**Version:** v0.6.2+
+
+This project uses Claude Code hooks to automatically enforce workflow compliance. Hooks run during Claude Code sessions and cannot be bypassed.
+
+### Active Hooks
+
+**PreToolUse(Bash) - Branch Validation** (#41)
+- **Blocks:** Commits to main/master branch
+- **Allows:** Hotfixes (message contains "hotfix" or "emergency")
+- **Why:** Prevents working directly on main (#37)
+- **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
+
+**PostToolUse(Bash) - CI Monitoring** (#42)
+- **Monitors:** GitHub Actions after every `git push`
+- **Blocks:** Claude if CI fails (must fix before continuing)
+- **Why:** Prevents unnoticed CI failures (#36, #39)
+- **Config:** `.claude/settings.json` → `scripts/hooks/post_bash.sh`
+
+**SessionStart - Project Context** (#43)
+- **Loads:** Current branch, open issues, recent commits
+- **Warns:** If on main branch at session start
+- **Why:** Provides situational awareness
+- **Config:** `.claude/settings.json` → `scripts/hooks/session_start.sh`
+
+### How Hooks Work
+
+Hooks are modular bash scripts that run automatically:
+- **PreToolUse:** Before tool execution (can block commands)
+- **PostToolUse:** After tool execution (can inform Claude of failures)
+- **SessionStart:** At session start (injects context)
+
+Each hook script has a modular design with `check_*` functions for easy extension.
+
+### Hook Development
+
+**To add new checks:**
+1. Open relevant hook script (e.g., `scripts/hooks/pre_bash.sh`)
+2. Add new `check_*` function
+3. Add function name to `CHECKS` array
+4. Test manually: `echo '{"tool_name":"Bash",...}' | ./scripts/hooks/pre_bash.sh`
+
+**Documentation:**
+- Complete guide: `docs/reference/CLAUDE_CODE_HOOKS.md`
+- Comparison: `docs/reference/HOOKS_COMPARISON.md`
+- Issue solutions: `docs/reference/HOOK_SOLUTIONS_FOR_ALL_ISSUES.md`
 
 ---
 
