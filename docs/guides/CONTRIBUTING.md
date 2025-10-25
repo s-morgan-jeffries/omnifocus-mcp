@@ -41,6 +41,23 @@ git checkout -b docs/description     # Documentation
 
 **Only work on main for:** Hotfixes, trivial typo fixes, emergency rollbacks
 
+### Picking Issues to Work On
+
+**Priority order for contributors:**
+1. **Milestone issues first** - Pick from current milestone (highest priority)
+2. **Backlog issues** - Good first contributions, lower priority
+3. **New issues** - File an issue before starting significant work
+
+**Before starting:**
+- Check if issue is already assigned (avoid duplicate work)
+- Assign yourself to the issue: `gh issue edit <number> --add-assignee @me`
+- Comment on issue: "Working on this" (coordinates with others)
+
+**If you're unsure which issue to pick:**
+- Look for `good first issue` label
+- Ask in issue comments: "Is this still needed?"
+- Start with documentation or testing issues
+
 ### Filing Issues
 
 **File issues immediately when you encounter:**
