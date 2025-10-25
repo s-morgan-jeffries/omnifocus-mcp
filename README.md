@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.1 API):
+This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.2 API):
 
 ### Project Management (5 tools)
 - **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
@@ -32,7 +32,8 @@ This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.1 A
 - **get_perspectives** - List all custom perspectives
 - **switch_perspective** - Switch to a different perspective view
 
-**Key Changes in v0.6.1:**
+**Key Changes in v0.6.2:**
+- v0.6.2: Added Claude Code hooks for automated workflow enforcement (prevents commits to main, monitors CI failures)
 - v0.6.1: Fixed critical bug in project review dates + renamed internal components for clarity
 - v0.6.0: Consolidated 40+ functions into 16 comprehensive tools. All updates now go through `update_task()` and `update_project()` instead of specialized functions. See [CHANGELOG.md](CHANGELOG.md) for migration guide.
 
