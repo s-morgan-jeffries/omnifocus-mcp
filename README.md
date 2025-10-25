@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.3 API):
+This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.4 API):
 
 ### Project Management (5 tools)
 - **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
@@ -56,7 +56,7 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 
 # Checkout latest stable release
-git checkout v0.6.3  # Or latest version from releases
+git checkout v0.6.4  # Or latest version from releases
 
 # Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh

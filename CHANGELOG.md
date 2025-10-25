@@ -5,6 +5,28 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2025-10-25
+
+### Fixed
+
+- **Critical: Release hygiene enforcement** (#60)
+  - v0.6.3 was released with placeholder hygiene checks that didn't actually run
+  - Created actual check scripts:
+    - `scripts/run_all_tests.sh` - Runs ALL test suites (unit + integration + e2e)
+    - `scripts/check_test_coverage.sh` - Validates coverage, checks for TODO markers
+    - `scripts/check_documentation.sh` - Verifies CHANGELOG entries, version sync, key docs exist
+    - `scripts/check_code_quality.sh` - Checks complexity, TODOs, print statements, code smells
+    - `scripts/check_directory_organization.sh` - Identifies orphaned files
+  - Updated `scripts/git-hooks/pre-tag` to call actual checks instead of placeholders
+  - Documentation check is now blocking (critical)
+  - Coverage/quality/organization checks provide warnings but don't block
+
+### Changed
+
+- Added automation testing requirement to CLAUDE.md checklist
+  - Requires testing both happy path and failure scenarios before releasing automation
+  - Prevents releasing automation with only placeholder text
+
 ## [0.6.3] - 2025-10-25
 
 ### Added
