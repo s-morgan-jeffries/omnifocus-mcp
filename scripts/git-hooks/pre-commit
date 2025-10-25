@@ -79,7 +79,24 @@ if [ "$TEST_FILES_CHANGED" -gt 0 ]; then
     fi
 fi
 
-# Check 6: Complexity Documentation (complexity-spike)
+# Check 6: Issue Reference (#44)
+# Ensure commit message references an issue
+COMMIT_MSG_FILE=".git/COMMIT_EDITMSG"
+if [ -f "$COMMIT_MSG_FILE" ]; then
+    COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+    # Check if commit references an issue (#123) or MISTAKE-XXX
+    if ! echo "$COMMIT_MSG" | grep -qE "#[0-9]+|MISTAKE-[0-9]+"; then
+        # Allow certain commit types without issue references
+        if ! echo "$COMMIT_MSG" | grep -qiE "^(merge|revert|chore: (bump|update) version|docs: update (changelog|readme))"; then
+            WARNINGS+=("⚠️  MISSING-ISSUE: Commit message doesn't reference an issue")
+            WARNINGS+=("   Format: 'feat: description (#123)' or 'fix: description (#45)'")
+            WARNINGS+=("   Or create an issue first if this is significant work")
+        fi
+    fi
+fi
+
+# Check 7: Complexity Documentation (complexity-spike)
 # If omnifocus_client.py changed, suggest running complexity check
 if echo "$STAGED_FILES" | grep -q "omnifocus_client.py"; then
     WARNINGS+=("ℹ️  REMINDER: Run ./scripts/check_complexity.sh before commit")

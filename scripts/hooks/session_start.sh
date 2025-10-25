@@ -26,17 +26,44 @@ if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
     CONTEXT+="\`\`\`bash\ngit checkout -b feature/description\n\`\`\`\n\n"
 fi
 
-# Add open issues count
+# Add milestone information (#45)
 if command -v gh &> /dev/null; then
-    OPEN_ISSUES=$(gh issue list --state open --json number -q 'length' 2>/dev/null || echo "unknown")
-    CONTEXT+="**Open issues:** $OPEN_ISSUES\n\n"
+    # Get current version from pyproject.toml
+    CURRENT_VERSION=$(grep '^version = ' pyproject.toml 2>/dev/null | cut -d'"' -f2)
 
-    # Add current milestone (v0.6.2)
-    CURRENT_MILESTONE="v0.6.2"
-    MILESTONE_OPEN=$(gh issue list --milestone "$CURRENT_MILESTONE" --state open --json number -q 'length' 2>/dev/null || echo "0")
-    if [ "$MILESTONE_OPEN" != "0" ]; then
-        CONTEXT+="**Current milestone:** $CURRENT_MILESTONE ($MILESTONE_OPEN open issues)\n\n"
+    if [ -n "$CURRENT_VERSION" ]; then
+        # Calculate next patch version for current milestone
+        CURRENT_PATCH=$(echo "$CURRENT_VERSION" | sed 's/.*\.\([0-9]*\)$/\1/')
+        NEXT_PATCH=$((CURRENT_PATCH + 1))
+        CURRENT_MILESTONE="v0.6.$NEXT_PATCH"
+
+        # Check if milestone exists
+        MILESTONE_EXISTS=$(gh api repos/:owner/:repo/milestones --jq ".[] | select(.title == \"$CURRENT_MILESTONE\") | .number" 2>/dev/null)
+
+        if [ -n "$MILESTONE_EXISTS" ]; then
+            # Get open issues count
+            MILESTONE_OPEN=$(gh issue list --milestone "$CURRENT_MILESTONE" --state open --json number -q 'length' 2>/dev/null || echo "0")
+
+            CONTEXT+="**📍 Active Milestone:** $CURRENT_MILESTONE ($MILESTONE_OPEN open issues)\n"
+
+            # List open issues in milestone
+            if [ "$MILESTONE_OPEN" != "0" ]; then
+                MILESTONE_ISSUES=$(gh issue list --milestone "$CURRENT_MILESTONE" --state open --json number,title --jq '.[] | "  - #\(.number): \(.title)"' 2>/dev/null)
+                if [ -n "$MILESTONE_ISSUES" ]; then
+                    CONTEXT+="\n$MILESTONE_ISSUES\n"
+                fi
+            fi
+            CONTEXT+="\n"
+        else
+            CONTEXT+="**⚠️  No active milestone found!**\n"
+            CONTEXT+="Expected: $CURRENT_MILESTONE (based on current version v$CURRENT_VERSION)\n"
+            CONTEXT+="Action: Create milestone or assign issues to existing milestone\n\n"
+        fi
     fi
+
+    # Total open issues
+    OPEN_ISSUES=$(gh issue list --state open --json number -q 'length' 2>/dev/null || echo "unknown")
+    CONTEXT+="**Total open issues:** $OPEN_ISSUES\n\n"
 fi
 
 # Add recent commits
