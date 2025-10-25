@@ -145,6 +145,12 @@ pytest tests/test_claude_code_hooks.py -k claude_code
 1. **Claude Code hooks** are primary - they catch issues during AI coding sessions (the main workflow)
 2. **Git hooks** are backup - they catch issues during manual git operations
 
+**Decision (v0.6.4):** Keep both hook systems. Rationale:
+- Claude Code hooks only work during AI sessions
+- Git hooks provide safety net for manual operations
+- Minimal maintenance overhead (both use same check scripts)
+- Different triggering contexts (AI tool use vs git operations)
+
 Both systems coexist and complement each other. See [HOOKS_COMPARISON.md](HOOKS_COMPARISON.md) for full rationale.
 
 ## Related Documentation
