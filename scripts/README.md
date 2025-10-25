@@ -4,21 +4,14 @@ Utility scripts for development, testing, and maintenance of the OmniFocus MCP s
 
 ## Quick Reference
 
-> **Note:** All mistake tracking scripts now reference `.claude/mistakes/MISTAKES.md` (moved from `.claude/MISTAKES.md` in October 2025 reorganization).
+> **Note:** Mistake tracking system migrated to GitHub Issues (October 21, 2025). Legacy scripts archived in `scripts/archive/mistake-tracking-legacy/`. Use GitHub Issues with `ai-process` label for new mistake tracking.
 
 > **Test Setup:** Use `setup_test_database.sh` for integration testing. The v1/v2 variants are archived in `scripts/archive/` as experimental approaches.
 
-### Mistake Tracking & Prevention
+### Code Quality & Validation
 
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
-| `log_mistake.sh` | Log architectural mistakes for tracking | When catching high-level mistakes |
-| `update_mistake_status.sh` | Update mistake lifecycle status | During mistake resolution |
-| `update_metrics.sh` | Update METRICS.md statistics | After mistake changes |
-| `verify_prevention.sh` | Validate prevention implementation | Before marking mistake resolved |
-| `test_prevention_measures.sh` | Test that prevention scripts work | Before marking prevention validated |
-| `check_recurrence.sh` | Detect recurrence of prevented mistakes | Weekly/monthly reviews |
-| `check_monitoring_deadlines.sh` | Check verification deadlines | Weekly reviews |
 | `check_version_sync.sh` | Validate version across all files | Before version bumps / releases |
 | `check_test_count_sync.sh` | Validate TESTING.md matches pytest | Before commits with test changes |
 | `install-git-hooks.sh` | Install pre-commit/commit-msg hooks | First-time setup / hook updates |
