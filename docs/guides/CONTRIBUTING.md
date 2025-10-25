@@ -167,30 +167,57 @@ git branch -d feature/my-feature
 # 1. All milestone features merged to main
 # Each PR has passed CI individually
 
-# 2. Tag release candidate
-git checkout main
-git pull
-git tag v0.6.3-rc1
-git push --tags
+# 2. Bump version and update CHANGELOG
+./scripts/sync_version.sh  # Or manual edit of pyproject.toml
+# Edit CHANGELOG.md to add new version entry
+git commit -m "chore: bump version to v0.6.4"
 
-# 3. GitHub Actions runs comprehensive hygiene checks
-# - Test coverage review (subagent)
-# - Documentation completeness (subagent)
-# - Code quality review (subagent)
-# - Directory organization (subagent)
-# - Version sync verification
-# - Milestone status (all issues closed)
+# 3. Create release candidate tag
+# This triggers git pre-tag hook which:
+# - Runs all 9 hygiene checks
+# - Captures detailed results to .hygiene-check-results-v0.6.4-rc1.txt
+# - Displays summary with critical/warning counts
+# - Prompts to review warnings if any found
+# - Requires acknowledgment before proceeding
+git tag v0.6.4-rc1
 
-# 4. If checks fail, fix and tag rc2
-git commit -m "fix: address hygiene issues"
-git tag v0.6.3-rc2
-git push --tags
+# 4. Review hygiene check results
+# If warnings found, hook prompts:
+#   "Review detailed results? (y/n)"
+#   "Have you reviewed the warnings and decided they are acceptable? (y/n)"
+#
+# Review the full results file:
+less .hygiene-check-results-v0.6.4-rc1.txt
 
-# 5. When all checks pass, tag final release
-git tag v0.6.3
-git push --tags
+# 5. Push RC tag to trigger GitHub Actions
+git push origin v0.6.4-rc1
+
+# 6. If issues found, fix and create rc2
+# The hook will compare rc2 vs rc1:
+# - Shows improvement/regression in warning counts
+# - Tracks progress across iterations
+git commit -m "fix: address hygiene warnings"
+git tag v0.6.4-rc2
+git push origin v0.6.4-rc2
+
+# 7. When all checks pass, tag final release
+git tag v0.6.4
+git push origin v0.6.4
 # GitHub Actions auto-creates release and closes milestone
 ```
+
+**Hygiene Checks Run on RC Tags:**
+1. Version sync verification
+2. All test suites (unit + integration + e2e)
+3. Code complexity (Radon)
+4. Client-server parity
+5. Milestone status (all issues closed)
+6. Test coverage (gaps, TODO markers)
+7. Documentation completeness (CHANGELOG, versions, key docs)
+8. Code quality (TODOs, print statements, complexity)
+9. Directory organization (orphaned files)
+
+**Results saved to:** `.hygiene-check-results-{TAG}.txt` (gitignored)
 
 ### Why Trunk-Based?
 
