@@ -68,6 +68,105 @@ Use template `.github/ISSUE_TEMPLATE/ai-process-failure.md` for structured repor
 
 ---
 
+## Branching Strategy (Trunk-Based Development)
+
+**Version:** v0.6.3+
+
+This project follows **trunk-based development** - a modern approach aligned with CI/CD best practices.
+
+### Core Principles
+
+**Single `main` branch:**
+- Always releasable (all tests pass)
+- May contain unreleased features
+- Tags mark official releases (v0.6.3, v0.6.4, etc.)
+- RC tags trigger comprehensive hygiene checks (v0.6.3-rc1, rc2, etc.)
+
+**Feature branches:**
+- Short-lived (merge within days, not weeks)
+- Branch from main, PR back to main
+- Deleted after merge
+
+**No long-lived development branches** (no `develop`, no `staging`)
+
+### Contributor Workflow
+
+```bash
+# 1. Fork and clone (external contributors)
+git clone https://github.com/YOUR-USERNAME/omnifocus-mcp.git
+cd omnifocus-mcp
+
+# 2. Create feature branch from main
+git checkout main
+git pull upstream main  # Or origin if maintainer
+git checkout -b feature/my-feature  # Or fix/bug-name
+
+# 3. Make small, focused changes
+# - Follow TDD (write tests first)
+# - Commit frequently with clear messages
+# - Reference issue numbers (#47, #56, etc.)
+
+# 4. Push and create PR
+git push origin feature/my-feature
+gh pr create --base main --title "feat: description (#issue)"
+
+# 5. CI runs automatically
+# - All tests must pass
+# - Hygiene checks must pass
+# - Complexity within limits
+
+# 6. After merge, delete branch
+git branch -d feature/my-feature
+```
+
+### Release Workflow (Maintainers Only)
+
+```bash
+# 1. All milestone features merged to main
+# Each PR has passed CI individually
+
+# 2. Tag release candidate
+git checkout main
+git pull
+git tag v0.6.3-rc1
+git push --tags
+
+# 3. GitHub Actions runs comprehensive hygiene checks
+# - Test coverage review (subagent)
+# - Documentation completeness (subagent)
+# - Code quality review (subagent)
+# - Directory organization (subagent)
+# - Version sync verification
+# - Milestone status (all issues closed)
+
+# 4. If checks fail, fix and tag rc2
+git commit -m "fix: address hygiene issues"
+git tag v0.6.3-rc2
+git push --tags
+
+# 5. When all checks pass, tag final release
+git tag v0.6.3
+git push --tags
+# GitHub Actions auto-creates release and closes milestone
+```
+
+### Why Trunk-Based?
+
+**Modern CI/CD best practice:**
+- Faster feedback loops (no long-lived branch merges)
+- Simpler mental model (one branch)
+- Better for automation (CI on every PR)
+- Fewer merge conflicts (frequent small merges)
+
+**vs. GitFlow (deprecated approach):**
+- GitFlow uses `main` + `develop` + `release/*` branches
+- Designed for pre-CI/CD era with manual, risky releases
+- Adds complexity without benefit in modern workflows
+
+**Key difference:** Main is always releasable *because* of strong CI/CD, not in spite of development.
+
+---
+
 ## Test-Driven Development (TDD)
 
 This project follows Test-Driven Development (TDD). **This is non-negotiable.**
