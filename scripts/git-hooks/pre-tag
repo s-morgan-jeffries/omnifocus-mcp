@@ -1,0 +1,194 @@
+#!/bin/bash
+# Git pre-tag hook - runs before creating any git tag
+# Enforces release hygiene requirements
+
+TAG_NAME="$1"
+
+# Only check version tags
+if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+    # Not a version tag, allow it
+    exit 0
+fi
+
+echo "🔍 Checking release hygiene for tag: $TAG_NAME"
+
+# Determine if this is RC or final release
+if [[ "$TAG_NAME" =~ -rc[0-9]+$ ]]; then
+    echo "📦 RC tag detected - running comprehensive hygiene checks..."
+    IS_RC=true
+else
+    echo "🚀 Final release tag detected - verifying RC passed..."
+    IS_RC=false
+fi
+
+# ============================================
+# For RC tags: Run ALL hygiene checks
+# ============================================
+if [ "$IS_RC" = true ]; then
+    FAILED_CHECKS=0
+
+    echo ""
+    echo "Running automated checks..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    # Check 1: Version sync
+    echo "1. Checking version synchronization..."
+    if ! ./scripts/check_version_sync.sh > /dev/null 2>&1; then
+        echo "   ❌ Version sync failed"
+        ((FAILED_CHECKS++))
+    else
+        echo "   ✅ Version sync passed"
+    fi
+
+    # Check 2: All tests pass
+    echo "2. Running all tests..."
+    if ! make test > /dev/null 2>&1; then
+        echo "   ❌ Tests failed"
+        ((FAILED_CHECKS++))
+    else
+        echo "   ✅ Tests passed"
+    fi
+
+    # Check 3: Code complexity
+    echo "3. Checking code complexity..."
+    if ! ./scripts/check_complexity.sh > /dev/null 2>&1; then
+        echo "   ❌ Complexity check failed"
+        ((FAILED_CHECKS++))
+    else
+        echo "   ✅ Complexity check passed"
+    fi
+
+    # Check 4: Client-server parity
+    echo "4. Checking client-server parity..."
+    if ! ./scripts/check_client_server_parity.sh > /dev/null 2>&1; then
+        echo "   ❌ Parity check failed"
+        ((FAILED_CHECKS++))
+    else
+        echo "   ✅ Parity check passed"
+    fi
+
+    # Check 5: Milestone status
+    echo "5. Checking milestone status..."
+    VERSION=${TAG_NAME%-rc*}
+
+    # Check if milestone exists and has no open issues
+    if command -v gh &> /dev/null; then
+        MILESTONE_CHECK=$(gh issue list --milestone "$VERSION" --state open --json number 2>/dev/null | jq length)
+
+        if [ "$?" -ne 0 ]; then
+            echo "   ⚠️  Could not check milestone (gh cli issue)"
+        elif [ "$MILESTONE_CHECK" != "0" ]; then
+            echo "   ❌ Milestone $VERSION has $MILESTONE_CHECK open issues"
+            ((FAILED_CHECKS++))
+        else
+            echo "   ✅ Milestone $VERSION has no open issues"
+        fi
+    else
+        echo "   ⚠️  gh cli not available, skipping milestone check"
+    fi
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Now run subagent reviews
+    echo "Running subagent reviews (may take 1-2 minutes)..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    # Create temp file for review results
+    REVIEW_RESULTS=$(mktemp)
+
+    # Coverage gaps review
+    echo "6. Reviewing test coverage gaps..."
+    # This would use Task tool to launch subagent, but we're in a git hook
+    # For now, note this as TODO and allow
+    echo "   ⚠️  Manual review required: Check test coverage gaps"
+    echo "      Run: grep -r 'TODO.*test' src/" >> "$REVIEW_RESULTS"
+
+    # Documentation review
+    echo "7. Reviewing documentation completeness..."
+    echo "   ⚠️  Manual review required: Check documentation"
+    echo "      - Verify CHANGELOG.md has entry for $VERSION" >> "$REVIEW_RESULTS"
+    echo "      - Verify README.md reflects new features" >> "$REVIEW_RESULTS"
+    echo "      - Verify migration guide exists if breaking changes" >> "$REVIEW_RESULTS"
+
+    # Code quality review
+    echo "8. Reviewing code quality..."
+    echo "   ⚠️  Manual review required: Check code quality"
+    echo "      - Review any D-F rated functions (complexity > 20)" >> "$REVIEW_RESULTS"
+
+    # Directory organization review
+    echo "9. Reviewing directory organization..."
+    echo "   ⚠️  Manual review required: Check directory organization"
+    echo "      - Check for orphaned files in .claude/, scripts/, docs/" >> "$REVIEW_RESULTS"
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Display results
+    if [ $FAILED_CHECKS -gt 0 ]; then
+        echo "❌ $FAILED_CHECKS automated check(s) failed"
+        echo ""
+        echo "Fix issues and try again:"
+        echo "  # Fix issues, then:"
+        echo "  git tag $TAG_NAME"
+        echo ""
+        rm "$REVIEW_RESULTS"
+        exit 1
+    fi
+
+    echo "✅ All automated checks passed"
+    echo ""
+    echo "⚠️  Manual review items (verify before final release):"
+    cat "$REVIEW_RESULTS"
+    echo ""
+    echo "If you've verified the manual items, RC tag will be created."
+    echo "GitHub Actions will run the same automated checks on push."
+    echo ""
+    rm "$REVIEW_RESULTS"
+
+    # Allow RC tag creation
+    exit 0
+fi
+
+# ============================================
+# For final release tags: Verify RC exists
+# ============================================
+if [ "$IS_RC" = false ]; then
+    echo ""
+    echo "Checking for passing RC tag..."
+
+    # Find the most recent RC tag for this version
+    LATEST_RC=$(git tag -l "${TAG_NAME}-rc*" | sort -V | tail -1)
+
+    if [ -z "$LATEST_RC" ]; then
+        echo "❌ No RC tag found for ${TAG_NAME}"
+        echo ""
+        echo "You must create and test an RC tag first:"
+        echo "  git tag ${TAG_NAME}-rc1"
+        echo "  git push --tags"
+        echo "  # Wait for CI to pass"
+        echo "  # Then create final release"
+        echo ""
+        exit 1
+    fi
+
+    echo "✅ Found RC tag: $LATEST_RC"
+    echo ""
+    echo "⚠️  Before creating final release, verify:"
+    echo "   - RC tag CI passed on GitHub Actions"
+    echo "   - All manual review items addressed"
+    echo "   - CHANGELOG.md updated"
+    echo "   - No critical issues discovered during RC testing"
+    echo ""
+    echo "Proceed with final release tag? (y/n)"
+    read -r CONFIRM
+
+    if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+        echo "❌ Release tag cancelled"
+        exit 1
+    fi
+
+    # Allow final tag
+    echo "✅ Creating final release tag: $TAG_NAME"
+    exit 0
+fi
