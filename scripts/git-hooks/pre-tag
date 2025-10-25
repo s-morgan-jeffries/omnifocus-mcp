@@ -26,6 +26,43 @@ fi
 # ============================================
 if [ "$IS_RC" = true ]; then
     FAILED_CHECKS=0
+    WARNINGS=0
+
+    # Create results file
+    RESULTS_FILE=".hygiene-check-results-${TAG_NAME}.txt"
+    echo "Hygiene Check Results for $TAG_NAME" > "$RESULTS_FILE"
+    echo "Generated: $(date)" >> "$RESULTS_FILE"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$RESULTS_FILE"
+    echo "" >> "$RESULTS_FILE"
+
+    # Helper function to run check and capture output
+    run_check() {
+        local check_num="$1"
+        local check_name="$2"
+        local check_cmd="$3"
+        local is_critical="${4:-false}"  # Default to non-critical
+
+        echo "$check_num. $check_name..." | tee -a "$RESULTS_FILE"
+
+        local output
+        if output=$(eval "$check_cmd" 2>&1); then
+            echo "   ✅ Passed" | tee -a "$RESULTS_FILE"
+            echo "$output" >> "$RESULTS_FILE"
+            echo "" >> "$RESULTS_FILE"
+        else
+            if [ "$is_critical" = "true" ]; then
+                echo "   ❌ Failed (critical)" | tee -a "$RESULTS_FILE"
+                echo "$output" >> "$RESULTS_FILE"
+                echo "" >> "$RESULTS_FILE"
+                ((FAILED_CHECKS++))
+            else
+                echo "   ⚠️  Warning (non-blocking)" | tee -a "$RESULTS_FILE"
+                echo "$output" >> "$RESULTS_FILE"
+                echo "" >> "$RESULTS_FILE"
+                ((WARNINGS++))
+            fi
+        fi
+    }
 
     echo ""
     echo "Running automated checks..."
@@ -144,7 +181,46 @@ if [ "$IS_RC" = true ]; then
         exit 1
     fi
 
+    # ============================================
+    # Display summary and prompt for review
+    # ============================================
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Hygiene Check Summary for $TAG_NAME"
+    echo ""
+    echo "CRITICAL: $FAILED_CHECKS blocking issue(s)"
+    echo "WARNINGS: $WARNINGS non-blocking issue(s)"
+    echo ""
+    echo "Full results saved to: $RESULTS_FILE"
+    echo ""
+
+    if [ $WARNINGS -gt 0 ]; then
+        echo "⚠️  There are $WARNINGS warning(s) that should be reviewed."
+        echo ""
+        echo "Review detailed results? (y/n)"
+        read -r REVIEW_RESPONSE
+
+        if [ "$REVIEW_RESPONSE" = "y" ] || [ "$REVIEW_RESPONSE" = "Y" ]; then
+            less "$RESULTS_FILE"
+        fi
+
+        echo ""
+        echo "Have you reviewed the warnings and decided they are acceptable? (y/n)"
+        read -r ACKNOWLEDGE
+
+        if [ "$ACKNOWLEDGE" != "y" ] && [ "$ACKNOWLEDGE" != "Y" ]; then
+            echo "❌ Warnings not acknowledged. Fix issues or acknowledge before proceeding."
+            echo ""
+            echo "To review later: less $RESULTS_FILE"
+            echo "To retry: git tag $TAG_NAME"
+            exit 1
+        fi
+    fi
+
     echo "✅ All critical checks passed"
+    if [ $WARNINGS -gt 0 ]; then
+        echo "⚠️  $WARNINGS warnings acknowledged"
+    fi
     echo ""
     echo "RC tag will be created. Push to trigger GitHub Actions:"
     echo "  git push origin $TAG_NAME"
