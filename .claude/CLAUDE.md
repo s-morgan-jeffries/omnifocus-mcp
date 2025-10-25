@@ -358,6 +358,28 @@ See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
 ---
 
+## Before Closing Issues
+
+**CRITICAL: Check acceptance criteria before claiming an issue is "done".**
+
+When resolving an issue:
+- [ ] **Check acceptance criteria** - Every issue has acceptance criteria in its description
+- [ ] **Verify ALL criteria met** - Not "mostly done" or "4/5" - ALL must be satisfied
+- [ ] **Test the implementation** - Ensure solution actually works as specified
+- [ ] **Close with verification** - Comment listing which commits address which criteria
+
+**Example closing comment:**
+```
+Completed all acceptance criteria:
+- ✅ Criterion 1: Description (commit abc123)
+- ✅ Criterion 2: Description (commit def456)
+- ✅ Criterion 3: Description (commit ghi789)
+```
+
+**NEVER claim an issue is "done" or "completed" without checking its acceptance criteria.**
+
+---
+
 ## Issue Tracking
 
 This project uses GitHub Issues for all tracking: bugs, features, documentation, and AI process failures.
