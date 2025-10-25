@@ -36,9 +36,30 @@ echo "✅ Installed commit-msg hook"
 echo "   - Validates 'Resolves: MISTAKE-XXX' format"
 echo "   - Ensures referenced mistake exists in MISTAKES.md"
 echo ""
+
+# Install pre-tag hook (new in v0.6.3)
+if [ -f ".git/hooks/pre-tag" ]; then
+    echo "⚠️  .git/hooks/pre-tag already exists"
+    echo "   Backing up to .git/hooks/pre-tag.backup"
+    mv .git/hooks/pre-tag .git/hooks/pre-tag.backup
+fi
+
+# Check if pre-tag hook exists in source
+if [ -f "scripts/git-hooks/pre-tag" ]; then
+    cp scripts/git-hooks/pre-tag .git/hooks/pre-tag
+    chmod +x .git/hooks/pre-tag
+
+    echo "✅ Installed pre-tag hook"
+    echo "   - Enforces release hygiene checks on RC tags"
+    echo "   - Runs tests, version sync, complexity checks"
+    echo "   - Verifies milestone status"
+    echo "   - Requires RC tag before final release"
+    echo ""
+fi
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Git hooks installed successfully!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "To uninstall:"
-echo "  rm .git/hooks/pre-commit .git/hooks/commit-msg"
+echo "  rm .git/hooks/pre-commit .git/hooks/commit-msg .git/hooks/pre-tag"

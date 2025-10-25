@@ -45,6 +45,34 @@ EOF
 }
 
 # ===================================================
+# CHECK: Enforce release hygiene for RC tags
+# Related issues: #46, #29
+# ===================================================
+check_rc_tag_hygiene() {
+    # Only check git tag commands
+    if ! echo "$COMMAND" | grep -qE "^git tag"; then
+        return 0
+    fi
+
+    # Extract tag name from command
+    TAG_NAME=$(echo "$COMMAND" | sed -n 's/^git tag \([^ ]*\).*/\1/p')
+
+    # Check if it's an RC tag (v0.6.3-rc1, etc.)
+    if ! echo "$TAG_NAME" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$"; then
+        # Not an RC tag, allow it
+        return 0
+    fi
+
+    cat >&2 <<EOF
+{
+  "permissionDecision": "deny",
+  "permissionDecisionReason": "🔍 RC tag detected: $TAG_NAME\n\n❌ Cannot create RC tag directly.\n\nUse the git pre-tag hook instead:\n  1. Install git hooks: ./scripts/install-git-hooks.sh\n  2. Create tag: git tag $TAG_NAME\n\nThe git pre-tag hook will:\n  ✅ Run all automated checks (tests, version sync, complexity, milestone)\n  ⚠️  Remind you to verify manual review items\n  🚀 Allow tag creation after confirmation\n\nWhy? Git hooks can run expensive checks (tests, CI verification) without\nblocking Claude Code. Claude Code hooks are for quick validations only.\n\nAlternatively, if you've already run the checks manually:\n  git tag $TAG_NAME  # Run in terminal, not through Claude Code"
+}
+EOF
+    return 2
+}
+
+# ===================================================
 # Add new checks here as functions
 # ===================================================
 
@@ -60,6 +88,7 @@ EOF
 # Array of check functions to run
 CHECKS=(
     check_no_commits_to_main
+    check_rc_tag_hygiene
     # Add more checks here
 )
 

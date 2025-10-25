@@ -1,0 +1,122 @@
+name: Release Hygiene Checks
+
+on:
+  push:
+    tags:
+      - 'v*-rc*'  # Triggers on v0.6.3-rc1, v0.6.3-rc2, etc.
+
+jobs:
+  hygiene-checks:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for version comparison
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run all unit tests
+        run: |
+          pytest tests/ -v --tb=short
+
+      - name: Check version synchronization
+        run: |
+          ./scripts/check_version_sync.sh
+
+      - name: Check code complexity
+        run: |
+          ./scripts/check_complexity.sh
+
+      - name: Verify client-server parity
+        run: |
+          ./scripts/check_client_server_parity.sh
+
+      - name: Check test count sync
+        run: |
+          ./scripts/check_test_count_sync.sh
+
+      - name: Verify milestone status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract version from tag (v0.6.3-rc1 → v0.6.3)
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME%-rc*}
+
+          echo "📊 Checking milestone: $VERSION"
+
+          # Check if milestone exists
+          if ! gh api repos/${{ github.repository }}/milestones --jq ".[].title" | grep -q "^${VERSION}$"; then
+            echo "❌ Milestone $VERSION does not exist"
+            exit 1
+          fi
+
+          # Get milestone number
+          MILESTONE_NUM=$(gh api repos/${{ github.repository }}/milestones --jq ".[] | select(.title == \"${VERSION}\") | .number")
+
+          # Check for open issues in milestone
+          OPEN_ISSUES=$(gh api repos/${{ github.repository }}/issues --jq ".[] | select(.milestone.number == ${MILESTONE_NUM} and .state == \"open\") | .number")
+
+          if [ -n "$OPEN_ISSUES" ]; then
+            echo "❌ Milestone $VERSION has open issues:"
+            echo "$OPEN_ISSUES" | while read -r issue; do
+              TITLE=$(gh issue view "$issue" --json title --jq '.title')
+              echo "  - #$issue: $TITLE"
+            done
+            exit 1
+          fi
+
+          echo "✅ Milestone $VERSION has no open issues"
+
+          # Check if next milestone exists
+          CURRENT_PATCH=$(echo "$VERSION" | sed 's/v0\.\([0-9]*\)\.\([0-9]*\)/\2/')
+          NEXT_PATCH=$((CURRENT_PATCH + 1))
+          NEXT_VERSION="v0.6.$NEXT_PATCH"
+
+          if ! gh api repos/${{ github.repository }}/milestones --jq ".[].title" | grep -q "^${NEXT_VERSION}$"; then
+            echo "⚠️  Warning: Next milestone $NEXT_VERSION does not exist"
+            echo "   Consider creating it for future work planning"
+          else
+            echo "✅ Next milestone $NEXT_VERSION exists"
+          fi
+
+      - name: Post results summary
+        if: always()
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME%-rc*}
+
+          echo "## Release Hygiene Check Results for $TAG_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Version:** $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "**RC Tag:** $TAG_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ **All hygiene checks passed!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Ready to tag final release:" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "git tag $VERSION" >> $GITHUB_STEP_SUMMARY
+            echo "git push --tags" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Some hygiene checks failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Fix issues and tag a new RC:" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "# Fix issues, then:" >> $GITHUB_STEP_SUMMARY
+            echo "git tag ${TAG_NAME%-*}-rc$((${TAG_NAME##*-rc} + 1))" >> $GITHUB_STEP_SUMMARY
+            echo "git push --tags" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

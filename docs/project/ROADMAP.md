@@ -2,11 +2,13 @@
 
 ## Status: Phase 3 (API Redesign) Complete ✅
 
-**Current Version:** v0.6.1 (October 2025)
+**Current Version:** v0.6.2 (October 2025)
 
 **Project Status:** Maintenance mode - Core MCP server is feature-complete with 16 comprehensive tools covering all OmniFocus primitives.
 
-**Latest:** v0.6.1 fixed project review date bug and renamed `omnifocus_client` → `omnifocus_connector` for industry-standard terminology.
+**Latest:**
+- v0.6.2 (Oct 2025): Added Claude Code hooks for automated workflow enforcement
+- v0.6.1 (Oct 2025): Fixed project review date bug, renamed `omnifocus_client` → `omnifocus_connector`
 
 **Note**: This roadmap has been revised. The original vision included email forwarding, calendar integration, and other application-layer features. However, these don't belong in an MCP server - they should be separate services or applications that *use* the MCP server.
 
@@ -65,6 +67,29 @@
 - ✅ Database name whitelist
 - ✅ Runtime verification via AppleScript
 - ✅ All destructive operations protected
+
+### Development Process & Workflow
+
+**Branching Strategy (v0.6.3+):** Trunk-based development
+- Single `main` branch (always releasable, tests pass)
+- Feature branches short-lived (merge within days)
+- Tags mark releases (v0.6.3, v0.6.4, etc.)
+- RC tags trigger hygiene checks (v0.6.3-rc1, rc2, etc.)
+- **Rationale:** Modern CI/CD best practice - faster feedback, simpler workflow, better automation
+- **See:** `../guides/CONTRIBUTING.md` for complete workflow
+- **Decision:** Issue #56 (Oct 2025) - replaced GitFlow approach
+
+**Test-Driven Development:** Non-negotiable
+- Write failing test first
+- Implement minimal code to pass
+- Three-tier testing: unit, integration, e2e
+- 89% code coverage
+
+**Workflow Enforcement:** Automated via Claude Code hooks (v0.6.2+)
+- Blocks commits to main branch
+- Monitors CI failures after git push
+- Loads project context at session start
+- **See:** `.claude/CLAUDE.md` for hook documentation
 
 ---
 

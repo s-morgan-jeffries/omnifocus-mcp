@@ -307,6 +307,23 @@ Each hook script has a modular design with `check_*` functions for easy extensio
 - Comparison: `docs/reference/HOOKS_COMPARISON.md`
 - Issue solutions: `docs/reference/HOOK_SOLUTIONS_FOR_ALL_ISSUES.md`
 
+### Git Hooks (Legacy)
+
+**Note:** Git hooks (`scripts/git-hooks/`) were the primary enforcement mechanism in v0.6.1 and earlier, but are now **secondary** to Claude Code hooks (v0.6.2+).
+
+**Why Claude Code hooks are preferred:**
+- Run during AI coding sessions (primary use case)
+- Can block AI actions in real-time
+- Modular design for easy extension
+- Integrated with Claude Code workflow
+
+**Git hooks still used for:**
+- Pre-commit mistake detection (validates commits)
+- Commit message formatting
+- Backup enforcement when not using Claude Code
+
+Both systems coexist. Claude Code hooks are the primary enforcement mechanism, while git hooks provide backup validation during manual git operations.
+
 ---
 
 ## Before Every Commit

@@ -46,34 +46,42 @@ This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.2 A
 
 ## Installation
 
-### Option 1: Using UV (Recommended)
+### Stable Release (Recommended)
+
+Install from a specific version tag for stability:
 
 ```bash
-# Install uv if you haven't already
+# Clone this repository
+git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
+cd omnifocus-mcp
+
+# Checkout latest stable release
+git checkout v0.6.2  # Or latest version from releases
+
+# Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Clone this repository
-git clone <your-repo-url>
-cd omnifocus-mcp
-
-# Install dependencies
 uv pip install -e .
-```
 
-### Option 2: Using pip
-
-```bash
-# Clone this repository
-git clone <your-repo-url>
-cd omnifocus-mcp
-
-# Create a virtual environment
+# Option 2: Using pip
 python3 -m venv venv
 source venv/bin/activate
-
-# Install in development mode with dependencies
 pip install -e ".[dev]"
 ```
+
+### Development / Latest Features
+
+Use the main branch for the latest unreleased features (always releasable, tests pass):
+
+```bash
+# Clone this repository
+git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
+cd omnifocus-mcp
+# main branch is default - always releasable but may have unreleased features
+
+# Install with UV or pip (same as above)
+```
+
+**Note:** Main branch follows trunk-based development - it's always releasable and tests pass, but may contain features not yet included in a tagged release. For production use, install from a specific version tag.
 
 ## Configuration
 
