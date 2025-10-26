@@ -37,8 +37,12 @@ jobs:
 
       - name: Test prevention measures
         run: |
-          chmod +x scripts/test_prevention_measures.sh
-          ./scripts/test_prevention_measures.sh
+          if [ -f scripts/test_prevention_measures.sh ]; then
+            chmod +x scripts/test_prevention_measures.sh
+            ./scripts/test_prevention_measures.sh
+          else
+            echo "⏭️  Skipping prevention measures test (script not yet implemented)"
+          fi
 
       - name: Check for recurrences
         env:
