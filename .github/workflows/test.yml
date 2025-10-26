@@ -27,7 +27,7 @@ jobs:
           pip install -e .
 
       - name: Run unit tests
-        run: make test
+        run: pytest tests/
         timeout-minutes: 5
 
       - name: Check code complexity
@@ -71,7 +71,10 @@ jobs:
 
       - name: Run integration tests
         if: steps.check-omnifocus.outputs.available == 'true'
-        run: make test-integration
+        run: |
+          export OMNIFOCUS_TEST_MODE=true
+          export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
+          pytest tests/test_integration_real.py -v
         timeout-minutes: 10
         continue-on-error: true
 
