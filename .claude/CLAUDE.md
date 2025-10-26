@@ -270,7 +270,15 @@ This project uses Claude Code hooks to automatically enforce workflow compliance
 **PreToolUse(Bash) - Branch Validation** (#41)
 - **Blocks:** Commits to main/master branch
 - **Allows:** Hotfixes (message contains "hotfix" or "emergency")
+- **Allows:** Commits to release/* branches (for release preparation)
 - **Why:** Prevents working directly on main (#37)
+- **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
+
+**PreToolUse(Bash) - Issue Close Verification** (#66)
+- **Blocks:** All `gh issue close` commands
+- **Requires:** Verification of acceptance criteria before proceeding
+- **Prompts:** Claude to review criteria, create tracking issues, get user approval
+- **Why:** Prevents closing issues without verifying all acceptance criteria (#63)
 - **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
 
 **PostToolUse(Bash) - CI Monitoring** (#42)
