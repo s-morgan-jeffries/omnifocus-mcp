@@ -2,16 +2,26 @@
 # PreToolUse hook for Bash commands
 # Runs multiple checks before Bash tool execution
 #
+# IMPORTANT: Hook configuration is loaded at session start.
+# After modifying this script or .claude/settings.json, restart Claude Code
+# for changes to take effect. Changes won't apply to current session.
+#
 # To add new checks:
 # 1. Create a new check_* function below
 # 2. Add function name to CHECKS array
 # 3. Function should return 0 (allow) or 2 (block with error on stderr)
+# 4. Test manually: echo '{"tool_input":{"command":"test"}}' | ./scripts/hooks/pre_bash.sh
+# 5. Restart Claude Code session to activate
 
 # Read JSON input from stdin
 INPUT=$(cat)
 
 # Extract command from tool input
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command')
+
+# DEBUG: Log all hook invocations
+echo "=== Hook invoked at $(date) ===" >> /tmp/pre_bash_hook.log
+echo "Command: $COMMAND" >> /tmp/pre_bash_hook.log
 
 # ===================================================
 # CHECK: Prevent commits to main branch

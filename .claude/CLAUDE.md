@@ -308,7 +308,15 @@ Each hook script has a modular design with `check_*` functions for easy extensio
 1. Open relevant hook script (e.g., `scripts/hooks/pre_bash.sh`)
 2. Add new `check_*` function
 3. Add function name to `CHECKS` array
-4. Test manually: `echo '{"tool_name":"Bash",...}' | ./scripts/hooks/pre_bash.sh`
+4. Test manually: `echo '{"tool_input":{"command":"test"}}' | ./scripts/hooks/pre_bash.sh`
+5. **Restart Claude Code session** to activate (hooks load at startup)
+
+**IMPORTANT:** Hook configuration is loaded at session start. Changes to hook scripts or `.claude/settings.json` require restarting Claude Code to take effect.
+
+**Testing hooks:**
+- Manual test: Use echo with JSON input (see step 4 above)
+- Runtime test: Add debug logging to `/tmp/hook_name.log` and restart session
+- Verify hook runs: Check log file after triggering relevant tool
 
 **Documentation:**
 - Complete guide: `docs/reference/CLAUDE_CODE_HOOKS.md`
