@@ -278,6 +278,7 @@ This project uses Claude Code hooks to automatically enforce workflow compliance
 - **Blocks:** All `gh issue close` commands
 - **Requires:** Verification of acceptance criteria before proceeding
 - **Prompts:** Claude to review criteria, create tracking issues, get user approval
+- **Bypass:** After user approval, prefix command with `CLAUDE_VERIFIED=1`
 - **Why:** Prevents closing issues without verifying all acceptance criteria (#63)
 - **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
 

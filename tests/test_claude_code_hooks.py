@@ -127,6 +127,38 @@ class TestPreBashHook:
 
         assert result.returncode == 0, f"Hotfix commits should be allowed on main. stderr: {result.stderr.decode()}"
 
+    def test_blocks_issue_close_without_approval(self):
+        """Issue close commands should be blocked to require verification."""
+        hook_input = json.dumps({
+            "tool_name": "Bash",
+            "tool_input": {"command": "gh issue close 123"}
+        })
+
+        result = subprocess.run(
+            [str(HOOKS_DIR / "pre_bash.sh")],
+            input=hook_input.encode(),
+            capture_output=True,
+        )
+
+        assert result.returncode == 2, "Issue close should be blocked by default"
+        assert b"Acceptance criteria verification required" in result.stderr
+        assert b"#123" in result.stderr
+
+    def test_allows_issue_close_with_verified_flag(self):
+        """Issue close with CLAUDE_VERIFIED=1 should be allowed."""
+        hook_input = json.dumps({
+            "tool_name": "Bash",
+            "tool_input": {"command": "CLAUDE_VERIFIED=1 gh issue close 123"}
+        })
+
+        result = subprocess.run(
+            [str(HOOKS_DIR / "pre_bash.sh")],
+            input=hook_input.encode(),
+            capture_output=True,
+        )
+
+        assert result.returncode == 0, f"Issue close with CLAUDE_VERIFIED=1 should be allowed. stderr: {result.stderr.decode()}"
+
 
 class TestPostBashHook:
     """Tests for post_bash.sh hook."""

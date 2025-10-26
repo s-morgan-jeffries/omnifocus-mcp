@@ -97,6 +97,11 @@ check_issue_close_criteria() {
         return 0
     fi
 
+    # Allow bypass with CLAUDE_VERIFIED=1 environment variable
+    if echo "$COMMAND" | grep -qE "^CLAUDE_VERIFIED=1 "; then
+        return 0
+    fi
+
     # Extract issue number from command
     ISSUE_NUM=$(echo "$COMMAND" | sed -n 's/.*gh issue close \([0-9]*\).*/\1/p')
 
@@ -104,7 +109,7 @@ check_issue_close_criteria() {
     cat >&2 <<EOF
 {
   "permissionDecision": "deny",
-  "permissionDecisionReason": "🔍 Attempting to close issue #${ISSUE_NUM}\n\n**BLOCKED: Acceptance criteria verification required**\n\nBefore closing this issue, you MUST:\n\n1. ✅ Check the issue's acceptance criteria on GitHub\n2. ✅ Verify ALL criteria are complete (not 'deferred' or 'partial')\n3. ✅ Create tracking issues for any incomplete criteria\n4. ✅ Include verification in closing comment\n\n**Required closing comment format:**\n\`\`\`\nCompleted all acceptance criteria:\n- ✅ Criterion 1: Description (commit abc123)\n- ✅ Criterion 2: Description (commit def456)\n- ⏳ Criterion 3: Deferred to #XX (reason)\n\`\`\`\n\n**Next steps:**\n1. Fetch issue #${ISSUE_NUM} to review acceptance criteria\n2. Verify each criterion is addressed\n3. Create tracking issues for incomplete items (if any)\n4. Ask user: 'I've verified all acceptance criteria for #${ISSUE_NUM}. The closing comment includes verification. Proceed with closing?'\n5. Only after user approval, close the issue\n\nSee .claude/CLAUDE.md 'Before Closing Issues' section."
+  "permissionDecisionReason": "🔍 Attempting to close issue #${ISSUE_NUM}\n\n**BLOCKED: Acceptance criteria verification required**\n\nBefore closing this issue, you MUST:\n\n1. ✅ Check the issue's acceptance criteria on GitHub\n2. ✅ Verify ALL criteria are complete (not 'deferred' or 'partial')\n3. ✅ Create tracking issues for any incomplete criteria\n4. ✅ Include verification in closing comment\n\n**Required closing comment format:**\n\`\`\`\nCompleted all acceptance criteria:\n- ✅ Criterion 1: Description (commit abc123)\n- ✅ Criterion 2: Description (commit def456)\n- ⏳ Criterion 3: Deferred to #XX (reason)\n\`\`\`\n\n**Next steps:**\n1. Fetch issue #${ISSUE_NUM} to review acceptance criteria\n2. Verify each criterion is addressed\n3. Create tracking issues for incomplete items (if any)\n4. Ask user: 'I've verified all acceptance criteria for #${ISSUE_NUM}. The closing comment includes verification. Proceed with closing?'\n5. **After user approval**, retry with: CLAUDE_VERIFIED=1 gh issue close ${ISSUE_NUM} --comment \"...\"\n\nSee .claude/CLAUDE.md 'Before Closing Issues' section."
 }
 EOF
     # Return code 2 = blocking error (Claude must address)
