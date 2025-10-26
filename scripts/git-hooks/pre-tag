@@ -12,13 +12,39 @@ fi
 
 echo "🔍 Checking release hygiene for tag: $TAG_NAME"
 
+# Get current branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
 # Determine if this is RC or final release
 if [[ "$TAG_NAME" =~ -rc[0-9]+$ ]]; then
     echo "📦 RC tag detected - running comprehensive hygiene checks..."
     IS_RC=true
+
+    # RC tags must be on release/* branches
+    if [[ ! "$CURRENT_BRANCH" =~ ^release/ ]]; then
+        echo "❌ RC tags must be created on release/* branches"
+        echo "   Current branch: $CURRENT_BRANCH"
+        echo ""
+        echo "Create a release branch first:"
+        echo "  git checkout -b release/${TAG_NAME%-rc*}"
+        echo "  git tag $TAG_NAME"
+        exit 1
+    fi
 else
     echo "🚀 Final release tag detected - verifying RC passed..."
     IS_RC=false
+
+    # Final tags must be on main
+    if [ "$CURRENT_BRANCH" != "main" ]; then
+        echo "❌ Final release tags must be created on main branch"
+        echo "   Current branch: $CURRENT_BRANCH"
+        echo ""
+        echo "Merge release branch to main first:"
+        echo "  git checkout main"
+        echo "  git merge release/${TAG_NAME}"
+        echo "  git tag $TAG_NAME"
+        exit 1
+    fi
 fi
 
 # ============================================
@@ -26,49 +52,99 @@ fi
 # ============================================
 if [ "$IS_RC" = true ]; then
     FAILED_CHECKS=0
+    WARNINGS=0
+
+    # Create results file
+    RESULTS_FILE=".hygiene-check-results-${TAG_NAME}.txt"
+    echo "Hygiene Check Results for $TAG_NAME" > "$RESULTS_FILE"
+    echo "Generated: $(date)" >> "$RESULTS_FILE"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$RESULTS_FILE"
+    echo "" >> "$RESULTS_FILE"
+
+    # Helper function to run check and capture output
+    run_check() {
+        local check_num="$1"
+        local check_name="$2"
+        local check_cmd="$3"
+        local is_critical="${4:-false}"  # Default to non-critical
+
+        echo "$check_num. $check_name..." | tee -a "$RESULTS_FILE"
+
+        local output
+        if output=$(eval "$check_cmd" 2>&1); then
+            echo "   ✅ Passed" | tee -a "$RESULTS_FILE"
+            echo "$output" >> "$RESULTS_FILE"
+            echo "" >> "$RESULTS_FILE"
+        else
+            if [ "$is_critical" = "true" ]; then
+                echo "   ❌ Failed (critical)" | tee -a "$RESULTS_FILE"
+                echo "$output" >> "$RESULTS_FILE"
+                echo "" >> "$RESULTS_FILE"
+                ((FAILED_CHECKS++))
+            else
+                echo "   ⚠️  Warning (non-blocking)" | tee -a "$RESULTS_FILE"
+                echo "$output" >> "$RESULTS_FILE"
+                echo "" >> "$RESULTS_FILE"
+                ((WARNINGS++))
+            fi
+        fi
+    }
 
     echo ""
-    echo "Running automated checks..."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Running automated checks..." | tee -a "$RESULTS_FILE"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
+    echo "" >> "$RESULTS_FILE"
 
     # Check 1: Version sync
-    echo "1. Checking version synchronization..."
-    if ! ./scripts/check_version_sync.sh > /dev/null 2>&1; then
-        echo "   ❌ Version sync failed"
+    echo "1. Checking version synchronization..." | tee -a "$RESULTS_FILE"
+    SYNC_OUTPUT=$(./scripts/check_version_sync.sh 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Version sync failed" | tee -a "$RESULTS_FILE"
+        echo "$SYNC_OUTPUT" >> "$RESULTS_FILE"
         ((FAILED_CHECKS++))
     else
-        echo "   ✅ Version sync passed"
+        echo "   ✅ Version sync passed" | tee -a "$RESULTS_FILE"
     fi
+    echo "" >> "$RESULTS_FILE"
 
     # Check 2: All tests pass (unit, integration, e2e)
-    echo "2. Running all tests..."
-    if ! ./scripts/run_all_tests.sh > /dev/null 2>&1; then
-        echo "   ❌ Tests failed"
+    echo "2. Running all tests..." | tee -a "$RESULTS_FILE"
+    TEST_OUTPUT=$(./scripts/run_all_tests.sh 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Tests failed" | tee -a "$RESULTS_FILE"
+        echo "$TEST_OUTPUT" >> "$RESULTS_FILE"
         ((FAILED_CHECKS++))
     else
-        echo "   ✅ All tests passed"
+        echo "   ✅ All tests passed" | tee -a "$RESULTS_FILE"
     fi
+    echo "" >> "$RESULTS_FILE"
 
     # Check 3: Code complexity
-    echo "3. Checking code complexity..."
-    if ! ./scripts/check_complexity.sh > /dev/null 2>&1; then
-        echo "   ❌ Complexity check failed"
+    echo "3. Checking code complexity..." | tee -a "$RESULTS_FILE"
+    COMPLEXITY_OUTPUT=$(./scripts/check_complexity.sh 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Complexity check failed" | tee -a "$RESULTS_FILE"
+        echo "$COMPLEXITY_OUTPUT" >> "$RESULTS_FILE"
         ((FAILED_CHECKS++))
     else
-        echo "   ✅ Complexity check passed"
+        echo "   ✅ Complexity check passed" | tee -a "$RESULTS_FILE"
     fi
+    echo "" >> "$RESULTS_FILE"
 
     # Check 4: Client-server parity
-    echo "4. Checking client-server parity..."
-    if ! ./scripts/check_client_server_parity.sh > /dev/null 2>&1; then
-        echo "   ❌ Parity check failed"
+    echo "4. Checking client-server parity..." | tee -a "$RESULTS_FILE"
+    PARITY_OUTPUT=$(./scripts/check_client_server_parity.sh 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Parity check failed" | tee -a "$RESULTS_FILE"
+        echo "$PARITY_OUTPUT" >> "$RESULTS_FILE"
         ((FAILED_CHECKS++))
     else
-        echo "   ✅ Parity check passed"
+        echo "   ✅ Parity check passed" | tee -a "$RESULTS_FILE"
     fi
+    echo "" >> "$RESULTS_FILE"
 
     # Check 5: Milestone status
-    echo "5. Checking milestone status..."
+    echo "5. Checking milestone status..." | tee -a "$RESULTS_FILE"
     VERSION=${TAG_NAME%-rc*}
 
     # Check if milestone exists and has no open issues
@@ -76,59 +152,73 @@ if [ "$IS_RC" = true ]; then
         MILESTONE_CHECK=$(gh issue list --milestone "$VERSION" --state open --json number 2>/dev/null | jq length)
 
         if [ "$?" -ne 0 ]; then
-            echo "   ⚠️  Could not check milestone (gh cli issue)"
+            echo "   ⚠️  Could not check milestone (gh cli issue)" | tee -a "$RESULTS_FILE"
         elif [ "$MILESTONE_CHECK" != "0" ]; then
-            echo "   ❌ Milestone $VERSION has $MILESTONE_CHECK open issues"
+            echo "   ❌ Milestone $VERSION has $MILESTONE_CHECK open issues" | tee -a "$RESULTS_FILE"
             ((FAILED_CHECKS++))
         else
-            echo "   ✅ Milestone $VERSION has no open issues"
+            echo "   ✅ Milestone $VERSION has no open issues" | tee -a "$RESULTS_FILE"
         fi
     else
-        echo "   ⚠️  gh cli not available, skipping milestone check"
+        echo "   ⚠️  gh cli not available, skipping milestone check" | tee -a "$RESULTS_FILE"
     fi
+    echo "" >> "$RESULTS_FILE"
 
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
+    echo "" >> "$RESULTS_FILE"
 
     # Now run hygiene reviews
-    echo "Running hygiene reviews..."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Running hygiene reviews..." | tee -a "$RESULTS_FILE"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
+    echo "" >> "$RESULTS_FILE"
 
     # Check 6: Test coverage
-    echo "6. Reviewing test coverage..."
-    if ./scripts/check_test_coverage.sh > /dev/null 2>&1; then
-        echo "   ✅ Test coverage check passed"
+    echo "6. Reviewing test coverage..." | tee -a "$RESULTS_FILE"
+    COV_OUTPUT=$(./scripts/check_test_coverage.sh 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Test coverage check passed" | tee -a "$RESULTS_FILE"
     else
-        echo "   ⚠️  Test coverage has gaps (see above)"
-        # Don't fail on coverage gaps, just warn
+        echo "   ⚠️  Test coverage has gaps" | tee -a "$RESULTS_FILE"
+        echo "$COV_OUTPUT" >> "$RESULTS_FILE"
+        ((WARNINGS++))
     fi
+    echo "" >> "$RESULTS_FILE"
 
     # Check 7: Documentation completeness
-    echo "7. Reviewing documentation..."
-    if ./scripts/check_documentation.sh "$VERSION" > /dev/null 2>&1; then
-        echo "   ✅ Documentation check passed"
+    echo "7. Reviewing documentation..." | tee -a "$RESULTS_FILE"
+    DOC_OUTPUT=$(./scripts/check_documentation.sh "$VERSION" 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Documentation check passed" | tee -a "$RESULTS_FILE"
     else
-        echo "   ❌ Documentation check failed"
+        echo "   ❌ Documentation check failed" | tee -a "$RESULTS_FILE"
+        echo "$DOC_OUTPUT" >> "$RESULTS_FILE"
         ((FAILED_CHECKS++))
     fi
+    echo "" >> "$RESULTS_FILE"
 
     # Check 8: Code quality
-    echo "8. Reviewing code quality..."
-    if ./scripts/check_code_quality.sh > /dev/null 2>&1; then
-        echo "   ✅ Code quality check passed"
+    echo "8. Reviewing code quality..." | tee -a "$RESULTS_FILE"
+    QUALITY_OUTPUT=$(./scripts/check_code_quality.sh 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Code quality check passed" | tee -a "$RESULTS_FILE"
     else
-        echo "   ⚠️  Code quality has issues (see above)"
-        # Don't fail on code quality warnings, just inform
+        echo "   ⚠️  Code quality has issues" | tee -a "$RESULTS_FILE"
+        echo "$QUALITY_OUTPUT" >> "$RESULTS_FILE"
+        ((WARNINGS++))
     fi
+    echo "" >> "$RESULTS_FILE"
 
     # Check 9: Directory organization
-    echo "9. Reviewing directory organization..."
-    if ./scripts/check_directory_organization.sh > /dev/null 2>&1; then
-        echo "   ✅ Directory organization check passed"
+    echo "9. Reviewing directory organization..." | tee -a "$RESULTS_FILE"
+    DIR_OUTPUT=$(./scripts/check_directory_organization.sh 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Directory organization check passed" | tee -a "$RESULTS_FILE"
     else
-        echo "   ⚠️  Directory organization could be improved"
-        # Don't fail on organization issues, just warn
+        echo "   ⚠️  Directory organization could be improved" | tee -a "$RESULTS_FILE"
+        echo "$DIR_OUTPUT" >> "$RESULTS_FILE"
+        ((WARNINGS++))
     fi
+    echo "" >> "$RESULTS_FILE"
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
@@ -144,7 +234,84 @@ if [ "$IS_RC" = true ]; then
         exit 1
     fi
 
+    # ============================================
+    # Compare with previous RC if exists
+    # ============================================
+    if [[ "$TAG_NAME" =~ -rc([0-9]+)$ ]]; then
+        RC_NUM="${BASH_REMATCH[1]}"
+        if [ "$RC_NUM" -gt 1 ]; then
+            PREV_RC_NUM=$((RC_NUM - 1))
+            PREV_RC="${VERSION}-rc${PREV_RC_NUM}"
+            PREV_RESULTS=".hygiene-check-results-${PREV_RC}.txt"
+
+            if [ -f "$PREV_RESULTS" ]; then
+                echo "" | tee -a "$RESULTS_FILE"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
+                echo "Comparison with $PREV_RC:" | tee -a "$RESULTS_FILE"
+                echo "" | tee -a "$RESULTS_FILE"
+
+                # Count warnings in previous RC
+                PREV_WARNINGS=$(grep -c "⚠️" "$PREV_RESULTS" || echo "0")
+                PREV_FAILURES=$(grep -c "❌" "$PREV_RESULTS" || echo "0")
+
+                echo "Previous RC: $PREV_FAILURES critical, $PREV_WARNINGS warnings" | tee -a "$RESULTS_FILE"
+                echo "This RC:     $FAILED_CHECKS critical, $WARNINGS warnings" | tee -a "$RESULTS_FILE"
+                echo "" | tee -a "$RESULTS_FILE"
+
+                if [ "$WARNINGS" -lt "$PREV_WARNINGS" ]; then
+                    IMPROVEMENT=$((PREV_WARNINGS - WARNINGS))
+                    echo "✅ Improved: $IMPROVEMENT fewer warnings" | tee -a "$RESULTS_FILE"
+                elif [ "$WARNINGS" -gt "$PREV_WARNINGS" ]; then
+                    REGRESSION=$((WARNINGS - PREV_WARNINGS))
+                    echo "⚠️  Regression: $REGRESSION more warnings" | tee -a "$RESULTS_FILE"
+                else
+                    echo "➡️  No change in warning count" | tee -a "$RESULTS_FILE"
+                fi
+                echo "" >> "$RESULTS_FILE"
+            fi
+        fi
+    fi
+
+    # ============================================
+    # Display summary and prompt for review
+    # ============================================
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Hygiene Check Summary for $TAG_NAME"
+    echo ""
+    echo "CRITICAL: $FAILED_CHECKS blocking issue(s)"
+    echo "WARNINGS: $WARNINGS non-blocking issue(s)"
+    echo ""
+    echo "Full results saved to: $RESULTS_FILE"
+    echo ""
+
+    if [ $WARNINGS -gt 0 ]; then
+        echo "⚠️  There are $WARNINGS warning(s) that should be reviewed."
+        echo ""
+        echo "Review detailed results? (y/n)"
+        read -r REVIEW_RESPONSE
+
+        if [ "$REVIEW_RESPONSE" = "y" ] || [ "$REVIEW_RESPONSE" = "Y" ]; then
+            less "$RESULTS_FILE"
+        fi
+
+        echo ""
+        echo "Have you reviewed the warnings and decided they are acceptable? (y/n)"
+        read -r ACKNOWLEDGE
+
+        if [ "$ACKNOWLEDGE" != "y" ] && [ "$ACKNOWLEDGE" != "Y" ]; then
+            echo "❌ Warnings not acknowledged. Fix issues or acknowledge before proceeding."
+            echo ""
+            echo "To review later: less $RESULTS_FILE"
+            echo "To retry: git tag $TAG_NAME"
+            exit 1
+        fi
+    fi
+
     echo "✅ All critical checks passed"
+    if [ $WARNINGS -gt 0 ]; then
+        echo "⚠️  $WARNINGS warnings acknowledged"
+    fi
     echo ""
     echo "RC tag will be created. Push to trigger GitHub Actions:"
     echo "  git push origin $TAG_NAME"
