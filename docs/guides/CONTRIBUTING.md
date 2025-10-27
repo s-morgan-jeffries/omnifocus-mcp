@@ -41,6 +41,23 @@ git checkout -b docs/description     # Documentation
 
 **Only work on main for:** Hotfixes, trivial typo fixes, emergency rollbacks
 
+### Picking Issues to Work On
+
+**Priority order for contributors:**
+1. **Milestone issues first** - Pick from current milestone (highest priority)
+2. **Backlog issues** - Good first contributions, lower priority
+3. **New issues** - File an issue before starting significant work
+
+**Before starting:**
+- Check if issue is already assigned (avoid duplicate work)
+- Assign yourself to the issue: `gh issue edit <number> --add-assignee @me`
+- Comment on issue: "Working on this" (coordinates with others)
+
+**If you're unsure which issue to pick:**
+- Look for `good first issue` label
+- Ask in issue comments: "Is this still needed?"
+- Start with documentation or testing issues
+
 ### Filing Issues
 
 **File issues immediately when you encounter:**
@@ -57,6 +74,48 @@ gh issue create \
 ```
 
 Use template `.github/ISSUE_TEMPLATE/ai-process-failure.md` for structured reporting.
+
+### Issue Labeling Requirements
+
+**Every issue MUST have labels.** Labels enable search, filtering, and project organization.
+
+**Required: Type label (choose at least one):**
+- `bug` - Something not working as expected
+- `enhancement` - New feature or improvement
+- `documentation` - Docs updates, missing docs, doc fixes
+- `ai-process` - Process failure (forgot tests, violated TDD, etc.)
+- `question` - Request for information or clarification
+
+**Optional: Workflow labels (add all that apply):**
+- `workflow` - Branch strategy, release process, CI/CD
+- `release-process` - Version management, tagging, milestones
+- `testing` - Test infrastructure, coverage, test fixes
+- `technical-debt` - Code cleanup, refactoring, maintenance
+- `security` - Security improvements, vulnerability fixes
+- `performance` - Speed, efficiency, resource usage
+
+**Optional: Priority labels (for bugs and ai-process only):**
+- `critical` - Blocks release, major functionality broken
+- `high` - Significant impact, needs attention soon
+- `medium` - Moderate impact, normal priority
+- `low` - Minor impact, nice to have
+
+**Examples:**
+```bash
+# Bug with priority
+gh issue create --label "bug,security,critical"
+
+# Enhancement with workflow categories
+gh issue create --label "enhancement,performance,release-process"
+
+# Documentation update
+gh issue create --label "documentation,workflow"
+
+# AI process failure
+gh issue create --label "ai-process,missing-tests,high"
+```
+
+**Enforcement:** Claude Code session hooks may warn about unlabeled issues.
 
 ### Version Planning Workflow
 
@@ -121,34 +180,79 @@ git branch -d feature/my-feature
 
 ### Release Workflow (Maintainers Only)
 
-```bash
-# 1. All milestone features merged to main
-# Each PR has passed CI individually
+**Architecture:** Release branches + Branch protection on main
 
-# 2. Tag release candidate
+```bash
+# 1. All milestone features merged to main via PRs
+# Milestone shows 0 open issues
+
+# 2. Create release branch from main
 git checkout main
 git pull
-git tag v0.6.3-rc1
-git push --tags
+git checkout -b release/v0.6.4
 
-# 3. GitHub Actions runs comprehensive hygiene checks
-# - Test coverage review (subagent)
-# - Documentation completeness (subagent)
-# - Code quality review (subagent)
-# - Directory organization (subagent)
-# - Version sync verification
-# - Milestone status (all issues closed)
+# 3. Bump version and update CHANGELOG (on release branch)
+./scripts/sync_version.sh  # Or manual edit of pyproject.toml
+# Edit CHANGELOG.md to add v0.6.4 entry
+git commit -m "chore: bump version to v0.6.4"
 
-# 4. If checks fail, fix and tag rc2
-git commit -m "fix: address hygiene issues"
-git tag v0.6.3-rc2
-git push --tags
+# 4. Create RC tag (MUST be on release/* branch)
+# Pre-tag hook enforces: RC tags only on release branches
+# Hook runs all 9 hygiene checks:
+# - Captures results to .hygiene-check-results-v0.6.4-rc1.txt
+# - Shows summary with critical/warning counts
+# - Prompts to review warnings if found
+# - Requires acknowledgment before proceeding
+git tag v0.6.4-rc1
 
-# 5. When all checks pass, tag final release
-git tag v0.6.3
-git push --tags
-# GitHub Actions auto-creates release and closes milestone
+# 5. Review hygiene results
+# Hook prompts if warnings found:
+#   "Review detailed results? (y/n)"
+#   "Have you reviewed the warnings and decided they are acceptable? (y/n)"
+less .hygiene-check-results-v0.6.4-rc1.txt  # If needed
+
+# 6. Push release branch + RC tag
+git push origin release/v0.6.4
+git push origin v0.6.4-rc1
+# GitHub Actions runs same checks
+
+# 7. If RC finds issues, fix on release branch
+git commit -m "fix: address RC findings"
+git tag v0.6.4-rc2  # Hook compares vs rc1, shows improvement
+git push origin release/v0.6.4 v0.6.4-rc2
+
+# 8. When RC passes, create PR: release/v0.6.4 → main
+gh pr create --base main --head release/v0.6.4 \
+  --title "Release v0.6.4" \
+  --body "Release v0.6.4\n\nRC testing complete: v0.6.4-rc2 passed all checks"
+
+# 9. After PR merged (via GitHub UI or gh pr merge)
+git checkout main
+git pull
+
+# 10. Tag final release (MUST be on main)
+# Pre-tag hook enforces: final tags only on main
+git tag v0.6.4
+git push origin v0.6.4
+# GitHub Actions creates release, closes milestone
+
+# 11. Clean up
+git branch -d release/v0.6.4
+git push origin --delete release/v0.6.4
 ```
+
+**Hygiene Checks Run on RC Tags:**
+1. Version sync verification
+2. All test suites (unit + integration + e2e)
+3. Code complexity (Radon)
+4. Client-server parity
+5. Milestone status (all issues closed)
+6. Test coverage (gaps, TODO markers)
+7. Documentation completeness (CHANGELOG, versions, key docs)
+8. Code quality (TODOs, print statements, complexity)
+9. Directory organization (orphaned files)
+
+**Results saved to:** `.hygiene-check-results-{TAG}.txt` (gitignored)
 
 ### Why Trunk-Based?
 

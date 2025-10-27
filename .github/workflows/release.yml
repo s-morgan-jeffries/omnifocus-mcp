@@ -33,8 +33,8 @@ jobs:
 
           # Extract section from CHANGELOG.md for this version
           awk "/^## \[$TAG_NAME\]/,/^## \[/ {print}" CHANGELOG.md | \
-            sed '$d' | \  # Remove last line (next version header)
-            tail -n +2 > /tmp/release-notes.md  # Remove version header
+            sed '$d' | \
+            tail -n +2 > /tmp/release-notes.md
 
           # If empty, create generic release notes
           if [ ! -s /tmp/release-notes.md ]; then

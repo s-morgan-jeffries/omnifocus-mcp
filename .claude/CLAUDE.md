@@ -17,7 +17,7 @@ It contains:
 - Contribution workflow: docs/guides/CONTRIBUTING.md
 - AppleScript gotchas: docs/reference/APPLESCRIPT_GOTCHAS.md
 
-**For redesign implementation history:** `.claude/CLAUDE-redesign-phase.md` (archived)
+**For redesign implementation history:** `docs/archive/CLAUDE-redesign-phase.md` (archived)
 
 ---
 
@@ -270,7 +270,16 @@ This project uses Claude Code hooks to automatically enforce workflow compliance
 **PreToolUse(Bash) - Branch Validation** (#41)
 - **Blocks:** Commits to main/master branch
 - **Allows:** Hotfixes (message contains "hotfix" or "emergency")
+- **Allows:** Commits to release/* branches (for release preparation)
 - **Why:** Prevents working directly on main (#37)
+- **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
+
+**PreToolUse(Bash) - Issue Close Verification** (#66)
+- **Blocks:** All `gh issue close` commands
+- **Requires:** Verification of acceptance criteria before proceeding
+- **Prompts:** Claude to review criteria, create tracking issues, get user approval
+- **Bypass:** After user approval, prefix command with `CLAUDE_VERIFIED=1`
+- **Why:** Prevents closing issues without verifying all acceptance criteria (#63)
 - **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
 
 **PostToolUse(Bash) - CI Monitoring** (#42)
@@ -300,7 +309,15 @@ Each hook script has a modular design with `check_*` functions for easy extensio
 1. Open relevant hook script (e.g., `scripts/hooks/pre_bash.sh`)
 2. Add new `check_*` function
 3. Add function name to `CHECKS` array
-4. Test manually: `echo '{"tool_name":"Bash",...}' | ./scripts/hooks/pre_bash.sh`
+4. Test manually: `echo '{"tool_input":{"command":"test"}}' | ./scripts/hooks/pre_bash.sh`
+5. **Restart Claude Code session** to activate (hooks load at startup)
+
+**IMPORTANT:** Hook configuration is loaded at session start. Changes to hook scripts or `.claude/settings.json` require restarting Claude Code to take effect.
+
+**Testing hooks:**
+- Manual test: Use echo with JSON input (see step 4 above)
+- Runtime test: Add debug logging to `/tmp/hook_name.log` and restart session
+- Verify hook runs: Check log file after triggering relevant tool
 
 **Documentation:**
 - Complete guide: `docs/reference/CLAUDE_CODE_HOOKS.md`
@@ -330,7 +347,7 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 
 **Run this checklist:**
 - [ ] **Tests written first** - All new code has tests (unit, integration, AND e2e)
-- [ ] **All tests pass** - Run `make test`
+- [ ] **All tests pass** - Run `make test` - NEVER merge feature branches without passing tests locally
 - [ ] **Integration tests pass** - Run `make test-integration`
 - [ ] **E2E tests pass** - Run `make test-e2e` (new/modified client functions need MCP tool tests)
 - [ ] **Server exposure verified** - Run `./scripts/check_client_server_parity.sh`
@@ -346,6 +363,7 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
   - Test happy path (automation allows correct behavior)
   - Test failure path (automation catches intentional errors)
   - Don't release automation that only has placeholder text
+- [ ] **Issues filed with labels** - All new issues have appropriate labels (see Issue Tracking section)
 
 **If tests are failing:**
 - Don't commit until they pass
@@ -354,6 +372,28 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 - Consider if this indicates an architectural problem
 
 See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
+
+---
+
+## Before Closing Issues
+
+**CRITICAL: Check acceptance criteria before claiming an issue is "done".**
+
+When resolving an issue:
+- [ ] **Check acceptance criteria** - Every issue has acceptance criteria in its description
+- [ ] **Verify ALL criteria met** - Not "mostly done" or "4/5" - ALL must be satisfied
+- [ ] **Test the implementation** - Ensure solution actually works as specified
+- [ ] **Close with verification** - Comment listing which commits address which criteria
+
+**Example closing comment:**
+```
+Completed all acceptance criteria:
+- ✅ Criterion 1: Description (commit abc123)
+- ✅ Criterion 2: Description (commit def456)
+- ✅ Criterion 3: Description (commit ghi789)
+```
+
+**NEVER claim an issue is "done" or "completed" without checking its acceptance criteria.**
 
 ---
 
@@ -370,6 +410,45 @@ This project uses GitHub Issues for all tracking: bugs, features, documentation,
 - **Documentation Gap:** Missing or outdated docs → label: `documentation`
 
 **All issues start in Backlog (no milestone assigned). They will be reviewed during version planning.**
+
+### Labels (REQUIRED)
+
+**Every issue MUST have labels applied.** Labels enable search, filtering, and project organization.
+
+**Type labels (choose one):**
+- `bug` - Something not working as expected
+- `enhancement` - New feature or improvement
+- `documentation` - Docs updates, missing docs, doc fixes
+- `ai-process` - Process failure (forgot tests, violated TDD, etc.)
+
+**Additional labels (choose all that apply):**
+- `workflow` - Branch strategy, release process, CI/CD
+- `release-process` - Version management, tagging, milestones
+- `testing` - Test infrastructure, coverage, test fixes
+- `technical-debt` - Code cleanup, refactoring, maintenance
+- `security` - Security improvements, vulnerability fixes
+- `performance` - Speed, efficiency, resource usage
+
+**Severity labels (for bugs and ai-process only):**
+- `critical` - Blocks release, major functionality broken
+- `high` - Significant impact, needs attention soon
+- `medium` - Moderate impact, normal priority
+- `low` - Minor impact, nice to have
+
+**Examples:**
+```bash
+# Bug with severity
+gh issue create --label "bug,security,critical"
+
+# Enhancement with categories
+gh issue create --label "enhancement,performance,release-process"
+
+# Documentation update
+gh issue create --label "documentation,workflow"
+
+# AI process failure
+gh issue create --label "ai-process,missing-tests,high"
+```
 
 ### Filing AI Process Failures
 

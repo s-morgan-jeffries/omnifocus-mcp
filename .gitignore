@@ -43,3 +43,6 @@ Thumbs.db
 
 # Config
 config.json
+
+# Hygiene check results
+.hygiene-check-results-*.txt

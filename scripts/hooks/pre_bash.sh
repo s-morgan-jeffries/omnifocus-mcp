@@ -2,16 +2,26 @@
 # PreToolUse hook for Bash commands
 # Runs multiple checks before Bash tool execution
 #
+# IMPORTANT: Hook configuration is loaded at session start.
+# After modifying this script or .claude/settings.json, restart Claude Code
+# for changes to take effect. Changes won't apply to current session.
+#
 # To add new checks:
 # 1. Create a new check_* function below
 # 2. Add function name to CHECKS array
 # 3. Function should return 0 (allow) or 2 (block with error on stderr)
+# 4. Test manually: echo '{"tool_input":{"command":"test"}}' | ./scripts/hooks/pre_bash.sh
+# 5. Restart Claude Code session to activate
 
 # Read JSON input from stdin
 INPUT=$(cat)
 
 # Extract command from tool input
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command')
+
+# DEBUG: Log all hook invocations
+echo "=== Hook invoked at $(date) ===" >> /tmp/pre_bash_hook.log
+echo "Command: $COMMAND" >> /tmp/pre_bash_hook.log
 
 # ===================================================
 # CHECK: Prevent commits to main branch
@@ -26,6 +36,11 @@ check_no_commits_to_main() {
     # Get current branch
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
+    # Allow commits to release/* branches (for release preparation)
+    if [[ "$CURRENT_BRANCH" =~ ^release/ ]]; then
+        return 0
+    fi
+
     # Block commits to main/master unless it's a hotfix
     if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
         # Check if commit message contains "hotfix" or "emergency"
@@ -34,7 +49,7 @@ check_no_commits_to_main() {
             cat >&2 <<'EOF'
 {
   "permissionDecision": "deny",
-  "permissionDecisionReason": "❌ Cannot commit directly to main branch.\n\nPlease create a feature branch first:\n  git checkout -b feature/description  # For features\n  git checkout -b fix/description      # For bug fixes\n  git checkout -b docs/description     # For documentation\n\nOnly commit to main for:\n  - Hotfixes (include 'hotfix' in commit message)\n  - Emergency rollbacks (include 'emergency' in message)\n\nSee .claude/CLAUDE.md 'Before Starting Work' section."
+  "permissionDecisionReason": "❌ Cannot commit directly to main branch.\n\nPlease create a feature branch first:\n  git checkout -b feature/description  # For features\n  git checkout -b fix/description      # For bug fixes\n  git checkout -b docs/description     # For documentation\n  git checkout -b release/v0.6.x       # For release preparation\n\nOnly commit to main for:\n  - Hotfixes (include 'hotfix' in commit message)\n  - Emergency rollbacks (include 'emergency' in message)\n\nSee .claude/CLAUDE.md 'Before Starting Work' section."
 }
 EOF
             return 2
@@ -73,6 +88,35 @@ EOF
 }
 
 # ===================================================
+# CHECK: Verify acceptance criteria before closing issues
+# Related issues: #63, #66
+# ===================================================
+check_issue_close_criteria() {
+    # Only check gh issue close commands
+    if ! echo "$COMMAND" | grep -qE "gh issue close"; then
+        return 0
+    fi
+
+    # Allow bypass with CLAUDE_VERIFIED=1 environment variable
+    if echo "$COMMAND" | grep -qE "^CLAUDE_VERIFIED=1 "; then
+        return 0
+    fi
+
+    # Extract issue number from command
+    ISSUE_NUM=$(echo "$COMMAND" | sed -n 's/.*gh issue close \([0-9]*\).*/\1/p')
+
+    # Block and prompt Claude to verify with user
+    cat >&2 <<EOF
+{
+  "permissionDecision": "deny",
+  "permissionDecisionReason": "🔍 Attempting to close issue #${ISSUE_NUM}\n\n**BLOCKED: Acceptance criteria verification required**\n\nBefore closing this issue, you MUST:\n\n1. ✅ Check the issue's acceptance criteria on GitHub\n2. ✅ Verify ALL criteria are complete (not 'deferred' or 'partial')\n3. ✅ Create tracking issues for any incomplete criteria\n4. ✅ Include verification in closing comment\n\n**Required closing comment format:**\n\`\`\`\nCompleted all acceptance criteria:\n- ✅ Criterion 1: Description (commit abc123)\n- ✅ Criterion 2: Description (commit def456)\n- ⏳ Criterion 3: Deferred to #XX (reason)\n\`\`\`\n\n**Next steps:**\n1. Fetch issue #${ISSUE_NUM} to review acceptance criteria\n2. Verify each criterion is addressed\n3. Create tracking issues for incomplete items (if any)\n4. Ask user: 'I've verified all acceptance criteria for #${ISSUE_NUM}. The closing comment includes verification. Proceed with closing?'\n5. **After user approval**, retry with: CLAUDE_VERIFIED=1 gh issue close ${ISSUE_NUM} --comment \"...\"\n\nSee .claude/CLAUDE.md 'Before Closing Issues' section."
+}
+EOF
+    # Return code 2 = blocking error (Claude must address)
+    return 2
+}
+
+# ===================================================
 # Add new checks here as functions
 # ===================================================
 
@@ -89,6 +133,7 @@ EOF
 CHECKS=(
     check_no_commits_to_main
     check_rc_tag_hygiene
+    check_issue_close_criteria
     # Add more checks here
 )
 

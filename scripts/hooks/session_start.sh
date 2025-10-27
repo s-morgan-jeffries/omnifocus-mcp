@@ -89,7 +89,6 @@ EOF
 
 # Set environment variables for subsequent Bash tool calls
 if [ -n "$CLAUDE_ENV_FILE" ]; then
-    echo 'export OMNIFOCUS_TEST_MODE=true' >> "$CLAUDE_ENV_FILE"
     echo 'export PYTHONPATH="$CLAUDE_PROJECT_DIR/src:$PYTHONPATH"' >> "$CLAUDE_ENV_FILE"
 fi
 
