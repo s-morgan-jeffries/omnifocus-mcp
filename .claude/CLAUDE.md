@@ -347,7 +347,7 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 
 **Run this checklist:**
 - [ ] **Tests written first** - All new code has tests (unit, integration, AND e2e)
-- [ ] **All tests pass** - Run `make test`
+- [ ] **All tests pass** - Run `make test` - NEVER merge feature branches without passing tests locally
 - [ ] **Integration tests pass** - Run `make test-integration`
 - [ ] **E2E tests pass** - Run `make test-e2e` (new/modified client functions need MCP tool tests)
 - [ ] **Server exposure verified** - Run `./scripts/check_client_server_parity.sh`
