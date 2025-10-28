@@ -158,19 +158,21 @@ class TestRealOmniFocusSafetyVerification:
         client = OmniFocusConnector(enable_safety_checks=True)
 
         # Get a test project
-        projects = client.search_projects("Test Project")
+        projects = client.get_projects(query="Test Project")
         assert len(projects) > 0
         test_project = projects[0]['id']
 
         # This operation should trigger database name verification
         # If we're not using the test database, it will be blocked
-        result = client.add_task(
-            test_project,
+        task_id = client.create_task(
             "Safety Verification Task",
+            project_id=test_project,
             note="If this task was created, safety guards are working!"
         )
 
-        assert result is True
+        assert task_id is not None
+        # Clean up
+        client.delete_tasks(task_id)
         print("\n✓ Destructive operation verified database name before proceeding")
 
 
@@ -285,26 +287,37 @@ class TestProjectCRUD:
 
     def test_set_project_status_to_on_hold(self, client):
         """Test changing project status to on-hold."""
+        from omnifocus_mcp.omnifocus_connector import ProjectStatus
+
         # Create a project to modify
         client.create_project("Project for Status Change")
         projects = client.get_projects(query="Project for Status Change")
         project_id = projects[0]['id']
 
         # Change to on-hold
-        result = client.set_project_status(project_id, "on_hold")
-        assert result is True
+        result = client.update_project(project_id, status=ProjectStatus.ON_HOLD)
+        assert result["success"] is True
         print("\n✓ Set project to on-hold")
 
     def test_set_project_status_to_done(self, client):
         """Test completing a project."""
-        # Get an active project
-        projects = client.get_projects(query="Project for Status Change")
+        from omnifocus_mcp.omnifocus_connector import ProjectStatus
+        import time
+
+        # Create a new project with unique name to avoid test isolation issues
+        unique_name = f"Project Mark Done {int(time.time())}"
+        client.create_project(unique_name)
+        projects = client.get_projects(query=unique_name)
+        assert len(projects) > 0, f"Could not find project '{unique_name}'"
         project_id = projects[0]['id']
 
         # Mark as done
-        result = client.set_project_status(project_id, "done")
-        assert result is True
+        result = client.update_project(project_id, status=ProjectStatus.DONE)
+        assert result["success"] is True
         print("\n✓ Marked project as done")
+
+        # Cleanup
+        client.delete_projects(project_id)
 
     def test_update_project_name(self, client):
         """Test updating project name."""
@@ -572,7 +585,7 @@ class TestProjectCRUD:
 
         # Delete it
         result = client.delete_projects(project_id)
-        assert result["success"] is True
+        assert result["deleted_count"] == 1
         print("\n✓ Deleted project")
 
         # Verify it's gone
@@ -593,9 +606,9 @@ class TestProjectCRUD:
         assert len(project_ids) >= 2
 
         # Batch delete
-        count = client.delete_projects(project_ids)
-        assert count >= 2
-        print(f"\n✓ Batch deleted {count} projects")
+        result = client.delete_projects(project_ids)
+        assert result["deleted_count"] >= 2
+        print(f"\n✓ Batch deleted {result['deleted_count']} projects")
 
 
 class TestTaskCRUD:
@@ -749,7 +762,7 @@ class TestTaskCRUD:
 
         # Delete it
         result = client.delete_tasks(task_id)
-        assert result["success"] is True
+        assert result["deleted_count"] == 1
         print("\n✓ Deleted task")
 
     def test_delete_tasks_batch(self, client, test_project_id):
@@ -809,7 +822,7 @@ class TestTaskCRUD:
     def test_drop_task(self, client, test_project_id):
         """Test marking a task as dropped."""
         # Create a task to drop
-        from omnifocus_mcp.models import TaskStatus
+        from omnifocus_mcp.omnifocus_connector import TaskStatus
         client.create_task("Unique Task to Drop", project_id=test_project_id)
         tasks = client.get_tasks(project_id=test_project_id, query="Unique Task to Drop")
         assert len(tasks) > 0, "Task was not created"
@@ -829,7 +842,7 @@ class TestTaskCRUD:
     def test_drop_tasks_batch(self, client, test_project_id):
         """Test batch dropping multiple tasks."""
         # Create multiple tasks with unique names
-        from omnifocus_mcp.models import TaskStatus
+        from omnifocus_mcp.omnifocus_connector import TaskStatus
         client.create_task("Unique Batch Drop 1", project_id=test_project_id)
         client.create_task("Unique Batch Drop 2", project_id=test_project_id)
 
@@ -943,7 +956,7 @@ class TestNoteOperations:
         )
 
         # Get task with full notes
-        results = client.get_tasks(task_id=task_id, full_notes=True)
+        results = client.get_tasks(task_id=task_id, include_full_notes=True)
         assert len(results) == 1
         retrieved = results[0]
 
@@ -967,7 +980,7 @@ class TestNoteOperations:
         assert result["success"] is True
 
         # Verify
-        results = client.get_tasks(task_id=task_id, full_notes=True)
+        results = client.get_tasks(task_id=task_id, include_full_notes=True)
         assert results[0]['note'] == "Updated note content"
         print("\n✓ Updated task note")
 
@@ -983,7 +996,7 @@ class TestNoteOperations:
         )
 
         # Get project with full notes
-        results = client.get_projects(project_id=project_id, full_notes=True)
+        results = client.get_projects(project_id=project_id, include_full_notes=True)
         assert len(results) == 1
         retrieved = results[0]
 
