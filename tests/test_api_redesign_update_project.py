@@ -82,7 +82,8 @@ class TestUpdateProjectRedesign:
             assert "status" in result["updated_fields"]
 
             call_args = mock_run.call_args[0][0]
-            assert "done" in call_args.lower()
+            # OmniFocus requires 'mark complete' verb for DONE status
+            assert "mark complete" in call_args.lower()
 
     # ========================================================================
     # New Fields - Review Interval
