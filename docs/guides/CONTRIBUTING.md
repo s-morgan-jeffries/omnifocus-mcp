@@ -271,6 +271,62 @@ git push origin --delete release/v0.6.4
 
 ---
 
+## Testing Setup
+
+Before running tests, you'll need to understand the three test types and their setup requirements:
+
+### Test Types
+
+1. **Unit Tests** (`make test`) - Fast, always run
+   - Mock AppleScript execution
+   - No OmniFocus required
+   - ~333 tests, ~2 minutes
+   - **Skips integration and E2E tests by default** (this is expected behavior)
+
+2. **Integration Tests** (`make test-integration`) - Real OmniFocus required
+   - Execute real AppleScript commands
+   - Requires test database setup (one-time)
+   - ~92 tests, ~10-15 minutes
+   - Catch bugs that mocks don't (syntax errors, API mismatches)
+
+3. **E2E Tests** (`make test-e2e`) - Full MCP stack required
+   - Test MCP tool → client → OmniFocus flow
+   - Requires test database setup (one-time)
+   - Catch parameter conversion bugs
+
+### Setting Up Test Database (One-Time)
+
+**Required for integration and E2E tests only.** Unit tests work immediately.
+
+```bash
+# Run the setup script
+./scripts/setup_test_database.sh
+```
+
+This creates a dedicated `OmniFocus-TEST.ofocus` database with test data (projects, tasks, folders, tags) and configures environment variables.
+
+**The Makefile handles environment variables automatically** - you don't need to set them globally. Just run:
+```bash
+make test-integration  # Integration tests with test database
+make test-e2e          # E2E tests with test database
+```
+
+**For detailed setup instructions, troubleshooting, and manual testing procedures:**
+See [docs/guides/INTEGRATION_TESTING.md](../guides/INTEGRATION_TESTING.md)
+
+### Quick Test Reference
+
+```bash
+make test                  # Unit tests only (fast, no setup required)
+make test-integration      # Real OmniFocus tests (requires one-time setup)
+make test-e2e              # End-to-end MCP tests (requires one-time setup)
+pytest tests/test_file.py  # Specific test file
+```
+
+**Note:** When you run `make test`, it's normal and expected that integration and E2E tests are skipped. This allows fast testing without requiring OmniFocus or test database setup.
+
+---
+
 ## Test-Driven Development (TDD)
 
 This project follows Test-Driven Development (TDD). **This is non-negotiable.**
@@ -295,19 +351,15 @@ This project follows Test-Driven Development (TDD). **This is non-negotiable.**
 
 ### Three Levels of Testing
 
-See `../guides/TESTING.md` for complete details on:
+This project requires three types of tests for comprehensive validation:
 
 1. **Unit Tests** - Mock AppleScript, fast, run always (~333 tests, ~2 minutes)
-2. **Integration Tests** - Real OmniFocus via client, catches AppleScript bugs (3 tests, skipped by default)
+2. **Integration Tests** - Real OmniFocus via client, catches AppleScript bugs (~92 tests, ~10-15 minutes)
 3. **E2E Tests** - Full MCP tool → client → OmniFocus stack, catches parameter conversion bugs
 
-**Quick commands:**
-```bash
-make test                  # All unit tests (fast)
-make test-integration      # Real OmniFocus tests (requires setup)
-make test-e2e              # End-to-end MCP tool tests (requires setup)
-pytest tests/test_file.py  # Specific test file
-```
+**See [Testing Setup](#testing-setup) section above for how to set up and run each test type.**
+
+**Complete testing strategy and coverage details:** See `../guides/TESTING.md`
 
 ---
 
