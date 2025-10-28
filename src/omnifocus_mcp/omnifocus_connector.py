@@ -578,6 +578,23 @@ class OmniFocusConnector:
                             end if
                         end try
 
+                        -- Get review dates
+                        set lastReviewDateStr to "null"
+                        try
+                            set lastReviewDate to last review date of proj
+                            if lastReviewDate is not missing value then
+                                set lastReviewDateStr to "\\"" & (lastReviewDate as «class isot» as string) & "\\""
+                            end if
+                        end try
+
+                        set nextReviewDateStr to "null"
+                        try
+                            set nextReviewDate to next review date of proj
+                            if nextReviewDate is not missing value then
+                                set nextReviewDateStr to "\\"" & (nextReviewDate as «class isot» as string) & "\\""
+                            end if
+                        end try
+
                         -- Build JSON manually (AppleScript doesn't have native JSON)
                         set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & projId & "\\", " & ¬
@@ -590,7 +607,9 @@ class OmniFocusConnector:
                             "\\"modificationDate\\": " & modDateStr & ", " & ¬
                             "\\"completionDate\\": " & completionDateStr & ", " & ¬
                             "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
-                            "\\"lastActivityDate\\": " & lastActivityStr & ¬
+                            "\\"lastActivityDate\\": " & lastActivityStr & ", " & ¬
+                            "\\"lastReviewDate\\": " & lastReviewDateStr & ", " & ¬
+                            "\\"nextReviewDate\\": " & nextReviewDateStr & ¬
                             "}}"
 
                         if output is not "" then
@@ -896,15 +915,18 @@ class OmniFocusConnector:
         # Build status command (separate from properties)
         status_command = ""
         if status_str is not None:
-            # Map status string to OmniFocus status
-            status_map = {
-                "active": "active",
-                "on_hold": "on hold",
-                "done": "done",
-                "dropped": "dropped"
-            }
-            of_status = status_map[status_str]
-            status_command = f'set status of theProject to {of_status}'
+            # Special handling for 'done' status - OmniFocus requires 'mark complete' verb
+            if status_str == "done":
+                status_command = 'mark complete theProject'
+            else:
+                # Map other status strings to OmniFocus status values
+                status_map = {
+                    "active": "active",
+                    "on_hold": "on hold",
+                    "dropped": "dropped"
+                }
+                of_status = status_map[status_str]
+                status_command = f'set status of theProject to {of_status}'
             updated_fields.append("status")
 
         # Build review interval command
