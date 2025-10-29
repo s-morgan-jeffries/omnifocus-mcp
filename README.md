@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.4 API):
+This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.5 API):
 
 ### Project Management (5 tools)
 - **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
