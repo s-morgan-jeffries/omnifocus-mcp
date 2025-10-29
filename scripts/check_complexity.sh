@@ -12,7 +12,16 @@ echo "========================================="
 echo ""
 
 # Check if radon is installed
-if ! ./venv/bin/python -c "import radon" 2>/dev/null; then
+# Use venv python if available, otherwise use system python
+if [ -f ./venv/bin/python ]; then
+    PYTHON=./venv/bin/python
+    RADON=./venv/bin/radon
+else
+    PYTHON=python
+    RADON=radon
+fi
+
+if ! $PYTHON -c "import radon" 2>/dev/null; then
     echo "ERROR: radon not installed. Install with:"
     echo "  pip install -e '.[dev]'"
     exit 1
@@ -22,23 +31,23 @@ echo "1. Cyclomatic Complexity (src/omnifocus_mcp/omnifocus_client.py)"
 echo "----------------------------------------------------------------"
 echo "Ratings: A (1-5), B (6-10), C (11-20), D (21-50), F (51+)"
 echo ""
-./venv/bin/radon cc src/omnifocus_mcp/omnifocus_client.py -s -a --total-average
+$RADON cc src/omnifocus_mcp/omnifocus_client.py -s -a --total-average
 echo ""
 
 echo "2. Cyclomatic Complexity (src/omnifocus_mcp/server_fastmcp.py)"
 echo "---------------------------------------------------------------"
-./venv/bin/radon cc src/omnifocus_mcp/server_fastmcp.py -s -a --total-average
+$RADON cc src/omnifocus_mcp/server_fastmcp.py -s -a --total-average
 echo ""
 
 echo "3. Maintainability Index (server_fastmcp.py)"
 echo "---------------------------------------------"
 echo "Ratings: A (100-20), B (19-10), C (9-0)"
-./venv/bin/radon mi src/omnifocus_mcp/server_fastmcp.py
+$RADON mi src/omnifocus_mcp/server_fastmcp.py
 echo ""
 
 echo "4. Summary of Functions with D or F Complexity"
 echo "-----------------------------------------------"
-./venv/bin/radon cc src/omnifocus_mcp/ -n D -s
+$RADON cc src/omnifocus_mcp/ -n D -s
 echo ""
 
 echo "========================================="
