@@ -4,12 +4,13 @@
 
 echo "🧪 Checking test count synchronization..."
 
-# Get actual test count from pytest (via make test)
-ACTUAL_COUNT=$(make test 2>&1 | grep "collected" | grep -o "[0-9]\+ items" | grep -o "[0-9]\+")
+# Get actual test count from pytest
+# Exclude integration tests since those require OmniFocus setup
+ACTUAL_COUNT=$(pytest tests/ -m "not integration" --collect-only -q 2>&1 | tail -1 | grep -o "[0-9]\+ test" | grep -o "[0-9]\+")
 
 if [ -z "$ACTUAL_COUNT" ]; then
     echo "❌ Could not determine actual test count"
-    echo "   Run: pytest --collect-only -q"
+    echo "   Run: pytest tests/ -m 'not integration' --collect-only -q"
     exit 1
 fi
 
