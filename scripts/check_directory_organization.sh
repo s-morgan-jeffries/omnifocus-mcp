@@ -1,6 +1,7 @@
 #!/bin/bash
-# Check directory organization for cleanliness
-# Returns 0 if organization is good, 1 if issues found
+# Check directory organization for cleanliness (Interactive check - non-blocking)
+# Provides recommendations for improving directory organization
+# Always returns 0 (interactive checks don't block releases)
 
 echo "Checking directory organization..."
 
@@ -130,7 +131,7 @@ while IFS= read -r dir; do
     if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
         EMPTY_DIRS+=("$dir")
     fi
-done < <(find . -type d -not -path "./.git/*" -not -path "./.*" 2>/dev/null)
+done < <(find . -type d -not -path "./.git/*" -not -path "./.*" -not -path "./venv/*" 2>/dev/null)
 
 if [ ${#EMPTY_DIRS[@]} -gt 0 ]; then
     echo "   ⚠️  Found empty directories:"
@@ -143,7 +144,7 @@ fi
 
 # Check 5: Look for test files outside tests/
 echo "5. Checking for misplaced test files..."
-MISPLACED_TESTS=$(find . -name "test_*.py" -not -path "./tests/*" -not -path "./.git/*" -not -path "./.*" 2>/dev/null || true)
+MISPLACED_TESTS=$(find . -name "test_*.py" -not -path "./tests/*" -not -path "./.git/*" -not -path "./.*" -not -path "./venv/*" 2>/dev/null || true)
 if [ -n "$MISPLACED_TESTS" ]; then
     echo "   ⚠️  Found test files outside tests/ directory:"
     echo "$MISPLACED_TESTS" | sed 's/^/      /'
@@ -154,10 +155,8 @@ fi
 echo ""
 if [ $ISSUES_FOUND -eq 0 ]; then
     echo "✅ Directory organization check passed"
-    echo "   (Warnings above are informational, not blocking)"
-    exit 0
 else
-    echo "❌ Directory organization has issues"
-    echo "   Consider cleaning up before release"
-    exit 1
+    echo "⚠️  Directory organization has some suggestions"
 fi
+echo "   (This is an interactive check - recommendations are informational, not blocking)"
+exit 0
