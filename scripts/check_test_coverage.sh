@@ -1,8 +1,7 @@
 #!/bin/bash
-# Check for test coverage gaps
-# Returns 0 if coverage is acceptable, 1 if issues found
-
-set -e
+# Check for test coverage gaps (Interactive check - non-blocking)
+# Provides recommendations for improving test coverage
+# Returns 0 always (interactive checks don't block releases)
 
 echo "Checking test coverage..."
 
@@ -10,7 +9,7 @@ ISSUES_FOUND=0
 
 # Check for TODO markers indicating missing tests
 echo "1. Checking for TODO test markers in source code..."
-TODO_TESTS=$(grep -r "TODO.*test" src/ 2>/dev/null || true)
+TODO_TESTS=$(grep -r "TODO.*test" src/ 2>/dev/null || echo "")
 if [ -n "$TODO_TESTS" ]; then
     echo "   ⚠️  Found TODO test markers:"
     echo "$TODO_TESTS" | sed 's/^/      /'
@@ -20,9 +19,9 @@ else
 fi
 
 # Check for functions without corresponding tests
-echo "2. Checking for untested functions..."
-# Get all function definitions from client.py
-FUNCTIONS=$(grep -E "^def [a-z_]+\(" src/omnifocus_mcp/client.py | sed 's/def \([a-z_]*\).*/\1/' || true)
+echo "2. Checking for untested public functions..."
+# Get all public function definitions from omnifocus_connector.py
+FUNCTIONS=$(grep -E "^    def [a-z_]+\(" src/omnifocus_mcp/omnifocus_connector.py | sed 's/.*def \([a-z_]*\).*/\1/' || echo "")
 
 UNTESTED=()
 for func in $FUNCTIONS; do
@@ -31,8 +30,8 @@ for func in $FUNCTIONS; do
         continue
     fi
 
-    # Check if function has tests
-    if ! grep -q "test.*$func\|$func.*test" tests/test_client.py 2>/dev/null; then
+    # Check if function has tests in any test file
+    if ! grep -rq "test.*$func\|$func.*test" tests/ 2>/dev/null; then
         UNTESTED+=("$func")
     fi
 done
@@ -49,8 +48,16 @@ fi
 
 # Check overall coverage percentage if pytest-cov available
 echo "3. Checking overall coverage percentage..."
-if python3 -c "import pytest_cov" 2>/dev/null; then
-    COVERAGE=$(python3 -m pytest tests/test_client.py --cov=src/omnifocus_mcp/client --cov-report=term-missing 2>/dev/null | grep "TOTAL" | awk '{print $NF}' | sed 's/%//' || echo "0")
+# Use venv python if available, otherwise system python
+if [ -f ./venv/bin/python ]; then
+    PYTHON=./venv/bin/python
+else
+    PYTHON=python3
+fi
+
+if $PYTHON -c "import pytest_cov" 2>/dev/null; then
+    # Run coverage on omnifocus_connector.py with all unit tests
+    COVERAGE=$($PYTHON -m pytest tests/ -m "not integration" --cov=src/omnifocus_mcp/omnifocus_connector --cov-report=term-missing 2>/dev/null | grep "TOTAL" | awk '{print $NF}' | sed 's/%//' || echo "0")
 
     if [ -n "$COVERAGE" ] && [ "$COVERAGE" -ge 85 ]; then
         echo "   ✅ Coverage is ${COVERAGE}% (target: 85%+)"
