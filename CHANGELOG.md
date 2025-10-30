@@ -5,6 +5,36 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.5] - 2025-10-28
+
+### Fixed
+
+- **Critical: AppleScript DONE status bug** (#83)
+  - `update_project()` failed when setting status to DONE
+  - OmniFocus requires `mark complete` verb instead of `set status to done`
+  - All integration tests now pass (92/92, 100% success rate)
+
+- **Integration test API migration** (#67, #79-#82)
+  - Updated tests to use v0.6.0 API patterns (#79)
+  - Added lastReviewDate and nextReviewDate fields to get_projects() API (#80)
+  - Fixed delete operation assertions to check deleted_count instead of success (#81)
+  - Fixed TaskStatus/ProjectStatus import paths to omnifocus_connector module (#82)
+  - Added timestamp-based unique names to prevent test isolation issues
+
+### Added
+
+- **GitHub Actions CI workflow** (#69)
+  - Automated unit testing on push/PR to main
+  - Excludes integration tests (require local OmniFocus)
+  - Includes complexity checks and client/server parity verification
+  - Uses macOS runner with Python 3.10
+
+- **Testing documentation** (#73)
+  - Added comprehensive "Testing Setup" section to CONTRIBUTING.md
+  - Documents test database setup with scripts/setup_test_database.sh
+  - Explains differences between unit, integration, and E2E tests
+  - Links to detailed INTEGRATION_TESTING.md guide
+
 ## [0.6.4] - 2025-10-25
 
 ### Fixed
