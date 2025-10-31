@@ -397,6 +397,71 @@ Completed all acceptance criteria:
 
 ---
 
+## When Creating RC Tags (Release Process)
+
+**Context:** Release candidates (RC tags like `v0.6.6-rc1`) trigger comprehensive hygiene checks via git pre-tag hook.
+
+### Claude Code Behavior During RC Tag Creation
+
+When you run `git tag v0.6.6-rc1`:
+
+1. **Git pre-tag hook runs automatically** (not Claude Code hook)
+   - Runs 9 hygiene checks (5 automated, 4 interactive)
+   - Creates results file: `.hygiene-check-results-v0.6.6-rc1.txt`
+   - Shows summary with critical/warning counts
+
+2. **If critical checks FAIL**, hook provides two options:
+
+   **Option A: Fix issues and retry**
+   ```bash
+   # Review what failed
+   less .hygiene-check-results-v0.6.6-rc1.txt
+   # Fix the issues
+   git commit -m "fix: address hygiene check findings"
+   # Retry (runs checks again)
+   git tag v0.6.6-rc1
+   ```
+
+   **Option B: Review and approve** (for acceptable issues)
+   ```bash
+   # Review failures thoroughly
+   less .hygiene-check-results-v0.6.6-rc1.txt
+   # If issues are acceptable (e.g., known complexity), approve
+   ./scripts/approve_hygiene_checks.sh v0.6.6-rc1
+   # Retry (now proceeds with approval)
+   git tag v0.6.6-rc1
+   ```
+
+3. **If only warnings** (non-critical), hook prompts interactively:
+   - "Review detailed results? (y/n)"
+   - "Have you reviewed the warnings and decided they are acceptable? (y/n)"
+   - Answer 'y' to proceed
+
+### When to Use Fix vs. Approve
+
+**Use "Fix" for:**
+- Version sync mismatches (always fix)
+- Test failures (always fix)
+- Complexity threshold violations on NEW code (refactor)
+- Milestone has open issues (close or move them)
+
+**Use "Approve" for:**
+- Known complexity in documented exceptions (get_tasks, update_task)
+- Intentional TODOs with tracking issues
+- Directory organization suggestions (minor)
+- Long lines in generated code or data
+
+### Important Notes
+
+- **Approval is tag-specific**: Each RC tag needs its own approval if checks fail
+- **Don't abuse approval**: Use it for genuinely acceptable issues, not to skip quality checks
+- **Document exceptions**: If approving complexity/quality issues, ensure they're documented in code
+- **CI still runs**: GitHub Actions runs automated checks on push (may find additional issues)
+
+**See:** `docs/reference/HYGIENE_CHECK_CRITERIA.md` for complete pass/fail criteria
+
+---
+
 ## Issue Tracking
 
 This project uses GitHub Issues for all tracking: bugs, features, documentation, and AI process failures.
