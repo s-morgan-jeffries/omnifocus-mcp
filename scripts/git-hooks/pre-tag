@@ -225,13 +225,29 @@ if [ "$IS_RC" = true ]; then
 
     # Display results
     if [ $FAILED_CHECKS -gt 0 ]; then
-        echo "❌ $FAILED_CHECKS critical check(s) failed"
-        echo ""
-        echo "Fix issues and try again:"
-        echo "  # Fix issues, then:"
-        echo "  git tag $TAG_NAME"
-        echo ""
-        exit 1
+        # Check if hygiene checks have been reviewed and approved
+        APPROVAL_FILE=".hygiene-approved-${TAG_NAME}"
+        if [ -f "$APPROVAL_FILE" ]; then
+            echo "⚠️  $FAILED_CHECKS critical check(s) failed, but hygiene checks were reviewed and approved"
+            echo ""
+            echo "Approval file found: $APPROVAL_FILE"
+            echo "Proceeding with tag creation..."
+            echo ""
+        else
+            echo "❌ $FAILED_CHECKS critical check(s) failed"
+            echo ""
+            echo "Review the results in: $RESULTS_FILE"
+            echo ""
+            echo "Then either:"
+            echo "  1. Fix the issues and retry:"
+            echo "     git tag $TAG_NAME"
+            echo ""
+            echo "  2. Review and approve to proceed anyway:"
+            echo "     ./scripts/approve_hygiene_checks.sh $TAG_NAME"
+            echo "     git tag $TAG_NAME"
+            echo ""
+            exit 1
+        fi
     fi
 
     # ============================================

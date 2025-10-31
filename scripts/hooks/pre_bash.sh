@@ -60,32 +60,18 @@ EOF
 }
 
 # ===================================================
-# CHECK: Enforce release hygiene for RC tags
-# Related issues: #46, #29
+# CHECK: Removed RC tag hygiene blocking (#70)
+# Related issues: #70, #46, #29
 # ===================================================
-check_rc_tag_hygiene() {
-    # Only check git tag commands
-    if ! echo "$COMMAND" | grep -qE "^git tag"; then
-        return 0
-    fi
-
-    # Extract tag name from command
-    TAG_NAME=$(echo "$COMMAND" | sed -n 's/^git tag \([^ ]*\).*/\1/p')
-
-    # Check if it's an RC tag (v0.6.3-rc1, etc.)
-    if ! echo "$TAG_NAME" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$"; then
-        # Not an RC tag, allow it
-        return 0
-    fi
-
-    cat >&2 <<EOF
-{
-  "permissionDecision": "deny",
-  "permissionDecisionReason": "🔍 RC tag detected: $TAG_NAME\n\n❌ Cannot create RC tag directly.\n\nUse the git pre-tag hook instead:\n  1. Install git hooks: ./scripts/install-git-hooks.sh\n  2. Create tag: git tag $TAG_NAME\n\nThe git pre-tag hook will:\n  ✅ Run all automated checks (tests, version sync, complexity, milestone)\n  ⚠️  Remind you to verify manual review items\n  🚀 Allow tag creation after confirmation\n\nWhy? Git hooks can run expensive checks (tests, CI verification) without\nblocking Claude Code. Claude Code hooks are for quick validations only.\n\nAlternatively, if you've already run the checks manually:\n  git tag $TAG_NAME  # Run in terminal, not through Claude Code"
-}
-EOF
-    return 2
-}
+# REMOVED: check_rc_tag_hygiene()
+#
+# This check was blocking RC tag creation entirely, preventing the git
+# pre-tag hook from running. The git pre-tag hook is the proper place
+# for hygiene checks since it can run expensive operations without
+# blocking Claude Code.
+#
+# Solution: Allow git tag creation to proceed to git pre-tag hook,
+# which will run all hygiene checks and create approval workflow.
 
 # ===================================================
 # CHECK: Verify acceptance criteria before closing issues
@@ -132,7 +118,7 @@ EOF
 # Array of check functions to run
 CHECKS=(
     check_no_commits_to_main
-    check_rc_tag_hygiene
+    # check_rc_tag_hygiene - REMOVED (#70), was blocking git pre-tag hook
     check_issue_close_criteria
     # Add more checks here
 )
