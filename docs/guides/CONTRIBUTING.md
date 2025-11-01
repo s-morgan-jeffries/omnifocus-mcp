@@ -643,6 +643,23 @@ The project includes slash commands for qualitative assessments:
 - Line length and readability
 - Comparison against project standards
 
+#### `/test-coverage` - Test Coverage
+
+**When to run:**
+- Before minor/major version releases
+- After adding new features or functions
+- When addressing test gaps
+- During code reviews
+- Quarterly test quality audits
+
+**What it checks:**
+- Coverage metrics vs 85% threshold
+- TODO test markers in source
+- Untested public functions
+- Coverage gaps by module
+- Test quality (edge cases, mocking)
+- Testing types assessment (performance, property-based, security, compatibility)
+
 **Output:** All commands generate comprehensive quality reports with severity levels (Critical/Recommended/Minor)
 
 **See:** `.claude/CLAUDE.md` Slash Commands section for details

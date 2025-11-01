@@ -245,6 +245,37 @@ This project includes custom slash commands for common development tasks.
 
 **See:** `.claude/commands/code-quality.md` for implementation details
 
+### `/test-coverage` - Test Coverage Check
+
+**Purpose:** Comprehensive qualitative assessment of test coverage beyond the 85% minimum threshold
+
+**When to use:**
+- Before minor/major version releases
+- After adding new features or functions
+- When addressing test gaps
+- During code reviews
+- Quarterly test quality audits
+
+**What it checks:**
+- Coverage metrics and trends (vs 85% threshold)
+- TODO test markers in source code
+- Untested functions (public functions without coverage)
+- Coverage gaps by module
+- Test quality (edge cases, error conditions, mocking)
+- Testing types assessment (performance, property-based, security, compatibility, etc.)
+
+**Output:** Detailed coverage report with:
+- Critical coverage gaps (must fix before release)
+- Recommended improvements
+- Good practices observed
+- Coverage by module/function
+- Testing types that would be beneficial
+- Estimated effort to address gaps
+
+**Usage:** Type `/test-coverage` in Claude Code
+
+**See:** `.claude/commands/test-coverage.md` for implementation details
+
 ---
 
 ## Common Development Tasks
