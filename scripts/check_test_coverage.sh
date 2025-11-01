@@ -1,7 +1,7 @@
 #!/bin/bash
-# Check for test coverage gaps (Interactive check - non-blocking)
-# Provides recommendations for improving test coverage
-# Returns 0 always (interactive checks don't block releases)
+# Check for test coverage gaps (Critical check - blocking)
+# Enforces minimum 85% test coverage threshold
+# Returns 0 if coverage >= 85%, 1 if below threshold
 
 echo "Checking test coverage..."
 
@@ -74,8 +74,10 @@ if [ $ISSUES_FOUND -eq 0 ]; then
     echo "✅ Test coverage check passed"
     exit 0
 else
-    echo "⚠️  Test coverage has some gaps (non-blocking)"
-    echo "   Consider adding tests for better coverage"
-    # Don't fail the release for coverage gaps, just warn
-    exit 0
+    echo "❌ Test coverage check failed"
+    echo ""
+    echo "Required action:"
+    echo "  - Add tests to reach 85% coverage minimum"
+    echo "  - Or document exceptions if coverage gaps are intentional"
+    exit 1
 fi
