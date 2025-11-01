@@ -607,9 +607,13 @@ When asking for help, provide:
 - Add troubleshooting scenarios (document solutions)
 - Change environment requirements (update prerequisites)
 
-### Documentation Quality Checks
+### Interactive Quality Checks
 
-**When to run `/doc-quality` slash command:**
+The project includes slash commands for qualitative assessments:
+
+#### `/doc-quality` - Documentation Quality
+
+**When to run:**
 - Before minor/major version releases
 - After significant documentation changes
 - When onboarding new contributors
@@ -622,7 +626,24 @@ When asking for help, provide:
 - Technical accuracy (code examples match API?)
 - Clarity, consistency, and completeness
 
-**Output:** Comprehensive quality report with severity levels (Critical/Recommended/Minor)
+#### `/code-quality` - Code Quality
+
+**When to run:**
+- Before minor/major version releases
+- After significant code changes
+- When addressing technical debt
+- During code reviews
+- Quarterly code quality audits
+
+**What it checks:**
+- Cyclomatic complexity (D-F rated functions)
+- TODO/FIXME markers and technical debt
+- print() statements vs logging
+- Bare except clauses
+- Line length and readability
+- Comparison against project standards
+
+**Output:** All commands generate comprehensive quality reports with severity levels (Critical/Recommended/Minor)
 
 **See:** `.claude/CLAUDE.md` Slash Commands section for details
 
