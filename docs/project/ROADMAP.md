@@ -2,11 +2,14 @@
 
 ## Status: Phase 3 (API Redesign) Complete ✅
 
-**Current Version:** v0.6.2 (October 2025)
+**Current Version:** v0.6.5 (October 2025)
 
 **Project Status:** Maintenance mode - Core MCP server is feature-complete with 16 comprehensive tools covering all OmniFocus primitives.
 
 **Latest:**
+- v0.6.5 (Oct 2025): Fixed AppleScript DONE status bug, added GitHub Actions CI, comprehensive testing documentation
+- v0.6.4 (Oct 2025): Implemented actual hygiene check scripts (was placeholder automation in v0.6.3)
+- v0.6.3 (Oct 2025): Trunk-based workflow with RC tags, git hooks for release hygiene
 - v0.6.2 (Oct 2025): Added Claude Code hooks for automated workflow enforcement
 - v0.6.1 (Oct 2025): Fixed project review date bug, renamed `omnifocus_client` → `omnifocus_connector`
 
@@ -24,7 +27,7 @@
 
 ---
 
-## Current State (v0.6.0 - October 2025)
+## Current State (v0.6.5 - October 2025)
 
 ### 🎉 API Redesign Complete - 16 Core MCP Tools
 
@@ -90,6 +93,14 @@
 - Monitors CI failures after git push
 - Loads project context at session start
 - **See:** `.claude/CLAUDE.md` for hook documentation
+
+**Release Hygiene Checks:** Automated quality gates (v0.6.3-v0.6.6)
+- Git pre-tag hook runs comprehensive checks on RC tags
+- 7 critical automated checks (must pass to release)
+- 3 interactive checks (qualitative feedback via slash commands)
+- Review-and-approve workflow for acceptable failures
+- **See:** `docs/reference/HYGIENE_CHECK_CRITERIA.md` for complete criteria
+- **See:** `docs/guides/CONTRIBUTING.md` for release process
 
 ---
 
@@ -300,62 +311,84 @@ Major consolidation to optimize for MCP tool calling efficiency.
 
 ---
 
+## Recent Completed Work
+
+### v0.6.6 - Hygiene Check System Overhaul ✅ (October-November 2025)
+
+**Completed:** Comprehensive hygiene check system with review-and-approve workflow (#70)
+
+**Key changes:**
+- ✅ Promoted test coverage to critical check with 85% threshold enforcement
+- ✅ Streamlined to 7 automated critical checks (from 10)
+- ✅ Separated automated (critical) from interactive (qualitative) checks
+- ✅ Implemented review-and-approve workflow for acceptable failures
+- ✅ Added ROADMAP.md sync check (#34) - ensures closed issues removed from active sections
+- ✅ Branch protection git hook (#94) - blocks commits to main except hotfixes
+- ✅ CI monitoring documentation (#36)
+- ✅ Comprehensive hygiene criteria documentation
+
+**What was removed from automated checks:**
+- Code quality (subjective, no objective threshold) - now interactive slash command
+- Directory organization (minor, subjective) - now interactive slash command
+
+**See:** `docs/reference/HYGIENE_CHECK_CRITERIA.md` for complete pass/fail criteria
+
+### v0.6.3-v0.6.5 - Workflow Automation ✅ (October 2025)
+
+**Completed:**
+- ✅ Claude Code hooks implementation (v0.6.2) - automatic workflow enforcement
+- ✅ GitHub Issues migration (v0.6.2) - centralized tracking for all issues
+- ✅ Trunk-based development with RC tags (v0.6.3)
+- ✅ Git hooks for release hygiene (v0.6.3-v0.6.4)
+- ✅ GitHub Actions CI workflow (v0.6.5)
+- ✅ Comprehensive testing documentation (v0.6.5)
+
+### v0.6.2 - Automation Infrastructure ✅ (October 2025)
+
+**Completed:** Recursive self-improvement system implementation
+
+**A. Claude Code Hooks**
+- ✅ Automatic enforcement via `.claude/settings.json`
+- ✅ Pre-tool hooks block commits to main branch
+- ✅ Post-tool hooks monitor CI failures after git push
+- ✅ Session start hooks load project context
+- ✅ Issue close verification prevents premature closure
+
+**B. GitHub Issues Migration**
+- ✅ Complete migration from MISTAKES.md to GitHub Issues
+- ✅ Label system: `ai-process`, `bug`, `enhancement`, `documentation`
+- ✅ Recurrence tracking via duplicate issues (standard GitHub practice)
+- ✅ Version workflow: Backlog → Milestone → Release
+- ✅ Native automation via GitHub Actions, CLI, notifications
+
+**See:** `.claude/CLAUDE.md` for complete hook documentation
+
+---
+
 ## Upcoming Work
 
-**Status:** These items are logged for future consideration but not actively planned. The v0.6.0 API is feature-complete and stable.
+**Status:** The v0.6.6 API is feature-complete and stable. The project is in maintenance mode with 17 open GitHub Issues tracking future improvements.
 
-### Priority 1 - Automation Improvements (NEXT SESSION)
+**Current open issues (as of November 2025):**
+- **Bug:** #78 - get_tasks() and get_projects() full_notes parameter not working (high priority)
+- **Enhancement:** #77 - Add UI navigation tools (set focus, manage tabs)
+- **Enhancement:** #50 - Performance optimization for slow operations (~10s for overdue tasks)
+- **Enhancement:** #51 - Refactor high-complexity functions (technical debt)
+- **Workflow:** #93 - Phase 7 comprehensive documentation updates (in progress)
+- **Workflow:** #89 - Migrate recurring AI-process issues into automated checks
+- **Workflow:** #87 - Adopt one-branch-per-issue workflow
+- **Workflow:** #88 - Define version update protocol
+- **Testing:** #92 - Add smoke tests for hygiene check scripts (low priority)
+- **Release:** #65 - Test release branch workflow end-to-end
+- **Release:** #54 - Add AppleScript safety audit to hygiene checks
+- **Release:** #53 - Implement performance regression testing
+- **Release:** #52 - Add dependency security audit to hygiene checks
+- **Documentation:** #86 - Interactive documentation quality check slash command
+- **Documentation:** #76 - Create user surveys (foundation models and humans)
+- **Documentation:** #71 - Create reusable AI development workflow template
+- **Documentation:** #64 - Add PR and issue templates for contributors
 
-**🤖 Recursive Self-Improvement System Enhancements**
-
-Based on research completed 2025-10-20, the following automation improvements are planned for the next session:
-
-**A. Claude Code Hooks Implementation** (30 min, 10x ROI - HIGHEST PRIORITY)
-- **Problem:** Claude can easily ignore instructions, relying on memory alone
-- **Solution:** Automatic enforcement via `.claude/hooks.json`
-- **Implementation:**
-  ```json
-  {
-    "pre_tool_use": {
-      "Edit": "./hooks/check_tests_exist.sh",
-      "Write": "./hooks/check_tests_exist.sh",
-      "Bash": "./hooks/check_git_push_monitoring.sh"
-    }
-  }
-  ```
-- **Impact:** Blocks edits/writes without tests, enforces CI monitoring after pushes
-- **Why it matters:** Prevents MISTAKE-009 (missing tests) and MISTAKE-011 (no CI monitoring)
-
-**B. GitHub Issues Migration** (5-6 hours) - **DIRECT CUTOVER**
-- **Problem:** MISTAKES.md is invisible to user; need centralized tracking for bugs, features, and AI process failures
-- **Solution:** Complete migration to GitHub Issues with standard workflow (no hybrid period)
-- **Full plan:** [docs/project/GITHUB_ISSUES_MIGRATION_PLAN.md](GITHUB_ISSUES_MIGRATION_PLAN.md)
-- **Key decisions (finalized 2025-10-21):**
-  - Label: `ai-process` for AI process failures
-  - Recurrence handling: File new issue every time, mark duplicates during triage (standard GitHub practice)
-  - No custom fields: Keep simple with labels + issue state + body
-  - Version workflow: Backlog → Planning → Milestone → Sprint → Release
-- **Implementation (6 phases):**
-  1. Setup: Labels, templates, GitHub Project with 4 views (1 hour)
-  2. Migration script: MISTAKES.md → GitHub Issues (2 hours)
-  3. Rebuild check_recurrence.sh for GitHub Issues (2 hours)
-  4. Documentation updates: CLAUDE.md, CONTRIBUTING.md, etc. (1 hour)
-  5. Testing & verification (30 min)
-  6. Cleanup & archive MISTAKES.md (30 min)
-- **Benefits:**
-  - User visibility: See all issues (bugs, features, AI process) in GitHub UI
-  - Standard workflow: Everyone knows GitHub Issues
-  - Version planning: Milestones for grouping issues by version
-  - Natural recurrence tracking: Duplicates = recurrences
-  - Native automation: GitHub Actions, CLI, notifications
-
-**Additional Quick Wins** (identified by research, defer until after A & B):
-- Pre-push git hooks (15 min) - Block pushes until checks pass
-- pytest-watcher (10 min) - Continuous test running for instant TDD feedback
-- VS Code task integration (20 min) - One-click buttons for common tasks
-- MISTAKES.md template automation (10 min) - Script to generate entries
-
-**Research completed:** Three independent agents analyzed current automation gaps. Full reports: [docs/research/2025-10-20-automation-research.md](../research/2025-10-20-automation-research.md)
+**See:** [GitHub Issues](https://github.com/your-org/omnifocus-mcp/issues) for complete list and details.
 
 ### Under Investigation - Design Review Needed
 
@@ -502,4 +535,4 @@ These belong in separate services/applications that **use** the MCP server, not 
 
 ---
 
-**Last Updated:** October 21, 2025
+**Last Updated:** November 1, 2025

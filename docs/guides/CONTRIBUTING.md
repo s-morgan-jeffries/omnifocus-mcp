@@ -199,7 +199,7 @@ git commit -m "chore: bump version to v0.6.4"
 
 # 4. Create RC tag (MUST be on release/* branch)
 # Pre-tag hook enforces: RC tags only on release branches
-# Hook runs all 9 hygiene checks:
+# Hook runs 7 automated hygiene checks:
 # - Captures results to .hygiene-check-results-v0.6.4-rc1.txt
 # - Shows summary with critical/warning counts
 # - Prompts to review warnings if found
@@ -263,15 +263,18 @@ git push origin --delete release/v0.6.4
 **Automated checks (block release if fail):**
 1. Version sync verification
 2. All test suites (unit + integration + e2e)
-3. Code complexity thresholds (CC ≤ 70 for documented exceptions)
+3. Code complexity thresholds (CC ≤ 20 for new code, documented exceptions for get_tasks/update_task)
 4. Client-server parity
 5. Milestone status (all issues closed)
+6. Test coverage ≥85% (minimum threshold enforced)
+7. ROADMAP.md sync (closed issues removed from active sections)
 
-**Interactive checks (provide recommendations, non-blocking):**
-6. Test coverage analysis (gaps, TODO markers)
-7. Documentation completeness (CHANGELOG, versions, key docs)
-8. Code quality review (TODOs, print statements, complexity)
-9. Directory organization (orphaned files)
+**Interactive checks (qualitative feedback via slash commands):**
+- Code quality review (TODOs, print statements, bare except)
+- Documentation quality assessment
+- Directory organization analysis
+
+**Note:** Interactive checks are no longer run automatically. Use slash commands for qualitative assessments.
 
 **Results saved to:** `.hygiene-check-results-{TAG}.txt` (gitignored)
 
