@@ -16,6 +16,7 @@ Thank you for your interest in contributing! This document outlines the developm
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree (see `../../.claude/CLAUDE.md`)
 - [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
+  - **If closing issue listed in ROADMAP.md:** Remove from "Upcoming Work" or other active sections
 - [ ] **Architecture followed** - Reviewed relevant sections of `../reference/ARCHITECTURE.md`
 
 **If tests are failing:**

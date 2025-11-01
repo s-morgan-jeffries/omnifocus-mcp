@@ -220,6 +220,18 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
+    # Check 10: ROADMAP.md sync with closed issues
+    echo "10. Checking ROADMAP.md sync with closed issues..." | tee -a "$RESULTS_FILE"
+    ROADMAP_OUTPUT=$(./scripts/check_roadmap_sync.sh "$VERSION" 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "   ✅ ROADMAP.md is synced" | tee -a "$RESULTS_FILE"
+    else
+        echo "   ❌ ROADMAP.md out of sync" | tee -a "$RESULTS_FILE"
+        echo "$ROADMAP_OUTPUT" >> "$RESULTS_FILE"
+        ((FAILED_CHECKS++))
+    fi
+    echo "" >> "$RESULTS_FILE"
+
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
