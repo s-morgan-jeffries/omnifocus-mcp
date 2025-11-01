@@ -1,9 +1,51 @@
 #!/bin/bash
-# Git pre-commit hook for automated mistake detection
+# Git pre-commit hook for automated mistake detection and branch protection
 #
 # Install: cp scripts/git-hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
-echo "🔍 Running automated mistake detection..."
+echo "🔍 Running automated checks..."
+
+# Check 0: Block commits to main/master (unless hotfix/emergency)
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+    # Check if this is a hotfix/emergency commit
+    COMMIT_MSG_FILE=".git/COMMIT_EDITMSG"
+
+    # Check if commit message file exists and contains hotfix/emergency
+    if [ -f "$COMMIT_MSG_FILE" ]; then
+        if grep -qi "hotfix\|emergency" "$COMMIT_MSG_FILE"; then
+            echo "⚠️  Allowing hotfix/emergency commit to $BRANCH"
+            WARNINGS=()
+            # Skip mistake detection for hotfixes, just allow
+        fi
+    fi
+
+    # Also check the most recent commit message (for amend operations)
+    LAST_MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+    if echo "$LAST_MSG" | grep -qi "hotfix\|emergency"; then
+        echo "⚠️  Allowing hotfix/emergency commit to $BRANCH"
+        WARNINGS=()
+        # Skip mistake detection for hotfixes, just allow
+    else
+        # Block the commit
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "❌ Direct commits to $BRANCH are not allowed"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Please create a feature branch:"
+        echo "  git checkout -b feature/description     # For new features"
+        echo "  git checkout -b fix/description         # For bug fixes"
+        echo "  git checkout -b docs/description        # For documentation"
+        echo ""
+        echo "For hotfixes, include 'hotfix' or 'emergency' in commit message:"
+        echo "  git commit -m \"hotfix: critical bug fix\""
+        echo ""
+        echo "See .claude/CLAUDE.md 'Before Starting Work' section for details"
+        exit 1
+    fi
+fi
 
 WARNINGS=()
 
