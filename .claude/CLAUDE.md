@@ -214,6 +214,37 @@ This project includes custom slash commands for common development tasks.
 
 **See:** `.claude/commands/doc-quality.md` for implementation details
 
+### `/code-quality` - Code Quality Check
+
+**Purpose:** Comprehensive qualitative assessment of code quality beyond basic complexity metrics
+
+**When to use:**
+- Before minor/major version releases
+- After significant code changes
+- When addressing technical debt
+- During code reviews
+- Quarterly code quality audits
+
+**What it checks:**
+- Cyclomatic complexity (D-F rated functions)
+- TODO/FIXME markers and technical debt
+- print() statements vs logging
+- Bare except clauses
+- Line length and readability
+- Comparison against project standards
+
+**Output:** Detailed quality report with:
+- Critical issues (must fix before release)
+- Recommended improvements
+- Good practices observed
+- Complexity analysis with documented exceptions
+- Maintenance markers categorized by priority
+- Technical debt assessment with effort estimates
+
+**Usage:** Type `/code-quality` in Claude Code
+
+**See:** `.claude/commands/code-quality.md` for implementation details
+
 ---
 
 ## Common Development Tasks
