@@ -276,6 +276,37 @@ This project includes custom slash commands for common development tasks.
 
 **See:** `.claude/commands/test-coverage.md` for implementation details
 
+### `/directory-check` - Directory Organization Check
+
+**Purpose:** Comprehensive qualitative assessment of project directory organization and file structure
+
+**When to use:**
+- Before minor/major version releases
+- When onboarding new contributors
+- After significant restructuring
+- During project audits
+- Quarterly organization reviews
+
+**What it checks:**
+- Directory structure logic and intuitiveness
+- File organization and placement
+- Documentation structure and findability
+- Archive organization
+- Configuration file placement
+- New contributor clarity
+
+**Output:** Detailed organization report with:
+- Critical issues (must fix before release)
+- Recommended improvements
+- Good practices observed
+- Directory structure analysis
+- New contributor experience assessment
+- Suggestions for future enhancement
+
+**Usage:** Type `/directory-check` in Claude Code
+
+**See:** `.claude/commands/directory-check.md` for implementation details
+
 ---
 
 ## Common Development Tasks
