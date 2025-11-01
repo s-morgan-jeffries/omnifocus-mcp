@@ -607,6 +607,25 @@ When asking for help, provide:
 - Add troubleshooting scenarios (document solutions)
 - Change environment requirements (update prerequisites)
 
+### Documentation Quality Checks
+
+**When to run `/doc-quality` slash command:**
+- Before minor/major version releases
+- After significant documentation changes
+- When onboarding new contributors
+- Quarterly documentation audits
+
+**What it checks:**
+- README completeness and accuracy
+- Foundation model interpretability
+- Cross-reference integrity (all links valid?)
+- Technical accuracy (code examples match API?)
+- Clarity, consistency, and completeness
+
+**Output:** Comprehensive quality report with severity levels (Critical/Recommended/Minor)
+
+**See:** `.claude/CLAUDE.md` Slash Commands section for details
+
 ---
 
 ## Commit Message Guidelines

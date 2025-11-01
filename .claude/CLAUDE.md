@@ -181,6 +181,41 @@ The API redesign (40→16 functions) completed October 2025.
 
 ---
 
+## Slash Commands
+
+This project includes custom slash commands for common development tasks.
+
+### `/doc-quality` - Documentation Quality Check
+
+**Purpose:** Comprehensive qualitative assessment of project documentation
+
+**When to use:**
+- Before minor/major version releases
+- After significant documentation changes
+- When onboarding new contributors
+- Quarterly documentation audits
+
+**What it checks:**
+- README completeness and accuracy
+- Foundation model interpretability (can AI understand the docs?)
+- Cross-reference integrity (all links valid?)
+- Technical accuracy (code examples match current API?)
+- Clarity, consistency, and completeness
+
+**Output:** Detailed quality report with:
+- Critical issues (must fix before release)
+- Recommended improvements
+- Good practices observed
+- Foundation model readability score
+- Cross-reference verification results
+- Suggestions for future enhancement
+
+**Usage:** Type `/doc-quality` in Claude Code
+
+**See:** `.claude/commands/doc-quality.md` for implementation details
+
+---
+
 ## Common Development Tasks
 
 ### Type Safety Examples
