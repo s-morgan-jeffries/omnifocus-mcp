@@ -40,16 +40,35 @@ Use the Task tool with `subagent_type="general-purpose"` to perform a comprehens
    - Test instructions work as written?
 
 **Files to analyze:**
-- README.md
-- CHANGELOG.md
-- docs/guides/CONTRIBUTING.md
-- docs/guides/TESTING.md
-- docs/guides/INTEGRATION_TESTING.md
-- docs/reference/ARCHITECTURE.md
-- docs/reference/API_REFERENCE.md
-- docs/reference/HYGIENE_CHECK_CRITERIA.md
-- docs/project/ROADMAP.md
-- .claude/CLAUDE.md
+
+Discover documentation dynamically using Glob, then filter:
+
+**Include:**
+- Root: `README.md`, `CHANGELOG.md`
+- `docs/guides/**/*.md` - All guide docs
+- `docs/reference/**/*.md` - All reference docs
+- `docs/project/**/*.md` - All project docs
+- `docs/migration/**/*.md` - Migration guides
+- `.claude/CLAUDE.md` - Project memory for AI
+- `scripts/README.md` - Scripts documentation
+
+**Exclude:**
+- `venv/**` - Third-party package docs
+- `.pytest_cache/**` - Test cache
+- `.claude/mistakes/**` - Archived mistake tracking
+- `.claude/commands/**` - Command definitions (avoid recursion)
+- `.claude/*AUDIT*.md` - Temporary audit docs
+- `.claude/v0.6.3-implementation-plan.md` - Temporary planning
+- `docs/archive/**` - Archived/historical docs (may be intentionally outdated)
+- `docs/VALIDATION_SPRINT_COMPLETE.md` - Temporary sprint marker
+
+**Discovery approach:**
+```bash
+# Use Glob to find markdown files, then filter programmatically
+find . -name "*.md" | grep -v "venv/" | grep -v ".pytest_cache/" |
+  grep -v ".claude/mistakes/" | grep -v ".claude/commands/" |
+  grep -v "docs/archive/" | grep -v ".claude.*AUDIT"
+```
 
 **Output format:**
 
@@ -157,24 +176,24 @@ Use the Task tool with `subagent_type="general-purpose"` to perform a comprehens
 ```
 Analyze the documentation quality for the OmniFocus MCP Server project.
 
-Files to read:
-- README.md
-- CHANGELOG.md
-- docs/guides/CONTRIBUTING.md
-- docs/guides/TESTING.md
-- docs/guides/INTEGRATION_TESTING.md
-- docs/reference/ARCHITECTURE.md
-- docs/reference/API_REFERENCE.md
-- docs/reference/HYGIENE_CHECK_CRITERIA.md
-- docs/project/ROADMAP.md
-- .claude/CLAUDE.md
+Step 1: Discover documentation files
+Use Glob to find all markdown files, then filter:
+- Include: Root .md, docs/guides/, docs/reference/, docs/project/, docs/migration/, .claude/CLAUDE.md, scripts/README.md
+- Exclude: venv/, .pytest_cache/, .claude/mistakes/, .claude/commands/, docs/archive/, temporary audit/planning files
 
+Step 2: Read discovered files
+Read all documentation files identified in Step 1.
+
+Step 3: Analyze quality
 Perform comprehensive quality analysis covering:
 1. README completeness and accuracy
 2. Foundation model interpretability
-3. Cross-reference integrity
-4. Technical accuracy (code examples match current v0.6.5 API)
+3. Cross-reference integrity (verify all internal links)
+4. Technical accuracy (code examples match current v0.6.5+ API)
 5. Clarity, consistency, and completeness
 
+Step 4: Generate report
 Generate a detailed quality report using the template above. Focus on actionable recommendations with specific file/line references.
+
+Note: If new documentation files are added to the project, they will be automatically discovered and included in analysis.
 ```
