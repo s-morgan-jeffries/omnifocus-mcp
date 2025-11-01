@@ -45,6 +45,17 @@ jobs:
         run: |
           ./scripts/check_test_count_sync.sh
 
+      - name: Check ROADMAP.md sync with closed issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract version from tag (v0.6.3-rc1 → v0.6.3)
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME%-rc*}
+
+          echo "🔍 Checking ROADMAP.md sync for milestone: $VERSION"
+          ./scripts/check_roadmap_sync.sh "$VERSION"
+
       - name: Verify milestone status
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

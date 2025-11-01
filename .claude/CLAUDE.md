@@ -366,6 +366,7 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
   - If tests added/removed: Update count in `docs/guides/TESTING.md` only (single source of truth)
   - **If fixing bug listed in ROADMAP.md:** Remove from "Upcoming Work" section after fix
   - **If completing roadmap item:** Update ROADMAP.md status (remove or move to "Completed" as appropriate)
+  - **If closing issue listed in ROADMAP.md:** Remove from active sections (checked automatically via #34)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
 - [ ] **Automation tested end-to-end** - If adding workflow automation (hooks, scripts), verify it actually works:
   - Test happy path (automation allows correct behavior)
