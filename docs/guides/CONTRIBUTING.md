@@ -206,18 +206,34 @@ git commit -m "chore: bump version to v0.6.4"
 git tag v0.6.4-rc1
 
 # 5. Review hygiene results
-# Hook prompts if warnings found:
+# If critical checks FAIL, you have two options:
+
+# Option A: Fix issues and retry
+# Fix the issues identified in the hygiene check results
+git commit -m "fix: address hygiene check findings"
+git tag v0.6.4-rc1  # Retry (will run checks again)
+
+# Option B: Review and approve (if issues are acceptable)
+# Review the results file to understand failures
+less .hygiene-check-results-v0.6.4-rc1.txt
+# After reviewing, approve to proceed anyway
+./scripts/approve_hygiene_checks.sh v0.6.4-rc1
+# This creates .hygiene-approved-v0.6.4-rc1 file
+git tag v0.6.4-rc1  # Now proceeds with approval
+
+# If only WARNINGS (non-critical):
+# Hook prompts interactively:
 #   "Review detailed results? (y/n)"
 #   "Have you reviewed the warnings and decided they are acceptable? (y/n)"
-less .hygiene-check-results-v0.6.4-rc1.txt  # If needed
+# Answer 'y' to proceed
 
 # 6. Push release branch + RC tag
 git push origin release/v0.6.4
 git push origin v0.6.4-rc1
-# GitHub Actions runs same checks
+# GitHub Actions runs same checks (automated only)
 
-# 7. If RC finds issues, fix on release branch
-git commit -m "fix: address RC findings"
+# 7. If RC finds issues in CI, fix on release branch
+git commit -m "fix: address CI findings"
 git tag v0.6.4-rc2  # Hook compares vs rc1, shows improvement
 git push origin release/v0.6.4 v0.6.4-rc2
 
@@ -242,17 +258,41 @@ git push origin --delete release/v0.6.4
 ```
 
 **Hygiene Checks Run on RC Tags:**
+
+**Automated checks (block release if fail):**
 1. Version sync verification
 2. All test suites (unit + integration + e2e)
-3. Code complexity (Radon)
+3. Code complexity thresholds (CC ≤ 70 for documented exceptions)
 4. Client-server parity
 5. Milestone status (all issues closed)
-6. Test coverage (gaps, TODO markers)
+
+**Interactive checks (provide recommendations, non-blocking):**
+6. Test coverage analysis (gaps, TODO markers)
 7. Documentation completeness (CHANGELOG, versions, key docs)
-8. Code quality (TODOs, print statements, complexity)
+8. Code quality review (TODOs, print statements, complexity)
 9. Directory organization (orphaned files)
 
 **Results saved to:** `.hygiene-check-results-{TAG}.txt` (gitignored)
+
+**Review-and-Approve Workflow:**
+
+When hygiene checks fail, the pre-tag hook provides two paths:
+
+1. **Fix and retry** (recommended for critical issues):
+   - Review `.hygiene-check-results-{TAG}.txt`
+   - Fix the identified issues
+   - Retry: `git tag {TAG}` (checks run again)
+
+2. **Review and approve** (for acceptable issues):
+   - Review results file thoroughly
+   - Decide issues are acceptable (e.g., known complexity, intentional TODOs)
+   - Run: `./scripts/approve_hygiene_checks.sh {TAG}`
+   - Creates approval file: `.hygiene-approved-{TAG}`
+   - Retry: `git tag {TAG}` (now proceeds with approval)
+
+**Important:** Approval is tag-specific. Each RC tag requires its own approval if checks fail.
+
+**See:** `docs/reference/HYGIENE_CHECK_CRITERIA.md` for detailed pass/fail criteria
 
 ### Why Trunk-Based?
 
