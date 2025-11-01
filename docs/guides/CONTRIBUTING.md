@@ -660,6 +660,23 @@ The project includes slash commands for qualitative assessments:
 - Test quality (edge cases, mocking)
 - Testing types assessment (performance, property-based, security, compatibility)
 
+#### `/directory-check` - Directory Organization
+
+**When to run:**
+- Before minor/major version releases
+- When onboarding new contributors
+- After significant restructuring
+- During project audits
+- Quarterly organization reviews
+
+**What it checks:**
+- Directory structure logic and intuitiveness
+- File organization and placement
+- Documentation structure and findability
+- Archive organization
+- Configuration file placement
+- New contributor clarity
+
 **Output:** All commands generate comprehensive quality reports with severity levels (Critical/Recommended/Minor)
 
 **See:** `.claude/CLAUDE.md` Slash Commands section for details
