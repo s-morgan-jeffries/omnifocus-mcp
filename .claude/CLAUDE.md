@@ -383,6 +383,43 @@ See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
 ---
 
+## After Every Push
+
+**CI Monitoring is Automatic:**
+
+When you run `git push`, the PostToolUse(Bash) hook automatically:
+1. Detects the push command
+2. Waits 5 seconds for CI to start
+3. Fetches the latest GitHub Actions run ID
+4. Watches the run until completion (`gh run watch`)
+5. **Blocks Claude if CI fails** - You must fix failures before continuing
+6. Reports success if CI passes
+
+**You don't need to manually monitor CI** - the hook handles it automatically (#42).
+
+**If CI fails:**
+- Hook shows the run URL and blocks further actions
+- Fetch detailed logs: `gh run view <run-id> --log-failed`
+- Fix the failure
+- Push the fix (hook monitors again)
+- Continue when CI passes
+
+**Manual monitoring (if needed):**
+```bash
+# Get latest run
+gh run list --limit 1
+
+# Watch specific run
+gh run watch <run-id>
+
+# View failure logs
+gh run view <run-id> --log-failed
+```
+
+**Note:** This automated monitoring prevents the mistake in #36 (pushing and not monitoring CI).
+
+---
+
 ## Before Closing Issues
 
 **CRITICAL: Check acceptance criteria before claiming an issue is "done".**

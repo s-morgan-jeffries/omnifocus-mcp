@@ -671,6 +671,89 @@ fix: update DESTRUCTIVE_OPERATIONS set for new function names
 
 ---
 
+## Continuous Integration (CI Monitoring)
+
+### Automatic CI Monitoring
+
+**When you push code, CI monitoring is automatic** (#36, #42):
+
+1. **Post-bash hook activates** - Detects `git push` commands
+2. **Waits for GitHub Actions** - Gives CI ~5 seconds to start
+3. **Monitors run until completion** - Uses `gh run watch`
+4. **Blocks if CI fails** - You must fix before continuing
+5. **Reports success** - Confirms all checks passed
+
+**You don't need to manually monitor CI** - the Claude Code hook handles it automatically.
+
+### If CI Fails
+
+When the hook detects a CI failure:
+
+```
+❌ GitHub Actions CI failed after your push
+View failure details: https://github.com/.../actions/runs/...
+
+Fetch logs with: gh run view <run-id> --log-failed
+
+You must fix CI failures before continuing.
+```
+
+**Next steps:**
+1. Review the failure URL or fetch logs: `gh run view <run-id> --log-failed`
+2. Fix the issue locally
+3. Commit and push the fix
+4. Hook monitors again automatically
+5. Continue when CI passes
+
+### Manual CI Monitoring (if needed)
+
+If you need to manually check CI status:
+
+```bash
+# View recent runs
+gh run list --limit 5
+
+# Watch specific run
+gh run watch <run-id>
+
+# View failure details
+gh run view <run-id> --log-failed
+
+# View full logs
+gh run view <run-id> --log
+```
+
+### CI Checks
+
+GitHub Actions runs on every push and PR:
+- Unit tests (~2 min, ~333 tests)
+- Integration tests (~10-15 min, ~92 tests)
+- E2E tests (MCP stack)
+- Code quality checks
+- Complexity analysis
+
+**All checks must pass before merging to main.**
+
+### Troubleshooting
+
+**"No GitHub Actions run found":**
+- CI may not have triggered yet (wait a few seconds)
+- Check manually: `https://github.com/<repo>/actions`
+- Verify `.github/workflows/` files are present
+
+**"gh CLI not found":**
+- Install: `brew install gh`
+- Authenticate: `gh auth login`
+
+**Hook not running:**
+- Verify hook is installed: `ls -la .claude/settings.json`
+- Check hook script exists: `scripts/hooks/post_bash.sh`
+- Restart Claude Code session (hooks load at startup)
+
+**See:** `.claude/CLAUDE.md` "Claude Code Hooks" and "After Every Push" sections for details.
+
+---
+
 ## Project Structure
 
 ```
