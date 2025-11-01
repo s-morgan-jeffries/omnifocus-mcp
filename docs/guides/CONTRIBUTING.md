@@ -311,6 +311,72 @@ When hygiene checks fail, the pre-tag hook provides two paths:
 
 ---
 
+## Git Hooks Setup (Recommended)
+
+Git hooks provide backup enforcement of workflow rules during manual git operations. While Claude Code hooks handle AI coding sessions, git hooks catch mistakes during manual command-line work.
+
+### Installation
+
+Install git hooks by creating symlinks in `.git/hooks/`:
+
+```bash
+# Install all hooks at once
+ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
+ln -sf ../../scripts/git-hooks/commit-msg .git/hooks/commit-msg
+ln -sf ../../scripts/git-hooks/pre-tag .git/hooks/pre-tag
+```
+
+Or install individually:
+```bash
+# Branch protection (blocks commits to main/master)
+ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
+
+# Commit message formatting
+ln -sf ../../scripts/git-hooks/commit-msg .git/hooks/commit-msg
+
+# Release hygiene checks
+ln -sf ../../scripts/git-hooks/pre-tag .git/hooks/pre-tag
+```
+
+### What Each Hook Does
+
+**pre-commit** - Branch protection and mistake detection:
+- Blocks commits to `main`/`master` branches (except hotfixes)
+- Detects common mistakes (missing tests, server exposure, docs)
+- **Allows hotfixes:** Include "hotfix" or "emergency" in commit message
+
+**commit-msg** - Message formatting:
+- Enforces conventional commit format
+- Ensures commit messages follow project standards
+
+**pre-tag** - Release quality gates:
+- Runs hygiene checks on RC tags (`v*-rc*`)
+- Creates `.hygiene-check-results-{TAG}.txt`
+- Implements review-and-approve workflow (see [Release Process](#release-process))
+
+### Hotfix Example
+
+If you need to commit directly to main for an emergency:
+
+```bash
+# This will be blocked
+git commit -m "fix urgent bug"
+
+# This will be allowed
+git commit -m "hotfix: fix critical production bug"
+```
+
+### Notes
+
+- **Git hooks are optional but recommended** - They catch mistakes during manual git operations
+- **Claude Code hooks are always active** - They run during AI coding sessions (primary enforcement)
+- **Git hooks provide backup** - For manual operations outside of Claude Code sessions
+- **Hooks can be bypassed** - Use `git commit --no-verify` if absolutely necessary (not recommended)
+
+**See:** `.claude/CLAUDE.md` "Claude Code Hooks" section for primary enforcement mechanism
+
+---
+
 ## Testing Setup
 
 Before running tests, you'll need to understand the three test types and their setup requirements:
