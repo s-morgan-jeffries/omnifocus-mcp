@@ -167,61 +167,20 @@ if [ "$IS_RC" = true ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
     echo "" >> "$RESULTS_FILE"
 
-    # Now run hygiene reviews
-    echo "Running hygiene reviews..." | tee -a "$RESULTS_FILE"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
-    echo "" >> "$RESULTS_FILE"
-
-    # Check 6: Test coverage
-    echo "6. Reviewing test coverage..." | tee -a "$RESULTS_FILE"
+    # Check 6: Test coverage (CRITICAL - must be >= 85%)
+    echo "6. Checking test coverage..." | tee -a "$RESULTS_FILE"
     COV_OUTPUT=$(./scripts/check_test_coverage.sh 2>&1)
     if [ $? -eq 0 ]; then
         echo "   ✅ Test coverage check passed" | tee -a "$RESULTS_FILE"
     else
-        echo "   ⚠️  Test coverage has gaps" | tee -a "$RESULTS_FILE"
+        echo "   ❌ Test coverage below 85%" | tee -a "$RESULTS_FILE"
         echo "$COV_OUTPUT" >> "$RESULTS_FILE"
-        ((WARNINGS++))
-    fi
-    echo "" >> "$RESULTS_FILE"
-
-    # Check 7: Documentation completeness
-    echo "7. Reviewing documentation..." | tee -a "$RESULTS_FILE"
-    DOC_OUTPUT=$(./scripts/check_documentation.sh "$VERSION" 2>&1)
-    if [ $? -eq 0 ]; then
-        echo "   ✅ Documentation check passed" | tee -a "$RESULTS_FILE"
-    else
-        echo "   ❌ Documentation check failed" | tee -a "$RESULTS_FILE"
-        echo "$DOC_OUTPUT" >> "$RESULTS_FILE"
         ((FAILED_CHECKS++))
     fi
     echo "" >> "$RESULTS_FILE"
 
-    # Check 8: Code quality
-    echo "8. Reviewing code quality..." | tee -a "$RESULTS_FILE"
-    QUALITY_OUTPUT=$(./scripts/check_code_quality.sh 2>&1)
-    if [ $? -eq 0 ]; then
-        echo "   ✅ Code quality check passed" | tee -a "$RESULTS_FILE"
-    else
-        echo "   ⚠️  Code quality has issues" | tee -a "$RESULTS_FILE"
-        echo "$QUALITY_OUTPUT" >> "$RESULTS_FILE"
-        ((WARNINGS++))
-    fi
-    echo "" >> "$RESULTS_FILE"
-
-    # Check 9: Directory organization
-    echo "9. Reviewing directory organization..." | tee -a "$RESULTS_FILE"
-    DIR_OUTPUT=$(./scripts/check_directory_organization.sh 2>&1)
-    if [ $? -eq 0 ]; then
-        echo "   ✅ Directory organization check passed" | tee -a "$RESULTS_FILE"
-    else
-        echo "   ⚠️  Directory organization could be improved" | tee -a "$RESULTS_FILE"
-        echo "$DIR_OUTPUT" >> "$RESULTS_FILE"
-        ((WARNINGS++))
-    fi
-    echo "" >> "$RESULTS_FILE"
-
-    # Check 10: ROADMAP.md sync with closed issues
-    echo "10. Checking ROADMAP.md sync with closed issues..." | tee -a "$RESULTS_FILE"
+    # Check 7: ROADMAP.md sync with closed issues
+    echo "7. Checking ROADMAP.md sync with closed issues..." | tee -a "$RESULTS_FILE"
     ROADMAP_OUTPUT=$(./scripts/check_roadmap_sync.sh "$VERSION" 2>&1)
     if [ $? -eq 0 ]; then
         echo "   ✅ ROADMAP.md is synced" | tee -a "$RESULTS_FILE"

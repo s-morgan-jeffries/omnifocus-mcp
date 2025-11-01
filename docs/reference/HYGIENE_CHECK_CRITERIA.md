@@ -173,27 +173,51 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
-## Interactive Checks (Qualitative - Non-Blocking)
+### 6. Test Coverage
 
-These checks generate reports with recommendations but don't block releases.
+**Script:** `scripts/check_test_coverage.sh`
 
-### 8. Test Coverage Analysis
+**Pass Criteria:**
+- ✅ Overall coverage ≥ 85% (measured via pytest-cov)
+- ✅ All public functions have test coverage
+- ✅ No TODO test markers in source code
 
-**Script:** `scripts/check_test_coverage.sh` (needs fixing)
+**Fail Criteria:**
+- ❌ Overall coverage < 85%
+- ❌ Public functions without test coverage
+- ❌ TODO test markers indicating planned tests
 
-**Purpose:** Identify coverage gaps, not enforce minimum threshold
+**Exit Codes:**
+- `0` - Coverage ≥ 85% and all criteria met
+- `1` - Coverage < 85% or other criteria failed
 
-**Reports:**
-- Coverage percentage by file
-- Functions without tests
-- Code paths not covered
-- Recommendations for additional tests
-
-**Status:** Script exists but looks for wrong file (`client.py` vs `omnifocus_connector.py`). **Needs fixing.**
+**Note:** This was changed from an interactive check to a critical check in v0.6.6 to enforce minimum coverage standards.
 
 ---
 
-### 9. Documentation Quality
+### 7. ROADMAP.md Sync
+
+**Script:** `scripts/check_roadmap_sync.sh`
+
+**Pass Criteria:**
+- ✅ All closed issues in milestone removed from active sections
+- ✅ Active sections: "Upcoming Work", "Known Bugs", "Planned Work", etc.
+- ✅ Issues can remain in "Completed" or be deleted entirely
+
+**Fail Criteria:**
+- ❌ One or more closed issues still in active sections
+
+**Exit Codes:**
+- `0` - All closed issues removed from active sections
+- `1` - One or more closed issues found in active sections
+
+---
+
+## Interactive Checks (Non-Blocking)
+
+These checks are available via manual script execution for code quality insights. They provide recommendations but don't block releases.
+
+### Documentation Quality
 
 **Slash Command:** `/doc-quality` (**To be created** - issue #86)
 
@@ -212,27 +236,31 @@ These checks generate reports with recommendations but don't block releases.
 
 ---
 
-### 10. Code Quality Analysis
+### Code Quality Analysis
 
-**Script:** `scripts/check_code_quality.sh` (needs fixing)
+**Script:** `scripts/check_code_quality.sh`
 
 **Purpose:** Identify code quality issues beyond metrics
 
 **Checks:**
 - TODOs and FIXMEs
 - Print statements (should use logging)
-- Type hint coverage
-- Docstring coverage
-- Unused imports
-- Code duplication
+- Bare except: clauses
+- Long lines (>120 chars)
+- High complexity functions
 
-**Status:** Script has bash errors and marks everything as "informational". **Needs fixing.**
+**Usage:** Run manually when needed
+```bash
+./scripts/check_code_quality.sh
+```
+
+**Status:** Available for manual runs. Removed from automated checks in v0.6.6 (no objective thresholds).
 
 ---
 
-### 11. Directory Organization
+### Directory Organization
 
-**Script:** `scripts/check_directory_organization.sh` (needs fixing)
+**Script:** `scripts/check_directory_organization.sh`
 
 **Purpose:** Suggest organizational improvements
 
@@ -240,9 +268,14 @@ These checks generate reports with recommendations but don't block releases.
 - File placement (correct directories)
 - Naming conventions
 - Module structure
-- Documentation organization
+- Empty directories
 
-**Status:** Script scans inside venv/ (shouldn't) and never fails. **Needs fixing.**
+**Usage:** Run manually when needed
+```bash
+./scripts/check_directory_organization.sh
+```
+
+**Status:** Available for manual runs. Removed from automated checks in v0.6.6 (subjective recommendations).
 
 ---
 
@@ -252,26 +285,20 @@ These checks generate reports with recommendations but don't block releases.
 |-------|------|--------|------------|----------------|
 | 1. Version Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 2. All Tests | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 3. Code Complexity | Automated | ⏳ Needs thresholds | 0=pass, 1=fail | Yes |
+| 3. Code Complexity | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 4. Client-Server Parity | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 5. Test Count Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 6. Milestone Status | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 7. ROADMAP.md Sync | Automated | ⏳ To implement | 0=pass, 1=fail | Yes |
-| 8. Test Coverage | Interactive | ⚠️ Needs fixing | N/A | No |
-| 9. Doc Quality | Interactive | ⏳ To implement | N/A | No |
-| 10. Code Quality | Interactive | ⚠️ Needs fixing | N/A | No |
-| 11. Directory Org | Interactive | ⚠️ Needs fixing | N/A | No |
+| 5. Milestone Status | Automated | ✅ Working | 0=pass, 1=fail | Yes |
+| 6. Test Coverage | Automated | ✅ Working | 0=pass, 1=fail | Yes |
+| 7. ROADMAP.md Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
+| Doc Quality | Interactive | ⏳ To implement | N/A | No |
+| Code Quality | Interactive | ✅ Available | N/A | No |
+| Directory Org | Interactive | ✅ Available | N/A | No |
 
----
-
-## Implementation Priority (v0.6.6)
-
-1. **Fix check_complexity.sh** - Add threshold enforcement (CC ≤ 20)
-2. **Create check_roadmap_sync.sh** - New automated check (issue #34)
-3. **Fix check_test_coverage.sh** - Correct file path, remove `|| true`
-4. **Fix check_code_quality.sh** - Fix bash errors, proper exit codes
-5. **Fix check_directory_organization.sh** - Exclude venv/, proper exit codes
-6. **Create /doc-quality slash command** - Interactive quality check (issue #86)
+**Changes in v0.6.6:**
+- Test Coverage promoted from interactive to automated (≥85% required)
+- Code Quality and Directory Organization removed from automated checks (available for manual runs)
+- ROADMAP.md Sync added as new automated check (#34)
+- Test Count Sync merged into Test Coverage check
 
 ---
 
