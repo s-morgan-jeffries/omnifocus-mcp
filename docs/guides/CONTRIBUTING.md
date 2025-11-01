@@ -183,6 +183,14 @@ git branch -d feature/my-feature
 
 **Architecture:** Release branches + Branch protection on main
 
+**📚 Complete Process:** See [docs/reference/RELEASE_PROCESS.md](../reference/RELEASE_PROCESS.md) for:
+- Patch vs Minor vs Major release processes
+- Interactive quality check requirements
+- Automation criteria and tracking
+- Complete checklists
+
+**Quick Reference:** The workflow below covers patch releases. Minor/major releases require additional interactive quality checks.
+
 ```bash
 # 1. All milestone features merged to main via PRs
 # Milestone shows 0 open issues
@@ -269,12 +277,17 @@ git push origin --delete release/v0.6.4
 6. Test coverage ≥85% (minimum threshold enforced)
 7. ROADMAP.md sync (closed issues removed from active sections)
 
-**Interactive checks (qualitative feedback via slash commands):**
-- Code quality review (TODOs, print statements, bare except)
-- Documentation quality assessment
-- Directory organization analysis
+**Interactive checks (required for minor/major releases, run manually via slash commands):**
+- `/doc-quality` - Documentation quality assessment
+- `/code-quality` - Code quality review (TODOs, print statements, bare except)
+- `/test-coverage` - Test coverage analysis beyond 85% threshold
+- `/directory-check` - Directory organization assessment
 
-**Note:** Interactive checks are no longer run automatically. Use slash commands for qualitative assessments.
+**Patch releases (v0.6.x):** Interactive checks optional (use as needed)
+**Minor releases (v0.x.0):** Interactive checks REQUIRED before RC tag (hook prompts for confirmation)
+**Major releases (vX.0.0):** Interactive checks REQUIRED + external review
+
+**See:** [docs/reference/RELEASE_PROCESS.md](../reference/RELEASE_PROCESS.md) for complete requirements
 
 **Results saved to:** `.hygiene-check-results-{TAG}.txt` (gitignored)
 
