@@ -32,9 +32,10 @@ This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.5 A
 - **get_perspectives** - List all custom perspectives
 - **switch_perspective** - Switch to a different perspective view
 
-**Key Changes in v0.6.2:**
+**Key Changes in v0.6.5:**
+- v0.6.5: Fixed AppleScript DONE status bug, added GitHub Actions CI, comprehensive testing documentation
+- v0.6.3-v0.6.4: Trunk-based workflow with RC tags, comprehensive hygiene checks for releases
 - v0.6.2: Added Claude Code hooks for automated workflow enforcement (prevents commits to main, monitors CI failures)
-- v0.6.1: Fixed critical bug in project review dates + renamed internal components for clarity
 - v0.6.0: Consolidated 40+ functions into 16 comprehensive tools. All updates now go through `update_task()` and `update_project()` instead of specialized functions. See [CHANGELOG.md](CHANGELOG.md) for migration guide.
 
 ## Prerequisites
@@ -56,7 +57,7 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 
 # Checkout latest stable release
-git checkout v0.6.4  # Or latest version from releases
+git checkout v0.6.5  # Or latest version from releases
 
 # Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
