@@ -33,14 +33,31 @@ This project uses GitHub Issues for tracking bugs, features, documentation gaps,
 
 ### Before Starting Work
 
-**Create a feature branch:**
+**Create a dedicated branch for each GitHub issue (one-branch-per-issue workflow):**
+
 ```bash
-git checkout -b feature/description  # New features
-git checkout -b fix/description      # Bug fixes
-git checkout -b docs/description     # Documentation
+# Branch naming convention: {type}/issue-{num}-{brief-description}
+git checkout -b feature/issue-87-one-branch-workflow  # Features/enhancements
+git checkout -b fix/issue-92-applescript-timeout      # Bug fixes
+git checkout -b docs/issue-93-update-roadmap          # Documentation
+
+# Good branch name examples:
+git checkout -b feature/issue-77-ui-navigation-tools
+git checkout -b fix/issue-78-empty-folder-handling
+git checkout -b docs/issue-86-doc-quality-command
 ```
 
+**Branch naming rules:**
+- **Type prefix:** `feature/`, `fix/`, or `docs/`
+- **Issue number:** Always include `issue-{num}` (required for tracking)
+- **Description:** Brief kebab-case description (3-5 words max)
+- **Good:** `feature/issue-77-ui-navigation-tools`
+- **Bad:** `feature/add-navigation` (missing issue number)
+- **Bad:** `issue-77` (missing type and description)
+
 **Only work on main for:** Hotfixes, trivial typo fixes, emergency rollbacks
+
+**Automated enforcement:** Claude Code hooks and git pre-commit hook prevent commits to main
 
 ### Picking Issues to Work On
 
