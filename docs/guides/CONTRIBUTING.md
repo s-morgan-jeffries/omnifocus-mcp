@@ -208,6 +208,54 @@ git branch -d feature/my-feature
 
 **Quick Reference:** The workflow below covers patch releases. Minor/major releases require additional interactive quality checks.
 
+---
+
+#### Which Quality Checks Do I Need to Run?
+
+**Decision tree based on version update type:**
+
+```
+What version are you releasing?
+│
+├─ Patch (v0.6.x → v0.6.y)
+│  └─ ✅ Automated checks only (7 checks, ~5 minutes)
+│     • Pre-tag hook runs automatically on RC tag
+│     • Must pass: version sync, tests, complexity, coverage, parity, milestone, ROADMAP
+│     • No interactive checks required
+│
+├─ Minor (v0.x.0 → v0.y.0)
+│  └─ ✅ Automated checks (same as patch)
+│     PLUS
+│     📋 Interactive quality checks (4 checks, ~30 minutes)
+│     • Run BEFORE creating RC tag:
+│       - /doc-quality - Documentation review
+│       - /code-quality - Code quality analysis
+│       - /test-coverage - Coverage analysis
+│       - /directory-check - Organization review
+│     • Pre-tag hook prompts for confirmation
+│     • Update .claude/automation-candidates.md with findings
+│
+└─ Major (vX.0.0 → vY.0.0)
+   └─ ✅ Automated checks (same as patch)
+      PLUS
+      📋 Interactive quality checks (same as minor)
+      PLUS
+      🔍 Manual review requirements:
+      • External review of breaking changes
+      • Migration guide completion
+      • Backwards compatibility assessment
+      • User communication plan
+```
+
+**Time expectations:**
+- **Patch:** ~5 minutes (automated only)
+- **Minor:** ~35 minutes (automated + interactive)
+- **Major:** ~1-2 hours (automated + interactive + manual)
+
+**See [docs/reference/RELEASE_PROCESS.md](../reference/RELEASE_PROCESS.md) for complete details.**
+
+---
+
 ```bash
 # 1. All milestone features merged to main via PRs
 # Milestone shows 0 open issues
