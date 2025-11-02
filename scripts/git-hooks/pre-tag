@@ -12,6 +12,25 @@ fi
 
 echo "🔍 Checking release hygiene for tag: $TAG_NAME"
 
+# Extract version numbers to determine release type
+if [[ "$TAG_NAME" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    MAJOR="${BASH_REMATCH[1]}"
+    MINOR="${BASH_REMATCH[2]}"
+    PATCH="${BASH_REMATCH[3]}"
+
+    # Determine release type (patch/minor/major)
+    if [ "$PATCH" != "0" ]; then
+        RELEASE_TYPE="patch"
+    elif [ "$MINOR" != "0" ]; then
+        RELEASE_TYPE="minor"
+    else
+        RELEASE_TYPE="major"
+    fi
+else
+    # Couldn't parse version, default to patch
+    RELEASE_TYPE="patch"
+fi
+
 # Get current branch
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
@@ -29,6 +48,47 @@ if [[ "$TAG_NAME" =~ -rc[0-9]+$ ]]; then
         echo "  git checkout -b release/${TAG_NAME%-rc*}"
         echo "  git tag $TAG_NAME"
         exit 1
+    fi
+
+    # ============================================
+    # For minor/major releases: Prompt for interactive quality checks
+    # ============================================
+    if [ "$RELEASE_TYPE" = "minor" ] || [ "$RELEASE_TYPE" = "major" ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🔍 ${RELEASE_TYPE^} Release Detected: $TAG_NAME"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "${RELEASE_TYPE^} releases require interactive quality checks."
+        echo ""
+        echo "Required before tagging:"
+        echo "  ✓ /doc-quality - Documentation quality assessment"
+        echo "  ✓ /code-quality - Code quality review"
+        echo "  ✓ /test-coverage - Test coverage analysis"
+        echo "  ✓ /directory-check - Directory organization check"
+        echo ""
+        echo "Have you run all four interactive quality checks? (y/n)"
+        read -r QUALITY_CHECKS_DONE
+
+        if [ "$QUALITY_CHECKS_DONE" != "y" ] && [ "$QUALITY_CHECKS_DONE" != "Y" ]; then
+            echo ""
+            echo "❌ Interactive quality checks required before ${RELEASE_TYPE} release."
+            echo ""
+            echo "Run these commands in Claude Code:"
+            echo "  /doc-quality"
+            echo "  /code-quality"
+            echo "  /test-coverage"
+            echo "  /directory-check"
+            echo ""
+            echo "Review the results, address critical issues, then retry:"
+            echo "  git tag $TAG_NAME"
+            echo ""
+            exit 1
+        fi
+
+        echo ""
+        echo "✅ Interactive quality checks confirmed"
+        echo ""
     fi
 else
     echo "🚀 Final release tag detected - verifying RC passed..."
