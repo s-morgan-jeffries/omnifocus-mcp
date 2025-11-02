@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.5 API):
+This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.6 API):
 
 ### Project Management (5 tools)
 - **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
@@ -32,7 +32,8 @@ This server provides **16 comprehensive tools** for managing OmniFocus (v0.6.5 A
 - **get_perspectives** - List all custom perspectives
 - **switch_perspective** - Switch to a different perspective view
 
-**Key Changes in v0.6.5:**
+**Key Changes in v0.6.6:**
+- v0.6.6: Release process infrastructure, interactive quality check slash commands, workflow enforcement and documentation
 - v0.6.5: Fixed AppleScript DONE status bug, added GitHub Actions CI, comprehensive testing documentation
 - v0.6.3-v0.6.4: Trunk-based workflow with RC tags, comprehensive hygiene checks for releases
 - v0.6.2: Added Claude Code hooks for automated workflow enforcement (prevents commits to main, monitors CI failures)
@@ -57,7 +58,7 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 
 # Checkout latest stable release
-git checkout v0.6.5  # Or latest version from releases
+git checkout v0.6.6  # Or latest version from releases
 
 # Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh

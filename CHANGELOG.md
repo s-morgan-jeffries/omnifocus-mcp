@@ -5,6 +5,50 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] - 2025-11-02
+
+### Added
+
+- **Release process infrastructure** (#70, #108, #109)
+  - Overhauled hygiene checks with review-and-approve workflow
+  - Enhanced pre-tag hook to prompt for interactive quality checks on minor/major releases
+  - Created automation candidates tracking system for recurring AI-process issues
+  - Documented complete release process with patch/minor/major distinctions
+
+- **Interactive quality check slash commands** (#86, #102, #103, #104)
+  - `/doc-quality` - Comprehensive documentation quality assessment
+  - `/code-quality` - Code quality analysis beyond basic complexity metrics
+  - `/test-coverage` - Test coverage analysis with testing types recommendations
+  - `/directory-check` - Directory organization and file structure review
+
+- **Workflow enforcement and documentation** (#87, #88, #89, #94)
+  - One-branch-per-issue workflow with branch naming conventions
+  - Version update protocol decision tree (patch/minor/major requirements)
+  - AI-process migration workflow for recurring issues
+  - Git pre-commit hook for branch protection during manual operations
+
+- **Claude Code hooks for automated enforcement** (#41, #42, #43, #66)
+  - Branch validation (prevents commits to main/master)
+  - Issue close verification (checks acceptance criteria)
+  - CI monitoring (watches GitHub Actions after push)
+  - Session context (loads branch, issues, recent commits)
+
+### Changed
+
+- **Documentation reorganization** (#93)
+  - Updated ROADMAP.md to remove outdated content and add completed work sections
+  - Updated version references across README, API_REFERENCE, CONTRIBUTING (v0.6.2 → v0.6.5)
+  - Consolidated hygiene check documentation (9 checks → 7 automated + 4 interactive)
+
+### Fixed
+
+- **AI-process issue tracking and prevention** (#28, #31, #32, #34, #36, #72, #85)
+  - Automated ROADMAP.md sync check (closed issues must be removed)
+  - Test count synchronization check
+  - Recurrence tracking and validation system
+  - Prevention measure effectiveness validation
+  - Proactive GitHub Actions monitoring
+
 ## [0.6.5] - 2025-10-28
 
 ### Fixed
