@@ -753,6 +753,62 @@ During triage, human reviews and marks duplicates:
 - Original issue tracks recurrences via linked duplicates
 - Recurrence count = number of duplicate issues
 
+### Migrating Recurring Issues to Automation
+
+**When an AI-process issue recurs (2+ times), evaluate for automation:**
+
+**Automation criteria (must meet ALL 5):**
+1. **Clear Pass/Fail** - Objective, deterministic criteria that can be scripted
+2. **Consistent Failures** - Failed in 3+ consecutive releases OR caused 2+ post-release issues
+3. **High Impact** - Causes user-facing bugs, contributor friction, hotfixes, or security issues
+4. **Low False Positives** - Won't block releases for acceptable cases
+5. **Maintainable** - Can be implemented as script <30s, clear exit codes, actionable errors
+
+**Migration workflow:**
+
+```
+AI-Process Issue Filed
+         ↓
+Does it meet automation criteria? (see above)
+    ↓                    ↓
+   YES                  NO
+    ↓                    ↓
+Add to                Add to
+automation-          interactive
+candidates.md        quality check
+    ↓                    ↓
+Has it                Is doc fix
+recurred              sufficient?
+3+ times?                ↓
+    ↓                   YES → Improve docs
+   YES                   NO → Add to slash command
+    ↓
+Implement automated check:
+- Create scripts/check_{name}.sh
+- Add to git pre-tag hook
+- Add to GitHub Actions
+- Document in CONTRIBUTING.md
+- Close AI-process issue
+```
+
+**Decision tree:**
+
+- **Automatable** (decidable, testable, high impact, low false positives):
+  - Examples: version sync, ROADMAP.md sync, test count sync, client-server parity
+  - Action: Track in `.claude/automation-candidates.md`, implement on 3rd recurrence
+
+- **Interactive check** (requires judgment but benefits from AI review):
+  - Examples: documentation quality, code organization, test coverage quality
+  - Action: Add to `/doc-quality`, `/code-quality`, `/test-coverage`, or `/directory-check` slash commands
+
+- **Documentation fix** (one-time mistake, preventable with better docs):
+  - Examples: forgot to update CHANGELOG, missed cross-reference
+  - Action: Improve `.claude/CLAUDE.md` or `docs/guides/CONTRIBUTING.md`
+
+**See:**
+- `.claude/automation-candidates.md` for tracking candidates and heuristics
+- `docs/reference/RELEASE_PROCESS.md` for complete automation criteria and examples
+
 ### Automatic Recurrence Detection
 
 The `check_recurrence.sh` script runs in CI to verify prevention measures:
