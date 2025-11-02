@@ -362,28 +362,59 @@ See `docs/guides/CONTRIBUTING.md` for complete workflow including:
 
 ## Before Starting Work
 
-**Create a feature branch for any non-trivial work:**
+### One-Branch-Per-Issue Workflow
+
+**ALWAYS create a dedicated branch for each GitHub issue:**
 
 ```bash
-git checkout -b feature/description  # For new features
-git checkout -b fix/description      # For bug fixes
-git checkout -b docs/description     # For documentation
+# Branch naming convention: {type}/issue-{num}-{brief-description}
+git checkout -b feature/issue-87-one-branch-workflow  # For features/enhancements
+git checkout -b fix/issue-92-applescript-timeout      # For bug fixes
+git checkout -b docs/issue-93-update-roadmap          # For documentation
+
+# Examples of good branch names:
+git checkout -b feature/issue-77-ui-navigation-tools
+git checkout -b fix/issue-78-empty-folder-handling
+git checkout -b docs/issue-86-doc-quality-command
 ```
 
-**Only work directly on main for:**
-- Hotfixes that need immediate deployment
-- Trivial documentation typos (single-line README fixes, etc.)
-- Emergency rollbacks
+**Branch naming rules:**
+- **Type prefix:** `feature/`, `fix/`, or `docs/`
+- **Issue number:** Always include `issue-{num}` (enables tracking)
+- **Description:** Brief kebab-case description (3-5 words max)
+- **Examples:**
+  - ✅ `feature/issue-77-ui-navigation-tools`
+  - ✅ `fix/issue-78-folder-empty-check`
+  - ✅ `docs/issue-86-slash-command`
+  - ❌ `feature/add-navigation` (missing issue number)
+  - ❌ `issue-77` (missing type and description)
+  - ❌ `feature/issue-77-add-comprehensive-ui-navigation-tools-with-focus-and-tabs` (too long)
 
-**Why:** Feature branches allow you to:
-- Test changes in isolation before merging
-- Get feedback via PR before affecting main
-- Easily roll back if something goes wrong
-- Keep main branch stable and deployable
+**Branch lifecycle:**
+1. **Create** - One branch per issue, created from latest main
+2. **Work** - All commits for that issue go on that branch
+3. **Push** - Push branch to remote for backup and PR creation
+4. **PR** - Create pull request for code review
+5. **Merge** - Merge to main after approval and CI passes
+6. **Delete** - Delete branch after merge (GitHub does this automatically)
+
+**Only work directly on main for:**
+- **Hotfixes** that need immediate deployment (label with "hotfix" in commit message)
+- **Trivial typos** in README (single-line fixes, no functional changes)
+- **Emergency rollbacks** (reverting broken commits)
+
+**Why one-branch-per-issue?**
+- **Isolation** - Test changes independently before merging
+- **Tracking** - Easy to see which commits address which issue
+- **Review** - PR-based workflow enables code review
+- **Rollback** - Easy to revert if something goes wrong
+- **Stability** - Keep main branch always deployable
 
 **See:** Issue #37 (ai-process) for why this matters
 
-**Automated enforcement:** Claude Code hooks automatically prevent commits to main branch (see below).
+**Automated enforcement:**
+- Claude Code hooks prevent commits to main/master (see Claude Code Hooks section)
+- Git pre-commit hook provides backup enforcement during manual operations (#94)
 
 ---
 
