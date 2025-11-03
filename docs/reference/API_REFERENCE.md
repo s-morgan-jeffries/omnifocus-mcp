@@ -1,12 +1,12 @@
 # OmniFocus MCP Server - API Reference
 
-**Current Version:** v0.6.5 (API Redesign - IMPLEMENTED)
+**Current Version:** v0.6.6 (Release Process Infrastructure & Quality Checks)
 **Total MCP Tools:** 16 (reduced from 40+)
 
 This document shows the complete API surface that Claude Desktop sees when connecting to the OmniFocus MCP server. Each tool is exposed via the Model Context Protocol and can be invoked by Claude.
 
-**Last Updated:** 2025-11-01
-**Latest Change:** v0.6.5 fixed AppleScript DONE status bug, added CI workflows, comprehensive testing documentation
+**Last Updated:** 2025-11-02
+**Latest Change:** v0.6.6 added release process infrastructure, interactive quality check slash commands, workflow enforcement, and Claude Code hooks
 
 ## ⚠️ Version History Notice
 

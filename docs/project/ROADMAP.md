@@ -2,11 +2,12 @@
 
 ## Status: Phase 3 (API Redesign) Complete ✅
 
-**Current Version:** v0.6.5 (October 2025)
+**Current Version:** v0.6.6 (November 2025)
 
 **Project Status:** Maintenance mode - Core MCP server is feature-complete with 16 comprehensive tools covering all OmniFocus primitives.
 
 **Latest:**
+- v0.6.6 (Nov 2025): Release process infrastructure, interactive quality checks, workflow enforcement, Claude Code hooks
 - v0.6.5 (Oct 2025): Fixed AppleScript DONE status bug, added GitHub Actions CI, comprehensive testing documentation
 - v0.6.4 (Oct 2025): Implemented actual hygiene check scripts (was placeholder automation in v0.6.3)
 - v0.6.3 (Oct 2025): Trunk-based workflow with RC tags, git hooks for release hygiene
@@ -27,7 +28,7 @@
 
 ---
 
-## Current State (v0.6.5 - October 2025)
+## Current State (v0.6.6 - November 2025)
 
 ### 🎉 API Redesign Complete - 16 Core MCP Tools
 
