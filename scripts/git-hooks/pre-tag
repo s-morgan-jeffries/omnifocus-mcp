@@ -251,6 +251,18 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
+    # Check 8: Documentation completeness
+    echo "8. Checking documentation completeness..." | tee -a "$RESULTS_FILE"
+    DOC_OUTPUT=$(./scripts/check_documentation.sh "$VERSION" 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Documentation check passed" | tee -a "$RESULTS_FILE"
+    else
+        echo "   ❌ Documentation check failed" | tee -a "$RESULTS_FILE"
+        echo "$DOC_OUTPUT" >> "$RESULTS_FILE"
+        ((FAILED_CHECKS++))
+    fi
+    echo "" >> "$RESULTS_FILE"
+
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
