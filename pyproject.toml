@@ -24,7 +24,7 @@ dev = [
 omnifocus-mcp = "omnifocus_mcp.server_fastmcp:mcp.run"
 
 [tool.pytest.ini_options]
-testpaths = ["."]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
