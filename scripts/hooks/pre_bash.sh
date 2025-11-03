@@ -74,6 +74,26 @@ EOF
 # which will run all hygiene checks and create approval workflow.
 
 # ===================================================
+# CHECK: Enforce wrapper script for tag creation
+# Related issues: #116
+# ===================================================
+check_tag_creation_workflow() {
+    # Only check git tag commands
+    if ! echo "$COMMAND" | grep -qE "^git tag"; then
+        return 0
+    fi
+
+    # Block direct git tag commands - require wrapper script
+    cat >&2 <<'EOF'
+{
+  "permissionDecision": "deny",
+  "permissionDecisionReason": "❌ Cannot create tags directly with 'git tag'.\n\n**Use the automated tag creation workflow:**\n\n  ./scripts/create_tag.sh <tag-name>\n\n**Why this matters:**\n- Runs pre-tag hygiene checks automatically\n- Validates tag name format\n- Checks for duplicate tags\n- Ensures consistent release quality\n\n**Example:**\n  ./scripts/create_tag.sh v0.6.7-rc1\n\n**What the script does:**\n1. Validates tag name format (vX.Y.Z or vX.Y.Z-rcN)\n2. Checks if tag already exists\n3. Runs all hygiene checks via pre-tag hook\n4. Creates tag only if checks pass\n5. Provides clear next steps (review, push)\n\n**If hygiene checks fail:**\n- Fix the issues and retry\n- OR approve known issues: ./scripts/approve_hygiene_checks.sh <tag-name>\n\nSee docs/reference/RELEASE_PROCESS.md for complete workflow."
+}
+EOF
+    return 2
+}
+
+# ===================================================
 # CHECK: Verify acceptance criteria before closing issues
 # Related issues: #63, #66
 # ===================================================
@@ -118,6 +138,7 @@ EOF
 # Array of check functions to run
 CHECKS=(
     check_no_commits_to_main
+    check_tag_creation_workflow
     # check_rc_tag_hygiene - REMOVED (#70), was blocking git pre-tag hook
     check_issue_close_criteria
     # Add more checks here
