@@ -211,7 +211,7 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
-### 6. Test Coverage
+### 9. Test Coverage
 
 **Script:** `scripts/check_test_coverage.sh`
 
@@ -230,24 +230,6 @@ This document defines the **automated check criteria** only. Interactive checks 
 - `1` - Coverage < 85% or other criteria failed
 
 **Note:** This was changed from an interactive check to a critical check in v0.6.6 to enforce minimum coverage standards.
-
----
-
-### 7. ROADMAP.md Sync
-
-**Script:** `scripts/check_roadmap_sync.sh`
-
-**Pass Criteria:**
-- ✅ All closed issues in milestone removed from active sections
-- ✅ Active sections: "Upcoming Work", "Known Bugs", "Planned Work", etc.
-- ✅ Issues can remain in "Completed" or be deleted entirely
-
-**Fail Criteria:**
-- ❌ One or more closed issues still in active sections
-
-**Exit Codes:**
-- `0` - All closed issues removed from active sections
-- `1` - One or more closed issues found in active sections
 
 ---
 
@@ -325,10 +307,11 @@ These checks are available via manual script execution for code quality insights
 | 2. All Tests | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 3. Code Complexity | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 4. Client-Server Parity | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 5. Milestone Status | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 6. Test Coverage | Automated | ✅ Working | 0=pass, 1=fail | Yes |
+| 5. Test Count Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
+| 6. Milestone Status | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 7. ROADMAP.md Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 8. Documentation Completeness | Automated | ✅ Working | 0=pass, 1=fail | Yes |
+| 9. Test Coverage | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | Doc Quality | Interactive | ⏳ To implement | N/A | No |
 | Code Quality | Interactive | ✅ Available | N/A | No |
 | Directory Org | Interactive | ✅ Available | N/A | No |
@@ -337,11 +320,11 @@ These checks are available via manual script execution for code quality insights
 - Test Coverage promoted from interactive to automated (≥85% required)
 - Code Quality and Directory Organization removed from automated checks (available for manual runs)
 - ROADMAP.md Sync added as new automated check (#34)
-- Test Count Sync merged into Test Coverage check
 
 **Changes in v0.6.7:**
 - Documentation Completeness added as new automated check (#124)
 - Verifies CHANGELOG entries, version references, migration guides, key docs existence
+- Total: 9 automated checks (1-9), 3 interactive checks
 
 ---
 
