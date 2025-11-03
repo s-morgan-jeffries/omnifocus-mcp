@@ -52,6 +52,12 @@ Use the Task tool with `subagent_type="general-purpose"` to perform a comprehens
    - Is there clear documentation of directory purposes?
    - Would a directory README be helpful anywhere?
 
+7. **Orphaned and Unused Files**
+   - Are there scripts with zero references?
+   - Are there historical documents not marked as archived?
+   - Are there configuration files not used by any tools?
+   - Should any active files be archived or deleted?
+
 **Files to analyze:**
 
 List and analyze the complete directory structure:
@@ -61,6 +67,24 @@ tree -L 3 -d --dirsfirst
 
 # List all files by directory
 find . -type f -not -path "*/venv/*" -not -path "*/.pytest_cache/*" -not -path "*/__pycache__/*" | sort
+```
+
+**Orphan detection (for scripts/ directory):**
+```bash
+# For each script, count references and check last modification
+for script in scripts/*.sh scripts/*.py 2>/dev/null; do
+  if [ -f "$script" ]; then
+    basename_script=$(basename "$script")
+    # Count references in Makefile, docs, CI, hooks, scripts, CLAUDE.md
+    refs=$(grep -r "$basename_script" Makefile .github/ docs/ scripts/ .claude/CLAUDE.md 2>/dev/null | grep -v "Binary" | wc -l | tr -d ' ')
+    # Get last modification date from git
+    last_mod=$(git log -1 --format="%ci" -- "$script" 2>/dev/null | cut -d' ' -f1)
+    echo "$basename_script: $refs references, last modified $last_mod"
+  fi
+done
+
+# Look for dated documents in .claude/ that might be historical
+find .claude/ -type f -name "*.md" -exec grep -l "Date.*202[0-9]" {} \; 2>/dev/null
 ```
 
 **Output format:**
@@ -582,12 +606,19 @@ Can new contributors quickly understand structure?
 Are key files easy to locate?
 Would directory READMEs help?
 
-Step 7: Compare with conventions
+Step 7: Detect orphaned and unused files
+Run orphan detection commands for scripts/ directory.
+Identify scripts with 0 references (potentially orphaned).
+Check for dated documents in .claude/ not in archive directories.
+Classify each file as: active, potentially orphaned, or historical.
+Provide specific recommendations (keep, archive, integrate, delete).
+
+Step 8: Compare with conventions
 Compare structure against Python project conventions.
 Identify deviations and their justifications.
 
-Step 8: Generate report
-Generate a detailed organization report using the template above. Focus on actionable recommendations for improving findability and clarity. Assess maintenance burden as project grows.
+Step 9: Generate report
+Generate a detailed organization report using the template above. Focus on actionable recommendations for improving findability and clarity. Assess maintenance burden as project grows. Include specific orphaned files section with file-by-file analysis.
 
 Note: This is a qualitative assessment focused on organization, not file contents.
 ```
