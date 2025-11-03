@@ -97,6 +97,35 @@ See `docs/guides/INTEGRATION_TESTING.md` for complete setup guide.
 
 ---
 
+## When to Archive vs. Delete
+
+**Archive if:**
+- Script has novel approach worth preserving
+- Script documents lessons learned
+- Uncertainty about future need
+
+**Delete if:**
+- Script is broken/non-functional
+- Functionality completely replaced with confidence
+- No historical value
+
+## Safe to Delete?
+
+**Test Database Setup Scripts (v1 & v2):**
+- **After v0.6.7 release:** Safe to delete if no issues reported with primary script
+- **Retention period:** Until v0.7.0 (approximately 3-6 months)
+
+**Mistake Tracking Scripts:**
+- **After v0.6.7 release:** Safe to delete (migration complete, system validated)
+- **Retention period:** Until v1.0.0 for historical reference
+
+## Cleanup Schedule
+
+Archived scripts will be reviewed for deletion at:
+- **v0.7.0 release** - Delete test database v1/v2 if primary script proven stable
+- **v1.0.0 release** - Delete mistake tracking scripts (migration validated)
+- **Annual review** - October 2026, remove any scripts past retention period
+
 ## Migration Notes
 
 If you were previously using v1 or v2:
