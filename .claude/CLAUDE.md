@@ -433,6 +433,13 @@ This project uses Claude Code hooks to automatically enforce workflow compliance
 - **Why:** Prevents working directly on main (#37)
 - **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
 
+**PreToolUse(Bash) - Tag Creation Enforcement** (#116)
+- **Blocks:** Direct `git tag` commands
+- **Requires:** Use of wrapper script `./scripts/create_tag.sh`
+- **Why:** Ensures hygiene checks run before creating release tags
+- **Benefits:** Validates tag format, checks duplicates, runs 9 hygiene checks
+- **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
+
 **PreToolUse(Bash) - Issue Close Verification** (#66)
 - **Blocks:** All `gh issue close` commands
 - **Requires:** Verification of acceptance criteria before proceeding
@@ -604,38 +611,48 @@ Completed all acceptance criteria:
 
 ## When Creating RC Tags (Release Process)
 
-**Context:** Release candidates (RC tags like `v0.6.6-rc1`) trigger comprehensive hygiene checks via git pre-tag hook.
+**Context:** Release candidates (RC tags like `v0.6.6-rc1`) trigger comprehensive hygiene checks via the tag creation workflow (#116).
 
-### Claude Code Behavior During RC Tag Creation
+### Tag Creation Workflow (REQUIRED)
 
-When you run `git tag v0.6.6-rc1`:
+**Use the automated wrapper script** - direct `git tag` commands are blocked:
 
-1. **Git pre-tag hook runs automatically** (not Claude Code hook)
-   - Runs 9 hygiene checks (5 automated, 4 interactive)
-   - Creates results file: `.hygiene-check-results-v0.6.6-rc1.txt`
-   - Shows summary with critical/warning counts
+```bash
+./scripts/create_tag.sh v0.6.7-rc1
+```
 
-2. **If critical checks FAIL**, hook provides two options:
+**What the script does:**
+1. Validates tag name format (vX.Y.Z or vX.Y.Z-rcN)
+2. Checks if tag already exists
+3. Runs pre-tag hygiene checks (9 checks: 5 automated, 4 interactive)
+4. Creates tag only if checks pass
+5. Shows next steps (review, push)
 
-   **Option A: Fix issues and retry**
-   ```bash
-   # Review what failed
-   less .hygiene-check-results-v0.6.6-rc1.txt
-   # Fix the issues
-   git commit -m "fix: address hygiene check findings"
-   # Retry (runs checks again)
-   git tag v0.6.6-rc1
-   ```
+**Claude Code enforcement:** PreToolUse(Bash) hook blocks direct `git tag` commands and requires use of the wrapper script.
 
-   **Option B: Review and approve** (for acceptable issues)
-   ```bash
-   # Review failures thoroughly
-   less .hygiene-check-results-v0.6.6-rc1.txt
-   # If issues are acceptable (e.g., known complexity), approve
-   ./scripts/approve_hygiene_checks.sh v0.6.6-rc1
-   # Retry (now proceeds with approval)
-   git tag v0.6.6-rc1
-   ```
+### If Hygiene Checks Fail
+
+The pre-tag hook creates a results file: `.hygiene-check-results-v0.6.7-rc1.txt`
+
+**Option A: Fix issues and retry**
+```bash
+# Review what failed
+less .hygiene-check-results-v0.6.7-rc1.txt
+# Fix the issues
+git commit -m "fix: address hygiene check findings"
+# Retry (runs checks again)
+./scripts/create_tag.sh v0.6.7-rc1
+```
+
+**Option B: Review and approve** (for acceptable issues)
+```bash
+# Review failures thoroughly
+less .hygiene-check-results-v0.6.7-rc1.txt
+# If issues are acceptable (e.g., known complexity), approve
+./scripts/approve_hygiene_checks.sh v0.6.7-rc1
+# Retry (now proceeds with approval)
+./scripts/create_tag.sh v0.6.7-rc1
+```
 
 3. **If only warnings** (non-critical), hook prompts interactively:
    - "Review detailed results? (y/n)"
