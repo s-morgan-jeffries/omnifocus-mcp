@@ -43,11 +43,12 @@ def _truncate_note(note: str, max_length: int = NOTE_TRUNCATION_LENGTH) -> str:
     return note
 
 
-def _format_task(task: dict) -> str:
+def _format_task(task: dict, truncate_notes: bool = True) -> str:
     """Format a task dictionary as human-readable text.
 
     Args:
         task: Task dictionary from omnifocus_connector
+        truncate_notes: If True, truncate notes to preview length. If False, show full notes.
 
     Returns:
         Formatted task text with all properties
@@ -80,7 +81,8 @@ def _format_task(task: dict) -> str:
     if task.get('tags'):
         result += f"Tags: {task['tags']}\n"
     if task.get('note'):
-        result += f"Note: {_truncate_note(task['note'])}\n"
+        note_text = task['note'] if not truncate_notes else _truncate_note(task['note'])
+        result += f"Note: {note_text}\n"
 
     # Hierarchy fields
     if 'parentTaskId' in task:
@@ -98,11 +100,12 @@ def _format_task(task: dict) -> str:
     return result
 
 
-def _format_project(proj: dict) -> str:
+def _format_project(proj: dict, truncate_notes: bool = True) -> str:
     """Format a project dictionary as human-readable text.
 
     Args:
         proj: Project dictionary from omnifocus_connector
+        truncate_notes: If True, truncate notes to preview length. If False, show full notes.
 
     Returns:
         Formatted project text with all properties
@@ -117,7 +120,8 @@ def _format_project(proj: dict) -> str:
     if proj.get('creationDate'):
         result += f"Created: {proj['creationDate']}\n"
     if proj.get('note'):
-        result += f"Note: {_truncate_note(proj['note'])}\n"
+        note_text = proj['note'] if not truncate_notes else _truncate_note(proj['note'])
+        result += f"Note: {note_text}\n"
 
     return result
 
@@ -166,7 +170,7 @@ def get_projects(
     else:
         result = f"Found {len(projects)} active projects:\n\n"
     for proj in projects:
-        result += _format_project(proj)
+        result += _format_project(proj, truncate_notes=(not include_full_notes))
         result += "\n"
 
     return result
@@ -465,7 +469,7 @@ def get_tasks(
         result = f"Found {len(tasks)} tasks:\n\n"
 
     for task in tasks:
-        result += _format_task(task)
+        result += _format_task(task, truncate_notes=(not include_full_notes))
         result += "\n"
 
     return result
