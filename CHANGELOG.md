@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Unit tests now pass in ~2.5 minutes (356 tests)
   - Integration/e2e tests require test database to be open in OmniFocus
 
+- **Test coverage check returning empty percentage** (#131)
+  - Fixed coverage check script: changed `--cov=src/omnifocus_mcp/omnifocus_connector` to `--cov=src/omnifocus_mcp`
+  - Root cause: Coverage was trying to track a specific file path instead of the package, causing "Module was never imported" error
+  - Coverage check now correctly reports 85% coverage and passes hygiene checks
+
 ## [0.6.6] - 2025-11-02
 
 ### Added
