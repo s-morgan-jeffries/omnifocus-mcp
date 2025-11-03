@@ -173,6 +173,44 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
+### 8. Documentation Completeness
+
+**Script:** `scripts/check_documentation.sh`
+
+**Pass Criteria:**
+- ✅ `CHANGELOG.md` contains `## [X.Y.Z]` entry for this version
+- ✅ `.claude/CLAUDE.md` has "Current Version: vX.Y.Z" updated
+- ✅ `README.md` references version (warning only)
+- ✅ If CHANGELOG mentions "breaking", migration guide exists: `docs/migration/vX.Y.Z.md`
+- ✅ All key documentation files exist:
+  - `docs/guides/TESTING.md`
+  - `docs/guides/CONTRIBUTING.md`
+  - `docs/guides/INTEGRATION_TESTING.md`
+  - `docs/reference/ARCHITECTURE.md`
+  - `docs/reference/CODE_QUALITY.md`
+  - `docs/reference/APPLESCRIPT_GOTCHAS.md`
+  - `docs/project/ROADMAP.md`
+
+**Fail Criteria:**
+- ❌ CHANGELOG missing entry for this version
+- ❌ CLAUDE.md version not updated
+- ❌ Breaking changes in CHANGELOG but no migration guide
+- ❌ Any key documentation file missing
+
+**Exit Codes:**
+- `0` - All documentation checks passed
+- `1` - One or more checks failed
+
+**Status:** ✅ Implemented (integrated in v0.6.7, issue #124).
+
+**Why this matters:**
+- Prevents shipping breaking changes without migration guides
+- Ensures documentation stays synchronized with code
+- Catches accidentally deleted key docs before release
+- Maintains professional changelog discipline
+
+---
+
 ### 6. Test Coverage
 
 **Script:** `scripts/check_test_coverage.sh`
@@ -290,6 +328,7 @@ These checks are available via manual script execution for code quality insights
 | 5. Milestone Status | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 6. Test Coverage | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | 7. ROADMAP.md Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
+| 8. Documentation Completeness | Automated | ✅ Working | 0=pass, 1=fail | Yes |
 | Doc Quality | Interactive | ⏳ To implement | N/A | No |
 | Code Quality | Interactive | ✅ Available | N/A | No |
 | Directory Org | Interactive | ✅ Available | N/A | No |
@@ -299,6 +338,10 @@ These checks are available via manual script execution for code quality insights
 - Code Quality and Directory Organization removed from automated checks (available for manual runs)
 - ROADMAP.md Sync added as new automated check (#34)
 - Test Count Sync merged into Test Coverage check
+
+**Changes in v0.6.7:**
+- Documentation Completeness added as new automated check (#124)
+- Verifies CHANGELOG entries, version references, migration guides, key docs existence
 
 ---
 
