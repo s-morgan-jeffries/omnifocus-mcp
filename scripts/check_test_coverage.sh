@@ -56,8 +56,8 @@ else
 fi
 
 if $PYTHON -c "import pytest_cov" 2>/dev/null; then
-    # Run coverage on omnifocus_connector.py with all unit tests
-    COVERAGE=$($PYTHON -m pytest tests/ -m "not integration" --cov=src/omnifocus_mcp/omnifocus_connector --cov-report=term-missing 2>/dev/null | grep "TOTAL" | awk '{print $NF}' | sed 's/%//' || echo "0")
+    # Run coverage on omnifocus_mcp package with all unit tests
+    COVERAGE=$($PYTHON -m pytest tests/ -m "not integration" --cov=src/omnifocus_mcp --cov-report=term-missing 2>/dev/null | grep "TOTAL" | awk '{print $NF}' | sed 's/%//' || echo "0")
 
     if [ -n "$COVERAGE" ] && [ "$COVERAGE" -ge 85 ]; then
         echo "   ✅ Coverage is ${COVERAGE}% (target: 85%+)"

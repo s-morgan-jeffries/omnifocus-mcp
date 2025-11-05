@@ -5,6 +5,22 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2025-11-03
+
+### Fixed
+
+- **Unit test timeout issue** (#129)
+  - Fixed pytest configuration: changed `testpaths` from `["."]` to `["tests"]` in pyproject.toml
+  - Root cause: pytest.ini → pyproject.toml migration in commit bf941d8 inadvertently caused pytest to search outside tests directory
+  - Deleted slow smoke tests in test_hygiene_scripts.py (9 tests taking 2-3 minutes each)
+  - Unit tests now pass in ~2.5 minutes (356 tests)
+  - Integration/e2e tests require test database to be open in OmniFocus
+
+- **Test coverage check returning empty percentage** (#131)
+  - Fixed coverage check script: changed `--cov=src/omnifocus_mcp/omnifocus_connector` to `--cov=src/omnifocus_mcp`
+  - Root cause: Coverage was trying to track a specific file path instead of the package, causing "Module was never imported" error
+  - Coverage check now correctly reports 85% coverage and passes hygiene checks
+
 ## [0.6.6] - 2025-11-02
 
 ### Added
