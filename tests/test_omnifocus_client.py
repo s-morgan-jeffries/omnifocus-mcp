@@ -844,3 +844,76 @@ class TestSwitchPerspective:
             with pytest.raises(Exception) as exc_info:
                 client.switch_perspective("Invalid")
             assert "Error switching perspective" in str(exc_info.value)
+
+
+class TestSetFocus:
+    """Tests for set_focus method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_set_focus_on_project_success(self, client):
+        """Test successfully setting focus on a project."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "SUCCESS"
+            result = client.set_focus(item_id="proj-123", item_type="project")
+            assert result == {"success": True, "item_id": "proj-123", "item_type": "project"}
+            mock_run.assert_called_once()
+            # Verify the AppleScript contains the correct ID and uses flattened projects
+            call_args = mock_run.call_args[0][0]
+            assert 'proj-123' in call_args
+            assert 'flattened project' in call_args
+            assert 'set focus to' in call_args
+
+    def test_set_focus_on_folder_success(self, client):
+        """Test successfully setting focus on a folder."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "SUCCESS"
+            result = client.set_focus(item_id="folder-456", item_type="folder")
+            assert result == {"success": True, "item_id": "folder-456", "item_type": "folder"}
+            mock_run.assert_called_once()
+            # Verify the AppleScript contains the correct ID and uses folder
+            call_args = mock_run.call_args[0][0]
+            assert 'folder-456' in call_args
+            assert 'folder whose id' in call_args
+            assert 'set focus to' in call_args
+
+    def test_set_focus_on_task_raises_error(self, client):
+        """Test that setting focus on a task raises a clear error."""
+        with pytest.raises(ValueError) as exc_info:
+            client.set_focus(item_id="task-789", item_type="task")
+        assert "OmniFocus only supports setting focus on projects and folders" in str(exc_info.value)
+        assert "task" in str(exc_info.value).lower()
+
+    def test_set_focus_on_tag_raises_error(self, client):
+        """Test that setting focus on a tag raises a clear error."""
+        with pytest.raises(ValueError) as exc_info:
+            client.set_focus(item_id="tag-999", item_type="tag")
+        assert "OmniFocus only supports setting focus on projects and folders" in str(exc_info.value)
+        assert "tag" in str(exc_info.value).lower()
+
+    def test_set_focus_invalid_item_type(self, client):
+        """Test that invalid item types raise an error."""
+        with pytest.raises(ValueError) as exc_info:
+            client.set_focus(item_id="item-123", item_type="invalid")
+        assert "item_type must be" in str(exc_info.value)
+
+    def test_set_focus_applescript_error(self, client):
+        """Test handling of AppleScript errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="item not found")
+            with pytest.raises(Exception) as exc_info:
+                client.set_focus(item_id="proj-nonexistent", item_type="project")
+            assert "Error setting focus" in str(exc_info.value)
+
+    def test_set_focus_with_special_characters_in_id(self, client):
+        """Test that IDs with special characters are properly escaped."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "SUCCESS"
+            # Test with ID containing characters that might need escaping
+            result = client.set_focus(item_id="proj-test'123", item_type="project")
+            assert result["success"] is True
+            # Verify the script was called (escaping happens inside the implementation)
+            mock_run.assert_called_once()

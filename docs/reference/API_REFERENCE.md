@@ -1,7 +1,7 @@
 # OmniFocus MCP Server - API Reference
 
 **Current Version:** v0.6.6 (Release Process Infrastructure & Quality Checks)
-**Total MCP Tools:** 16 (reduced from 40+)
+**Total MCP Tools:** 17 (reduced from 40+)
 
 This document shows the complete API surface that Claude Desktop sees when connecting to the OmniFocus MCP server. Each tool is exposed via the Model Context Protocol and can be invoked by Claude.
 
@@ -22,21 +22,22 @@ This document shows the complete API surface that Claude Desktop sees when conne
 
 ## Table of Contents
 
-**Current API (v0.6.0 - 16 Core Functions):**
+**Current API (v0.7.0 - 17 Core Functions):**
 - [Projects](#projects) (5 functions) - `create`, `get`, `update`, `update_batch`, `delete`
 - [Tasks](#tasks) (6 functions) - `create`, `get`, `update`, `update_batch`, `delete`, `reorder`
 - [Folders](#folders) (2 functions) - `create`, `get`
 - [Tags](#tags) (1 function) - `get`
 - [Perspectives](#perspectives) (2 functions) - `get`, `switch`
+- [UI Navigation](#ui-navigation) (1 function) - `set_focus`
 
 **Deprecated Functions (Removed in v0.6.0):**
 - [Deprecated Functions](#deprecated-functions-removed-in-v060) - 26 functions consolidated into core API
 
 ---
 
-## Implementation Status (v0.6.0)
+## Implementation Status (v0.7.0)
 
-### ✅ Implemented Functions (16 Core Functions)
+### ✅ Implemented Functions (17 Core Functions)
 
 All "Enhanced proposed signature" sections in this document have been **FULLY IMPLEMENTED** as of v0.6.0.
 
@@ -65,6 +66,9 @@ All "Enhanced proposed signature" sections in this document have been **FULLY IM
 **Perspectives (2):**
 - ✅ `get_perspectives()` - Returns available perspectives
 - ✅ `switch_perspective()` - UI control function
+
+**UI Navigation (1):**
+- ✅ `set_focus()` - Focus OmniFocus window on project or folder
 
 ### ❌ Removed Functions (26 Deprecated)
 
@@ -929,6 +933,46 @@ Perspectives are custom views that filter and organize your tasks and projects.
 **Returns:** Success message confirming perspective switch
 
 **PROPOSED: KEEP** - This is UI control functionality that can't be achieved through data operations. Switching perspectives is a distinct action that changes the application view state.
+
+---
+
+## UI Navigation
+
+### `set_focus()`
+
+**Description:** Set focus on a specific item in the OmniFocus window.
+
+OmniFocus only supports setting focus on projects and folders via AppleScript. Attempting to focus on tasks or tags will raise a clear error message.
+
+**Parameters:**
+- `item_id: str` - The ID of the project or folder to focus on
+- `item_type: str` - Must be either "project" or "folder"
+
+**Returns:** Success message with item details
+
+**Limitations:**
+- ❌ Cannot focus on tasks (AppleScript limitation)
+- ❌ Cannot focus on tags (AppleScript limitation)
+- ✅ Only projects and folders are supported
+
+**Error Handling:**
+- Attempting to focus on task or tag will raise `ValueError` with explanation
+- Invalid `item_type` raises `ValueError` with valid options
+- Nonexistent item ID raises `Exception` with error details
+
+**Example:**
+```python
+# Focus on a project
+set_focus(item_id="abc123", item_type="project")
+
+# Focus on a folder
+set_focus(item_id="def456", item_type="folder")
+
+# This will raise an error (not supported)
+set_focus(item_id="task789", item_type="task")  # ValueError: OmniFocus only supports setting focus on projects and folders
+```
+
+**Use Case:** After querying for items, you can focus the OmniFocus window on a specific project or folder to allow the user to see it in context.
 
 ---
 
