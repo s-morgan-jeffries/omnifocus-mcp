@@ -339,6 +339,32 @@ def update_task(
     ...
 ```
 
+### Planning Your Work
+
+**Before writing ANY code (including hooks, scripts, automation):**
+
+1. **Read the issue's acceptance criteria** - Know what "done" means
+2. **Create a todo list** using TodoWrite tool:
+   - Break down the work into testable steps
+   - Include "Write tests" as explicit todos BEFORE "Implement X"
+   - Include "Create prevention script" for ai-process issues
+3. **Identify what needs tests**:
+   - New functions: unit + integration + e2e tests
+   - New hooks: unit tests (see [test_git_hooks.py](tests/test_git_hooks.py), [test_claude_code_hooks.py](tests/test_claude_code_hooks.py))
+   - New scripts: smoke tests (see test_hygiene_scripts.py if it exists)
+   - Modified behavior: update existing tests first
+
+**Example todo list for adding a git hook:**
+```
+1. Write test for hook (tests/test_git_hooks.py) [pending]
+2. Implement hook script (scripts/git-hooks/new-hook) [pending]
+3. Verify tests pass [pending]
+4. Update documentation [pending]
+5. Manual testing with real git operations [pending]
+```
+
+**Key principle:** Test todos come BEFORE implementation todos.
+
 ### Adding a New Function
 
 **STOP!** Before adding:
@@ -537,10 +563,17 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
   - **If completing roadmap item:** Update ROADMAP.md status (remove or move to "Completed" as appropriate)
   - **If closing issue listed in ROADMAP.md:** Remove from active sections (checked automatically via #34)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
-- [ ] **Automation tested end-to-end** - If adding workflow automation (hooks, scripts), verify it actually works:
+- [ ] **Changes tested manually** - Don't rely solely on unit tests:
+  - Hooks: Test with actual git commands in a test repo
+  - Scripts: Run manually with various inputs (happy path + error cases)
+  - API changes: Test with real OmniFocus (integration tests)
+  - UI changes: Verify in actual application
+  - Infrastructure: Verify automation catches real errors, not just test mocks
+- [ ] **Automation tested end-to-end** - If adding workflow automation (hooks, scripts):
   - Test happy path (automation allows correct behavior)
   - Test failure path (automation catches intentional errors)
   - Don't release automation that only has placeholder text
+  - Verify it works in actual workflow, not just in unit tests
 - [ ] **Issues filed with labels** - All new issues have appropriate labels (see Issue Tracking section)
 
 **If tests are failing:**
@@ -612,6 +645,33 @@ Completed all acceptance criteria:
 - ✅ Criterion 1: Description (commit abc123)
 - ✅ Criterion 2: Description (commit def456)
 - ✅ Criterion 3: Description (commit ghi789)
+```
+
+**For ai-process issues specifically:**
+- [ ] **Prevention script created** - Executable bash script that verifies fix is in place
+- [ ] **Prevention script added to issue body** - Under "Prevention Script" section
+- [ ] **Test the prevention script** - Run it manually to verify it detects the problem
+
+**Prevention script format:**
+```bash
+#!/bin/bash
+# Check if [fix description] is in place
+if [test condition]; then
+    exit 0  # Prevention holding
+else
+    exit 1  # Prevention failed, issue has recurred
+fi
+```
+
+**Example prevention script:**
+```bash
+#!/bin/bash
+# Check if planning guidance exists in CLAUDE.md
+if grep -q "Planning Your Work" .claude/CLAUDE.md; then
+    exit 0  # Prevention holding
+else
+    exit 1  # Planning guidance missing
+fi
 ```
 
 **NEVER claim an issue is "done" or "completed" without checking its acceptance criteria.**
