@@ -5,21 +5,52 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.7] - 2025-11-03
+## [Unreleased]
+
+### Added
+
+- **UI Navigation tool** (#77)
+  - `set_focus()` - Focus OmniFocus window on specific projects or folders
+  - AppleScript limitation: only projects and folders support focus (not tasks/tags)
+  - Returns structured dict with success status
+  - Complete test coverage (7 unit + 4 integration + 3 E2E tests)
+
+### Changed
+
+- **Hygiene check execution order optimized** (#132)
+  - Fast checks (1-6) run first: version sync, complexity, parity, milestone, ROADMAP sync, docs (~1-2s each)
+  - Slow checks (7-8) run last: test coverage (~30s), all tests (~20-25 min)
+  - Previous order had tests at position #2, now at position #8 (last)
+  - Provides faster feedback when early checks fail
+
+- **Pre-push git hook added** (#130)
+  - Runs unit tests before push to catch failures early
+  - Prevents pushing failing tests to remote
+  - Complements CI monitoring for faster local feedback
+
+- **Branch protection git hook enhanced** (#134)
+  - Blocks commits to main/master during manual git operations
+  - Allows hotfix commits (message contains "hotfix" or "emergency")
+  - Allows commits to release/* branches
+  - Provides backup enforcement for Claude Code hooks
 
 ### Fixed
 
-- **Unit test timeout issue** (#129)
-  - Fixed pytest configuration: changed `testpaths` from `["."]` to `["tests"]` in pyproject.toml
-  - Root cause: pytest.ini → pyproject.toml migration in commit bf941d8 inadvertently caused pytest to search outside tests directory
-  - Deleted slow smoke tests in test_hygiene_scripts.py (9 tests taking 2-3 minutes each)
-  - Unit tests now pass in ~2.5 minutes (356 tests)
-  - Integration/e2e tests require test database to be open in OmniFocus
+- **v0.6.7 release gap** (#140)
+  - Note: v0.6.7 was planned (RC created 2025-11-03) but final release never completed
+  - v0.6.7 fixes have been incorporated into v0.7.0 below
+  - Added prevention measures to detect incomplete releases
 
-- **Test coverage check returning empty percentage** (#131)
+- **Unit test timeout issue** (originally planned for v0.6.7, #129)
+  - Fixed pytest configuration: changed `testpaths` from `["."]` to `["tests"]` in pyproject.toml
+  - Root cause: pytest.ini → pyproject.toml migration inadvertently caused pytest to search outside tests directory
+  - Deleted slow smoke tests in test_hygiene_scripts.py (9 tests taking 2-3 minutes each)
+  - Unit tests now pass in ~2.5 minutes
+
+- **Test coverage check returning empty percentage** (originally planned for v0.6.7, #131)
   - Fixed coverage check script: changed `--cov=src/omnifocus_mcp/omnifocus_connector` to `--cov=src/omnifocus_mcp`
-  - Root cause: Coverage was trying to track a specific file path instead of the package, causing "Module was never imported" error
-  - Coverage check now correctly reports 85% coverage and passes hygiene checks
+  - Root cause: Coverage was trying to track a specific file path instead of the package
+  - Coverage check now correctly reports coverage percentage
 
 ## [0.6.6] - 2025-11-02
 
