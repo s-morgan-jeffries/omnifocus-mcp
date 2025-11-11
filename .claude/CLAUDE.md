@@ -448,10 +448,11 @@ This project uses Claude Code hooks to automatically enforce workflow compliance
 - **Why:** Prevents closing issues without verifying all acceptance criteria (#63)
 - **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
 
-**PostToolUse(Bash) - CI Monitoring** (#42)
+**PostToolUse(Bash) - CI Monitoring** (#42, #130)
 - **Monitors:** GitHub Actions after every `git push`
 - **Blocks:** Claude if CI fails (must fix before continuing)
-- **Why:** Prevents unnoticed CI failures (#36, #39)
+- **Enhanced:** Verifies final CI status after watch completes (catches timeouts)
+- **Why:** Prevents unnoticed CI failures (#36, #39, #130)
 - **Config:** `.claude/settings.json` → `scripts/hooks/post_bash.sh`
 
 **SessionStart - Project Context** (#43)
@@ -504,12 +505,14 @@ Each hook script has a modular design with `check_*` functions for easy extensio
 - **Branch protection** - Blocks commits to main/master (except hotfixes) during manual git operations (#94)
 - **Pre-commit mistake detection** - Validates commits (missing tests, server exposure, docs)
 - **Commit message formatting** - Enforces conventional commit format
+- **Pre-push test validation** - Runs unit tests before push to catch failures early (#130)
 - **Release hygiene checks** - Runs quality gates on RC tags (pre-tag hook)
 
 **Installation (recommended):**
 ```bash
 ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
 ln -sf ../../scripts/git-hooks/commit-msg .git/hooks/commit-msg
+ln -sf ../../scripts/git-hooks/pre-push .git/hooks/pre-push
 ln -sf ../../scripts/git-hooks/pre-tag .git/hooks/pre-tag
 ```
 
@@ -556,13 +559,19 @@ See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
 When you run `git push`, the PostToolUse(Bash) hook automatically:
 1. Detects the push command
-2. Waits 5 seconds for CI to start
+2. Waits 10 seconds for CI to start
 3. Fetches the latest GitHub Actions run ID
 4. Watches the run until completion (`gh run watch`)
-5. **Blocks Claude if CI fails** - You must fix failures before continuing
-6. Reports success if CI passes
+5. **Verifies final CI status** - Catches failures that occur after watch returns (e.g., timeouts)
+6. **Blocks Claude if CI fails** - You must fix failures before continuing
+7. Reports success if CI passes
 
 **You don't need to manually monitor CI** - the hook handles it automatically (#42).
+
+**Enhanced reliability (v0.7.0):**
+- Now verifies final CI status after watching completes (#130)
+- Catches test timeouts that occur after `gh run watch` returns
+- Pre-push git hook runs tests locally before push (backup enforcement)
 
 **If CI fails:**
 - Hook shows the run URL and blocks further actions
