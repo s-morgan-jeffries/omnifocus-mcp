@@ -556,7 +556,10 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 - [ ] **Server exposure verified** - Run `./scripts/check_client_server_parity.sh`
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree
-- [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
+- [ ] **Documentation updated** - ROADMAP.md, or other docs if needed (NOT CHANGELOG.md yet)
+  - **IMPORTANT: Do NOT update CHANGELOG.md until AFTER final release tag is created**
+  - CHANGELOG updates happen during release process, not during development
+  - Rationale: RC testing may reveal issues requiring more fixes before release (#140)
   - Verify cross-references exist; breaking changes need migration guide (MIGRATION_vX.Y.md pattern)
   - If tests added/removed: Update count in `docs/guides/TESTING.md` only (single source of truth)
   - **If fixing bug listed in ROADMAP.md:** Remove from "Upcoming Work" section after fix

@@ -38,6 +38,9 @@ jobs:
       - name: Verify client/server parity
         run: ./scripts/check_client_server_parity.sh
 
+      - name: Check for pending releases
+        run: ./scripts/check_pending_releases.sh
+
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest

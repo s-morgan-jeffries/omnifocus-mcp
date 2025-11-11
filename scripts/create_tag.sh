@@ -34,6 +34,10 @@ if ! echo "$TAG_NAME" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$'; then
     exit 1
 fi
 
+# Get project root (parent of scripts directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # Check if tag already exists
 if git tag -l | grep -q "^${TAG_NAME}$"; then
     echo -e "${RED}Error: Tag ${TAG_NAME} already exists${NC}"
@@ -41,9 +45,27 @@ if git tag -l | grep -q "^${TAG_NAME}$"; then
     exit 1
 fi
 
-# Get project root (parent of scripts directory)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# Check for pending releases (RC tags without final tags)
+# Only check when creating RC tags (prevents false positives when creating final tags)
+if echo "$TAG_NAME" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$'; then
+    echo "Checking for pending releases..."
+    if ! "$SCRIPT_DIR/check_pending_releases.sh"; then
+        echo ""
+        echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${RED}⚠️  BLOCKING: Pending release(s) detected${NC}"
+        echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo "You must complete or document existing RC releases before creating new ones."
+        echo ""
+        echo "Options:"
+        echo "  1. Complete pending release: ./scripts/create_tag.sh <version>"
+        echo "  2. Document as skipped in CHANGELOG and delete RC tag"
+        echo "  3. Override check (not recommended): SKIP_PENDING_CHECK=1 $0 $TAG_NAME"
+        echo ""
+        exit 1
+    fi
+    echo ""
+fi
 
 # Check if pre-tag hook exists
 PRE_TAG_HOOK="$PROJECT_ROOT/scripts/git-hooks/pre-tag"
