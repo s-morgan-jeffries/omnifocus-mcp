@@ -5,7 +5,7 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.7] - 2025-11-11
 
 ### Added
 
@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - AppleScript limitation: only projects and folders support focus (not tasks/tags)
   - Returns structured dict with success status
   - Complete test coverage (7 unit + 4 integration + 3 E2E tests)
+
+- **Pending release detection** (#140)
+  - New `check_pending_releases.sh` script detects RC tags without final releases
+  - Enhanced `create_tag.sh` blocks new RC creation if pending releases exist
+  - CI check runs on every push to detect incomplete releases
+  - Updated CHANGELOG policy to prevent premature updates
 
 ### Changed
 
@@ -36,18 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **v0.6.7 release gap** (#140)
-  - Note: v0.6.7 was planned (RC created 2025-11-03) but final release never completed
-  - v0.6.7 fixes have been incorporated into v0.7.0 below
-  - Added prevention measures to detect incomplete releases
-
-- **Unit test timeout issue** (originally planned for v0.6.7, #129)
+- **Unit test timeout issue** (#129)
   - Fixed pytest configuration: changed `testpaths` from `["."]` to `["tests"]` in pyproject.toml
   - Root cause: pytest.ini → pyproject.toml migration inadvertently caused pytest to search outside tests directory
   - Deleted slow smoke tests in test_hygiene_scripts.py (9 tests taking 2-3 minutes each)
   - Unit tests now pass in ~2.5 minutes
 
-- **Test coverage check returning empty percentage** (originally planned for v0.6.7, #131)
+- **Test coverage check returning empty percentage** (#131)
   - Fixed coverage check script: changed `--cov=src/omnifocus_mcp/omnifocus_connector` to `--cov=src/omnifocus_mcp`
   - Root cause: Coverage was trying to track a specific file path instead of the package
   - Coverage check now correctly reports coverage percentage
