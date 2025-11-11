@@ -339,6 +339,32 @@ def update_task(
     ...
 ```
 
+### Planning Your Work
+
+**Before writing ANY code (including hooks, scripts, automation):**
+
+1. **Read the issue's acceptance criteria** - Know what "done" means
+2. **Create a todo list** using TodoWrite tool:
+   - Break down the work into testable steps
+   - Include "Write tests" as explicit todos BEFORE "Implement X"
+   - Include "Create prevention script" for ai-process issues
+3. **Identify what needs tests**:
+   - New functions: unit + integration + e2e tests
+   - New hooks: unit tests (see [test_git_hooks.py](tests/test_git_hooks.py), [test_claude_code_hooks.py](tests/test_claude_code_hooks.py))
+   - New scripts: smoke tests (see test_hygiene_scripts.py if it exists)
+   - Modified behavior: update existing tests first
+
+**Example todo list for adding a git hook:**
+```
+1. Write test for hook (tests/test_git_hooks.py) [pending]
+2. Implement hook script (scripts/git-hooks/new-hook) [pending]
+3. Verify tests pass [pending]
+4. Update documentation [pending]
+5. Manual testing with real git operations [pending]
+```
+
+**Key principle:** Test todos come BEFORE implementation todos.
+
 ### Adding a New Function
 
 **STOP!** Before adding:
@@ -448,10 +474,11 @@ This project uses Claude Code hooks to automatically enforce workflow compliance
 - **Why:** Prevents closing issues without verifying all acceptance criteria (#63)
 - **Config:** `.claude/settings.json` → `scripts/hooks/pre_bash.sh`
 
-**PostToolUse(Bash) - CI Monitoring** (#42)
+**PostToolUse(Bash) - CI Monitoring** (#42, #130)
 - **Monitors:** GitHub Actions after every `git push`
 - **Blocks:** Claude if CI fails (must fix before continuing)
-- **Why:** Prevents unnoticed CI failures (#36, #39)
+- **Enhanced:** Verifies final CI status after watch completes (catches timeouts)
+- **Why:** Prevents unnoticed CI failures (#36, #39, #130)
 - **Config:** `.claude/settings.json` → `scripts/hooks/post_bash.sh`
 
 **SessionStart - Project Context** (#43)
@@ -504,12 +531,14 @@ Each hook script has a modular design with `check_*` functions for easy extensio
 - **Branch protection** - Blocks commits to main/master (except hotfixes) during manual git operations (#94)
 - **Pre-commit mistake detection** - Validates commits (missing tests, server exposure, docs)
 - **Commit message formatting** - Enforces conventional commit format
+- **Pre-push test validation** - Runs unit tests before push to catch failures early (#130)
 - **Release hygiene checks** - Runs quality gates on RC tags (pre-tag hook)
 
 **Installation (recommended):**
 ```bash
 ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
 ln -sf ../../scripts/git-hooks/commit-msg .git/hooks/commit-msg
+ln -sf ../../scripts/git-hooks/pre-push .git/hooks/pre-push
 ln -sf ../../scripts/git-hooks/pre-tag .git/hooks/pre-tag
 ```
 
@@ -527,17 +556,27 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 - [ ] **Server exposure verified** - Run `./scripts/check_client_server_parity.sh`
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree
-- [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
+- [ ] **Documentation updated** - ROADMAP.md, or other docs if needed (NOT CHANGELOG.md yet)
+  - **IMPORTANT: Do NOT update CHANGELOG.md until AFTER final release tag is created**
+  - CHANGELOG updates happen during release process, not during development
+  - Rationale: RC testing may reveal issues requiring more fixes before release (#140)
   - Verify cross-references exist; breaking changes need migration guide (MIGRATION_vX.Y.md pattern)
   - If tests added/removed: Update count in `docs/guides/TESTING.md` only (single source of truth)
   - **If fixing bug listed in ROADMAP.md:** Remove from "Upcoming Work" section after fix
   - **If completing roadmap item:** Update ROADMAP.md status (remove or move to "Completed" as appropriate)
   - **If closing issue listed in ROADMAP.md:** Remove from active sections (checked automatically via #34)
 - [ ] **Architecture followed** - Reviewed relevant sections of `docs/ARCHITECTURE.md`
-- [ ] **Automation tested end-to-end** - If adding workflow automation (hooks, scripts), verify it actually works:
+- [ ] **Changes tested manually** - Don't rely solely on unit tests:
+  - Hooks: Test with actual git commands in a test repo
+  - Scripts: Run manually with various inputs (happy path + error cases)
+  - API changes: Test with real OmniFocus (integration tests)
+  - UI changes: Verify in actual application
+  - Infrastructure: Verify automation catches real errors, not just test mocks
+- [ ] **Automation tested end-to-end** - If adding workflow automation (hooks, scripts):
   - Test happy path (automation allows correct behavior)
   - Test failure path (automation catches intentional errors)
   - Don't release automation that only has placeholder text
+  - Verify it works in actual workflow, not just in unit tests
 - [ ] **Issues filed with labels** - All new issues have appropriate labels (see Issue Tracking section)
 
 **If tests are failing:**
@@ -556,13 +595,19 @@ See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
 When you run `git push`, the PostToolUse(Bash) hook automatically:
 1. Detects the push command
-2. Waits 5 seconds for CI to start
+2. Waits 10 seconds for CI to start
 3. Fetches the latest GitHub Actions run ID
 4. Watches the run until completion (`gh run watch`)
-5. **Blocks Claude if CI fails** - You must fix failures before continuing
-6. Reports success if CI passes
+5. **Verifies final CI status** - Catches failures that occur after watch returns (e.g., timeouts)
+6. **Blocks Claude if CI fails** - You must fix failures before continuing
+7. Reports success if CI passes
 
 **You don't need to manually monitor CI** - the hook handles it automatically (#42).
+
+**Enhanced reliability (v0.7.0):**
+- Now verifies final CI status after watching completes (#130)
+- Catches test timeouts that occur after `gh run watch` returns
+- Pre-push git hook runs tests locally before push (backup enforcement)
 
 **If CI fails:**
 - Hook shows the run URL and blocks further actions
@@ -603,6 +648,33 @@ Completed all acceptance criteria:
 - ✅ Criterion 1: Description (commit abc123)
 - ✅ Criterion 2: Description (commit def456)
 - ✅ Criterion 3: Description (commit ghi789)
+```
+
+**For ai-process issues specifically:**
+- [ ] **Prevention script created** - Executable bash script that verifies fix is in place
+- [ ] **Prevention script added to issue body** - Under "Prevention Script" section
+- [ ] **Test the prevention script** - Run it manually to verify it detects the problem
+
+**Prevention script format:**
+```bash
+#!/bin/bash
+# Check if [fix description] is in place
+if [test condition]; then
+    exit 0  # Prevention holding
+else
+    exit 1  # Prevention failed, issue has recurred
+fi
+```
+
+**Example prevention script:**
+```bash
+#!/bin/bash
+# Check if planning guidance exists in CLAUDE.md
+if grep -q "Planning Your Work" .claude/CLAUDE.md; then
+    exit 0  # Prevention holding
+else
+    exit 1  # Planning guidance missing
+fi
 ```
 
 **NEVER claim an issue is "done" or "completed" without checking its acceptance criteria.**

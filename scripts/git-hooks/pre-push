@@ -1,0 +1,66 @@
+#!/bin/bash
+# Git pre-push hook
+# Runs tests before allowing push to ensure CI won't fail
+#
+# This provides backup enforcement for cases where:
+# 1. PostToolUse(Bash) CI monitoring hook doesn't catch failures
+# 2. Manual git operations bypass Claude Code hooks
+# 3. Tests might fail on CI due to environment differences
+#
+# Installation:
+#   ln -sf ../../scripts/git-hooks/pre-push .git/hooks/pre-push
+#
+# Related issues: #130 (CI monitoring hook failure)
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}Running pre-push checks...${NC}"
+
+# Check 1: Are we pushing to remote?
+# The hook receives stdin with format: <local ref> <local sha> <remote ref> <remote sha>
+# If no input, we're not actually pushing anything
+if [ -t 0 ]; then
+    echo -e "${YELLOW}No refs being pushed, skipping checks${NC}"
+    exit 0
+fi
+
+# Read the push information
+while read local_ref local_sha remote_ref remote_sha; do
+    # Extract branch name from ref (refs/heads/main -> main)
+    BRANCH=$(echo "$remote_ref" | sed 's|refs/heads/||')
+
+    echo -e "${YELLOW}Pushing to branch: $BRANCH${NC}"
+
+    # Check 2: Run tests before pushing
+    # This catches failures before they reach CI
+    echo -e "${YELLOW}Running unit tests...${NC}"
+
+    if ! make test; then
+        echo -e "${RED}❌ Unit tests failed!${NC}"
+        echo -e "${RED}Cannot push until tests pass locally${NC}"
+        echo ""
+        echo "Fix the failures and try again."
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ Unit tests passed${NC}"
+
+    # Optional: Run integration tests (commented out by default as they're slower)
+    # Uncomment if you want strict enforcement
+    # echo -e "${YELLOW}Running integration tests...${NC}"
+    # if ! make test-integration; then
+    #     echo -e "${RED}❌ Integration tests failed!${NC}"
+    #     echo -e "${RED}Cannot push until integration tests pass${NC}"
+    #     exit 1
+    # fi
+    # echo -e "${GREEN}✅ Integration tests passed${NC}"
+done
+
+echo -e "${GREEN}✅ All pre-push checks passed${NC}"
+exit 0
