@@ -1945,3 +1945,73 @@ class TestAvailabilityFields:
 
         # Cleanup
         client.delete_projects(project_id)
+
+
+class TestUINavigation:
+    """Test UI navigation operations (set_focus)."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        """Create a client for real OmniFocus testing."""
+        return OmniFocusConnector(enable_safety_checks=True)
+
+    def test_set_focus_on_project(self, client):
+        """Test setting focus on a project."""
+        # Find a test project
+        projects = client.get_projects(query="Active Test Project")
+        assert len(projects) > 0, "Need at least one test project"
+
+        project = projects[0]
+        project_id = project['id']
+
+        # Set focus on the project
+        result = client.set_focus(item_id=project_id, item_type="project")
+
+        assert result["success"] is True
+        assert result["item_id"] == project_id
+        assert result["item_type"] == "project"
+        print(f"\n✓ Set focus on project: {project['name']}")
+
+    def test_set_focus_on_folder(self, client):
+        """Test setting focus on a folder."""
+        # Get folders
+        folders = client.get_folders()
+        assert len(folders) > 0, "Need at least one folder"
+
+        # Find the test root folder
+        test_folder = next((f for f in folders if f['name'] == "Test Root Folder"), None)
+        assert test_folder is not None, "Test Root Folder should exist"
+
+        folder_id = test_folder['id']
+
+        # Set focus on the folder
+        result = client.set_focus(item_id=folder_id, item_type="folder")
+
+        assert result["success"] is True
+        assert result["item_id"] == folder_id
+        assert result["item_type"] == "folder"
+        print(f"\n✓ Set focus on folder: {test_folder['name']}")
+
+    def test_set_focus_invalid_item_type(self, client):
+        """Test that invalid item types raise errors."""
+        # Get a task
+        tasks = client.get_tasks()
+        assert len(tasks) > 0, "Need at least one task"
+
+        task_id = tasks[0]['id']
+
+        # Try to set focus on task (should fail)
+        with pytest.raises(ValueError) as exc_info:
+            client.set_focus(item_id=task_id, item_type="task")
+
+        assert "OmniFocus only supports setting focus on projects and folders" in str(exc_info.value)
+        print("\n✓ Correctly rejected focus on task")
+
+    def test_set_focus_nonexistent_project(self, client):
+        """Test error handling for nonexistent project."""
+        # Try to set focus on nonexistent project
+        with pytest.raises(Exception) as exc_info:
+            client.set_focus(item_id="nonexistent-id-12345", item_type="project")
+
+        assert "Error setting focus" in str(exc_info.value)
+        print("\n✓ Correctly handled nonexistent project")

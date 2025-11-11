@@ -457,3 +457,82 @@ class TestUpdateProjectsE2E:
         assert "success" in result.lower() or "updated" in result.lower()
 
         print(f"\n✓ E2E update_projects single ID: {result}")
+
+
+# ============================================================================
+# E2E Tests for set_focus() (NEW API - v0.7.0)
+# ============================================================================
+
+class TestSetFocusE2E:
+    """E2E tests for set_focus() MCP tool with real OmniFocus.
+
+    Tests the full stack:
+    MCP tool → client.set_focus() → AppleScript → OmniFocus
+    """
+
+    def test_set_focus_on_project_e2e(self):
+        """E2E: Set focus on a project via MCP tool."""
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+        import omnifocus_mcp.server_fastmcp as server
+
+        # Get a test project
+        client = OmniFocusConnector(enable_safety_checks=True)
+        projects = client.get_projects(query="Active Test Project")
+        assert len(projects) > 0, "Need at least one test project"
+
+        project_id = projects[0]['id']
+
+        # Call the MCP tool
+        set_focus = server.set_focus.fn
+        result = set_focus(item_id=project_id, item_type="project")
+
+        # Verify MCP tool returns human-readable response
+        assert isinstance(result, str)
+        assert "success" in result.lower()
+        assert "project" in result.lower()
+        assert project_id in result
+
+        print(f"\n✓ E2E set_focus on project: {result}")
+
+    def test_set_focus_on_folder_e2e(self):
+        """E2E: Set focus on a folder via MCP tool."""
+        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+        import omnifocus_mcp.server_fastmcp as server
+
+        # Get a test folder
+        client = OmniFocusConnector(enable_safety_checks=True)
+        folders = client.get_folders()
+        assert len(folders) > 0, "Need at least one folder"
+
+        # Find the test root folder
+        test_folder = next((f for f in folders if f['name'] == "Test Root Folder"), None)
+        assert test_folder is not None, "Test Root Folder should exist"
+
+        folder_id = test_folder['id']
+
+        # Call the MCP tool
+        set_focus = server.set_focus.fn
+        result = set_focus(item_id=folder_id, item_type="folder")
+
+        # Verify MCP tool returns human-readable response
+        assert isinstance(result, str)
+        assert "success" in result.lower()
+        assert "folder" in result.lower()
+        assert folder_id in result
+
+        print(f"\n✓ E2E set_focus on folder: {result}")
+
+    def test_set_focus_invalid_type_e2e(self):
+        """E2E: Test error handling for invalid item type via MCP tool."""
+        import omnifocus_mcp.server_fastmcp as server
+
+        # Call the MCP tool with invalid type
+        set_focus = server.set_focus.fn
+        result = set_focus(item_id="any-id", item_type="task")
+
+        # Verify MCP tool returns error message
+        assert isinstance(result, str)
+        assert "invalid" in result.lower() or "error" in result.lower()
+        assert "task" in result.lower()
+
+        print(f"\n✓ E2E set_focus invalid type: {result}")

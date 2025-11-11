@@ -3011,3 +3011,64 @@ class OmniFocusConnector:
             return result.strip()
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error switching perspective: {e.stderr}")
+
+    def set_focus(self, item_id: str, item_type: str) -> dict:
+        """Set focus on a specific item in the OmniFocus window.
+
+        OmniFocus only supports setting focus on projects and folders via AppleScript.
+        Attempting to focus on tasks or tags will raise a ValueError.
+
+        Args:
+            item_id: ID of the item to focus on
+            item_type: Type of item - must be "project" or "folder"
+
+        Returns:
+            dict with success status, item_id, and item_type
+
+        Raises:
+            ValueError: If item_type is not "project" or "folder"
+            Exception: If focus operation fails
+        """
+        # Validate item_type
+        valid_types = ["project", "folder"]
+        if item_type not in valid_types:
+            if item_type in ["task", "tag"]:
+                raise ValueError(
+                    f"OmniFocus only supports setting focus on projects and folders. "
+                    f"Cannot set focus on {item_type}s via AppleScript."
+                )
+            else:
+                raise ValueError(
+                    f"item_type must be one of {valid_types}, got: {item_type}"
+                )
+
+        # Escape quotes in item_id
+        item_id_escaped = item_id.replace('"', '\\"')
+
+        # Build AppleScript based on item type
+        if item_type == "project":
+            item_reference = f'first flattened project whose id is "{item_id_escaped}"'
+        else:  # folder
+            item_reference = f'first folder whose id is "{item_id_escaped}"'
+
+        script = f'''
+        tell application "OmniFocus"
+            tell default document
+                set targetItem to {item_reference}
+                tell front document window
+                    set focus to targetItem
+                    return "SUCCESS"
+                end tell
+            end tell
+        end tell
+        '''
+
+        try:
+            run_applescript(script)
+            return {
+                "success": True,
+                "item_id": item_id,
+                "item_type": item_type
+            }
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error setting focus on {item_type}: {e.stderr}")

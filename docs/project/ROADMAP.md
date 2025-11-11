@@ -60,6 +60,9 @@
 - ✅ `get_perspectives` - List custom perspectives
 - ✅ `switch_perspective` - Change active perspective
 
+**UI Navigation (1 tool):**
+- ✅ `set_focus` - Focus OmniFocus window on project or folder
+
 ### Test Coverage
 
 **333 passing tests** with 89% overall code coverage. See [../guides/TESTING.md](../guides/TESTING.md) for detailed breakdown.
@@ -372,7 +375,6 @@ Major consolidation to optimize for MCP tool calling efficiency.
 
 **Current open issues (as of November 2025):**
 - **Bug:** #78 - get_tasks() and get_projects() full_notes parameter not working (high priority)
-- **Enhancement:** #77 - Add UI navigation tools (set focus, manage tabs)
 - **Enhancement:** #50 - Performance optimization for slow operations (~10s for overdue tasks)
 - **Enhancement:** #51 - Refactor high-complexity functions (technical debt)
 - **Workflow:** #93 - Phase 7 comprehensive documentation updates (in progress)
@@ -406,16 +408,14 @@ These items need design discussion before implementation:
 
 **Decision needed before implementation.**
 
-**🤔 UI Navigation**
-- `show_project(project_id)` - Focus OmniFocus window on specific project
-- `show_task(task_id)` - Focus OmniFocus window on specific task
+**🤔 UI Navigation - Partially Implemented**
+- ✅ `set_focus(item_id, item_type="project"|"folder")` - Focus window on project or folder (IMPLEMENTED in v0.7.0)
+  - **AppleScript Limitation:** Tasks and tags cannot be focused (OmniFocus restriction)
+  - Only supports `item_type="project"` or `item_type="folder"`
+  - Raises clear error for unsupported types with explanation
+- ❌ Tab management - Not available via AppleScript (API doesn't expose tabs property)
 
-**Question:** Does UI navigation belong in an MCP server?
-- Precedent: `switch_perspective()` exists (UI control)
-- AppleScript verified: `set focus of front document window to item` works
-- Use case: "Jump to this item" after querying/searching
-
-**Decision needed before implementation.**
+**Resolution:** UI navigation is appropriate for MCP server (precedent: `switch_perspective()`). Implemented within AppleScript limitations. Future: May add task/tag navigation if OmniFocus exposes it.
 
 ### Future Research - Technical Blockers
 

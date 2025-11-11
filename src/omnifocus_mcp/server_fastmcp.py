@@ -994,6 +994,33 @@ def switch_perspective(perspective_name: str) -> str:
         return f"Error switching perspective: {str(e)}"
 
 
+@mcp.tool()
+def set_focus(item_id: str, item_type: str) -> str:
+    """Set focus on a specific item in the OmniFocus window.
+
+    OmniFocus only supports setting focus on projects and folders via AppleScript.
+    Tasks and tags cannot be focused directly.
+
+    Args:
+        item_id: ID of the item to focus on
+        item_type: Type of item - must be "project" or "folder"
+
+    Returns:
+        Success message confirming focus change
+
+    Raises:
+        ValueError: If item_type is not "project" or "folder"
+    """
+    client = get_client()
+    try:
+        client.set_focus(item_id=item_id, item_type=item_type)
+        return f"Successfully set focus on {item_type}: {item_id}"
+    except ValueError as e:
+        return f"Invalid item type: {str(e)}"
+    except Exception as e:
+        return f"Error setting focus: {str(e)}"
+
+
 # ============================================================================
 # Server Entry Point
 # ============================================================================
