@@ -26,8 +26,9 @@ check_monitor_ci_after_push() {
 
     echo "🔍 Git push detected. Monitoring GitHub Actions..." >&2
 
-    # Wait for CI to start
-    sleep 5
+    # Wait longer for CI to start (was 5s, now 10s)
+    echo "Waiting for CI to start..." >&2
+    sleep 10
 
     # Check if gh CLI is available
     if ! command -v gh &> /dev/null; then
@@ -42,21 +43,32 @@ check_monitor_ci_after_push() {
     if [ -n "$RUN_ID" ]; then
         echo "Watching run #$RUN_ID..." >&2
 
-        # Watch the run (gh run watch has built-in timeout)
-        if ! gh run watch "$RUN_ID" --exit-status 2>&1; then
-            # CI failed
+        # Watch the run with explicit exit status check
+        # Note: gh run watch may return before timeouts occur
+        gh run watch "$RUN_ID" --exit-status 2>&1 | tee /tmp/gh_run_watch.log >&2
+        WATCH_EXIT=$?
+
+        # CRITICAL: Verify final status after watch completes
+        # This catches cases where tests timeout after gh run watch returns
+        echo "Verifying final CI status..." >&2
+        sleep 5  # Brief wait for status to settle
+
+        FINAL_STATUS=$(gh run view "$RUN_ID" --json conclusion -q .conclusion 2>/dev/null)
+
+        if [ "$FINAL_STATUS" != "success" ]; then
+            # CI failed (includes: failure, cancelled, timed_out, etc.)
             RUN_URL=$(gh run view "$RUN_ID" --json url -q .url 2>/dev/null || echo "Unable to get URL")
 
             cat >&2 <<EOF
 {
   "decision": "block",
-  "reason": "GitHub Actions CI failed after your push",
-  "additionalContext": "View failure details: $RUN_URL\n\nFetch logs with: gh run view $RUN_ID --log-failed\n\nYou must fix CI failures before continuing."
+  "reason": "GitHub Actions CI failed after your push (status: $FINAL_STATUS)",
+  "additionalContext": "View failure details: $RUN_URL\n\nFetch logs with: gh run view $RUN_ID --log-failed\n\nYou must fix CI failures before continuing.\n\nNote: Watch exit code was $WATCH_EXIT, but final status check detected failure."
 }
 EOF
             return 2
         else
-            echo "✅ GitHub Actions passed successfully" >&2
+            echo "✅ GitHub Actions passed successfully (verified)" >&2
         fi
     else
         echo "⚠️  No GitHub Actions run found. CI may not have triggered." >&2
