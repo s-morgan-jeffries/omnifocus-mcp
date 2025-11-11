@@ -155,7 +155,7 @@ if [ "$IS_RC" = true ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
     echo "" >> "$RESULTS_FILE"
 
-    # Check 1: Version sync
+    # Check 1: Version sync (~1s)
     echo "1. Checking version synchronization..." | tee -a "$RESULTS_FILE"
     SYNC_OUTPUT=$(./scripts/check_version_sync.sh 2>&1)
     if [ $? -ne 0 ]; then
@@ -167,20 +167,8 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
-    # Check 2: All tests pass (unit, integration, e2e)
-    echo "2. Running all tests..." | tee -a "$RESULTS_FILE"
-    TEST_OUTPUT=$(./scripts/run_all_tests.sh 2>&1)
-    if [ $? -ne 0 ]; then
-        echo "   ❌ Tests failed" | tee -a "$RESULTS_FILE"
-        echo "$TEST_OUTPUT" >> "$RESULTS_FILE"
-        ((FAILED_CHECKS++))
-    else
-        echo "   ✅ All tests passed" | tee -a "$RESULTS_FILE"
-    fi
-    echo "" >> "$RESULTS_FILE"
-
-    # Check 3: Code complexity
-    echo "3. Checking code complexity..." | tee -a "$RESULTS_FILE"
+    # Check 2: Code complexity (~2s)
+    echo "2. Checking code complexity..." | tee -a "$RESULTS_FILE"
     COMPLEXITY_OUTPUT=$(./scripts/check_complexity.sh 2>&1)
     if [ $? -ne 0 ]; then
         echo "   ❌ Complexity check failed" | tee -a "$RESULTS_FILE"
@@ -191,8 +179,8 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
-    # Check 4: Client-server parity
-    echo "4. Checking client-server parity..." | tee -a "$RESULTS_FILE"
+    # Check 3: Client-server parity (~1s)
+    echo "3. Checking client-server parity..." | tee -a "$RESULTS_FILE"
     PARITY_OUTPUT=$(./scripts/check_client_server_parity.sh 2>&1)
     if [ $? -ne 0 ]; then
         echo "   ❌ Parity check failed" | tee -a "$RESULTS_FILE"
@@ -203,8 +191,8 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
-    # Check 5: Milestone status
-    echo "5. Checking milestone status..." | tee -a "$RESULTS_FILE"
+    # Check 4: Milestone status (~1s)
+    echo "4. Checking milestone status..." | tee -a "$RESULTS_FILE"
     VERSION=${TAG_NAME%-rc*}
 
     # Check if milestone exists and has no open issues
@@ -224,23 +212,8 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
-    echo "" >> "$RESULTS_FILE"
-
-    # Check 6: Test coverage (CRITICAL - must be >= 85%)
-    echo "6. Checking test coverage..." | tee -a "$RESULTS_FILE"
-    COV_OUTPUT=$(./scripts/check_test_coverage.sh 2>&1)
-    if [ $? -eq 0 ]; then
-        echo "   ✅ Test coverage check passed" | tee -a "$RESULTS_FILE"
-    else
-        echo "   ❌ Test coverage below 85%" | tee -a "$RESULTS_FILE"
-        echo "$COV_OUTPUT" >> "$RESULTS_FILE"
-        ((FAILED_CHECKS++))
-    fi
-    echo "" >> "$RESULTS_FILE"
-
-    # Check 7: ROADMAP.md sync with closed issues
-    echo "7. Checking ROADMAP.md sync with closed issues..." | tee -a "$RESULTS_FILE"
+    # Check 5: ROADMAP.md sync with closed issues (~2s)
+    echo "5. Checking ROADMAP.md sync with closed issues..." | tee -a "$RESULTS_FILE"
     ROADMAP_OUTPUT=$(./scripts/check_roadmap_sync.sh "$VERSION" 2>&1)
     if [ $? -eq 0 ]; then
         echo "   ✅ ROADMAP.md is synced" | tee -a "$RESULTS_FILE"
@@ -251,8 +224,8 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
-    # Check 8: Documentation completeness
-    echo "8. Checking documentation completeness..." | tee -a "$RESULTS_FILE"
+    # Check 6: Documentation completeness (~2s)
+    echo "6. Checking documentation completeness..." | tee -a "$RESULTS_FILE"
     DOC_OUTPUT=$(./scripts/check_documentation.sh "$VERSION" 2>&1)
     if [ $? -eq 0 ]; then
         echo "   ✅ Documentation check passed" | tee -a "$RESULTS_FILE"
@@ -260,6 +233,33 @@ if [ "$IS_RC" = true ]; then
         echo "   ❌ Documentation check failed" | tee -a "$RESULTS_FILE"
         echo "$DOC_OUTPUT" >> "$RESULTS_FILE"
         ((FAILED_CHECKS++))
+    fi
+    echo "" >> "$RESULTS_FILE"
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$RESULTS_FILE"
+    echo "" >> "$RESULTS_FILE"
+
+    # Check 7: Test coverage (~30s)
+    echo "7. Checking test coverage..." | tee -a "$RESULTS_FILE"
+    COV_OUTPUT=$(./scripts/check_test_coverage.sh 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Test coverage check passed" | tee -a "$RESULTS_FILE"
+    else
+        echo "   ❌ Test coverage below 85%" | tee -a "$RESULTS_FILE"
+        echo "$COV_OUTPUT" >> "$RESULTS_FILE"
+        ((FAILED_CHECKS++))
+    fi
+    echo "" >> "$RESULTS_FILE"
+
+    # Check 8: All tests pass (~20-25 min)
+    echo "8. Running all tests..." | tee -a "$RESULTS_FILE"
+    TEST_OUTPUT=$(./scripts/run_all_tests.sh 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Tests failed" | tee -a "$RESULTS_FILE"
+        echo "$TEST_OUTPUT" >> "$RESULTS_FILE"
+        ((FAILED_CHECKS++))
+    else
+        echo "   ✅ All tests passed" | tee -a "$RESULTS_FILE"
     fi
     echo "" >> "$RESULTS_FILE"
 

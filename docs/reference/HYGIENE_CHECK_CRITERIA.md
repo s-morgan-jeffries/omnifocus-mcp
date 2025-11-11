@@ -2,7 +2,7 @@
 
 **Purpose:** Define clear, objective criteria for all automated hygiene checks.
 
-**Last Updated:** 2025-10-30 (v0.6.6)
+**Last Updated:** 2025-11-11 (v0.7.0 - Hygiene Check Reordering)
 
 ---
 
@@ -19,7 +19,16 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ## Automated Checks (Critical - Must Pass)
 
-### 1. Version Synchronization
+**Execution Order (as of v0.7.0):**
+
+The checks are run in order of execution speed, with fast checks (1-6) running first, followed by slower checks (7-8). This provides faster feedback if early checks fail, avoiding the 20-25 minute wait for tests when faster checks would have caught issues.
+
+- **Fast checks (~1-2s each):** Version sync, complexity, parity, milestone, ROADMAP sync, docs
+- **Slow checks:** Test coverage (~30s), All tests (~20-25 min)
+
+---
+
+### 1. Version Synchronization (~1s)
 
 **Script:** `scripts/check_version_sync.sh`
 
@@ -40,32 +49,7 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
-### 2. All Tests Pass
-
-**Script:** `scripts/run_all_tests.sh` (called by pre-tag hook)
-
-**Pass Criteria:**
-- ✅ All unit tests pass (pytest exit code 0)
-- ✅ All integration tests pass (pytest exit code 0)
-- ✅ All E2E tests pass (pytest exit code 0)
-- ✅ No test failures, no test errors
-- ✅ Skipped tests are expected (integration tests when no test DB)
-
-**Fail Criteria:**
-- ❌ Any test fails
-- ❌ Any test has errors
-- ❌ Test collection fails
-- ❌ Import errors
-
-**Exit Codes:**
-- `0` - All tests passed
-- `1` - One or more tests failed
-
-**Note:** GitHub Actions only runs unit tests (integration/E2E require local OmniFocus setup).
-
----
-
-### 3. Code Complexity
+### 2. Code Complexity (~2s)
 
 **Script:** `scripts/check_complexity.sh`
 
@@ -91,7 +75,7 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
-### 4. Client-Server Parity
+### 3. Client-Server Parity (~1s)
 
 **Script:** `scripts/check_client_server_parity.sh`
 
@@ -111,27 +95,7 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
-### 5. Test Count Synchronization
-
-**Script:** `scripts/check_test_count_sync.sh`
-
-**Pass Criteria:**
-- ✅ Actual test count (from pytest) matches documented count in `docs/guides/TESTING.md`
-- ✅ Count includes only unit tests (excludes integration tests marked with `@pytest.mark.integration`)
-
-**Fail Criteria:**
-- ❌ Test count mismatch between pytest and documentation
-- ❌ Cannot determine test count (pytest failure)
-
-**Exit Codes:**
-- `0` - Counts match
-- `1` - Counts don't match or cannot determine
-
-**Status:** ✅ Implemented and working (caught mismatch in v0.6.5).
-
----
-
-### 6. Milestone Status
+### 4. Milestone Status (~1s)
 
 **Script:** Inline in git pre-tag hook and GitHub Actions workflow
 
@@ -151,9 +115,9 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
-### 7. ROADMAP.md Synchronization
+### 5. ROADMAP.md Synchronization (~2s)
 
-**Script:** `scripts/check_roadmap_sync.sh` (**To be created** - issue #34)
+**Script:** `scripts/check_roadmap_sync.sh`
 
 **Pass Criteria:**
 - ✅ All closed issues in milestone removed from "Upcoming Work" section
@@ -169,11 +133,11 @@ This document defines the **automated check criteria** only. Interactive checks 
 - `0` - ROADMAP.md is synchronized with closed issues
 - `1` - One or more closed issues still in active sections
 
-**Status:** ⏳ Not yet implemented (part of v0.6.6, issue #34).
+**Status:** ✅ Working
 
 ---
 
-### 8. Documentation Completeness
+### 6. Documentation Completeness (~2s)
 
 **Script:** `scripts/check_documentation.sh`
 
@@ -211,7 +175,7 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ---
 
-### 9. Test Coverage
+### 7. Test Coverage (~30s)
 
 **Script:** `scripts/check_test_coverage.sh`
 
@@ -230,6 +194,55 @@ This document defines the **automated check criteria** only. Interactive checks 
 - `1` - Coverage < 85% or other criteria failed
 
 **Note:** This was changed from an interactive check to a critical check in v0.6.6 to enforce minimum coverage standards.
+
+---
+
+### 8. All Tests Pass (~20-25 min)
+
+**Script:** `scripts/run_all_tests.sh` (called by pre-tag hook)
+
+**Pass Criteria:**
+- ✅ All unit tests pass (pytest exit code 0)
+- ✅ All integration tests pass (pytest exit code 0)
+- ✅ All E2E tests pass (pytest exit code 0)
+- ✅ No test failures, no test errors
+- ✅ Skipped tests are expected (integration tests when no test DB)
+
+**Fail Criteria:**
+- ❌ Any test fails
+- ❌ Any test has errors
+- ❌ Test collection fails
+- ❌ Import errors
+
+**Exit Codes:**
+- `0` - All tests passed
+- `1` - One or more tests failed
+
+**Note:**
+- GitHub Actions only runs unit tests (integration/E2E require local OmniFocus setup)
+- **As of v0.7.0:** Moved to last position in execution order (#132) to provide faster feedback from earlier checks
+
+---
+
+### Test Count Synchronization (Not in pre-tag hook)
+
+**Script:** `scripts/check_test_count_sync.sh`
+
+**Pass Criteria:**
+- ✅ Actual test count (from pytest) matches documented count in `docs/guides/TESTING.md`
+- ✅ Count includes only unit tests (excludes integration tests marked with `@pytest.mark.integration`)
+
+**Fail Criteria:**
+- ❌ Test count mismatch between pytest and documentation
+- ❌ Cannot determine test count (pytest failure)
+
+**Exit Codes:**
+- `0` - Counts match
+- `1` - Counts don't match or cannot determine
+
+**Status:** ✅ Implemented and working (caught mismatch in v0.6.5).
+
+**Note:** This check is NOT run as part of the pre-tag hook. It's available for manual execution when needed.
 
 ---
 
@@ -301,20 +314,22 @@ These checks are available via manual script execution for code quality insights
 
 ## Summary Table
 
-| Check | Type | Status | Exit Codes | Blocks Release |
-|-------|------|--------|------------|----------------|
-| 1. Version Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 2. All Tests | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 3. Code Complexity | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 4. Client-Server Parity | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 5. Test Count Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 6. Milestone Status | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 7. ROADMAP.md Sync | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 8. Documentation Completeness | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| 9. Test Coverage | Automated | ✅ Working | 0=pass, 1=fail | Yes |
-| Doc Quality | Interactive | ⏳ To implement | N/A | No |
-| Code Quality | Interactive | ✅ Available | N/A | No |
-| Directory Org | Interactive | ✅ Available | N/A | No |
+| Check | Type | Execution Time | Status | Exit Codes | Blocks Release |
+|-------|------|----------------|--------|------------|----------------|
+| 1. Version Sync | Automated | ~1s | ✅ Working | 0=pass, 1=fail | Yes |
+| 2. Code Complexity | Automated | ~2s | ✅ Working | 0=pass, 1=fail | Yes |
+| 3. Client-Server Parity | Automated | ~1s | ✅ Working | 0=pass, 1=fail | Yes |
+| 4. Milestone Status | Automated | ~1s | ✅ Working | 0=pass, 1=fail | Yes |
+| 5. ROADMAP.md Sync | Automated | ~2s | ✅ Working | 0=pass, 1=fail | Yes |
+| 6. Documentation Completeness | Automated | ~2s | ✅ Working | 0=pass, 1=fail | Yes |
+| 7. Test Coverage | Automated | ~30s | ✅ Working | 0=pass, 1=fail | Yes |
+| 8. All Tests | Automated | ~20-25 min | ✅ Working | 0=pass, 1=fail | Yes |
+| Test Count Sync | Automated | ~5s | ✅ Working | 0=pass, 1=fail | No (not in pre-tag) |
+| Doc Quality | Interactive | N/A | ⏳ To implement | N/A | No |
+| Code Quality | Interactive | N/A | ✅ Available | N/A | No |
+| Directory Org | Interactive | N/A | ✅ Available | N/A | No |
+
+**Note:** Pre-tag hook runs 8 checks (1-8) in the order listed. Test Count Sync is available but not run automatically.
 
 **Changes in v0.6.6:**
 - Test Coverage promoted from interactive to automated (≥85% required)
@@ -324,7 +339,12 @@ These checks are available via manual script execution for code quality insights
 **Changes in v0.6.7:**
 - Documentation Completeness added as new automated check (#124)
 - Verifies CHANGELOG entries, version references, migration guides, key docs existence
-- Total: 9 automated checks (1-9), 3 interactive checks
+
+**Changes in v0.7.0:**
+- Hygiene checks reordered for faster feedback (#132)
+- Fast checks (1-6) run first, slow checks (7-8) run last
+- Previous order had tests at position #2, now at position #8 (last)
+- Prevents 20-25 minute wait when faster checks would have caught issues
 
 ---
 
