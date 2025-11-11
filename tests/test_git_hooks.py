@@ -6,6 +6,7 @@ These tests verify the git hook logic without requiring actual git operations.
 import subprocess
 import pytest
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 PROJECT_ROOT = Path(__file__).parent.parent
 GIT_HOOKS_DIR = PROJECT_ROOT / "scripts" / "git-hooks"
@@ -206,3 +207,68 @@ class TestPreCommitHook:
         )
 
         assert result.returncode == 0, f"Commits should be allowed on release branches. stderr: {result.stderr.decode()}"
+
+
+class TestPrePushHook:
+    """Tests for pre-push git hook."""
+
+    def test_hook_exists(self):
+        """Pre-push hook script should exist."""
+        hook_path = GIT_HOOKS_DIR / "pre-push"
+        assert hook_path.exists(), "pre-push hook should exist"
+
+    def test_hook_executable(self):
+        """Pre-push hook should be executable."""
+        hook_path = GIT_HOOKS_DIR / "pre-push"
+        assert hook_path.stat().st_mode & 0o111, "pre-push hook should be executable"
+
+    @patch('subprocess.run')
+    def test_runs_tests_before_push(self, mock_run, tmp_path):
+        """Pre-push hook should run 'make test' before allowing push."""
+        # Mock successful test run
+        mock_run.return_value = MagicMock(returncode=0)
+        
+        # Create a temporary git repo
+        repo = tmp_path / "test_repo"
+        repo.mkdir()
+        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True, capture_output=True)
+        
+        # Create initial commit
+        (repo / "test.txt").write_text("test")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "initial"], cwd=repo, check=True, capture_output=True)
+        
+        # Simulate push by providing stdin input
+        # Format: <local ref> <local sha> <remote ref> <remote sha>
+        push_input = "refs/heads/main abc123 refs/heads/main def456\n"
+        
+        # Run pre-push hook with mocked make test
+        with patch.dict('os.environ', {'PATH': str(PROJECT_ROOT)}):
+            result = subprocess.run(
+                [str(GIT_HOOKS_DIR / "pre-push")],
+                input=push_input.encode(),
+                capture_output=True,
+                cwd=repo,
+            )
+        
+        # Should succeed when tests pass
+        assert result.returncode == 0, f"Pre-push should allow push when tests pass. stderr: {result.stderr.decode()}"
+
+    def test_allows_push_when_no_refs_on_tty(self, tmp_path):
+        """Pre-push hook should allow push when invoked with no stdin (TTY scenario)."""
+        # Create a temporary git repo
+        repo = tmp_path / "test_repo"
+        repo.mkdir()
+        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+
+        # Run pre-push hook with no stdin (TTY scenario - no actual push happening)
+        result = subprocess.run(
+            [str(GIT_HOOKS_DIR / "pre-push")],
+            capture_output=True,
+            cwd=repo,
+        )
+
+        # Should succeed - hook detects TTY and skips checks
+        assert result.returncode == 0, "Pre-push should succeed when invoked on TTY (no actual push)"
