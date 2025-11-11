@@ -139,7 +139,7 @@ See `docs/ARCHITECTURE.md` for complete anti-pattern catalog with rationale.
 ## Project Status
 
 **Current Version:** v0.6.0 (Maintenance Mode)
-**API Functions:** 16 core functions (redesign complete October 2025)
+**API Functions:** 17 functions (16 core + UI navigation) (redesign complete October 2025)
 **Test Coverage:** 89% overall (see `docs/guides/TESTING.md` for detailed breakdown)
 
 The API redesign (40→16 functions) completed October 2025.

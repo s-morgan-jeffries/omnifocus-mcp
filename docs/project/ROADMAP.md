@@ -2,12 +2,12 @@
 
 ## Status: Phase 3 (API Redesign) Complete ✅
 
-**Current Version:** v0.6.6 (November 2025)
+**Current Version:** v0.7.0 (November 2025)
 
 **Project Status:** Maintenance mode - Core MCP server is feature-complete with 16 comprehensive tools covering all OmniFocus primitives.
 
 **Latest:**
-- v0.6.6 (Nov 2025): Release process infrastructure, interactive quality checks, workflow enforcement, Claude Code hooks
+- v0.7.0 (Nov 2025): Release process infrastructure, interactive quality checks, workflow enforcement, Claude Code hooks
 - v0.6.5 (Oct 2025): Fixed AppleScript DONE status bug, added GitHub Actions CI, comprehensive testing documentation
 - v0.6.4 (Oct 2025): Implemented actual hygiene check scripts (was placeholder automation in v0.6.3)
 - v0.6.3 (Oct 2025): Trunk-based workflow with RC tags, git hooks for release hygiene
@@ -28,7 +28,7 @@
 
 ---
 
-## Current State (v0.6.6 - November 2025)
+## Current State (v0.7.0 - November 2025)
 
 ### 🎉 API Redesign Complete - 16 Core MCP Tools
 
@@ -98,7 +98,7 @@
 - Loads project context at session start
 - **See:** `.claude/CLAUDE.md` for hook documentation
 
-**Release Hygiene Checks:** Automated quality gates (v0.6.3-v0.6.6)
+**Release Hygiene Checks:** Automated quality gates (v0.6.3-v0.7.0)
 - Git pre-tag hook runs comprehensive checks on RC tags
 - 7 critical automated checks (must pass to release)
 - 3 interactive checks (qualitative feedback via slash commands)
@@ -317,7 +317,7 @@ Major consolidation to optimize for MCP tool calling efficiency.
 
 ## Recent Completed Work
 
-### v0.6.6 - Hygiene Check System Overhaul ✅ (October-November 2025)
+### v0.7.0 - Hygiene Check System Overhaul ✅ (October-November 2025)
 
 **Completed:** Comprehensive hygiene check system with review-and-approve workflow (#70)
 
@@ -371,7 +371,7 @@ Major consolidation to optimize for MCP tool calling efficiency.
 
 ## Upcoming Work
 
-**Status:** The v0.6.6 API is feature-complete and stable. The project is in maintenance mode with 17 open GitHub Issues tracking future improvements.
+**Status:** The v0.7.0 API is feature-complete and stable. The project is in maintenance mode with 17 open GitHub Issues tracking future improvements.
 
 **Current open issues (as of November 2025):**
 - **Bug:** #78 - get_tasks() and get_projects() full_notes parameter not working (high priority)
