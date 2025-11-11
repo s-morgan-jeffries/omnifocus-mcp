@@ -5,7 +5,7 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.7] - 2025-11-11
+## [0.7.0] - 2025-11-11
 
 ### Added
 
@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced `create_tag.sh` blocks new RC creation if pending releases exist
   - CI check runs on every push to detect incomplete releases
   - Updated CHANGELOG policy to prevent premature updates
+  - Resolves incomplete v0.6.7 release (RC created but never finalized)
 
 ### Changed
 
