@@ -556,10 +556,14 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 - [ ] **Server exposure verified** - Run `./scripts/check_client_server_parity.sh`
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree
-- [ ] **Documentation updated** - ROADMAP.md, or other docs if needed (NOT CHANGELOG.md yet)
+- [ ] **Documentation updated** - ROADMAP.md, README.md version references, or other docs if needed (NOT CHANGELOG.md yet)
   - **IMPORTANT: Do NOT update CHANGELOG.md until AFTER final release tag is created**
   - CHANGELOG updates happen during release process, not during development
   - Rationale: RC testing may reveal issues requiring more fixes before release (#140)
+  - **README.md validation** (especially for releases):
+    - [ ] Version numbers match release (installation examples, feature lists)
+    - [ ] "Key Changes" section includes current version
+    - [ ] New features listed in appropriate tool categories
   - Verify cross-references exist; breaking changes need migration guide (MIGRATION_vX.Y.md pattern)
   - If tests added/removed: Update count in `docs/guides/TESTING.md` only (single source of truth)
   - **If fixing bug listed in ROADMAP.md:** Remove from "Upcoming Work" section after fix
@@ -713,9 +717,11 @@ fi
 **What the script does:**
 1. Validates tag name format (vX.Y.Z or vX.Y.Z-rcN)
 2. Checks if tag already exists
-3. Runs pre-tag hygiene checks (9 checks: 5 automated, 4 interactive)
+3. Runs pre-tag hygiene checks (7 automated critical checks, 3 interactive quality checks)
 4. Creates tag only if checks pass
 5. Shows next steps (review, push)
+
+**⚠️ Known Issue:** Hygiene check #6 (documentation completeness) currently has no validation script and always passes (#148). Manual README.md validation is required until this is fixed.
 
 **Claude Code enforcement:** PreToolUse(Bash) hook blocks direct `git tag` commands and requires use of the wrapper script.
 
