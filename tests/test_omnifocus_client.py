@@ -874,10 +874,10 @@ class TestSetFocus:
             result = client.set_focus(item_id="folder-456", item_type="folder")
             assert result == {"success": True, "item_id": "folder-456", "item_type": "folder"}
             mock_run.assert_called_once()
-            # Verify the AppleScript contains the correct ID and uses folder
+            # Verify the AppleScript contains the correct ID and uses folders collection
             call_args = mock_run.call_args[0][0]
             assert 'folder-456' in call_args
-            assert 'folder whose id' in call_args
+            assert 'folders whose id' in call_args  # Collection pattern (not "folder whose id")
             assert 'set focus to' in call_args
 
     def test_set_focus_on_task_raises_error(self, client):
