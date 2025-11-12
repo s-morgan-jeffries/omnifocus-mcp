@@ -1,7 +1,7 @@
 # OmniFocus MCP Server - Project Memory
 
-**Last Updated:** 2025-11-03
-**Current Version:** v0.6.7 (Test Timeout Fix)
+**Last Updated:** 2025-11-11
+**Current Version:** v0.7.0 (UI Navigation & Release Process Improvements)
 
 **This file is automatically loaded by Claude Code when working on this project.**
 
@@ -139,7 +139,7 @@ See `docs/ARCHITECTURE.md` for complete anti-pattern catalog with rationale.
 ## Project Status
 
 **Current Version:** v0.6.0 (Maintenance Mode)
-**API Functions:** 16 core functions (redesign complete October 2025)
+**API Functions:** 17 functions (16 core + UI navigation) (redesign complete October 2025)
 **Test Coverage:** 89% overall (see `docs/guides/TESTING.md` for detailed breakdown)
 
 The API redesign (40→16 functions) completed October 2025.
@@ -580,10 +580,27 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 - [ ] **Issues filed with labels** - All new issues have appropriate labels (see Issue Tracking section)
 
 **If tests are failing:**
+- **STOP IMMEDIATELY** - Do not proceed with release or other tasks
+- **Investigate aggressively** - Test failures are high-priority blockers
+- **Default action: Debug and fix** - Don't suggest approval/bypass unless investigation proves it's acceptable
+- **Ask the user** if unsure whether to investigate or proceed - don't assume
 - Don't commit until they pass
 - If you can't fix them quickly, create a failing test as a TODO
 - Document why the test is failing in the test itself
 - Consider if this indicates an architectural problem
+
+**Critical distinction:**
+- ❌ **NEVER approve unknown test failures** - These must be investigated first
+- ❌ **NEVER approve failures in new functionality** - New code must have 100% passing tests
+- ❌ **NEVER approve integration/e2e test failures** - These indicate real problems
+- ✅ **CAN approve known complexity** with documented exceptions (e.g., get_tasks, update_task)
+- ✅ **CAN approve intentional TODOs** with tracking issues
+
+**Red flags requiring immediate investigation:**
+- New functionality failing tests
+- Integration tests failing
+- Tests that were passing before now failing
+- Unknown errors or unexpected behavior
 
 See `docs/guides/CONTRIBUTING.md` for complete pre-commit workflow.
 
@@ -733,17 +750,28 @@ less .hygiene-check-results-v0.6.7-rc1.txt
 
 ### When to Use Fix vs. Approve
 
-**Use "Fix" for:**
+**CRITICAL: Investigate FIRST, then decide:**
+
+Always investigate hygiene check failures before suggesting approval. Approval is for **known acceptable issues**, not for **unknown failures**.
+
+**Use "Fix" for (REQUIRED):**
 - Version sync mismatches (always fix)
-- Test failures (always fix)
+- **Test failures** (always fix - NEVER approve unknown test failures)
 - Complexity threshold violations on NEW code (refactor)
 - Milestone has open issues (close or move them)
+- Unknown errors or unexpected behavior (investigate and fix)
 
-**Use "Approve" for:**
+**Use "Approve" for (ONLY after investigation confirms it's acceptable):**
 - Known complexity in documented exceptions (get_tasks, update_task)
 - Intentional TODOs with tracking issues
 - Directory organization suggestions (minor)
 - Long lines in generated code or data
+
+**Decision process:**
+1. Hygiene check fails → **Investigate** what failed and why
+2. Is it a known acceptable issue? → Consider approval
+3. Is it an unknown issue or new code failure? → **Must fix**, no approval
+4. Unsure? → **Ask the user** before suggesting approval
 
 ### Important Notes
 
