@@ -32,7 +32,11 @@ This server provides **17 comprehensive tools** for managing OmniFocus (v0.7.0 A
 - **get_perspectives** - List all custom perspectives
 - **switch_perspective** - Switch to a different perspective view
 
-**Key Changes in v0.6.7:**
+### UI Navigation (1 tool)
+- **set_focus** - Focus on specific projects, folders, or tags in the OmniFocus UI
+
+**Key Changes in v0.7.0:**
+- v0.7.0: Added set_focus() UI navigation tool, fixed AppleScript focus/tab management bugs
 - v0.6.7: Fixed unit test timeout issue, fixed test coverage check script
 - v0.6.6: Release process infrastructure, interactive quality check slash commands, workflow enforcement and documentation
 - v0.6.5: Fixed AppleScript DONE status bug, added GitHub Actions CI, comprehensive testing documentation
@@ -59,7 +63,7 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 
 # Checkout latest stable release
-git checkout v0.6.7  # Or latest version from releases
+git checkout v0.7.0  # Or latest version from releases
 
 # Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
