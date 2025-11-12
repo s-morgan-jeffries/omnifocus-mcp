@@ -3046,15 +3046,21 @@ class OmniFocusConnector:
         item_id_escaped = item_id.replace('"', '\\"')
 
         # Build AppleScript based on item type
+        # Note: AppleScript doesn't support "first ... whose" syntax reliably
+        # We need to get the list and access item 1
         if item_type == "project":
-            item_reference = f'first flattened project whose id is "{item_id_escaped}"'
+            collection = f'flattened projects whose id is "{item_id_escaped}"'
         else:  # folder
-            item_reference = f'first folder whose id is "{item_id_escaped}"'
+            collection = f'folders whose id is "{item_id_escaped}"'
 
         script = f'''
         tell application "OmniFocus"
-            tell default document
-                set targetItem to {item_reference}
+            tell front document
+                set matchingItems to {collection}
+                if (count of matchingItems) = 0 then
+                    error "{item_type} with id {item_id_escaped} not found"
+                end if
+                set targetItem to item 1 of matchingItems
                 tell front document window
                     set focus to targetItem
                     return "SUCCESS"
