@@ -21,9 +21,12 @@ Safety:
 - Safety guards verify database before writes
 - Tests are skipped if environment not configured
 
+All tests use fixtures from conftest.py for automatic cleanup.
+
 Run with: make test-e2e
 """
 import os
+import re
 import pytest
 
 # Import the MCP server tools
@@ -48,28 +51,16 @@ class TestCreateTaskE2E:
 
     Tests the full stack:
     MCP tool → client.create_task() → AppleScript → OmniFocus
+
+    All tests use fixtures from conftest.py for automatic cleanup.
     """
 
-    @pytest.fixture(scope="class")
-    def test_project_id(self):
-        """Get a test project ID for E2E tests."""
-        # Get projects to find a test project
-        result = server.get_projects.fn()
-        # Parse the response (it's a formatted string from MCP tool)
-        # For now, we'll use the client directly to get a project ID
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        client = OmniFocusConnector(enable_safety_checks=True)
-        projects = client.get_projects()
-        if not projects:
-            pytest.skip("No projects found in test database")
-        return projects[0]['id']
-
-    def test_create_task_in_project_e2e(self, test_project_id):
+    def test_create_task_in_project_e2e(self, test_project):
         """E2E: Create task in project via MCP tool."""
         # Call the MCP tool (not the client directly)
         result = create_task(
             task_name="E2E Test Task - Project",
-            project_id=test_project_id,
+            project_id=test_project,
             note="Created by E2E test",
             flagged=True
         )
@@ -77,7 +68,7 @@ class TestCreateTaskE2E:
         # Verify MCP tool returns human-readable response
         assert isinstance(result, str)
         assert "E2E Test Task - Project" in result
-        assert test_project_id in result
+        assert test_project in result
         assert "Successfully created" in result
 
         # Verify task ID is in response
@@ -100,12 +91,12 @@ class TestCreateTaskE2E:
 
         print(f"\n✓ E2E create_task in inbox: {result}")
 
-    def test_create_task_with_tags_e2e(self, test_project_id):
+    def test_create_task_with_tags_e2e(self, test_project):
         """E2E: Create task with tags via MCP tool (tests JSON string conversion)."""
         # MCP tools receive tags as JSON string
         result = create_task(
             task_name="E2E Test Task - Tags",
-            project_id=test_project_id,
+            project_id=test_project,
             tags='["Test"]'  # JSON string, not Python list!
         )
 
@@ -118,11 +109,11 @@ class TestCreateTaskE2E:
 
         print(f"\n✓ E2E create_task with tags: {result}")
 
-    def test_create_task_with_dates_e2e(self, test_project_id):
+    def test_create_task_with_dates_e2e(self, test_project):
         """E2E: Create task with dates via MCP tool."""
         result = create_task(
             task_name="E2E Test Task - Dates",
-            project_id=test_project_id,
+            project_id=test_project,
             due_date="2025-12-31",
             defer_date="2025-12-01",
             estimated_minutes=60
@@ -153,37 +144,19 @@ class TestCreateTaskE2E:
 
 
 class TestUpdateTaskE2E:
-    """E2E tests for update_task() MCP tool with real OmniFocus."""
+    """E2E tests for update_task() MCP tool with real OmniFocus.
 
-    @pytest.fixture
-    def test_task_id(self, test_project_id):
-        """Create a test task and return its ID."""
-        result = create_task(
-            task_name="E2E Test Task for Updates",
-            project_id=test_project_id
-        )
-        # Extract task ID from response
-        # Response format: "Successfully created task '...' in project ...\nTask ID: <id>"
-        import re
-        match = re.search(r'Task ID: ([^\s]+)', result)
-        if match:
-            return match.group(1)
-        pytest.fail(f"Could not extract task ID from: {result}")
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    @pytest.fixture(scope="class")
-    def test_project_id(self):
-        """Get a test project ID."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        client = OmniFocusConnector(enable_safety_checks=True)
-        projects = client.get_projects()
-        if not projects:
-            pytest.skip("No projects found")
-        return projects[0]['id']
-
-    def test_update_task_single_field_e2e(self, test_task_id):
+    def test_update_task_single_field_e2e(self, client, test_project):
         """E2E: Update single field via MCP tool."""
+        # Create a task to update using client (setup)
+        task_id = client.create_task("E2E Test Task for Update", project_id=test_project)
+
+        # Call MCP tool to update
         result = update_task(
-            task_id=test_task_id,
+            task_id=task_id,
             flagged=True
         )
 
@@ -192,10 +165,17 @@ class TestUpdateTaskE2E:
 
         print(f"\n✓ E2E update_task single field: {result}")
 
-    def test_update_task_multiple_fields_e2e(self, test_task_id):
+        # Cleanup
+        client.delete_tasks(task_id)
+
+    def test_update_task_multiple_fields_e2e(self, client, test_project):
         """E2E: Update multiple fields via MCP tool."""
+        # Create a task to update
+        task_id = client.create_task("E2E Test Task for Multi-Update", project_id=test_project)
+
+        # Call MCP tool
         result = update_task(
-            task_id=test_task_id,
+            task_id=task_id,
             task_name="E2E Updated Task Name",
             flagged=False,
             note="Updated by E2E test"
@@ -206,39 +186,27 @@ class TestUpdateTaskE2E:
 
         print(f"\n✓ E2E update_task multiple fields: {result}")
 
+        # Cleanup
+        client.delete_tasks(task_id)
+
 
 class TestUpdateTasksE2E:
-    """E2E tests for update_tasks() batch MCP tool."""
+    """E2E tests for update_tasks() batch MCP tool.
 
-    @pytest.fixture
-    def test_task_ids(self, test_project_id):
-        """Create multiple test tasks."""
-        ids = []
-        for i in range(3):
-            result = create_task(
-                task_name=f"E2E Batch Test Task {i+1}",
-                project_id=test_project_id
-            )
-            import re
-            match = re.search(r'Task ID: ([^\s]+)', result)
-            if match:
-                ids.append(match.group(1))
-        return ids
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    @pytest.fixture(scope="class")
-    def test_project_id(self):
-        """Get a test project ID."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        client = OmniFocusConnector(enable_safety_checks=True)
-        projects = client.get_projects()
-        if not projects:
-            pytest.skip("No projects found")
-        return projects[0]['id']
-
-    def test_update_tasks_batch_e2e(self, test_task_ids):
+    def test_update_tasks_batch_e2e(self, client, test_project):
         """E2E: Update multiple tasks via MCP tool."""
+        # Create multiple test tasks
+        task_ids = []
+        for i in range(3):
+            task_id = client.create_task(f"E2E Batch Test Task {i+1}", project_id=test_project)
+            task_ids.append(task_id)
+
+        # Call MCP tool
         result = update_tasks(
-            task_ids=test_task_ids,
+            task_ids=task_ids,
             flagged=True
         )
 
@@ -248,10 +216,17 @@ class TestUpdateTasksE2E:
 
         print(f"\n✓ E2E update_tasks batch: {result}")
 
-    def test_update_tasks_single_id_string_e2e(self, test_task_ids):
+        # Cleanup
+        client.delete_tasks(task_ids)
+
+    def test_update_tasks_single_id_string_e2e(self, client, test_project):
         """E2E: Update single task via batch tool (Union type)."""
+        # Create a single task
+        task_id = client.create_task("E2E Single Update Task", project_id=test_project)
+
+        # Call MCP tool with single ID as string
         result = update_tasks(
-            task_ids=test_task_ids[0],  # Single ID as string
+            task_ids=task_id,  # Single ID as string
             flagged=False
         )
 
@@ -261,38 +236,26 @@ class TestUpdateTasksE2E:
 
         print(f"\n✓ E2E update_tasks single ID: {result}")
 
+        # Cleanup
+        client.delete_tasks(task_id)
+
 
 class TestDeleteTasksE2E:
-    """E2E tests for delete_tasks() MCP tool."""
+    """E2E tests for delete_tasks() MCP tool.
 
-    @pytest.fixture
-    def test_task_ids(self, test_project_id):
-        """Create disposable test tasks."""
-        ids = []
-        for i in range(2):
-            result = create_task(
-                task_name=f"E2E Delete Test Task {i+1}",
-                project_id=test_project_id
-            )
-            import re
-            match = re.search(r'Task ID: ([^\s]+)', result)
-            if match:
-                ids.append(match.group(1))
-        return ids
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    @pytest.fixture(scope="class")
-    def test_project_id(self):
-        """Get a test project ID."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        client = OmniFocusConnector(enable_safety_checks=True)
-        projects = client.get_projects()
-        if not projects:
-            pytest.skip("No projects found")
-        return projects[0]['id']
-
-    def test_delete_tasks_e2e(self, test_task_ids):
+    def test_delete_tasks_e2e(self, client, test_project):
         """E2E: Delete multiple tasks via MCP tool."""
-        result = delete_tasks(task_ids=test_task_ids)
+        # Create disposable test tasks
+        task_ids = []
+        for i in range(2):
+            task_id = client.create_task(f"E2E Delete Test Task {i+1}", project_id=test_project)
+            task_ids.append(task_id)
+
+        # Call MCP tool to delete
+        result = delete_tasks(task_ids=task_ids)
 
         assert isinstance(result, str)
         assert "2" in result  # Should mention 2 tasks
@@ -300,18 +263,14 @@ class TestDeleteTasksE2E:
 
         print(f"\n✓ E2E delete_tasks: {result}")
 
-    def test_delete_single_task_e2e(self, test_project_id):
+        # No cleanup needed - tasks were deleted by the test
+
+    def test_delete_single_task_e2e(self, client, test_project):
         """E2E: Delete single task via MCP tool (Union type)."""
         # Create a task to delete
-        create_result = create_task(
-            task_name="E2E Single Delete Task",
-            project_id=test_project_id
-        )
-        import re
-        match = re.search(r'Task ID: ([^\s]+)', create_result)
-        task_id = match.group(1)
+        task_id = client.create_task("E2E Single Delete Task", project_id=test_project)
 
-        # Delete it
+        # Call MCP tool to delete
         result = delete_tasks(task_ids=task_id)  # Single ID as string
 
         assert isinstance(result, str)
@@ -319,6 +278,8 @@ class TestDeleteTasksE2E:
         assert "deleted" in result.lower()
 
         print(f"\n✓ E2E delete single task: {result}")
+
+        # No cleanup needed - task was deleted by the test
 
 
 # ============================================================================
@@ -330,54 +291,44 @@ class TestUpdateProjectE2E:
 
     Tests the full stack:
     MCP tool → client.update_project() → AppleScript → OmniFocus
+
+    All tests use fixtures from conftest.py for automatic cleanup.
     """
 
-    @pytest.fixture
-    def test_project_id(self):
-        """Create a test project for E2E tests."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        client = OmniFocusConnector(enable_safety_checks=True)
-        project_id = client.create_project("E2E Test Project - update_project")
-        yield project_id
-        # Cleanup not needed - test database is reset regularly
-
-    def test_update_project_set_status_e2e(self, test_project_id):
+    def test_update_project_set_status_e2e(self, test_project):
         """E2E: Set project status via MCP tool."""
         # Import the MCP tool function
-        import omnifocus_mcp.server_fastmcp as server
         update_project = server.update_project.fn
 
         # Call the MCP tool to set status
-        result = update_project(project_id=test_project_id, status="on_hold")
+        result = update_project(project_id=test_project, status="on_hold")
 
         # Verify MCP tool returns human-readable response
         assert isinstance(result, str)
         assert "success" in result.lower() or "updated" in result.lower()
-        assert test_project_id in result or "project" in result.lower()
+        assert test_project in result or "project" in result.lower()
 
         print(f"\n✓ E2E update_project status: {result}")
 
-    def test_update_project_review_interval_e2e(self, test_project_id):
+    def test_update_project_review_interval_e2e(self, test_project):
         """E2E: Set review interval via MCP tool."""
-        import omnifocus_mcp.server_fastmcp as server
         update_project = server.update_project.fn
 
         # Call the MCP tool to set review interval
-        result = update_project(project_id=test_project_id, review_interval_weeks=3)
+        result = update_project(project_id=test_project, review_interval_weeks=3)
 
         assert isinstance(result, str)
         assert "success" in result.lower() or "updated" in result.lower()
 
         print(f"\n✓ E2E update_project review interval: {result}")
 
-    def test_update_project_multiple_fields_e2e(self, test_project_id):
+    def test_update_project_multiple_fields_e2e(self, test_project):
         """E2E: Update multiple fields at once via MCP tool."""
-        import omnifocus_mcp.server_fastmcp as server
         update_project = server.update_project.fn
 
         # Call the MCP tool to update multiple fields
         result = update_project(
-            project_id=test_project_id,
+            project_id=test_project,
             project_name="E2E Updated Project Name",
             status="active",
             review_interval_weeks=2,
@@ -391,12 +342,11 @@ class TestUpdateProjectE2E:
 
         print(f"\n✓ E2E update_project multiple fields: {result}")
 
-    def test_update_project_error_handling_e2e(self, test_project_id):
+    def test_update_project_error_handling_e2e(self):
         """E2E: Error handling when update fails."""
-        import omnifocus_mcp.server_fastmcp as server
         update_project = server.update_project.fn
 
-        # Try to update with invalid status
+        # Try to update with invalid project ID
         result = update_project(project_id="invalid-id-999", status="active")
 
         # Should return error message (not raise exception for runtime errors)
@@ -415,15 +365,13 @@ class TestUpdateProjectsE2E:
 
     Tests the full stack:
     MCP tool → client.update_projects() → AppleScript → OmniFocus
+
+    All tests use fixtures from conftest.py for automatic cleanup.
     """
 
-    def test_update_projects_batch_e2e(self):
+    def test_update_projects_batch_e2e(self, client):
         """E2E: Update multiple projects via MCP tool."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        import omnifocus_mcp.server_fastmcp as server
-
         # Create test projects
-        client = OmniFocusConnector(enable_safety_checks=True)
         proj_id_1 = client.create_project("E2E Batch 1")
         proj_id_2 = client.create_project("E2E Batch 2")
 
@@ -441,14 +389,15 @@ class TestUpdateProjectsE2E:
 
         print(f"\n✓ E2E update_projects batch: {result}")
 
-    def test_update_projects_single_id_e2e(self):
-        """E2E: Update single project ID as string via MCP tool (Union type)."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        import omnifocus_mcp.server_fastmcp as server
+        # Cleanup
+        client.delete_projects([proj_id_1, proj_id_2])
 
-        client = OmniFocusConnector(enable_safety_checks=True)
+    def test_update_projects_single_id_e2e(self, client):
+        """E2E: Update single project ID as string via MCP tool (Union type)."""
+        # Create a project
         proj_id = client.create_project("E2E Single ID")
 
+        # Call MCP tool
         update_projects = server.update_projects.fn
         result = update_projects(project_ids=proj_id, sequential="true")
 
@@ -457,6 +406,9 @@ class TestUpdateProjectsE2E:
         assert "success" in result.lower() or "updated" in result.lower()
 
         print(f"\n✓ E2E update_projects single ID: {result}")
+
+        # Cleanup
+        client.delete_projects(proj_id)
 
 
 # ============================================================================
@@ -468,64 +420,40 @@ class TestSetFocusE2E:
 
     Tests the full stack:
     MCP tool → client.set_focus() → AppleScript → OmniFocus
+
+    All tests use fixtures from conftest.py for automatic cleanup.
     """
 
-    def test_set_focus_on_project_e2e(self):
+    def test_set_focus_on_project_e2e(self, test_project):
         """E2E: Set focus on a project via MCP tool."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        import omnifocus_mcp.server_fastmcp as server
-
-        # Get a test project
-        client = OmniFocusConnector(enable_safety_checks=True)
-        projects = client.get_projects(query="Active Test Project")
-        assert len(projects) > 0, "Need at least one test project"
-
-        project_id = projects[0]['id']
-
         # Call the MCP tool
         set_focus = server.set_focus.fn
-        result = set_focus(item_id=project_id, item_type="project")
+        result = set_focus(item_id=test_project, item_type="project")
 
         # Verify MCP tool returns human-readable response
         assert isinstance(result, str)
         assert "success" in result.lower()
         assert "project" in result.lower()
-        assert project_id in result
+        assert test_project in result
 
         print(f"\n✓ E2E set_focus on project: {result}")
 
-    def test_set_focus_on_folder_e2e(self):
+    def test_set_focus_on_folder_e2e(self, test_folder):
         """E2E: Set focus on a folder via MCP tool."""
-        from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
-        import omnifocus_mcp.server_fastmcp as server
-
-        # Get a test folder
-        client = OmniFocusConnector(enable_safety_checks=True)
-        folders = client.get_folders()
-        assert len(folders) > 0, "Need at least one folder"
-
-        # Find the test root folder
-        test_folder = next((f for f in folders if f['name'] == "Test Root Folder"), None)
-        assert test_folder is not None, "Test Root Folder should exist"
-
-        folder_id = test_folder['id']
-
         # Call the MCP tool
         set_focus = server.set_focus.fn
-        result = set_focus(item_id=folder_id, item_type="folder")
+        result = set_focus(item_id=test_folder, item_type="folder")
 
         # Verify MCP tool returns human-readable response
         assert isinstance(result, str)
         assert "success" in result.lower()
         assert "folder" in result.lower()
-        assert folder_id in result
+        assert test_folder in result
 
         print(f"\n✓ E2E set_focus on folder: {result}")
 
     def test_set_focus_invalid_type_e2e(self):
         """E2E: Test error handling for invalid item type via MCP tool."""
-        import omnifocus_mcp.server_fastmcp as server
-
         # Call the MCP tool with invalid type
         set_focus = server.set_focus.fn
         result = set_focus(item_id="any-id", item_type="task")
