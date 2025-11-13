@@ -214,6 +214,46 @@ def test_create_task_blocked_without_test_mode(self, client_with_safety):
     assert "Cannot perform destructive operation" in str(exc_info.value)
 ```
 
+### Test Fixtures (`tests/conftest.py`)
+
+**NEW in v0.7.1:** Integration tests use pytest fixtures for automatic setup and teardown.
+
+**Available Fixtures:**
+- `client` - OmniFocusConnector with safety checks enabled (class scope)
+- `test_project` - Creates a unique project, yields ID, deletes on teardown
+- `test_project_with_note` - Project with note content
+- `test_projects` - Batch fixture creating 3 projects
+- `test_folder` - Creates folder (cleanup limited by OmniFocus API)
+- `test_task` - Creates task in project, deletes on teardown
+- `test_task_inbox` - Creates inbox task
+- `test_tasks` - Batch fixture creating 3 tasks
+- `test_task_with_note` - Task with note content
+- `test_parent_task_with_subtasks` - Parent task with 2 subtasks
+- `test_sequential_project_with_tasks` - Sequential project with 3 tasks
+- `test_project_with_folder` - Project in folder hierarchy
+
+**Example Usage:**
+```python
+def test_update_project_name(client, test_project):
+    """Test updating project name using fixture."""
+    # test_project fixture creates project and cleans up automatically
+    result = client.update_project(test_project, project_name="Updated Name")
+    assert result["success"] is True
+
+    # Verify the change
+    projects = client.get_projects(project_id=test_project)
+    assert projects[0]['name'] == "Updated Name"
+    # Fixture automatically deletes project after test completes
+```
+
+**Benefits:**
+- Automatic cleanup (even if test fails)
+- Unique UUID naming prevents test conflicts
+- No manual cleanup code needed
+- Self-contained (no dependency on setup script)
+
+**See also:** `FIXTURE_REFACTORING_STATUS.md` for complete fixture documentation and refactoring patterns.
+
 ### Real Integration Tests (`test_integration_real.py`)
 
 Tests that interact with actual OmniFocus via AppleScript.
