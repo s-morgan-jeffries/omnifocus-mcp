@@ -9,6 +9,8 @@ Integration tests validate that the OmniFocus MCP server actually works with a r
 - We've had multiple production bugs (`elifintervalDays`, `eliftaskDueDate`) that mocks didn't catch
 - Only real execution validates the full AppleScript → OmniFocus flow
 
+**NEW in v0.7.1:** Integration tests use pytest fixtures for automatic setup/teardown. Most tests no longer depend on the external setup script - they create their own test data and clean up automatically. See `docs/guides/TESTING.md` for fixture documentation.
+
 ## Quick Start
 
 ### 1. Set Up Test Database (One-time)

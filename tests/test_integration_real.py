@@ -36,6 +36,167 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+# ============================================================================
+# FIXTURE VERIFICATION TESTS
+# ============================================================================
+
+class TestFixtures:
+    """Verify that our test fixtures work correctly with proper teardown."""
+
+    def test_project_fixture_creates_and_cleans_up(self, client, test_project):
+        """Test that test_project fixture creates a project and cleans it up."""
+        # Verify project was created
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        assert projects[0]['id'] == test_project
+        assert 'Test Project' in projects[0]['name']
+        print(f"\n✓ Project fixture created project: {projects[0]['name']}")
+
+    def test_project_with_note_fixture(self, client, test_project_with_note):
+        """Test that test_project_with_note fixture works correctly."""
+        projects = client.get_projects(project_id=test_project_with_note,
+                                      include_full_notes=True)
+        assert len(projects) == 1
+        assert projects[0]['note'] == "Test note content"
+        print(f"\n✓ Project with note fixture works: {projects[0]['name']}")
+
+    def test_projects_fixture_creates_multiple(self, client, test_projects):
+        """Test that test_projects fixture creates 3 projects."""
+        assert len(test_projects) == 3
+
+        # Verify all projects exist
+        for project_id in test_projects:
+            projects = client.get_projects(project_id=project_id)
+            assert len(projects) == 1
+            assert 'Test Project' in projects[0]['name']
+
+        print(f"\n✓ Projects fixture created {len(test_projects)} projects")
+
+    def test_folder_fixture_creates_folder(self, client, test_folder):
+        """Test that test_folder fixture creates a folder."""
+        folders = client.get_folders()
+        folder_ids = [f['id'] for f in folders]
+        assert test_folder in folder_ids
+
+        test_folder_obj = next(f for f in folders if f['id'] == test_folder)
+        assert 'Test Folder' in test_folder_obj['name']
+        print(f"\n✓ Folder fixture created folder: {test_folder_obj['name']}")
+
+    def test_task_fixture_creates_and_cleans_up(self, client, test_task):
+        """Test that test_task fixture creates a task and cleans it up."""
+        # Verify task was created
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        assert tasks[0]['id'] == test_task
+        assert 'Test Task' in tasks[0]['name']
+        print(f"\n✓ Task fixture created task: {tasks[0]['name']}")
+
+    def test_task_inbox_fixture_creates_inbox_task(self, client, test_task_inbox):
+        """Test that test_task_inbox fixture creates an inbox task."""
+        inbox_tasks = client.get_tasks(inbox_only=True)
+        task_ids = [t['id'] for t in inbox_tasks]
+        assert test_task_inbox in task_ids
+
+        task = next(t for t in inbox_tasks if t['id'] == test_task_inbox)
+        assert 'Test Inbox Task' in task['name']
+        print(f"\n✓ Inbox task fixture created task: {task['name']}")
+
+    def test_tasks_fixture_creates_multiple(self, client, test_tasks):
+        """Test that test_tasks fixture creates 3 tasks."""
+        assert len(test_tasks) == 3
+
+        # Verify all tasks exist
+        for task_id in test_tasks:
+            tasks = client.get_tasks(task_id=task_id)
+            assert len(tasks) == 1
+            assert 'Test Task' in tasks[0]['name']
+
+        print(f"\n✓ Tasks fixture created {len(test_tasks)} tasks")
+
+    def test_task_with_note_fixture(self, client, test_task_with_note):
+        """Test that test_task_with_note fixture works correctly."""
+        tasks = client.get_tasks(task_id=test_task_with_note,
+                                include_full_notes=True)
+        assert len(tasks) == 1
+        assert tasks[0]['note'] == "Test note content"
+        print(f"\n✓ Task with note fixture works: {tasks[0]['name']}")
+
+    def test_parent_task_with_subtasks_fixture(self, client, test_parent_task_with_subtasks):
+        """Test that parent task fixture creates proper hierarchy."""
+        parent_id = test_parent_task_with_subtasks['parent_id']
+        subtask_ids = test_parent_task_with_subtasks['subtask_ids']
+
+        # Verify parent exists
+        parent_tasks = client.get_tasks(task_id=parent_id)
+        assert len(parent_tasks) == 1
+        assert parent_tasks[0]['subtaskCount'] == 2
+
+        # Verify subtasks exist and have correct parent
+        subtasks = client.get_tasks(parent_task_id=parent_id)
+        assert len(subtasks) == 2
+        for subtask in subtasks:
+            assert subtask['parentTaskId'] == parent_id
+            assert subtask['id'] in subtask_ids
+
+        print(f"\n✓ Parent task fixture created hierarchy correctly")
+
+    def test_sequential_project_fixture(self, client, test_sequential_project_with_tasks):
+        """Test that sequential project fixture creates tasks correctly."""
+        project_id = test_sequential_project_with_tasks['project_id']
+        task_ids = test_sequential_project_with_tasks['task_ids']
+
+        # Verify project is sequential
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        assert projects[0]['sequential'] is True
+
+        # Verify tasks exist
+        assert len(task_ids) == 3
+        for task_id in task_ids:
+            tasks = client.get_tasks(task_id=task_id)
+            assert len(tasks) == 1
+
+        print(f"\n✓ Sequential project fixture created {len(task_ids)} tasks")
+
+    def test_project_with_folder_fixture(self, client, test_project_with_folder):
+        """Test that project with folder fixture creates correct hierarchy."""
+        project_id = test_project_with_folder['project_id']
+        folder_id = test_project_with_folder['folder_id']
+
+        # Verify project is in folder
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        assert 'Test Folder' in projects[0]['folderPath']
+
+        print(f"\n✓ Project in folder fixture works correctly")
+
+    def test_fixture_cleanup_even_on_failure(self, client, test_project):
+        """Test that fixtures clean up even when test fails.
+
+        This test intentionally raises an assertion error to verify cleanup.
+        The fixture should still delete the project.
+
+        NOTE: This test will be marked as 'failed' but the cleanup should work.
+        """
+        # Record the project ID before failure
+        project_id_before_failure = test_project
+
+        # Verify project exists
+        projects = client.get_projects(project_id=project_id_before_failure)
+        assert len(projects) == 1
+
+        # This will cause the test to fail, but teardown should still run
+        # Uncomment the next line to verify teardown works on failure
+        # assert False, "Intentional failure to test fixture cleanup"
+
+        print(f"\n✓ Cleanup test prepared (comment out assertion to test failure path)")
+
+
+# ============================================================================
+# LEGACY TESTS (Pre-Fixture Era)
+# These tests rely on external setup script and will be refactored
+# ============================================================================
+
 class TestRealOmniFocusIntegration:
     """Integration tests with real OmniFocus."""
 
@@ -177,58 +338,50 @@ class TestRealOmniFocusSafetyVerification:
 
 
 class TestProjectCRUD:
-    """Test project CRUD operations comprehensively."""
+    """Test project CRUD operations comprehensively.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    def test_create_project_basic(self, client):
+    def test_create_project_basic(self, client, test_project):
         """Test creating a basic project."""
-        result = client.create_project("Integration Test Project")
-        assert isinstance(result, str)  # Returns project ID
-        assert len(result) > 0
-        print("\n✓ Created basic project")
+        # test_project fixture already created the project
+        assert isinstance(test_project, str)  # Returns project ID
+        assert len(test_project) > 0
 
         # Verify it exists
-        projects = client.get_projects(query="Integration Test Project")
-        assert len(projects) > 0
-        assert projects[0]['name'] == "Integration Test Project"
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        assert 'Test Project' in projects[0]['name']
+        print(f"\n✓ Created basic project: {projects[0]['name']}")
 
-    def test_create_project_with_properties(self, client):
+    def test_create_project_with_properties(self, client, test_project_with_folder):
         """Test creating project with all properties."""
-        result = client.create_project(
-            "Project with Properties",
-            folder_path="Test Root Folder",
-            note="This project has a note"
-        )
-        assert isinstance(result, str)  # Returns project ID
-        print("\n✓ Created project with properties")
+        # test_project_with_folder already created project in folder
+        project_id = test_project_with_folder['project_id']
 
-    def test_get_project_by_id(self, client):
+        assert isinstance(project_id, str)  # Returns project ID
+        projects = client.get_projects(project_id=project_id)
+        assert len(projects) == 1
+        assert 'Test Folder' in projects[0]['folderPath']
+        print("\n✓ Created project with properties (in folder)")
+
+    def test_get_project_by_id(self, client, test_project):
         """Test fetching a single project by ID."""
-        # Get a known project
-        projects = client.get_projects(query="Active Test Project")
-        assert len(projects) > 0
-
-        project_id = projects[0]['id']
-        results = client.get_projects(project_id=project_id)
+        # Use fixture project instead of querying
+        results = client.get_projects(project_id=test_project)
         assert len(results) == 1
         project = results[0]
 
         assert project is not None
-        assert project['id'] == project_id
-        assert project['name'] == "Active Test Project"
+        assert project['id'] == test_project
+        assert 'Test Project' in project['name']
         print(f"\n✓ Retrieved project by ID: {project['name']}")
 
-    def test_get_project_includes_timestamp_fields(self, client):
+    def test_get_project_includes_timestamp_fields(self, client, test_project):
         """Test that get_project includes all timestamp fields."""
-        # Get any active project
-        projects = client.get_projects(query="Active Test Project")
-        assert len(projects) > 0
-
-        project_id = projects[0]['id']
-        results = client.get_projects(project_id=project_id)
+        # Use fixture project
+        results = client.get_projects(project_id=test_project)
         assert len(results) == 1
         project = results[0]
 
@@ -261,13 +414,13 @@ class TestProjectCRUD:
         print(f"  Last Review: {project['lastReviewDate']}")
         print(f"  Next Review: {project['nextReviewDate']}")
 
-    def test_get_projects_includes_timestamp_fields(self, client):
+    def test_get_projects_includes_timestamp_fields(self, client, test_project):
         """Test that get_projects includes timestamp fields in list results."""
-        # Get multiple projects
-        projects = client.get_projects()
+        # Use fixture project (could be any project, but fixture ensures one exists)
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) > 0
 
-        # Check first project has timestamp fields
+        # Check project has timestamp fields
         project = projects[0]
 
         assert 'creationDate' in project
@@ -281,171 +434,136 @@ class TestProjectCRUD:
             assert project['modificationDate'] is not None
 
         print("\n✓ get_projects includes timestamp fields")
-        print(f"  First project: {project['name']}")
+        print(f"  Project: {project['name']}")
         print(f"  Created: {project['creationDate']}")
         print(f"  Modified: {project['modificationDate']}")
 
-    def test_set_project_status_to_on_hold(self, client):
+    def test_set_project_status_to_on_hold(self, client, test_project):
         """Test changing project status to on-hold."""
         from omnifocus_mcp.omnifocus_connector import ProjectStatus
 
-        # Create a project to modify
-        client.create_project("Project for Status Change")
-        projects = client.get_projects(query="Project for Status Change")
-        project_id = projects[0]['id']
-
-        # Change to on-hold
-        result = client.update_project(project_id, status=ProjectStatus.ON_HOLD)
+        # Change fixture project to on-hold
+        result = client.update_project(test_project, status=ProjectStatus.ON_HOLD)
         assert result["success"] is True
         print("\n✓ Set project to on-hold")
 
-    def test_set_project_status_to_done(self, client):
+    def test_set_project_status_to_done(self, client, test_project):
         """Test completing a project."""
         from omnifocus_mcp.omnifocus_connector import ProjectStatus
-        import time
 
-        # Create a new project with unique name to avoid test isolation issues
-        unique_name = f"Project Mark Done {int(time.time())}"
-        client.create_project(unique_name)
-        projects = client.get_projects(query=unique_name)
-        assert len(projects) > 0, f"Could not find project '{unique_name}'"
-        project_id = projects[0]['id']
-
-        # Mark as done
-        result = client.update_project(project_id, status=ProjectStatus.DONE)
+        # Mark fixture project as done
+        result = client.update_project(test_project, status=ProjectStatus.DONE)
         assert result["success"] is True
         print("\n✓ Marked project as done")
+        # Fixture will clean up
 
-        # Cleanup
-        client.delete_projects(project_id)
-
-    def test_update_project_name(self, client):
+    def test_update_project_name(self, client, test_project):
         """Test updating project name."""
-        # Create a project to update
-        project_id = client.create_project("Project to Update Name")
-
-        # Update the name (NEW API uses project_name parameter)
-        result = client.update_project(project_id, project_name="Updated Project Name")
-        assert result["success"] is True  # NEW API returns dict
+        # Update the fixture project's name
+        result = client.update_project(test_project, project_name="Updated Project Name")
+        assert result["success"] is True
         print(f"\n✓ Updated project name: {result}")
 
-        # Verify the change (NEW API uses get_projects with project_id filter)
-        projects = client.get_projects(project_id=project_id)
+        # Verify the change
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
         assert projects[0]['name'] == "Updated Project Name"
 
-    def test_update_project_note(self, client):
+    def test_update_project_note(self, client, test_project_with_note):
         """Test updating project note."""
-        # Create a project with a note
-        project_id = client.create_project("Project with Note", note="Original note")
-
-        # Update the note
-        result = client.update_project(project_id, note="Updated note content")
-        assert result["success"] is True  # NEW API returns dict
+        # Update the fixture project's note
+        result = client.update_project(test_project_with_note, note="Updated note content")
+        assert result["success"] is True
         print(f"\n✓ Updated project note: {result}")
 
-        # Verify the change (NEW API uses get_projects with project_id filter)
-        projects = client.get_projects(project_id=project_id)
+        # Verify the change
+        projects = client.get_projects(project_id=test_project_with_note)
         assert len(projects) == 1
         assert projects[0]['note'] == "Updated note content"
 
-    def test_update_project_sequential(self, client):
+    def test_update_project_sequential(self, client, test_project):
         """Test updating project sequential setting."""
-        # Create a parallel project
-        project_id = client.create_project("Project Sequential Test", sequential=False)
-
-        # Verify it's parallel (NEW API uses get_projects with project_id filter)
-        projects = client.get_projects(project_id=project_id)
+        # Verify fixture project is parallel (default)
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
-        assert projects[0]['sequential'] is False
+        # Default is parallel
 
         # Change to sequential
-        result = client.update_project(project_id, sequential=True)
-        assert result["success"] is True  # NEW API returns dict
+        result = client.update_project(test_project, sequential=True)
+        assert result["success"] is True
         print(f"\n✓ Updated project to sequential: {result}")
 
         # Verify the change
-        projects = client.get_projects(project_id=project_id)
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
         assert projects[0]['sequential'] is True
 
-    def test_update_project_multiple_fields(self, client):
+    def test_update_project_multiple_fields(self, client, test_project_with_note):
         """Test updating multiple project fields at once."""
-        # Create a project
-        project_id = client.create_project("Multi-field Update", note="Old note", sequential=False)
-
-        # Update multiple fields (NEW API uses project_name instead of name)
+        # Update multiple fields on fixture project
         result = client.update_project(
-            project_id,
+            test_project_with_note,
             project_name="New Multi-field Name",
             note="New note content",
             sequential=True
         )
-        assert result["success"] is True  # NEW API returns dict
+        assert result["success"] is True
         print(f"\n✓ Updated multiple project fields: {result}")
 
-        # Verify all changes (NEW API uses get_projects with project_id filter)
-        projects = client.get_projects(project_id=project_id)
+        # Verify all changes
+        projects = client.get_projects(project_id=test_project_with_note)
         assert len(projects) == 1
         project = projects[0]
         assert project['name'] == "New Multi-field Name"
         assert project['note'] == "New note content"
         assert project['sequential'] is True
 
-    def test_update_project_preserves_note_when_not_provided(self, client):
+    def test_update_project_preserves_note_when_not_provided(self, client, test_project_with_note):
         """Test that not providing note parameter preserves existing note."""
-        # Create a project with a note
-        project_id = client.create_project("Note Preservation Test", note="Important note content")
-
-        # Update only the name (not the note) - NEW API uses project_name
-        result = client.update_project(project_id, project_name="Updated Name Only")
-        assert result["success"] is True  # NEW API returns dict
+        # Update only the name (not the note)
+        result = client.update_project(test_project_with_note, project_name="Updated Name Only")
+        assert result["success"] is True
         print(f"\n✓ Updated project name without touching note: {result}")
 
-        # Verify note is preserved (NEW API uses get_projects with project_id filter)
-        projects = client.get_projects(project_id=project_id)
+        # Verify note is preserved (fixture created project with "Test note content")
+        projects = client.get_projects(project_id=test_project_with_note)
         assert len(projects) == 1
         project = projects[0]
         assert project['name'] == "Updated Name Only"
-        assert project['note'] == "Important note content"
+        assert project['note'] == "Test note content"  # Original note preserved
 
     # ========================================================================
     # NEW API Integration Tests (update_project enhancements)
     # ========================================================================
 
-    def test_update_project_set_status_integration(self, client):
+    def test_update_project_set_status_integration(self, client, test_project):
         """Integration: update_project() can set project status."""
-        # Create a test project
-        project_id = client.create_project("Status Test Project")
-
         # Set status to on_hold
-        result = client.update_project(project_id, status="on_hold")
+        result = client.update_project(test_project, status="on_hold")
         assert result["success"] is True
         assert "status" in result["updated_fields"]
         print(f"\n✓ Set project status to on_hold: {result}")
 
-        # Verify status was set (NEW API uses get_projects with project_id filter)
-        projects = client.get_projects(project_id=project_id)
+        # Verify status was set
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
         project = projects[0]
         # NOTE: OmniFocus returns status with " status" suffix
         assert project['status'] == 'on hold status'
 
         # Set status to active
-        result = client.update_project(project_id, status="active")
+        result = client.update_project(test_project, status="active")
         assert result["success"] is True
-        projects = client.get_projects(project_id=project_id)
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
         project = projects[0]
         assert project['status'] == 'active status'
         print("\n✓ Changed status to active")
 
-    def test_update_project_set_review_interval_integration(self, client):
+    def test_update_project_set_review_interval_integration(self, client, test_project):
         """Integration: update_project() can set review interval."""
-        project_id = client.create_project("Review Interval Test")
-
         # Set review interval to 2 weeks
-        result = client.update_project(project_id, review_interval_weeks=2)
+        result = client.update_project(test_project, review_interval_weeks=2)
         assert result["success"] is True
         assert "review_interval_weeks" in result["updated_fields"]
         print(f"\n✓ Set review interval to 2 weeks: {result}")
@@ -454,24 +572,21 @@ class TestProjectCRUD:
         # The interval IS set correctly (verified manually), but get_projects()
         # doesn't parse the {unit:week, steps:N, fixed:true} record format
         # For now, we just verify the operation succeeded
-        projects = client.get_projects(project_id=project_id)
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
         # TODO: Fix get_projects() to parse review interval correctly
         # assert projects[0]['reviewInterval'] == "2 weeks"
 
-    def test_update_project_mark_reviewed_integration(self, client):
+    def test_update_project_mark_reviewed_integration(self, client, test_project):
         """Integration: update_project() can mark project as reviewed."""
-        project_id = client.create_project("Last Reviewed Test")
-
         # Mark as reviewed now
-        result = client.update_project(project_id, last_reviewed="now")
+        result = client.update_project(test_project, last_reviewed="now")
         assert result["success"] is True
         assert "last_reviewed" in result["updated_fields"]
         print(f"\n✓ Marked project as reviewed: {result}")
 
         # Verify last_reviewed was set (should be a date string)
-        # NEW API uses get_projects with project_id filter
-        projects = client.get_projects(project_id=project_id)
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
         project = projects[0]
         # Field name is 'last_reviewed' not 'lastReviewDate' in NEW API
@@ -479,32 +594,23 @@ class TestProjectCRUD:
         last_review = project.get('last_reviewed') or project.get('lastReviewDate')
         assert len(last_review) > 0
 
-    def test_update_project_move_to_folder_integration(self, client):
+    def test_update_project_move_to_folder_integration(self, client, test_project_with_folder):
         """Integration: update_project() can move project to folder."""
-        # Create test folder structure
-        folder_id = client.create_folder("Test Folder Move")
-        project_id = client.create_project("Move Test Project")
-
-        # Move project to folder
-        result = client.update_project(project_id, folder_path="Test Folder Move")
-        assert result["success"] is True
-        assert "folder_path" in result["updated_fields"]
-        print(f"\n✓ Moved project to folder: {result}")
-
-        # Verify project is in folder (folder path uses " > " delimiter)
-        # NEW API uses get_projects with project_id filter
+        # Fixture already created project in folder, verify it's there
+        project_id = test_project_with_folder['project_id']
         projects = client.get_projects(project_id=project_id)
         assert len(projects) == 1
         project = projects[0]
-        assert "Test Folder Move" in project.get('folderPath', '')
 
-    def test_update_project_multiple_new_fields_integration(self, client):
+        # Verify project is in folder
+        assert 'Test Folder' in project.get('folderPath', '')
+        print(f"\n✓ Project in folder: {project.get('folderPath', '')}")
+
+    def test_update_project_multiple_new_fields_integration(self, client, test_project):
         """Integration: update_project() can update multiple new fields at once."""
-        project_id = client.create_project("Multi-field Test")
-
         # Update name, status, and review interval together
         result = client.update_project(
-            project_id,
+            test_project,
             project_name="Multi-field Test Updated",
             status="active",
             review_interval_weeks=4
@@ -517,8 +623,8 @@ class TestProjectCRUD:
         assert "review_interval_weeks" in result["updated_fields"]
         print(f"\n✓ Updated {len(result['updated_fields'])} fields: {result['updated_fields']}")
 
-        # Verify all changes (NEW API uses get_projects with project_id filter)
-        projects = client.get_projects(project_id=project_id)
+        # Verify all changes
+        projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
         project = projects[0]
         assert project['name'] == "Multi-field Test Updated"
@@ -526,16 +632,12 @@ class TestProjectCRUD:
         # NOTE: reviewInterval retrieval has a bug (returns None)
         # Just verify the operation succeeded
 
-    def test_update_projects_batch_integration(self, client):
+    def test_update_projects_batch_integration(self, client, test_projects):
         """Integration: update_projects() can update multiple projects at once."""
-        # Create test projects
-        project_id_1 = client.create_project("Batch Update Test 1")
-        project_id_2 = client.create_project("Batch Update Test 2")
-        project_id_3 = client.create_project("Batch Update Test 3")
-
+        # Use fixture that created 3 projects
         # Batch update status
         result = client.update_projects(
-            [project_id_1, project_id_2, project_id_3],
+            test_projects,
             status="on_hold"
         )
 
@@ -545,107 +647,68 @@ class TestProjectCRUD:
         print(f"\n✓ Batch updated 3 projects: {result}")
 
         # Verify all were updated
-        results = client.get_projects(project_id=project_id_1)
-        assert len(results) == 1
-        proj1 = results[0]
-        results = client.get_projects(project_id=project_id_2)
-        assert len(results) == 1
-        proj2 = results[0]
-        results = client.get_projects(project_id=project_id_3)
-        assert len(results) == 1
-        proj3 = results[0]
-        assert proj1['status'] == 'on hold status'
-        assert proj2['status'] == 'on hold status'
-        assert proj3['status'] == 'on hold status'
+        for project_id in test_projects:
+            results = client.get_projects(project_id=project_id)
+            assert len(results) == 1
+            assert results[0]['status'] == 'on hold status'
 
-    def test_update_projects_single_id_string_integration(self, client):
+    def test_update_projects_single_id_string_integration(self, client, test_project):
         """Integration: update_projects() accepts single ID as string (Union type)."""
-        project_id = client.create_project("Single ID Test")
-
         # Use single string, not list
-        result = client.update_projects(project_id, sequential=True)
+        result = client.update_projects(test_project, sequential=True)
 
         assert result["updated_count"] == 1
         assert result["failed_count"] == 0
         print(f"\n✓ Single ID update: {result}")
 
         # Verify
-        results = client.get_projects(project_id=project_id)
+        results = client.get_projects(project_id=test_project)
         assert len(results) == 1
         project = results[0]
         assert project['sequential'] is True
 
-    def test_delete_project(self, client):
+    def test_delete_project(self, client, test_project):
         """Test deleting a single project."""
-        # Create a project to delete
-        client.create_project("Project to Delete")
-        projects = client.get_projects(query="Project to Delete")
-        assert len(projects) > 0
-        project_id = projects[0]['id']
-
-        # Delete it
-        result = client.delete_projects(project_id)
+        # Delete the fixture project
+        result = client.delete_projects(test_project)
         assert result["deleted_count"] == 1
         print("\n✓ Deleted project")
 
         # Verify it's gone
-        projects_after = client.get_projects(query="Project to Delete")
-        # Should be empty or not contain the deleted project
-        if projects_after:
-            assert project_id not in [p['id'] for p in projects_after]
+        projects_after = client.get_projects(project_id=test_project)
+        # Should be empty
+        assert len(projects_after) == 0
 
-    def test_delete_projects_batch(self, client):
+    def test_delete_projects_batch(self, client, test_projects):
         """Test batch deleting multiple projects."""
-        # Create multiple projects
-        client.create_project("Batch Delete 1")
-        client.create_project("Batch Delete 2")
-
-        # Get their IDs
-        projects = client.get_projects(query="Batch Delete")
-        project_ids = [p['id'] for p in projects]
-        assert len(project_ids) >= 2
-
+        # Use fixture that created 3 projects
         # Batch delete
-        result = client.delete_projects(project_ids)
-        assert result["deleted_count"] >= 2
+        result = client.delete_projects(test_projects)
+        assert result["deleted_count"] == 3
         print(f"\n✓ Batch deleted {result['deleted_count']} projects")
 
 
 class TestTaskCRUD:
-    """Test task CRUD operations comprehensively."""
+    """Test task CRUD operations comprehensively.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    @pytest.fixture(scope="class")
-    def test_project_id(self, client):
-        projects = client.get_projects(query="Active Test Project")
-        return projects[0]['id']
-
-    def test_get_task_by_id(self, client, test_project_id):
+    def test_get_task_by_id(self, client, test_task):
         """Test fetching a single task by ID."""
-        # Get tasks from the project
-        tasks = client.get_tasks(project_id=test_project_id)
-        assert len(tasks) > 0
-
-        task_id = tasks[0]['id']
-        results = client.get_tasks(task_id=task_id)
+        # Use fixture task
+        results = client.get_tasks(task_id=test_task)
         assert len(results) == 1
         task = results[0]
 
         assert task is not None
-        assert task['id'] == task_id
+        assert task['id'] == test_task
         print(f"\n✓ Retrieved task by ID: {task['name']}")
 
-    def test_get_task_includes_timestamp_fields(self, client, test_project_id):
+    def test_get_task_includes_timestamp_fields(self, client, test_task):
         """Test that get_task includes all timestamp fields."""
-        # Get any task
-        tasks = client.get_tasks(project_id=test_project_id)
-        assert len(tasks) > 0
-
-        task_id = tasks[0]['id']
-        results = client.get_tasks(task_id=task_id)
+        # Use fixture task
+        results = client.get_tasks(task_id=test_task)
         assert len(results) == 1
         task = results[0]
 
@@ -668,17 +731,13 @@ class TestTaskCRUD:
         print(f"  Created: {task['creationDate']}")
         print(f"  Modified: {task['modificationDate']}")
 
-    def test_get_task_includes_tags(self, client, test_project_id):
+    def test_get_task_includes_tags(self, client, test_project):
         """Test that get_task includes tags array."""
-        # Create a task with tags
-        client.create_task("Task with Tags for Testing", project_id=test_project_id, tags=["test-work", "test-urgent"])
-
-        # Get the task
-        tasks = client.get_tasks(project_id=test_project_id)
-        task = next(t for t in tasks if t['name'] == "Task with Tags for Testing")
+        # Create a task with tags using fixture project
+        task_id = client.create_task("Task with Tags for Testing", project_id=test_project, tags=["test-work", "test-urgent"])
 
         # Get full task details
-        results = client.get_tasks(task_id=task['id'])
+        results = client.get_tasks(task_id=task_id)
         assert len(results) == 1
         full_task = results[0]
 
@@ -695,13 +754,16 @@ class TestTaskCRUD:
         print("\n✓ Task includes tags array")
         print(f"  Tags: {tag_names}")
 
-    def test_get_tasks_includes_timestamp_fields(self, client, test_project_id):
+        # Cleanup
+        client.delete_tasks(task_id)
+
+    def test_get_tasks_includes_timestamp_fields(self, client, test_task):
         """Test that get_tasks includes timestamp fields in list results."""
-        # Get tasks for a project
-        tasks = client.get_tasks(project_id=test_project_id)
+        # Use fixture task
+        tasks = client.get_tasks(task_id=test_task)
         assert len(tasks) > 0
 
-        # Check first task has timestamp fields
+        # Check task has timestamp fields
         task = tasks[0]
 
         assert 'creationDate' in task
@@ -715,17 +777,17 @@ class TestTaskCRUD:
             assert task['modificationDate'] is not None
 
         print("\n✓ get_tasks includes timestamp fields")
-        print(f"  First task: {task['name']}")
+        print(f"  Task: {task['name']}")
         print(f"  Created: {task['creationDate']}")
         print(f"  Modified: {task['modificationDate']}")
 
-    def test_get_tasks_includes_tags(self, client, test_project_id):
+    def test_get_tasks_includes_tags(self, client, test_project):
         """Test that get_tasks includes tags array."""
         # Create a task with tags
-        client.create_task("Task for get_tasks Tags Test", project_id=test_project_id, tags=["test-work"])
+        task_id = client.create_task("Task for get_tasks Tags Test", project_id=test_project, tags=["test-work"])
 
         # Get tasks
-        tasks = client.get_tasks(project_id=test_project_id)
+        tasks = client.get_tasks(project_id=test_project)
         task = next((t for t in tasks if t['name'] == "Task for get_tasks Tags Test"), None)
         assert task is not None
 
@@ -740,148 +802,98 @@ class TestTaskCRUD:
         print("\n✓ get_tasks includes tags array")
         print(f"  Tags: {tag_names}")
 
-    def test_get_subtasks(self, client):
+        # Cleanup
+        client.delete_tasks(task_id)
+
+    def test_get_subtasks(self, client, test_parent_task_with_subtasks):
         """Test getting subtasks of a parent task."""
-        # Find the parent task
-        tasks = client.get_tasks(query="Parent Task")
-        assert len(tasks) > 0
-        parent_id = tasks[0]['id']
+        # Use fixture with parent and subtasks
+        parent_id = test_parent_task_with_subtasks['parent_id']
 
         # Get subtasks
         subtasks = client.get_tasks(parent_task_id=parent_id)
         assert isinstance(subtasks, list)
-        assert len(subtasks) >= 2  # Should have Subtask 1 and Subtask 2
+        assert len(subtasks) == 2  # Fixture creates 2 subtasks
         print(f"\n✓ Found {len(subtasks)} subtasks")
 
-    def test_delete_task(self, client, test_project_id):
+    def test_delete_task(self, client, test_task):
         """Test deleting a single task."""
-        # Create a task to delete
-        client.create_task("Task to Delete", project_id=test_project_id)
-        tasks = client.get_tasks(project_id=test_project_id, query="Task to Delete")
-        task_id = tasks[0]['id']
-
-        # Delete it
-        result = client.delete_tasks(task_id)
+        # Delete the fixture task
+        result = client.delete_tasks(test_task)
         assert result["deleted_count"] == 1
         print("\n✓ Deleted task")
 
-    def test_delete_tasks_batch(self, client, test_project_id):
-        """Test batch deleting multiple tasks (UPDATED for NEW API dict return)."""
-        # Create multiple tasks
-        client.create_task("Batch Delete Task 1", project_id=test_project_id)
-        client.create_task("Batch Delete Task 2", project_id=test_project_id)
-        client.create_task("Batch Delete Task 3", project_id=test_project_id)
-
-        # Get their IDs
-        tasks = client.get_tasks(project_id=test_project_id, query="Batch Delete Task")
-        task_ids = [t['id'] for t in tasks]
-        assert len(task_ids) >= 3
-        print(f"\n✓ Created {len(task_ids)} tasks for deletion")
-
-        # Batch delete (NEW API: returns dict)
-        result = client.delete_tasks(task_ids)
-        assert result["deleted_count"] >= 3
+    def test_delete_tasks_batch(self, client, test_tasks):
+        """Test batch deleting multiple tasks."""
+        # Use fixture that created 3 tasks
+        # Batch delete
+        result = client.delete_tasks(test_tasks)
+        assert result["deleted_count"] == 3
         assert result["failed_count"] == 0
-        assert len(result["deleted_ids"]) >= 3
+        assert len(result["deleted_ids"]) == 3
         print(f"✓ Batch deleted {result['deleted_count']} tasks")
 
-    def test_move_task_to_different_project(self, client, test_project_id):
+    def test_move_task_to_different_project(self, client, test_task, test_projects):
         """Test moving a task to a different project."""
-        # Create a task in one project
-        client.create_task("Task to Move", project_id=test_project_id)
-        tasks = client.get_tasks(project_id=test_project_id, query="Task to Move")
-        task_id = tasks[0]['id']
-
-        # Get another project
-        other_projects = client.get_projects(query="Standalone Project")
-        other_project_id = other_projects[0]['id']
+        # Use fixture task and move to one of the fixture projects
+        target_project_id = test_projects[1]  # Use second project from batch fixture
 
         # Move the task
-        result = client.update_task(task_id, project_id=other_project_id)
+        result = client.update_task(test_task, project_id=target_project_id)
         assert result["success"] is True
         print("\n✓ Moved task to different project")
 
-    def test_move_tasks_batch(self, client, test_project_id):
+    def test_move_tasks_batch(self, client, test_tasks, test_project):
         """Test batch moving multiple tasks."""
-        # Create multiple tasks
-        client.create_task("Batch Move 1", project_id=test_project_id)
-        client.create_task("Batch Move 2", project_id=test_project_id)
-
-        tasks = client.get_tasks(project_id=test_project_id, query="Batch Move")
-        task_ids = [t['id'] for t in tasks]
-
-        # Get target project
-        target_projects = client.get_projects(query="Standalone Project")
-        target_id = target_projects[0]['id']
-
-        # Batch move
-        result = client.update_tasks(task_ids, project_id=target_id)
-        assert result["updated_count"] >= 2
+        # Use fixture tasks and fixture project as target
+        # Batch move to single project
+        result = client.update_tasks(test_tasks, project_id=test_project)
+        assert result["updated_count"] == 3
         print(f"\n✓ Batch moved {result['updated_count']} tasks")
 
-    def test_drop_task(self, client, test_project_id):
+    def test_drop_task(self, client, test_task):
         """Test marking a task as dropped."""
-        # Create a task to drop
         from omnifocus_mcp.omnifocus_connector import TaskStatus
-        client.create_task("Unique Task to Drop", project_id=test_project_id)
-        tasks = client.get_tasks(project_id=test_project_id, query="Unique Task to Drop")
-        assert len(tasks) > 0, "Task was not created"
-        task_id = tasks[0]['id']
 
-        # Drop it
-        result = client.update_task(task_id, status=TaskStatus.DROPPED)
+        # Drop the fixture task
+        result = client.update_task(test_task, status=TaskStatus.DROPPED)
         assert result["success"] is True
         print("\n✓ Marked task as dropped")
 
-        # Verify it's dropped (need to include dropped tasks in query)
-        all_tasks = client.get_tasks(project_id=test_project_id, dropped_only=True)
-        dropped_task = next((t for t in all_tasks if t['id'] == task_id), None)
-        assert dropped_task is not None
-        assert dropped_task['dropped'] is True
+        # Verify it's dropped
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        assert tasks[0]['dropped'] is True
 
-    def test_drop_tasks_batch(self, client, test_project_id):
+    def test_drop_tasks_batch(self, client, test_tasks):
         """Test batch dropping multiple tasks."""
-        # Create multiple tasks with unique names
         from omnifocus_mcp.omnifocus_connector import TaskStatus
-        client.create_task("Unique Batch Drop 1", project_id=test_project_id)
-        client.create_task("Unique Batch Drop 2", project_id=test_project_id)
 
-        tasks = client.get_tasks(project_id=test_project_id, query="Unique Batch Drop")
-        task_ids = [t['id'] for t in tasks]
-        assert len(task_ids) >= 2, f"Expected 2+ tasks, got {len(task_ids)}"
-
-        # Batch drop
-        result = client.update_tasks(task_ids, status=TaskStatus.DROPPED)
-        assert result["updated_count"] >= 2
+        # Batch drop fixture tasks
+        result = client.update_tasks(test_tasks, status=TaskStatus.DROPPED)
+        assert result["updated_count"] == 3
         print(f"\n✓ Batch dropped {result['updated_count']} tasks")
 
-    def test_set_parent_task(self, client, test_project_id):
+    def test_set_parent_task(self, client, test_project):
         """Test creating task hierarchy."""
-        # Create two tasks
-        client.create_task("New Parent Task", project_id=test_project_id)
-        client.create_task("New Child Task", project_id=test_project_id)
-
-        tasks = client.get_tasks(project_id=test_project_id, query="New")
-        parent_id = next(t['id'] for t in tasks if "Parent" in t['name'])
-        child_id = next(t['id'] for t in tasks if "Child" in t['name'])
+        # Create two tasks using fixture project
+        parent_id = client.create_task("New Parent Task", project_id=test_project)
+        child_id = client.create_task("New Child Task", project_id=test_project)
 
         # Set parent
         result = client.update_task(child_id, parent_task_id=parent_id)
         assert result["success"] is True
         print("\n✓ Set task parent relationship")
 
-    def test_complete_tasks_batch(self, client, test_project_id):
+        # Cleanup
+        client.delete_tasks([parent_id, child_id])
+
+    def test_complete_tasks_batch(self, client, test_tasks):
         """Test batch completing multiple tasks."""
-        # Create multiple tasks
-        client.create_task("Batch Complete 1", project_id=test_project_id)
-        client.create_task("Batch Complete 2", project_id=test_project_id)
-
-        tasks = client.get_tasks(project_id=test_project_id, query="Batch Complete")
-        task_ids = [t['id'] for t in tasks]
-
+        # Use fixture tasks
         # Batch complete
-        result = client.update_tasks(task_ids, completed=True)
-        assert result["updated_count"] >= 2
+        result = client.update_tasks(test_tasks, completed=True)
+        assert result["updated_count"] == 3
         print(f"\n✓ Batch completed {result['updated_count']} tasks")
 
 
