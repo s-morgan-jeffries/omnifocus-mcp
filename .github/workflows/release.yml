@@ -87,19 +87,32 @@ jobs:
           MINOR=$(echo "$VERSION" | cut -d. -f2)
           PATCH=$(echo "$VERSION" | cut -d. -f3)
 
-          # Calculate next patch version (e.g., v0.7.0 → v0.7.1)
-          NEXT_PATCH=$((PATCH + 1))
-          NEXT_VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}"
+          # Calculate possible next versions
+          NEXT_PATCH="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+          NEXT_MINOR="v${MAJOR}.$((MINOR + 1)).0"
+          NEXT_MAJOR="v$((MAJOR + 1)).0.0"
 
           echo "Current version: $TAG_NAME"
-          echo "Next version: $NEXT_VERSION"
+          echo "Checking for next milestone (priority: minor → major → patch)..."
 
-          # Check if next milestone exists
-          NEXT_EXISTS=$(gh api repos/${{ github.repository }}/milestones \
-            --jq ".[] | select(.title == \"${NEXT_VERSION}\") | .number")
+          # Check for existing milestones in priority order: minor → major → patch
+          NEXT_VERSION=""
+          for CANDIDATE in "$NEXT_MINOR" "$NEXT_MAJOR" "$NEXT_PATCH"; do
+            echo "  Checking: $CANDIDATE"
+            EXISTS=$(gh api repos/${{ github.repository }}/milestones \
+              --jq ".[] | select(.title == \"${CANDIDATE}\") | .number")
 
-          if [ -z "$NEXT_EXISTS" ]; then
-            echo "⚠️  Creating next milestone: $NEXT_VERSION"
+            if [ -n "$EXISTS" ]; then
+              echo "  ✅ Found existing milestone: $CANDIDATE"
+              NEXT_VERSION="$CANDIDATE"
+              break
+            fi
+          done
+
+          # If no milestone found, create patch version
+          if [ -z "$NEXT_VERSION" ]; then
+            NEXT_VERSION="$NEXT_PATCH"
+            echo "⚠️  No existing milestone found. Creating: $NEXT_VERSION"
 
             gh api --method POST "repos/${{ github.repository }}/milestones" \
               -f title="$NEXT_VERSION" \
@@ -107,7 +120,7 @@ jobs:
 
             echo "✅ Milestone $NEXT_VERSION created"
           else
-            echo "✅ Next milestone $NEXT_VERSION already exists"
+            echo "✅ Using existing milestone: $NEXT_VERSION"
           fi
 
       - name: Post release summary
