@@ -81,10 +81,18 @@ jobs:
         run: |
           TAG_NAME=${{ steps.version.outputs.tag }}
 
-          # Calculate next patch version
-          CURRENT_PATCH=$(echo "$TAG_NAME" | sed 's/v0\.\([0-9]*\)\.\([0-9]*\)/\2/')
-          NEXT_PATCH=$((CURRENT_PATCH + 1))
-          NEXT_VERSION="v0.6.$NEXT_PATCH"
+          # Extract major, minor, and patch from tag (e.g., v0.7.0 → 0, 7, 0)
+          VERSION=$(echo "$TAG_NAME" | sed 's/^v//')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+          # Calculate next patch version (e.g., v0.7.0 → v0.7.1)
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}"
+
+          echo "Current version: $TAG_NAME"
+          echo "Next version: $NEXT_VERSION"
 
           # Check if next milestone exists
           NEXT_EXISTS=$(gh api repos/${{ github.repository }}/milestones \
