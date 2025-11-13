@@ -18,7 +18,7 @@ The project has two types of tests:
 1. **Unit Tests** - Test individual components with mocked dependencies
 2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 483 tests (v0.7.0)
+**Total Test Coverage**: 501 tests (v0.7.1)
 - Unit tests (omnifocus_connector.py core) ✅ All passing
 - Unit tests (FastMCP server) ✅ All passing
 - Integration tests (real OmniFocus) ⏭️ 123 skipped by default
@@ -512,9 +512,10 @@ Before running real integration tests:
 
 ## Test Metrics
 
-- **Total Tests**: 333 (v0.6.0 - reduced from 393 in v0.5.0)
-- **Passing**: 333 (all unit tests with mocks)
-- **Skipped**: 123 (integration tests, require real OmniFocus setup)
+- **Total Tests**: 501 (v0.7.1 - increased from 483 in v0.7.0)
+- **Passing**: 385 (all unit tests with mocks)
+- **Skipped**: 116 (integration tests, require real OmniFocus setup)
+- **Coverage**: 86% (exceeds 85% threshold)
 - **Execution Time**: ~110s for all unit tests
 - **Test Reduction**: v0.6.0 API consolidation removed deprecated function tests
   - Unit tests (FastMCP server): 33 tests
