@@ -198,23 +198,19 @@ class TestFixtures:
 # ============================================================================
 
 class TestRealOmniFocusIntegration:
-    """Integration tests with real OmniFocus."""
+    """Integration tests with real OmniFocus.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing.
+    All tests use fixtures from conftest.py for automatic cleanup.
+    Note: These are read-only tests that query existing data.
+    """
 
-        Safety checks are enabled - will verify test database before operations.
-        """
-        return OmniFocusConnector(enable_safety_checks=True)
-
-    def test_get_projects_real(self, client):
+    def test_get_projects_real(self, client, test_project):
         """Test getting projects from real OmniFocus."""
+        # Get all projects (should include fixture project)
         projects = client.get_projects()
 
-        # We should have at least some projects (from setup script)
         assert isinstance(projects, list)
-        assert len(projects) > 0
+        assert len(projects) >= 1  # At least the fixture project
 
         # Verify project structure
         first_project = projects[0]
@@ -224,14 +220,14 @@ class TestRealOmniFocusIntegration:
 
         print(f"\n✓ Found {len(projects)} projects in test database")
 
-    def test_search_projects_real(self, client):
+    def test_search_projects_real(self, client, test_project):
         """Test searching projects with query parameter."""
-        # Search for test projects (created by setup script)
+        # Search for test projects (fixture creates projects with "Test Project" in name)
         results = client.get_projects(query="Test")
 
         assert isinstance(results, list)
-        # Should find at least one test project
-        assert len(results) > 0
+        # Should find at least the fixture project
+        assert len(results) >= 1
 
         print(f"\n✓ Search found {len(results)} matching projects")
 
@@ -267,13 +263,14 @@ class TestRealOmniFocusIntegration:
 
         print(f"\n✓ Query search found {len(tasks)} matching tasks")
 
-    def test_get_inbox_tasks_real(self, client):
+    def test_get_inbox_tasks_real(self, client, test_task_inbox):
         """Test getting inbox tasks with inbox_only parameter."""
+        # Get inbox tasks (should include fixture inbox task)
         inbox_tasks = client.get_tasks(inbox_only=True)
 
         assert isinstance(inbox_tasks, list)
-        # Should have at least one inbox task from setup script
-        assert len(inbox_tasks) > 0
+        # Should have at least the fixture inbox task
+        assert len(inbox_tasks) >= 1
 
         # Verify all tasks have no project
         for task in inbox_tasks:
@@ -299,30 +296,24 @@ class TestRealOmniFocusIntegration:
 
 
 class TestRealOmniFocusSafetyVerification:
-    """Verify that safety guards work with real OmniFocus."""
+    """Verify that safety guards work with real OmniFocus.
 
-    def test_safety_guards_verify_database(self):
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
+
+    def test_safety_guards_verify_database(self, client):
         """Test that safety guards actually check the database name."""
         # This test verifies the safety system works
-        # Client should successfully verify we're using test database
-        client = OmniFocusConnector(enable_safety_checks=True)
-
-        # This should succeed because we're in test mode with test database
+        # Client fixture has safety checks enabled
         # The safety check will verify the database name via AppleScript
         projects = client.get_projects()
         assert isinstance(projects, list)
 
         print("\n✓ Safety guards successfully verified test database")
 
-    def test_destructive_operation_checks_database_name(self):
+    def test_destructive_operation_checks_database_name(self, client, test_project):
         """Test that destructive operations verify database name."""
-        client = OmniFocusConnector(enable_safety_checks=True)
-
-        # Get a test project
-        projects = client.get_projects(query="Test Project")
-        assert len(projects) > 0
-        test_project = projects[0]['id']
-
+        # Use fixture project instead of querying
         # This operation should trigger database name verification
         # If we're not using the test database, it will be blocked
         task_id = client.create_task(
@@ -902,216 +893,148 @@ class TestTaskCRUD:
 # ============================================================================
 
 class TestFolderOperations:
-    """Test folder-related operations."""
+    """Test folder-related operations.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    NOTE: Folders cannot be deleted via OmniFocus AppleScript API, so cleanup is limited.
+    """
 
-    def test_get_folders(self, client):
+    def test_get_folders(self, client, test_folder):
         """Test retrieving all folders."""
         folders = client.get_folders()
 
-        # Should find our test folders
-        folder_names = [f['name'] for f in folders]
-        assert "Test Root Folder" in folder_names
-        assert "Test Sub Folder" in folder_names
+        # Should find our fixture folder
+        folder_ids = [f['id'] for f in folders]
+        assert test_folder in folder_ids
 
         # Verify folder structure
-        root_folder = next(f for f in folders if f['name'] == "Test Root Folder")
-        assert 'id' in root_folder
-        assert root_folder['name'] == "Test Root Folder"
+        folder = next(f for f in folders if f['id'] == test_folder)
+        assert 'id' in folder
+        assert 'Test Folder' in folder['name']
         print("\n✓ Retrieved folders successfully")
 
-    def test_create_folder(self, client):
-        """Test creating a new folder."""
-        # Create root folder
-        folder_id = client.create_folder("Phase 2 Test Folder")
-        assert folder_id is not None
-        assert len(folder_id) > 0
-
-        # Verify it exists
+    def test_create_folder(self, client, test_folder):
+        """Test creating a new folder with hierarchy."""
+        # test_folder fixture already created a root folder
+        # Create sub-folder under it
         folders = client.get_folders()
-        folder_names = [f['name'] for f in folders]
-        assert "Phase 2 Test Folder" in folder_names
+        test_folder_obj = next(f for f in folders if f['id'] == test_folder)
+        parent_name = test_folder_obj['name']
 
-        # Create sub-folder
-        sub_folder_id = client.create_folder("Phase 2 Sub Folder", parent_path="Phase 2 Test Folder")
+        # Create sub-folder using fixture folder as parent
+        sub_folder_id = client.create_folder(f"Sub of {parent_name[:20]}", parent_path=parent_name)
         assert sub_folder_id is not None
 
         # Verify hierarchy
         folders = client.get_folders()
-        sub_folder = next((f for f in folders if f['name'] == "Phase 2 Sub Folder"), None)
+        sub_folder = next((f for f in folders if f['id'] == sub_folder_id), None)
         assert sub_folder is not None
         print("\n✓ Created folders with hierarchy")
+        # NOTE: Folders cannot be deleted, will remain in database
 
 
 class TestNoteOperations:
-    """Test note operations integrated into CRUD."""
+    """Test note operations integrated into CRUD.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    def test_add_note_to_task(self, client):
+    def test_add_note_to_task(self, client, test_task_with_note):
         """Test adding note during task creation."""
-        # Find test project
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-
-        # Create task with note
-        task_id = client.create_task(
-            "Task with Note",
-            project_id=project_id,
-            note="This is a test note"
-        )
-
+        # Use fixture that creates task with note
         # Get task with full notes
-        results = client.get_tasks(task_id=task_id, include_full_notes=True)
+        results = client.get_tasks(task_id=test_task_with_note, include_full_notes=True)
         assert len(results) == 1
         retrieved = results[0]
 
-        assert retrieved['note'] == "This is a test note"
+        assert retrieved['note'] == "Test note content"
         print("\n✓ Created task with note")
+        # Fixture handles cleanup
 
-        # Cleanup
-        client.delete_tasks(task_id)
-
-    def test_update_task_note(self, client):
+    def test_update_task_note(self, client, test_task):
         """Test updating task note."""
-        # Find test project
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-
-        # Create task
-        task_id = client.create_task("Task for Note Update", project_id=project_id)
-
+        # Use fixture task (no note initially)
         # Update note
-        result = client.update_task(task_id, note="Updated note content")
+        result = client.update_task(test_task, note="Updated note content")
         assert result["success"] is True
 
         # Verify
-        results = client.get_tasks(task_id=task_id, include_full_notes=True)
+        results = client.get_tasks(task_id=test_task, include_full_notes=True)
         assert results[0]['note'] == "Updated note content"
         print("\n✓ Updated task note")
+        # Fixture handles cleanup
 
-        # Cleanup
-        client.delete_tasks(task_id)
-
-    def test_add_note_to_project(self, client):
+    def test_add_note_to_project(self, client, test_project_with_note):
         """Test adding note to project."""
-        # Create project with note
-        project_id = client.create_project(
-            "Project with Note",
-            note="Project note content"
-        )
-
+        # Use fixture that creates project with note
         # Get project with full notes
-        results = client.get_projects(project_id=project_id, include_full_notes=True)
+        results = client.get_projects(project_id=test_project_with_note, include_full_notes=True)
         assert len(results) == 1
         retrieved = results[0]
 
-        assert retrieved['note'] == "Project note content"
+        assert retrieved['note'] == "Test note content"
         print("\n✓ Created project with note")
-
-        # Cleanup
-        client.delete_projects(project_id)
+        # Fixture handles cleanup
 
 
 class TestTagBatchOperations:
-    """Test batch tag operations."""
+    """Test batch tag operations.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    @pytest.fixture
-    def test_tasks_for_tagging(self, client):
-        """Create test tasks for batch tagging."""
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-
-        # Create 3 tasks for tagging tests
-        client.create_task("Batch Tag Test 1", project_id=project_id)
-        client.create_task("Batch Tag Test 2", project_id=project_id)
-        client.create_task("Batch Tag Test 3", project_id=project_id)
-
-        tasks = client.get_tasks(project_id=project_id, query="Batch Tag Test")
-        task_ids = [t['id'] for t in tasks]
-
-        yield task_ids
-
-        # Cleanup
-        client.delete_tasks(task_ids)
-
-    def test_add_tag_to_multiple_tasks(self, client, test_tasks_for_tagging):
+    def test_add_tag_to_multiple_tasks(self, client, test_tasks, test_project):
         """Test adding a tag to multiple tasks."""
-        task_ids = test_tasks_for_tagging
-
+        # Use fixture tasks (3 tasks created by test_tasks fixture)
         # Add 'urgent' tag to all tasks
-        result = client.update_tasks(task_ids, add_tags=["urgent"])
-        assert result["updated_count"] == len(task_ids)
+        result = client.update_tasks(test_tasks, add_tags=["urgent"])
+        assert result["updated_count"] == len(test_tasks)
         print(f"\n✓ Added tag to {result['updated_count']} tasks")
 
         # Verify tags were added
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-        tasks = client.get_tasks(project_id=project_id, query="Batch Tag Test")
-
+        tasks = client.get_tasks(project_id=test_project)
         for task in tasks:
-            assert "urgent" in task.get('tags', [])
+            if task['id'] in test_tasks:
+                assert "urgent" in task.get('tags', [])
 
-    def test_remove_tag_from_multiple_tasks(self, client, test_tasks_for_tagging):
+    def test_remove_tag_from_multiple_tasks(self, client, test_tasks, test_project):
         """Test removing a tag from multiple tasks."""
-        task_ids = test_tasks_for_tagging
-
+        # Use fixture tasks
         # First add a tag
-        client.update_tasks(task_ids, add_tags=["work"])
+        client.update_tasks(test_tasks, add_tags=["work"])
 
         # Then remove it
-        result = client.update_tasks(task_ids, remove_tags=["work"])
-        assert result["updated_count"] == len(task_ids)
+        result = client.update_tasks(test_tasks, remove_tags=["work"])
+        assert result["updated_count"] == len(test_tasks)
         print(f"\n✓ Removed tag from {result['updated_count']} tasks")
 
         # Verify tags were removed
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-        tasks = client.get_tasks(project_id=project_id, query="Batch Tag Test")
-
+        tasks = client.get_tasks(project_id=test_project)
         for task in tasks:
-            assert "work" not in task.get('tags', [])
+            if task['id'] in test_tasks:
+                assert "work" not in task.get('tags', [])
 
 
 class TestTimeEstimation:
-    """Test time estimation operations."""
+    """Test time estimation operations.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    def test_set_estimated_minutes(self, client):
+    def test_set_estimated_minutes(self, client, test_task):
         """Test setting estimated time on a task."""
-        # Find a task
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-
-        tasks = client.get_tasks(project_id=project_id, query="Task 1 - Flagged")
-        assert len(tasks) > 0
-        task_id = tasks[0]['id']
-
+        # Use fixture task
         # Set estimate to 30 minutes
-        result = client.update_task(task_id, estimated_minutes=30)
+        result = client.update_task(test_task, estimated_minutes=30)
         assert result["success"] is True
         print("\n✓ Set estimated time to 30 minutes")
 
         # Verify estimate was set
-        results = client.get_tasks(task_id=task_id)
+        results = client.get_tasks(task_id=test_task)
         assert len(results) == 1
         task = results[0]
         assert task.get('estimatedMinutes') == 30
+        # Fixture handles cleanup
 
 
 # ============================================================================
@@ -1119,49 +1042,44 @@ class TestTimeEstimation:
 # ============================================================================
 
 class TestGetTasksParameterVariations:
-    """Test various parameter combinations for get_tasks()."""
+    """Test various parameter combinations for get_tasks().
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    Note: Most tests are read-only and use fixture projects/tasks for querying.
+    """
 
-    @pytest.fixture(scope="class")
-    def test_project_id(self, client):
-        """Get the Active Test Project ID."""
-        projects = client.get_projects(query="Active Test Project")
-        return projects[0]['id']
-
-    def test_get_tasks_with_project_id(self, client, test_project_id):
+    def test_get_tasks_with_project_id(self, client, test_project, test_tasks):
         """Test get_tasks with specific project_id."""
-        tasks = client.get_tasks(project_id=test_project_id)
+        tasks = client.get_tasks(project_id=test_project)
 
         assert isinstance(tasks, list)
-        assert len(tasks) > 0
+        assert len(tasks) == 3  # test_tasks fixture creates 3 tasks
 
-        # All tasks should be from this project
+        # All tasks should be from this project (fixture project)
         for task in tasks:
-            if 'project' in task and task['project']:
-                assert 'Active Test Project' in task['project']
+            if 'projectId' in task:
+                assert task['projectId'] == test_project
 
         print(f"\n✓ Found {len(tasks)} tasks in project")
 
-    def test_get_tasks_include_completed(self, client, test_project_id):
+    def test_get_tasks_include_completed(self, client, test_project):
         """Test get_tasks with include_completed=True."""
-        all_tasks = client.get_tasks(project_id=test_project_id, include_completed=True)
-        incomplete_tasks = client.get_tasks(project_id=test_project_id, include_completed=False)
+        all_tasks = client.get_tasks(project_id=test_project, include_completed=True)
+        incomplete_tasks = client.get_tasks(project_id=test_project, include_completed=False)
 
         assert len(all_tasks) >= len(incomplete_tasks)
         print(f"\n✓ All tasks: {len(all_tasks)}, Incomplete: {len(incomplete_tasks)}")
 
-    def test_get_tasks_flagged_only(self, client, test_project_id):
+    def test_get_tasks_flagged_only(self, client, test_project, test_tasks):
         """Test get_tasks with flagged_only=True."""
-        flagged = client.get_tasks(project_id=test_project_id, flagged_only=True)
+        # Flag one of the fixture tasks
+        client.update_task(test_tasks[0], flagged=True)
+
+        # Query for flagged tasks in project
+        flagged = client.get_tasks(project_id=test_project, flagged_only=True)
 
         assert isinstance(flagged, list)
-        # Should find "Task 1 - Flagged"
-        flagged_names = [t['name'] for t in flagged]
-        assert any('Flagged' in name for name in flagged_names)
+        assert len(flagged) > 0
 
         # All returned tasks should be flagged
         for task in flagged:
@@ -1169,17 +1087,17 @@ class TestGetTasksParameterVariations:
 
         print(f"\n✓ Found {len(flagged)} flagged tasks")
 
-    def test_get_tasks_available_only(self, client, test_project_id):
+    def test_get_tasks_available_only(self, client, test_project):
         """Test get_tasks with available_only=True."""
-        available = client.get_tasks(project_id=test_project_id, available_only=True)
+        available = client.get_tasks(project_id=test_project, available_only=True)
 
         assert isinstance(available, list)
         # Just verify it returns a list (may be empty if no available tasks)
         print(f"\n✓ Found {len(available)} available tasks")
 
-    def test_get_tasks_dropped_only(self, client, test_project_id):
+    def test_get_tasks_dropped_only(self, client, test_project):
         """Test get_tasks with dropped_only=True."""
-        dropped = client.get_tasks(project_id=test_project_id, dropped_only=True)
+        dropped = client.get_tasks(project_id=test_project, dropped_only=True)
 
         assert isinstance(dropped, list)
         # All returned tasks should be dropped
@@ -1188,16 +1106,16 @@ class TestGetTasksParameterVariations:
 
         print(f"\n✓ Found {len(dropped)} dropped tasks")
 
-    def test_get_tasks_blocked_only(self, client, test_project_id):
+    def test_get_tasks_blocked_only(self, client, test_project):
         """Test get_tasks with blocked_only=True."""
-        blocked = client.get_tasks(project_id=test_project_id, blocked_only=True)
+        blocked = client.get_tasks(project_id=test_project, blocked_only=True)
 
         assert isinstance(blocked, list)
         print(f"\n✓ Found {len(blocked)} blocked tasks")
 
-    def test_get_tasks_next_only(self, client, test_project_id):
+    def test_get_tasks_next_only(self, client, test_project):
         """Test get_tasks with next_only=True."""
-        next_tasks = client.get_tasks(project_id=test_project_id, next_only=True)
+        next_tasks = client.get_tasks(project_id=test_project, next_only=True)
 
         assert isinstance(next_tasks, list)
         print(f"\n✓ Found {len(next_tasks)} next action tasks")
@@ -1230,9 +1148,9 @@ class TestGetTasksParameterVariations:
         assert isinstance(deferred, list)
         print(f"\n✓ Found {len(deferred)} tasks deferred this week")
 
-    def test_get_tasks_max_estimated_minutes(self, client, test_project_id):
+    def test_get_tasks_max_estimated_minutes(self, client, test_project):
         """Test get_tasks with max_estimated_minutes."""
-        quick_tasks = client.get_tasks(project_id=test_project_id, max_estimated_minutes=60)
+        quick_tasks = client.get_tasks(project_id=test_project, max_estimated_minutes=60)
 
         assert isinstance(quick_tasks, list)
         # Verify tasks have estimates <= 60 minutes
@@ -1242,9 +1160,9 @@ class TestGetTasksParameterVariations:
 
         print(f"\n✓ Found {len(quick_tasks)} tasks <= 60 minutes")
 
-    def test_get_tasks_has_estimate_true(self, client, test_project_id):
+    def test_get_tasks_has_estimate_true(self, client, test_project):
         """Test get_tasks with has_estimate=True."""
-        with_estimate = client.get_tasks(project_id=test_project_id, has_estimate=True)
+        with_estimate = client.get_tasks(project_id=test_project, has_estimate=True)
 
         assert isinstance(with_estimate, list)
         # All should have an estimate
@@ -1265,10 +1183,10 @@ class TestGetTasksParameterVariations:
 
         print(f"\n✓ Found {len(urgent_tasks)} tasks with 'urgent' tag")
 
-    def test_get_tasks_sort_by_due_date(self, client, test_project_id):
+    def test_get_tasks_sort_by_due_date(self, client, test_project):
         """Test get_tasks with sort_by='due_date'."""
         sorted_tasks = client.get_tasks(
-            project_id=test_project_id,
+            project_id=test_project,
             sort_by="due_date",
             sort_order="asc"
         )
@@ -1284,12 +1202,10 @@ class TestGetTasksParameterVariations:
     # NEW API (Phase 3.1): task_id, parent_task_id, include_full_notes
     # ========================================================================
 
-    def test_get_tasks_with_task_id_integration(self, client, test_project_id):
+    def test_get_tasks_with_task_id_integration(self, client, test_project, test_tasks):
         """Integration: get_tasks(task_id=X) filters to single task."""
-        # Get a task from the test project
-        tasks = client.get_tasks(project_id=test_project_id)
-        assert len(tasks) > 0
-        specific_task_id = tasks[0]['id']
+        # Use fixture task ID
+        specific_task_id = test_tasks[0]
 
         # Get that specific task using task_id parameter
         result = client.get_tasks(task_id=specific_task_id)
@@ -1299,18 +1215,16 @@ class TestGetTasksParameterVariations:
         assert result[0]['id'] == specific_task_id
         print(f"\n✓ get_tasks(task_id) returned specific task: {result[0]['name']}")
 
-    def test_get_tasks_with_parent_task_id_integration(self, client):
+    def test_get_tasks_with_parent_task_id_integration(self, client, test_parent_task_with_subtasks):
         """Integration: get_tasks(parent_task_id=X) returns subtasks."""
-        # Find the Parent Task (created by setup script)
-        tasks = client.get_tasks(query="Parent Task")
-        assert len(tasks) > 0
-        parent_id = tasks[0]['id']
+        # Use fixture that creates parent with 2 subtasks
+        parent_id = test_parent_task_with_subtasks['parent_id']
 
         # Get subtasks using parent_task_id parameter
         subtasks = client.get_tasks(parent_task_id=parent_id)
 
         assert isinstance(subtasks, list)
-        assert len(subtasks) >= 2, "Parent Task should have at least 2 subtasks"
+        assert len(subtasks) == 2, "Fixture creates exactly 2 subtasks"
 
         # Verify all have correct parent
         for subtask in subtasks:
@@ -1319,13 +1233,13 @@ class TestGetTasksParameterVariations:
 
         print(f"\n✓ get_tasks(parent_task_id) returned {len(subtasks)} subtasks")
 
-    def test_get_tasks_include_full_notes_integration(self, client, test_project_id):
+    def test_get_tasks_include_full_notes_integration(self, client, test_task_with_note):
         """Integration: get_tasks(include_full_notes=True) returns complete notes."""
-        # Get tasks with full notes
-        tasks = client.get_tasks(project_id=test_project_id, include_full_notes=True)
+        # Get task with note using fixture
+        tasks = client.get_tasks(task_id=test_task_with_note, include_full_notes=True)
 
         assert isinstance(tasks, list)
-        assert len(tasks) > 0
+        assert len(tasks) == 1
 
         # Find a task with a note
         tasks_with_notes = [t for t in tasks if t.get('note') and len(t['note']) > 0]
@@ -1342,12 +1256,11 @@ class TestGetTasksParameterVariations:
 
 
 class TestGetProjectsParameterVariations:
-    """Test various parameter combinations for get_projects()."""
+    """Test various parameter combinations for get_projects().
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    Note: Most tests are read-only parameter variation tests.
+    """
 
     def test_get_projects_on_hold_only(self, client):
         """Test get_projects with on_hold_only=True."""
@@ -1391,12 +1304,13 @@ class TestGetProjectsParameterVariations:
         assert isinstance(projects, list)
         print(f"\n✓ Found {len(projects)} projects with no due dates")
 
-    def test_get_projects_sort_by_name(self, client):
+    def test_get_projects_sort_by_name(self, client, test_projects):
         """Test get_projects with sort_by='name'."""
+        # Get projects (fixture creates 3 projects with unique names)
         projects = client.get_projects(sort_by="name", sort_order="asc")
 
         assert isinstance(projects, list)
-        assert len(projects) > 0
+        assert len(projects) >= 3  # At least the fixture projects
 
         # Verify alphabetical sorting (case-insensitive)
         names = [p['name'] for p in projects]
@@ -1409,12 +1323,10 @@ class TestGetProjectsParameterVariations:
     # NEW API (Phase 3.2): project_id, include_full_notes
     # ========================================================================
 
-    def test_get_projects_with_project_id_integration(self, client):
+    def test_get_projects_with_project_id_integration(self, client, test_project):
         """Integration: get_projects(project_id=X) filters to single project."""
-        # Get a project from the database
-        projects = client.get_projects()
-        assert len(projects) > 0
-        specific_project_id = projects[0]['id']
+        # Use fixture project ID
+        specific_project_id = test_project
 
         # Get that specific project using project_id parameter
         result = client.get_projects(project_id=specific_project_id)
@@ -1424,18 +1336,17 @@ class TestGetProjectsParameterVariations:
         assert result[0]['id'] == specific_project_id
         print(f"\n✓ get_projects(project_id) returned specific project: {result[0]['name']}")
 
-    def test_get_projects_include_full_notes_integration(self, client):
+    def test_get_projects_include_full_notes_integration(self, client, test_project_with_note):
         """Integration: get_projects(include_full_notes=True) returns complete notes."""
-        # Get projects with full notes
-        projects = client.get_projects(include_full_notes=True)
+        # Get project with note using fixture
+        projects = client.get_projects(project_id=test_project_with_note, include_full_notes=True)
 
         assert isinstance(projects, list)
-        assert len(projects) > 0
+        assert len(projects) == 1
 
-        # Find a project with a note
-        projects_with_notes = [p for p in projects if p.get('note') and len(p['note']) > 0]
-        if projects_with_notes:
-            project = projects_with_notes[0]
+        # Verify project has note
+        project = projects[0]
+        if project.get('note') and len(project['note']) > 0:
             # Verify note field is present and has content
             assert 'note' in project
             assert len(project['note']) > 0
@@ -1447,20 +1358,12 @@ class TestGetProjectsParameterVariations:
 
 
 class TestAddTaskParameterVariations:
-    """Test various parameter combinations for create_task()."""
+    """Test various parameter combinations for create_task().
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    @pytest.fixture(scope="class")
-    def test_project_id(self, client):
-        """Get the Active Test Project ID."""
-        projects = client.get_projects(query="Active Test Project")
-        return projects[0]['id']
-
-    def test_add_task_with_defer_date(self, client, test_project_id):
+    def test_add_task_with_defer_date(self, client, test_project):
         """Test create_task with defer_date."""
         from datetime import datetime, timedelta
 
@@ -1468,13 +1371,13 @@ class TestAddTaskParameterVariations:
 
         task_id = client.create_task(
             "Task with Defer Date",
-            project_id=test_project_id,
+            project_id=test_project,
             defer_date=defer_date
         )
         assert task_id is not None
 
         # Verify task was created with defer date
-        tasks = client.get_tasks(project_id=test_project_id, query="Task with Defer Date")
+        tasks = client.get_tasks(project_id=test_project, query="Task with Defer Date")
         assert len(tasks) > 0
         assert tasks[0].get('deferDate') is not None
 
@@ -1482,11 +1385,11 @@ class TestAddTaskParameterVariations:
         client.delete_tasks(task_id)
         print("\n✓ Created task with defer date")
 
-    def test_add_task_with_estimated_minutes(self, client, test_project_id):
+    def test_add_task_with_estimated_minutes(self, client, test_project):
         """Test create_task with estimated time."""
         task_id = client.create_task(
             "Task with Estimate",
-            project_id=test_project_id,
+            project_id=test_project,
             estimated_minutes=45
         )
         assert task_id is not None
@@ -1501,18 +1404,18 @@ class TestAddTaskParameterVariations:
         client.delete_tasks(task_id)
         print("\n✓ Created task with time estimate")
 
-    def test_add_task_with_recurrence(self, client, test_project_id):
+    def test_add_task_with_recurrence(self, client, test_project):
         """Test create_task with recurrence pattern."""
         # Note: recurrence parameters not in v0.6.0 create_task signature
         # This test may need to be updated based on actual API support
         task_id = client.create_task(
             "Recurring Task Test",
-            project_id=test_project_id
+            project_id=test_project
         )
         assert task_id is not None
 
         # Verify task was created
-        tasks = client.get_tasks(project_id=test_project_id, query="Recurring Task Test")
+        tasks = client.get_tasks(project_id=test_project, query="Recurring Task Test")
         assert len(tasks) > 0
 
         # Cleanup
@@ -1521,28 +1424,10 @@ class TestAddTaskParameterVariations:
 
 
 class TestUpdateTaskParameterVariations:
-    """Test various parameter combinations for update_task()."""
+    """Test various parameter combinations for update_task().
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
-
-    @pytest.fixture
-    def test_task(self, client):
-        """Create a test task for update tests."""
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-
-        task_id = client.create_task("Task for Update Tests", project_id=project_id)
-
-        yield task_id
-
-        # Cleanup
-        try:
-            client.delete_tasks(task_id)
-        except:
-            pass
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
     def test_update_task_dates(self, client, test_task):
         """Test updating due_date and defer_date."""
@@ -1591,30 +1476,28 @@ class TestUpdateTaskParameterVariations:
 # ============================================================================
 
 class TestHierarchyFields:
-    """Test that hierarchy and ordering fields are properly exposed."""
+    """Test that hierarchy and ordering fields are properly exposed.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    def test_project_has_sequential_field(self, client):
+    def test_project_has_sequential_field(self, client, test_project):
         """Test that projects expose sequential field."""
-        projects = client.get_projects(query="Active Test Project")
-        assert len(projects) > 0
+        # Use fixture project
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
 
         project = projects[0]
         assert 'sequential' in project
         assert isinstance(project['sequential'], bool)
         print(f"\n✓ Project has sequential field: {project['sequential']}")
 
-    def test_task_has_hierarchy_fields(self, client):
+    def test_task_has_hierarchy_fields(self, client, test_parent_task_with_subtasks):
         """Test that tasks expose parentTaskId, subtaskCount, sequential, position."""
-        # Get a task we know has subtasks
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
+        # Use fixture that created parent task with 2 subtasks
+        parent_id = test_parent_task_with_subtasks['parent_id']
 
-        tasks = client.get_tasks(project_id=project_id, query="Parent Task")
+        tasks = client.get_tasks(task_id=parent_id)
         assert len(tasks) > 0
 
         task = tasks[0]
@@ -1642,14 +1525,10 @@ class TestHierarchyFields:
         print(f"  sequential: {task['sequential']}")
         print(f"  position: {task['position']}")
 
-    def test_subtask_has_parent_id(self, client):
+    def test_subtask_has_parent_id(self, client, test_parent_task_with_subtasks):
         """Test that subtasks have their parent's ID in parentTaskId."""
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-
-        # Get the parent task
-        parent_tasks = client.get_tasks(project_id=project_id, query="Parent Task")
-        parent_id = parent_tasks[0]['id']
+        # Use fixture with parent and subtasks
+        parent_id = test_parent_task_with_subtasks['parent_id']
 
         # Get its subtasks
         subtasks = client.get_tasks(parent_task_id=parent_id)
@@ -1663,13 +1542,11 @@ class TestHierarchyFields:
 
         print(f"\n✓ All {len(subtasks)} subtasks have correct parentTaskId")
 
-    def test_position_ordering(self, client):
+    def test_position_ordering(self, client, test_project, test_tasks):
         """Test that position field reflects actual task order."""
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
-
+        # Use fixture project and tasks
         # Get all tasks in the project
-        tasks = client.get_tasks(project_id=project_id)
+        tasks = client.get_tasks(project_id=test_project)
 
         # Top-level tasks should have sequential positions
         top_level = [t for t in tasks if t['parentTaskId'] == '']
@@ -1680,12 +1557,17 @@ class TestHierarchyFields:
 
         print(f"\n✓ {len(top_level)} top-level tasks have ordered positions: {positions[:5]}...")
 
-    def test_hierarchy_reconstruction(self, client):
+    def test_hierarchy_reconstruction(self, client, test_parent_task_with_subtasks):
         """Test that we can reconstruct full hierarchy from fields."""
-        projects = client.get_projects(query="Active Test Project")
-        project_id = projects[0]['id']
+        # Use fixture that creates parent with 2 subtasks
+        parent_id = test_parent_task_with_subtasks['parent_id']
+        project_id = test_parent_task_with_subtasks.get('project_id')  # Not in current fixture, but tasks have projectId
 
-        # Get all tasks
+        # Get parent task to find its project
+        parent_task_data = client.get_tasks(task_id=parent_id)
+        project_id = parent_task_data[0]['projectId']
+
+        # Get all tasks in project
         all_tasks = client.get_tasks(project_id=project_id)
 
         # Build hierarchy using fields
@@ -1724,30 +1606,26 @@ class TestHierarchyFields:
 
 
 class TestTaskReordering:
-    """Tests for reordering tasks within a project."""
+    """Tests for reordering tasks within a project.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    def test_reorder_task_before_another(self, client):
+    def test_reorder_task_before_another(self, client, test_project, test_tasks):
         """Test moving a task before another task."""
-        # Create a test project with 3 tasks
-        project_id = client.create_project("Reorder Test Project")
-
-        # Add 3 tasks
-        client.create_task("Task A", project_id=project_id)
-        client.create_task("Task B", project_id=project_id)
-        client.create_task("Task C", project_id=project_id)
-
+        # Use fixture project with 3 tasks
         # Get tasks in current order
-        tasks = client.get_tasks(project_id=project_id)
+        tasks = client.get_tasks(project_id=test_project)
         assert len(tasks) == 3
 
-        task_a = next(t for t in tasks if t['name'] == 'Task A')
-        task_b = next(t for t in tasks if t['name'] == 'Task B')
-        task_c = next(t for t in tasks if t['name'] == 'Task C')
+        # Use the fixture task IDs directly (test_tasks has 3 tasks)
+        task_a_id = test_tasks[0]
+        task_b_id = test_tasks[1]
+        task_c_id = test_tasks[2]
+
+        task_a = next(t for t in tasks if t['id'] == task_a_id)
+        task_b = next(t for t in tasks if t['id'] == task_b_id)
+        task_c = next(t for t in tasks if t['id'] == task_c_id)
 
         # Verify initial order by position
         assert task_a['position'] < task_b['position'] < task_c['position'], \
@@ -1757,11 +1635,11 @@ class TestTaskReordering:
         success = client.reorder_task(task_c['id'], before_task_id=task_a['id'])
         assert success, "reorder_task should return True"
 
-        # Get updated order
-        tasks_after = client.get_tasks(project_id=project_id)
-        task_a_after = next(t for t in tasks_after if t['name'] == 'Task A')
-        task_b_after = next(t for t in tasks_after if t['name'] == 'Task B')
-        task_c_after = next(t for t in tasks_after if t['name'] == 'Task C')
+        # Get updated order using task IDs (not names, since fixture uses UUID names)
+        tasks_after = client.get_tasks(project_id=test_project)
+        task_a_after = next(t for t in tasks_after if t['id'] == task_a_id)
+        task_b_after = next(t for t in tasks_after if t['id'] == task_b_id)
+        task_c_after = next(t for t in tasks_after if t['id'] == task_c_id)
 
         # Verify new order: C should be before A
         assert task_c_after['position'] < task_a_after['position'], \
@@ -1770,37 +1648,35 @@ class TestTaskReordering:
             "Task A should still be before Task B"
 
         print(f"\n✓ Successfully reordered tasks:")
-        print(f"  Initial: A(pos {task_a['position']}) < B(pos {task_b['position']}) < C(pos {task_c['position']})")
-        print(f"  After:   C(pos {task_c_after['position']}) < A(pos {task_a_after['position']}) < B(pos {task_b_after['position']})")
+        print(f"  Initial: Task0(pos {task_a['position']}) < Task1(pos {task_b['position']}) < Task2(pos {task_c['position']})")
+        print(f"  After:   Task2(pos {task_c_after['position']}) < Task0(pos {task_a_after['position']}) < Task1(pos {task_b_after['position']})")
+        # Note: Cleanup handled by fixtures automatically
 
-        # Cleanup
-        client.delete_projects(project_id)
-
-    def test_reorder_task_after_another(self, client):
+    def test_reorder_task_after_another(self, client, test_project, test_tasks):
         """Test moving a task after another task."""
-        # Create a test project with 3 tasks
-        project_id = client.create_project("Reorder Test Project 2")
-
-        # Add 3 tasks
-        client.create_task("Task X", project_id=project_id)
-        client.create_task("Task Y", project_id=project_id)
-        client.create_task("Task Z", project_id=project_id)
-
+        # Use fixture project with 3 tasks
         # Get tasks in current order
-        tasks = client.get_tasks(project_id=project_id)
-        task_x = next(t for t in tasks if t['name'] == 'Task X')
-        task_y = next(t for t in tasks if t['name'] == 'Task Y')
-        task_z = next(t for t in tasks if t['name'] == 'Task Z')
+        tasks = client.get_tasks(project_id=test_project)
+        assert len(tasks) == 3
+
+        # Use the fixture task IDs directly (test_tasks has 3 tasks)
+        task_x_id = test_tasks[0]
+        task_y_id = test_tasks[1]
+        task_z_id = test_tasks[2]
+
+        task_x = next(t for t in tasks if t['id'] == task_x_id)
+        task_y = next(t for t in tasks if t['id'] == task_y_id)
+        task_z = next(t for t in tasks if t['id'] == task_z_id)
 
         # Move Task X after Task Z
         success = client.reorder_task(task_x['id'], after_task_id=task_z['id'])
         assert success, "reorder_task should return True"
 
-        # Get updated order
-        tasks_after = client.get_tasks(project_id=project_id)
-        task_x_after = next(t for t in tasks_after if t['name'] == 'Task X')
-        task_y_after = next(t for t in tasks_after if t['name'] == 'Task Y')
-        task_z_after = next(t for t in tasks_after if t['name'] == 'Task Z')
+        # Get updated order using task IDs
+        tasks_after = client.get_tasks(project_id=test_project)
+        task_x_after = next(t for t in tasks_after if t['id'] == task_x_id)
+        task_y_after = next(t for t in tasks_after if t['id'] == task_y_id)
+        task_z_after = next(t for t in tasks_after if t['id'] == task_z_id)
 
         # Verify new order: X should be after Z
         assert task_y_after['position'] < task_z_after['position'], \
@@ -1809,10 +1685,8 @@ class TestTaskReordering:
             "Task X should be after Task Z"
 
         print(f"\n✓ Successfully reordered tasks with 'after':")
-        print(f"  After:   Y(pos {task_y_after['position']}) < Z(pos {task_z_after['position']}) < X(pos {task_x_after['position']})")
-
-        # Cleanup
-        client.delete_projects(project_id)
+        print(f"  After:   Task1(pos {task_y_after['position']}) < Task2(pos {task_z_after['position']}) < Task0(pos {task_x_after['position']})")
+        # Note: Cleanup handled by fixtures automatically
 
     def test_reorder_task_requires_one_parameter(self, client):
         """Test that reorder_task requires either before_task_id or after_task_id."""
@@ -1839,18 +1713,16 @@ class TestTaskReordering:
 
 
 class TestAvailabilityFields:
-    """Tests for availability status fields."""
+    """Tests for availability status fields.
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
     def test_task_has_available_and_number_of_available_tasks(self, client):
         """Test that tasks include available and numberOfAvailableTasks fields."""
-        # Create a project with a parent task and subtask
+        # Create a sequential project with parent task and subtask
         project_id = client.create_project("Availability Test Project", sequential=True)
-        
+
         # Add parent task and subtask
         client.create_task("Parent Task", project_id=project_id)
         tasks = client.get_tasks(project_id=project_id)
@@ -1866,23 +1738,23 @@ class TestAvailabilityFields:
         results = client.get_tasks(task_id=parent_id)
         assert len(results) == 1
         parent = results[0]
-        
+
         # Check fields exist
         assert 'available' in parent, "Should have available field"
         assert 'numberOfAvailableTasks' in parent, "Should have numberOfAvailableTasks field"
-        
+
         # Check types
         assert isinstance(parent['available'], bool), "available should be boolean"
         assert isinstance(parent['numberOfAvailableTasks'], int), "numberOfAvailableTasks should be int"
-        
+
         # For a sequential project, first task is available, parent should have available subtasks
         assert parent['numberOfAvailableTasks'] >= 0, "Should have count of available subtasks"
-        
+
         print(f"\n✓ Task has availability fields:")
         print(f"  available: {parent['available']}")
         print(f"  numberOfAvailableTasks: {parent['numberOfAvailableTasks']}")
         print(f"  blocked: {parent['blocked']}")
-        
+
         # Cleanup
         client.delete_projects(project_id)
 
@@ -1890,19 +1762,19 @@ class TestAvailabilityFields:
         """Test that available is true for directly actionable tasks."""
         project_id = client.create_project("Available Task Test")
         client.create_task("Available Task", project_id=project_id)
-        
+
         tasks = client.get_tasks(project_id=project_id)
         task = tasks[0]
-        
+
         # Task should be available (not blocked, not completed, not dropped, not deferred)
         assert task['completed'] == False
         assert task['dropped'] == False
         assert task['blocked'] == False
         assert task['deferDate'] == ""
         assert task['available'] == True, "Actionable task should be available"
-        
+
         print(f"\n✓ Directly actionable task shows available: true")
-        
+
         # Cleanup
         client.delete_projects(project_id)
 
@@ -1960,21 +1832,19 @@ class TestAvailabilityFields:
 
 
 class TestUINavigation:
-    """Test UI navigation operations (set_focus)."""
+    """Test UI navigation operations (set_focus).
 
-    @pytest.fixture(scope="class")
-    def client(self):
-        """Create a client for real OmniFocus testing."""
-        return OmniFocusConnector(enable_safety_checks=True)
+    All tests use fixtures from conftest.py for automatic cleanup.
+    """
 
-    def test_set_focus_on_project(self, client):
+    def test_set_focus_on_project(self, client, test_project):
         """Test setting focus on a project."""
-        # Find a test project
-        projects = client.get_projects(query="Active Test Project")
-        assert len(projects) > 0, "Need at least one test project"
+        # Use fixture project
+        project_id = test_project
 
+        # Get project details for display
+        projects = client.get_projects(project_id=project_id)
         project = projects[0]
-        project_id = project['id']
 
         # Set focus on the project
         result = client.set_focus(item_id=project_id, item_type="project")
@@ -1984,17 +1854,14 @@ class TestUINavigation:
         assert result["item_type"] == "project"
         print(f"\n✓ Set focus on project: {project['name']}")
 
-    def test_set_focus_on_folder(self, client):
+    def test_set_focus_on_folder(self, client, test_folder):
         """Test setting focus on a folder."""
-        # Get folders
+        # Use fixture folder
+        folder_id = test_folder
+
+        # Get folder details for display
         folders = client.get_folders()
-        assert len(folders) > 0, "Need at least one folder"
-
-        # Find the test root folder
-        test_folder = next((f for f in folders if f['name'] == "Test Root Folder"), None)
-        assert test_folder is not None, "Test Root Folder should exist"
-
-        folder_id = test_folder['id']
+        test_folder_obj = next(f for f in folders if f['id'] == folder_id)
 
         # Set focus on the folder
         result = client.set_focus(item_id=folder_id, item_type="folder")
@@ -2002,15 +1869,12 @@ class TestUINavigation:
         assert result["success"] is True
         assert result["item_id"] == folder_id
         assert result["item_type"] == "folder"
-        print(f"\n✓ Set focus on folder: {test_folder['name']}")
+        print(f"\n✓ Set focus on folder: {test_folder_obj['name']}")
 
-    def test_set_focus_invalid_item_type(self, client):
+    def test_set_focus_invalid_item_type(self, client, test_task):
         """Test that invalid item types raise errors."""
-        # Get a task
-        tasks = client.get_tasks()
-        assert len(tasks) > 0, "Need at least one task"
-
-        task_id = tasks[0]['id']
+        # Use fixture task
+        task_id = test_task
 
         # Try to set focus on task (should fail)
         with pytest.raises(ValueError) as exc_info:
