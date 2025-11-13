@@ -33,12 +33,35 @@ else
     ISSUES_FOUND=1
 fi
 
-# Check 3: README.md has version updated
-echo "3. Checking README.md version..."
-if grep -q "${VERSION#v}" README.md; then
-    echo "   ✅ README.md references $VERSION"
+# Check 3: README.md has version updated comprehensively
+echo "3. Checking README.md version references..."
+README_ISSUES=0
+
+# Check 3a: Installation example should reference current version
+if grep -q "git checkout ${VERSION}" README.md; then
+    echo "   ✅ Installation example references $VERSION"
 else
-    echo "   ⚠️  README.md may need version update"
+    echo "   ❌ Installation example should reference '$VERSION' (currently references old version)"
+    README_ISSUES=1
+fi
+
+# Check 3b: "Key Changes" section should mention current version
+if grep -q "Key Changes.*${VERSION}" README.md; then
+    echo "   ✅ 'Key Changes' section mentions $VERSION"
+else
+    echo "   ❌ 'Key Changes' section should include $VERSION"
+    README_ISSUES=1
+fi
+
+# Check 3c: API version header should reference current version
+if grep -q "v${VERSION#v} API" README.md; then
+    echo "   ✅ API version header mentions $VERSION"
+else
+    echo "   ⚠️  API version header may need update to $VERSION"
+fi
+
+if [ $README_ISSUES -gt 0 ]; then
+    ISSUES_FOUND=1
 fi
 
 # Check 4: Check for breaking changes requiring migration guide
