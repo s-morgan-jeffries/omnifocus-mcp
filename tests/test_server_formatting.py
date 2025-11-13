@@ -6,7 +6,7 @@ test coverage from 84% to 85%+.
 """
 
 import pytest
-from src.omnifocus_mcp.server_fastmcp import (
+from omnifocus_mcp.server_fastmcp import (
     _truncate_note,
     _format_task,
     _format_project
