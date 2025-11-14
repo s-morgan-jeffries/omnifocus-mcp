@@ -18,7 +18,7 @@ The project has two types of tests:
 1. **Unit Tests** - Test individual components with mocked dependencies
 2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 501 tests (v0.7.1)
+**Total Test Coverage**: 513 tests (v0.7.1)
 - Unit tests (omnifocus_connector.py core) ✅ All passing
 - Unit tests (FastMCP server) ✅ All passing
 - Integration tests (real OmniFocus) ⏭️ 123 skipped by default
