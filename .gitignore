@@ -46,4 +46,4 @@ config.json
 
 # Hygiene check results
 .hygiene-check-results-*.txt
-.hygiene-approved-*.txt
+.hygiene-approved-*
