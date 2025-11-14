@@ -5,6 +5,20 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - TBD
+
+### Added
+
+- Test fixtures infrastructure with automatic cleanup (#143)
+- E2E test refactoring to use fixtures (#162)
+
+### Changed
+
+- **Performance improvement**: ~7.8× speedup in integration tests (from ~30 min to ~4 min)
+  - Root cause: Replaced full-table scans with direct ID lookups via fixtures
+  - E2E tests: 20 tests now pass in 32.94 seconds
+  - Integration tests: 108 tests now pass in 232.60 seconds
+
 ## [0.7.0] - 2025-11-11
 
 ### Added
