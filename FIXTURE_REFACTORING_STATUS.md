@@ -10,9 +10,9 @@
 - TestTaskCRUD refactored (14 tests)
 - All tests passing with automatic cleanup
 
-## Remaining Work: New Issue (TBD)
-- ~80 remaining integration tests to be refactored incrementally
-- Same milestone (v0.7.1), separate issue for tracking
+## Remaining Work: Issue #168 (v0.7.2)
+- ~22 remaining integration tests to be refactored incrementally
+- Tracked in issue #168, scheduled for v0.7.2 milestone
 
 ## Summary
 
@@ -180,8 +180,10 @@ def test_update_project_name(self, client, test_project):
 - ✅ TestTaskCRUD refactored: 14 tests passing with fixtures
 - **Total: 61 tests (12 fixture + 21 project + 14 task + 14 legacy = 61 working with fixtures)**
 
-**Deferred to New Issue:**
-- ⏳ Remaining test classes: ~80 tests to refactor incrementally
+**Deferred to Issue #168:**
+- ⏳ Remaining test classes: ~22 tests to refactor incrementally
+  - Analysis: Only 22 manual `client.create_*` calls found in code (not 80)
+  - Most tests already converted to fixtures in issue #143
 
 **Estimated Effort:**
 - Fixture infrastructure: ✅ Complete (4 hours)
