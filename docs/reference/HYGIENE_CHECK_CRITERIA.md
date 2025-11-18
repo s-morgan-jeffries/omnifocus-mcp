@@ -19,12 +19,14 @@ This document defines the **automated check criteria** only. Interactive checks 
 
 ## Automated Checks (Critical - Must Pass)
 
-**Execution Order (as of v0.7.0):**
+**Execution Order (as of v0.7.2):**
 
-The checks are run in order of execution speed, with fast checks (1-6) running first, followed by slower checks (7-8). This provides faster feedback if early checks fail, avoiding the 20-25 minute wait for tests when faster checks would have caught issues.
+The checks are run in order of execution speed, with fast checks (1-7, 9) running first, followed by slower checks (8). This provides faster feedback if early checks fail, avoiding the 20-25 minute wait for tests when faster checks would have caught issues.
 
-- **Fast checks (~1-2s each):** Version sync, complexity, parity, milestone, ROADMAP sync, docs
+- **Fast checks (~1-2s each):** Version sync, complexity, parity, milestone, ROADMAP sync, docs, test count sync
 - **Slow checks:** Test coverage (~30s), All tests (~20-25 min)
+
+**Check 9 (Test Count Sync)** runs after Check 8 (All Tests Pass) to verify documentation reflects final test count.
 
 ---
 
@@ -224,25 +226,39 @@ The checks are run in order of execution speed, with fast checks (1-6) running f
 
 ---
 
-### Test Count Synchronization (Not in pre-tag hook)
+### 9. Test Count Synchronization (~1s)
 
 **Script:** `scripts/check_test_count_sync.sh`
 
 **Pass Criteria:**
-- ✅ Actual test count (from pytest) matches documented count in `docs/guides/TESTING.md`
+- ✅ Actual test count (from pytest) matches documented count in all 8 documentation files:
+  - `docs/guides/TESTING.md` (canonical source)
+  - `README.md`
+  - `.claude/CLAUDE.md`
+  - `docs/reference/API_REFERENCE.md`
+  - `docs/project/ROADMAP.md`
+  - `docs/guides/CONTRIBUTING.md`
+  - `docs/guides/README.md`
+  - `.claude/commands/test-coverage.md`
 - ✅ Count includes only unit tests (excludes integration tests marked with `@pytest.mark.integration`)
 
 **Fail Criteria:**
-- ❌ Test count mismatch between pytest and documentation
+- ❌ Test count mismatch in any of the 8 documentation files
 - ❌ Cannot determine test count (pytest failure)
 
 **Exit Codes:**
-- `0` - Counts match
-- `1` - Counts don't match or cannot determine
+- `0` - All files synchronized with actual test count
+- `1` - One or more files out of sync
 
-**Status:** ✅ Implemented and working (caught mismatch in v0.6.5).
+**Status:** ✅ Implemented and working
+- Added to pre-tag hook as Check #9 (v0.7.2, issue #169)
+- Added to pre-commit hook as warning (v0.7.2, issue #169)
+- Enhanced to check all 8 files instead of just TESTING.md
 
-**Note:** This check is NOT run as part of the pre-tag hook. It's available for manual execution when needed.
+**Prevention (issue #169):**
+- Pre-commit hook warns if test/doc files changed
+- Pre-tag hook blocks RC creation if counts out of sync
+- TESTING.md is single source of truth
 
 ---
 
