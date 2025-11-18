@@ -556,9 +556,15 @@ Both systems coexist. Claude Code hooks are the primary enforcement mechanism, w
 - [ ] **Server exposure verified** - Run `./scripts/check_client_server_parity.sh`
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree
-- [ ] **Documentation updated** - ROADMAP.md, README.md version references, or other docs if needed (NOT CHANGELOG.md yet)
-  - **IMPORTANT: Do NOT update CHANGELOG.md until AFTER final release tag is created**
-  - CHANGELOG updates happen during release process, not during development
+- [ ] **Documentation updated** - ROADMAP.md, README.md version references, or other docs if needed (NOT CHANGELOG.md during feature development)
+  - **IMPORTANT: CHANGELOG.md workflow** (#166):
+    - **During feature development**: Do NOT update CHANGELOG.md on feature branches
+    - **Feature branches merge to main via PRs** (no CHANGELOG updates)
+    - **When ready for release**: Create release branch from main (e.g., `release/v0.7.2`)
+    - **On release branch**: Update CHANGELOG.md with changes (use "TBD" for date)
+    - **After RC validation**: Update CHANGELOG.md date from "TBD" to actual date on release branch
+    - **CRITICAL**: Update date BEFORE merging release branch to main and creating final tag
+    - **Then**: Merge release branch to main, create final tag (tag includes correct date)
   - Rationale: RC testing may reveal issues requiring more fixes before release (#140)
   - **README.md validation** (especially for releases):
     - [ ] Version numbers match release (installation examples, feature lists)

@@ -2,7 +2,7 @@
 
 **Purpose:** Define clear, objective criteria for all automated hygiene checks.
 
-**Last Updated:** 2025-11-11 (v0.7.0 - Hygiene Check Reordering)
+**Last Updated:** 2025-11-18 (v0.7.2 - Added CHANGELOG Date Check)
 
 ---
 
@@ -27,6 +27,8 @@ The checks are run in order of execution speed, with fast checks (1-7, 9) runnin
 - **Slow checks:** Test coverage (~30s), All tests (~20-25 min)
 
 **Check 9 (Test Count Sync)** runs after Check 8 (All Tests Pass) to verify documentation reflects final test count.
+
+**Check 10 (CHANGELOG Date)** runs only for **final release tags** (not RC tags) to ensure CHANGELOG date is set before tagging.
 
 ---
 
@@ -259,6 +261,48 @@ The checks are run in order of execution speed, with fast checks (1-7, 9) runnin
 - Pre-commit hook warns if test/doc files changed
 - Pre-tag hook blocks RC creation if counts out of sync
 - TESTING.md is single source of truth
+
+---
+
+### 10. CHANGELOG Date (Final Release Only) (~1s)
+
+**Script:** `scripts/check_changelog_date.sh`
+
+**When:** Only runs for **final release tags** (e.g., `v0.7.2`), **NOT for RC tags** (e.g., `v0.7.2-rc1`)
+
+**Pass Criteria:**
+- ✅ `CHANGELOG.md` contains entry for current version
+- ✅ Date is NOT "TBD" (must be actual date like `YYYY-MM-DD`)
+- ✅ Version in CHANGELOG matches version in `pyproject.toml`
+
+**Fail Criteria:**
+- ❌ CHANGELOG still shows `## [X.Y.Z] - TBD`
+- ❌ CHANGELOG missing entry for current version
+- ❌ Cannot parse CHANGELOG format
+
+**Exit Codes:**
+- `0` - CHANGELOG date is set to actual date
+- `1` - CHANGELOG date is still "TBD" or missing
+
+**Status:** ✅ Implemented and working
+- Added to pre-tag hook for final releases (v0.7.2, issue #166)
+- Does NOT run for RC tags (RC tags should have "TBD")
+- Runs before final tag creation to ensure tag includes correct date
+
+**Prevention (issue #166):**
+- Pre-tag hook blocks final tag creation if CHANGELOG has "TBD"
+- RC workflow expects "TBD" in RC tags
+- Date must be updated AFTER RC validation, BEFORE final tag
+
+**Correct Workflow:**
+1. Create RC tag with `CHANGELOG.md` showing "TBD" ✅
+2. Validate RC (CI, manual testing) ✅
+3. Merge release branch to main ✅
+4. **Update CHANGELOG.md date from "TBD" to actual date** ⬅️ THIS STEP
+5. **Commit date update to main** ⬅️ THIS STEP
+6. **THEN create final release tag** ✅ (Check 10 verifies date is set)
+
+This ensures the final release tag includes the correct CHANGELOG date.
 
 ---
 
