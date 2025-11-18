@@ -427,10 +427,11 @@ git tag v0.6.6-rc1
 - [ ] Warnings reviewed and acceptable
 
 **Final release:**
+- [ ] **Update CHANGELOG.md date from "TBD" to actual release date (on release branch)**
+- [ ] **Commit and push date update (triggers CI one final time)**
+- [ ] **Verify CI passes with date update**
 - [ ] Merge release branch to main
-- [ ] **Update CHANGELOG.md date from "TBD" to actual release date**
-- [ ] **Commit date update to main (via PR or direct commit)**
-- [ ] Tag final release (`v0.6.x`) - tag will include correct CHANGELOG date
+- [ ] Tag final release (`v0.6.x`) on main - tag will include correct CHANGELOG date
 - [ ] Push tags and create GitHub release
 - [ ] Merge main back to development branches
 
@@ -454,10 +455,11 @@ git tag v0.6.6-rc1
 - [ ] Warnings reviewed and acceptable
 
 **Final release:**
+- [ ] **Update CHANGELOG.md date from "TBD" to actual release date (on release branch)**
+- [ ] **Commit and push date update (triggers CI one final time)**
+- [ ] **Verify CI passes with date update**
 - [ ] Merge release branch to main
-- [ ] **Update CHANGELOG.md date from "TBD" to actual release date**
-- [ ] **Commit date update to main (via PR or direct commit)**
-- [ ] Tag final release (`v0.x.0`) - tag will include correct CHANGELOG date
+- [ ] Tag final release (`v0.x.0`) on main - tag will include correct CHANGELOG date
 - [ ] Push tags and create GitHub release
 - [ ] Update `.claude/automation-candidates.md` with any new patterns
 - [ ] Merge main back to development branches
