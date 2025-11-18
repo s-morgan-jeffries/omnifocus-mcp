@@ -14,11 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Integrated as Check #10 in pre-tag hook (runs only for final release tags, not RC tags)
   - Updated release workflow documentation to clarify when CHANGELOG date should be updated
 
-- **TaskPaper import for test fixtures** (#161)
-  - Integration tests now use TaskPaper import for faster, version-controlled test data creation
-  - Reduced test setup complexity and improved reproducibility
-  - All test data now tracked in version control
-
 ### Changed
 
 - **Performance optimization for get_tasks() and get_projects()** (#170)
