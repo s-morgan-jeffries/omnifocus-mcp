@@ -47,3 +47,6 @@ config.json
 # Hygiene check results
 .hygiene-check-results-*.txt
 .hygiene-approved-*
+
+# Local scripts (not tracked)
+scripts/local/

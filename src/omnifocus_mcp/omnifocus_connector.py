@@ -198,6 +198,120 @@ class OmniFocusConnector:
         text = text.replace('"', '\\"')
         return text
 
+    def _get_tasks_batch_for_filtering(
+        self,
+        project_ids: list[str]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Batch fetch tasks for multiple projects in a single AppleScript call.
+
+        This method is optimized for project filtering and only returns minimal
+        task information needed for filtering: id, project_id, due_date, completed.
+
+        This eliminates the N+1 query pattern where each project triggers a separate
+        get_tasks() call, reducing ~30 AppleScript roundtrips to just 1.
+
+        Args:
+            project_ids: List of project IDs to fetch tasks for
+
+        Returns:
+            Dictionary mapping project_id -> list of task dictionaries
+            Each task dict contains: {id, projectId, dueDate}
+        """
+        if not project_ids:
+            return {}
+
+        # Build AppleScript to fetch all tasks for all projects in one call
+        # Handlers must be at script level, not inside tell blocks
+        script = '''
+        -- Helper to format ISO date
+        on formatDate(d)
+            if d is missing value then
+                return ""
+            end if
+            try
+                set y to year of d as string
+                set m to month of d as integer
+                if m < 10 then set m to "0" & m
+                set dy to day of d as integer
+                if dy < 10 then set dy to "0" & dy
+                set h to hours of d as integer
+                if h < 10 then set h to "0" & h
+                set min to minutes of d as integer
+                if min < 10 then set min to "0" & min
+                set s to seconds of d as integer
+                if s < 10 then set s to "0" & s
+                return y & "-" & m & "-" & dy & "T" & h & ":" & min & ":" & s & "Z"
+            on error
+                return ""
+            end try
+        end formatDate
+
+        -- Helper to join list with delimiter
+        on joinList(theList, theDelimiter)
+            set oldDelimiters to AppleScript's text item delimiters
+            set AppleScript's text item delimiters to theDelimiter
+            set theString to theList as string
+            set AppleScript's text item delimiters to oldDelimiters
+            return theString
+        end joinList
+
+        tell application "OmniFocus"
+            tell front document
+                set tasksByProject to {}
+
+                -- Iterate through all projects and collect tasks
+                repeat with proj in flattened projects
+                    set projId to id of proj
+'''
+
+        # Add project ID checks
+        for i, project_id in enumerate(project_ids):
+            escaped_id = self._escape_applescript_string(project_id)
+            if i == 0:
+                script += f'''
+                    if projId is "{escaped_id}"'''
+            else:
+                script += f''' or projId is "{escaped_id}"'''
+
+        script += ''' then
+                        set projectTasks to {}
+
+                        -- Get all incomplete tasks for this project
+                        repeat with t in flattened tasks of proj
+                            if not (completed of t) then
+                                set taskId to id of t
+                                set taskDue to my formatDate(due date of t)
+                                set taskJson to "{\\"id\\":\\"" & taskId & "\\",\\"projectId\\":\\"" & projId & "\\",\\"dueDate\\":\\"" & taskDue & "\\"}"
+                                set end of projectTasks to taskJson
+                            end if
+                        end repeat
+
+                        -- Add to results
+                        set projectJson to "{\\"projectId\\":\\"" & projId & "\\",\\"tasks\\":[" & my joinList(projectTasks, ",") & "]}"
+                        set end of tasksByProject to projectJson
+                    end if
+                end repeat
+
+                return "[" & my joinList(tasksByProject, ",") & "]"
+            end tell
+        end tell
+        '''
+
+        # Execute AppleScript
+        result = run_applescript(script, timeout=60)
+
+        # Parse JSON result
+        import json
+        projects_data = json.loads(result)
+
+        # Convert to dict[project_id -> list[task]]
+        tasks_by_project = {}
+        for project_data in projects_data:
+            project_id = project_data['projectId']
+            tasks_by_project[project_id] = project_data['tasks']
+
+        return tasks_by_project
+
     def _filter_projects_by_conditions(
         self,
         projects: list[dict[str, Any]],
@@ -221,13 +335,18 @@ class OmniFocusConnector:
 
         filtered = []
 
+        # OPTIMIZATION: Batch fetch all tasks for all projects in one AppleScript call
+        # This eliminates the N+1 query pattern (one get_tasks() call per project)
+        project_ids = [p.get('id') for p in projects if p.get('id')]
+        tasks_by_project = self._get_tasks_batch_for_filtering(project_ids)
+
         for project in projects:
             project_id = project.get('id')
             if not project_id:
                 continue
 
-            # Get tasks for this project (cached by get_tasks)
-            tasks = self.get_tasks(project_id=project_id, include_completed=False)
+            # Get tasks for this project from batch results
+            tasks = tasks_by_project.get(project_id, [])
 
             include = True
 
@@ -1516,6 +1635,18 @@ class OmniFocusConnector:
         if defer_relative not in valid_defer_relative:
             raise ValueError(f"Invalid defer_relative value: {defer_relative}. Must be one of: {valid_defer_relative[:-1]}")
 
+        # Detect if selective filters are active (Phase 2: Conditional filter-first optimization)
+        # Selective filters eliminate >80% of tasks and benefit from filter-first architecture
+        # Note: query is NOT included - Python-side filtering performs equivalently (see #172)
+        selective_filters_active = (
+            flagged_only or
+            overdue or
+            dropped_only or
+            blocked_only or
+            next_only or
+            due_relative in ['today', 'tomorrow', 'this_week', 'next_week', 'overdue']
+        )
+
         # Build task source (inbox, project, specific task, parent's subtasks, or all tasks)
         # NEW (Phase 3.1): task_id and parent_task_id parameters
         if task_id:
@@ -1765,7 +1896,10 @@ class OmniFocusConnector:
                         end if''')
             tag_check = "".join(tag_checks)
 
-        script = f'''
+        # Build AppleScript with conditional architecture (Phase 2 optimization)
+        if selective_filters_active:
+            # FILTER-FIRST: Apply filters BEFORE property extraction (selective filters benefit)
+            script = f'''
         use AppleScript version "2.4"
         use scripting additions
 
@@ -1779,15 +1913,7 @@ class OmniFocusConnector:
                 repeat with t in allTasks
                     set taskIndex to taskIndex + 1
                     try
-                        set taskId to id of t
-                        set taskName to name of t
-                        set taskNote to note of t
-                        set taskCompleted to completed of t
-                        set taskFlagged to flagged of t
-                        set taskDropped to dropped of t
-                        set taskBlocked to blocked of t
-                        set taskNext to next of t
-
+                        -- PHASE 1: Apply ALL filters using direct property access
                         {completion_check}
                         {flagged_check}
                         {dropped_check}
@@ -1799,6 +1925,57 @@ class OmniFocusConnector:
                         {defer_relative_check}
                         {estimate_check}
                         {tag_check}
+
+                        -- PHASE 2: Extract ALL properties (only for tasks that passed filters)
+                        set taskId to id of t
+                        set taskName to name of t
+                        set taskNote to note of t
+                        set taskCompleted to completed of t
+                        set taskFlagged to flagged of t
+                        set taskDropped to dropped of t
+                        set taskBlocked to blocked of t
+                        set taskNext to next of t'''
+        else:
+            # EXTRACT-THEN-FILTER: Current architecture (avoids empty filter overhead)
+            script = f'''
+        use AppleScript version "2.4"
+        use scripting additions
+
+        set output to ""
+        set taskIndex to 0
+
+        tell application "OmniFocus"
+            tell front document
+                set allTasks to {task_source}
+
+                repeat with t in allTasks
+                    set taskIndex to taskIndex + 1
+                    try
+                        -- PHASE 1: Extract basic properties
+                        set taskId to id of t
+                        set taskName to name of t
+                        set taskNote to note of t
+                        set taskCompleted to completed of t
+                        set taskFlagged to flagged of t
+                        set taskDropped to dropped of t
+                        set taskBlocked to blocked of t
+                        set taskNext to next of t
+
+                        -- PHASE 2: Apply filters
+                        {completion_check}
+                        {flagged_check}
+                        {dropped_check}
+                        {blocked_check}
+                        {next_check}
+                        {available_check}
+                        {overdue_check}
+                        {due_relative_check}
+                        {defer_relative_check}
+                        {estimate_check}
+                        {tag_check}'''
+
+        # Common section: Rest of property extraction (same for both modes)
+        script += f'''
 
                         -- Get project info
                         set projectId to ""
