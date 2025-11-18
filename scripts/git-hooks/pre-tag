@@ -416,10 +416,26 @@ if [ "$IS_RC" = false ]; then
 
     echo "✅ Found RC tag: $LATEST_RC"
     echo ""
+
+    # ============================================
+    # Check CHANGELOG.md date is set (not "TBD")
+    # ============================================
+    echo "Checking CHANGELOG.md date..."
+    CHANGELOG_CHECK_OUTPUT=$(./scripts/check_changelog_date.sh "$TAG_NAME" 2>&1)
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "$CHANGELOG_CHECK_OUTPUT"
+        echo ""
+        echo "Fix the CHANGELOG date before creating the final release tag."
+        exit 1
+    fi
+    echo "✅ CHANGELOG.md date is set"
+    echo ""
+
     echo "⚠️  Before creating final release, verify:"
     echo "   - RC tag CI passed on GitHub Actions"
     echo "   - All manual review items addressed"
-    echo "   - CHANGELOG.md updated"
+    echo "   - CHANGELOG.md date updated from 'TBD'"
     echo "   - No critical issues discovered during RC testing"
     echo ""
     echo "Proceed with final release tag? (y/n)"

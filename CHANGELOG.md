@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - E2E tests: 20 tests now pass in 32.94 seconds
   - Integration tests: 108 tests now pass in 232.60 seconds
 
+### Known Issues
+
+- **CHANGELOG date in v0.7.1 tag** (#166)
+  - The `v0.7.1` git tag contains CHANGELOG with "TBD" instead of "2025-11-14"
+  - This was caused by updating CHANGELOG date AFTER tag creation
+  - Main branch has correct date (2025-11-14)
+  - **Resolution:** Workflow fixed in v0.7.2 to update date BEFORE final tag creation
+  - Users checking out v0.7.1 tag will see incomplete CHANGELOG (main branch is correct)
+
 ## [0.7.0] - 2025-11-11
 
 ### Added
