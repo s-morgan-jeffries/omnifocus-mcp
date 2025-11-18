@@ -51,9 +51,26 @@ for FILE in "${DOC_FILES[@]}"; do
         continue
     fi
 
-    # Extract test count from file (look for patterns like "333 tests" or "333 passing tests")
-    # Use head -1 to get the first occurrence which should be the main count
-    DOCUMENTED_COUNT=$(grep -oE "[0-9]+ (passing )?tests?" "$FILE" | grep -oE "[0-9]+" | head -1)
+    # Extract test count from file using priority patterns
+    # Try specific patterns first (markdown bold, labeled counts), then fall back to generic pattern
+
+    # Priority 1: Markdown bold "**XXX tests**"
+    DOCUMENTED_COUNT=$(grep -oE "\*\*[0-9]+ (tests|passing tests)\*\*" "$FILE" | grep -oE "[0-9]+" | head -1)
+
+    # Priority 2: Labeled counts like "Test count: XXX" or "Total Test Coverage: XXX"
+    if [ -z "$DOCUMENTED_COUNT" ]; then
+        DOCUMENTED_COUNT=$(grep -E "([Tt]est [Cc]ount|[Tt]otal [Tt]est [Cc]overage):" "$FILE" | grep -oE "[0-9]+" | head -1)
+    fi
+
+    # Priority 3: Line starting with "- ✅ Unit tests" (from CLAUDE.md)
+    if [ -z "$DOCUMENTED_COUNT" ]; then
+        DOCUMENTED_COUNT=$(grep "Unit tests.*[0-9]\+ tests" "$FILE" | grep -oE "[0-9]+" | tail -1)
+    fi
+
+    # Fallback: Any "XXX tests" pattern (but skip "test files")
+    if [ -z "$DOCUMENTED_COUNT" ]; then
+        DOCUMENTED_COUNT=$(grep -oE "[0-9]+ (passing )?tests" "$FILE" | grep -v "test files" | grep -oE "[0-9]+" | head -1)
+    fi
 
     if [ -z "$DOCUMENTED_COUNT" ]; then
         echo "⚠️  No test count found in $FILE"
