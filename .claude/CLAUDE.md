@@ -43,7 +43,7 @@ This project follows Test-Driven Development (TDD).
 
 **Quick commands:**
 ```bash
-make test                  # All unit tests (fast, ~2min, 333 tests)
+make test                  # All unit tests (fast, ~2min, 544 tests)
 make test-integration      # Real OmniFocus tests (~10-30s, requires setup)
 make test-e2e              # End-to-end MCP tool tests (requires setup)
 ```

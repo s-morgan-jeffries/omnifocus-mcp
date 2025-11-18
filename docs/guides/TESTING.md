@@ -18,10 +18,10 @@ The project has two types of tests:
 1. **Unit Tests** - Test individual components with mocked dependencies
 2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 513 tests (v0.7.1)
-- Unit tests (omnifocus_connector.py core) ✅ All passing
-- Unit tests (FastMCP server) ✅ All passing
-- Integration tests (real OmniFocus) ⏭️ 123 skipped by default
+**Total Test Coverage**: 544 tests (v0.7.2)
+- Unit tests (omnifocus_connector.py core) ✅ 406 passing
+- Unit tests (FastMCP server) ✅ Included above
+- Integration tests (real OmniFocus) ⏭️ 138 skipped by default
 
 **Test Execution**: ~0.53 seconds for all mocked tests
 **Code Coverage**: 89% overall
@@ -377,8 +377,8 @@ After running tests, verify in OmniFocus:
 
 **Note:** All 16 core v0.6.0 MCP tools have comprehensive unit and integration test coverage. The table below represents test counts from the v0.5.0 era with 25+ functions. For detailed current test coverage, see test files in `tests/` directory.
 
-**Current Test Summary (v0.6.0):**
-- **333 passing tests** across all 16 MCP tools
+**Current Test Summary (v0.7.2):**
+- **544 tests** (406 passing, 138 skipped) across all 16 MCP tools
 - Unit tests: Mock-based testing of all client functions
 - Integration tests: Real OmniFocus database testing
 - FastMCP tests: Server-level MCP tool testing

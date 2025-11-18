@@ -65,7 +65,7 @@
 
 ### Test Coverage
 
-**333 passing tests** with 89% overall code coverage. See [../guides/TESTING.md](../guides/TESTING.md) for detailed breakdown.
+**544 tests** (406 passing, 138 skipped) with 89% overall code coverage. See [../guides/TESTING.md](../guides/TESTING.md) for detailed breakdown.
 
 ### Database Safety
 
@@ -311,7 +311,7 @@ Major consolidation to optimize for MCP tool calling efficiency.
 - ✅ Batch operations for efficiency
 - ✅ Type-safe enums and structured returns
 - ✅ Removed 26 deprecated functions
-- ✅ 333 passing tests (89% coverage)
+- ✅ 544 tests (406 passing, 138 skipped, 89% coverage)
 
 ---
 

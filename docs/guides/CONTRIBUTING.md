@@ -468,7 +468,7 @@ Before running tests, you'll need to understand the three test types and their s
 1. **Unit Tests** (`make test`) - Fast, always run
    - Mock AppleScript execution
    - No OmniFocus required
-   - ~333 tests, ~2 minutes
+   - 544 tests (406 passing, 138 skipped), ~2 minutes
    - **Skips integration and E2E tests by default** (this is expected behavior)
 
 2. **Integration Tests** (`make test-integration`) - Real OmniFocus required
@@ -541,7 +541,7 @@ This project follows Test-Driven Development (TDD). **This is non-negotiable.**
 
 This project requires three types of tests for comprehensive validation:
 
-1. **Unit Tests** - Mock AppleScript, fast, run always (~333 tests, ~2 minutes)
+1. **Unit Tests** - Mock AppleScript, fast, run always (544 tests, ~2 minutes)
 2. **Integration Tests** - Real OmniFocus via client, catches AppleScript bugs (~92 tests, ~10-15 minutes)
 3. **E2E Tests** - Full MCP tool → client → OmniFocus stack, catches parameter conversion bugs
 
@@ -882,7 +882,7 @@ gh run view <run-id> --log
 ### CI Checks
 
 GitHub Actions runs on every push and PR:
-- Unit tests (~2 min, ~333 tests)
+- Unit tests (~2 min, 544 tests)
 - Integration tests (~10-15 min, ~92 tests)
 - E2E tests (MCP stack)
 - Code quality checks
