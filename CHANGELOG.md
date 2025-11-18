@@ -5,6 +5,40 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2025-11-18
+
+### Added
+
+- **CHANGELOG date validation** (#166)
+  - New `check_changelog_date.sh` script verifies CHANGELOG date is not "TBD" before final release tags
+  - Integrated as Check #10 in pre-tag hook (runs only for final release tags, not RC tags)
+  - Updated release workflow documentation to clarify when CHANGELOG date should be updated
+
+- **TaskPaper import for test fixtures** (#161)
+  - Integration tests now use TaskPaper import for faster, version-controlled test data creation
+  - Reduced test setup complexity and improved reproducibility
+  - All test data now tracked in version control
+
+### Changed
+
+- **Performance optimization for get_tasks() and get_projects()** (#170)
+  - Profiled query performance and identified bottlenecks in selective filters
+  - Optimized query construction to reduce overhead
+  - ~15-20% performance improvement for filtered queries
+
+- **Test fixture refactoring complete** (#168)
+  - All 108 integration tests now use fixtures or try/finally cleanup patterns
+  - Zero test database pollution (except unavoidable OmniFocus folder limitation)
+  - 100% test isolation achieved
+
+### Fixed
+
+- **Test count synchronization** (#169)
+  - Fixed test count mismatch between README.md (333) and TESTING.md (513)
+  - Created `check_test_count_sync.sh` script to prevent future mismatches
+  - Integrated into pre-commit warning and pre-tag blocking checks
+  - TESTING.md is now single source of truth for test counts
+
 ## [0.7.1] - 2025-11-14
 
 ### Added

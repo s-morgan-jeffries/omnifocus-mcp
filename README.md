@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **17 comprehensive tools** for managing OmniFocus (v0.7.1 API):
+This server provides **17 comprehensive tools** for managing OmniFocus (v0.7.2 API):
 
 ### Project Management (5 tools)
 - **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
@@ -35,7 +35,8 @@ This server provides **17 comprehensive tools** for managing OmniFocus (v0.7.1 A
 ### UI Navigation (1 tool)
 - **set_focus** - Focus on specific projects, folders, or tags in the OmniFocus UI
 
-**Key Changes in v0.7.1:**
+**Key Changes in v0.7.2:**
+- v0.7.2: CHANGELOG date validation, TaskPaper import for fixtures, performance optimization for get_tasks/get_projects, test fixture refactoring complete, test count synchronization
 - v0.7.1: Test fixtures infrastructure with automatic cleanup, E2E test refactoring, ~7.8× performance improvement
 - v0.7.0: Added set_focus() UI navigation tool, fixed AppleScript focus/tab management bugs
 - v0.6.7: Fixed unit test timeout issue, fixed test coverage check script
@@ -64,7 +65,7 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 
 # Checkout latest stable release
-git checkout v0.7.1  # Or latest version from releases
+git checkout v0.7.2  # Or latest version from releases
 
 # Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
