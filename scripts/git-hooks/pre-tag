@@ -263,6 +263,18 @@ if [ "$IS_RC" = true ]; then
     fi
     echo "" >> "$RESULTS_FILE"
 
+    # Check 9: Test count synchronization (~1s)
+    echo "9. Checking test count synchronization..." | tee -a "$RESULTS_FILE"
+    TEST_COUNT_OUTPUT=$(./scripts/check_test_count_sync.sh 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Test count sync failed" | tee -a "$RESULTS_FILE"
+        echo "$TEST_COUNT_OUTPUT" >> "$RESULTS_FILE"
+        ((FAILED_CHECKS++))
+    else
+        echo "   ✅ Test count sync passed" | tee -a "$RESULTS_FILE"
+    fi
+    echo "" >> "$RESULTS_FILE"
+
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 

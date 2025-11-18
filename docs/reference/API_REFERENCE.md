@@ -1161,7 +1161,7 @@ Following MCP best practices while minimizing overhead, the API follows a simple
 
 **Implementation Details:**
 - **Code reduction:** 2,681 lines of deprecated code removed
-- **Test coverage:** 333 tests passing (100% pass rate)
+- **Test coverage:** 544 tests (406 passing, 138 skipped)
 - **Safety guards:** All write operations verify database in test mode
 - **Backward compatibility:** Server layer handles legacy parameter names where needed
 - **Error handling:** Parameter validation (ValueError) vs runtime errors (dict with error field)

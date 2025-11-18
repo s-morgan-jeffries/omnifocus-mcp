@@ -254,7 +254,7 @@ Then perform deeper analysis on:
 ## Testing Types Assessment
 
 **Current Testing Types:**
-- ✅ Unit tests (mocked, fast, 333 tests)
+- ✅ Unit tests (mocked, fast, 544 tests)
 - ✅ Integration tests (real OmniFocus, ~10-30s)
 - ✅ E2E tests (full MCP stack)
 

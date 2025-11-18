@@ -1,69 +1,127 @@
 #!/bin/bash
-# Check if TESTING.md test count matches actual pytest output
-# Addresses MISTAKE-002 root cause
+# Check if all documentation files have synchronized test counts
+# Addresses MISTAKE-002 root cause and issue #169
 
 echo "🧪 Checking test count synchronization..."
 
+# Determine pytest command (venv or system)
+if [ -f "./venv/bin/pytest" ]; then
+    PYTEST_CMD="./venv/bin/pytest"
+elif command -v pytest &> /dev/null; then
+    PYTEST_CMD="pytest"
+else
+    echo "❌ pytest not found (checked ./venv/bin/pytest and system PATH)"
+    echo "   Run: python3 -m venv venv && ./venv/bin/pip install -e ."
+    exit 1
+fi
+
 # Get actual test count from pytest
 # Exclude integration tests since those require OmniFocus setup
-ACTUAL_COUNT=$(pytest tests/ -m "not integration" --collect-only -q 2>&1 | tail -1 | grep -o "[0-9]\+ test" | grep -o "[0-9]\+")
+ACTUAL_COUNT=$($PYTEST_CMD tests/ -m "not integration" --collect-only -q 2>&1 | tail -1 | grep -o "[0-9]\+ test" | grep -o "[0-9]\+")
 
 if [ -z "$ACTUAL_COUNT" ]; then
     echo "❌ Could not determine actual test count"
-    echo "   Run: pytest tests/ -m 'not integration' --collect-only -q"
+    echo "   Run: $PYTEST_CMD tests/ -m 'not integration' --collect-only -q"
     exit 1
 fi
 
 echo "   Actual test count (pytest): $ACTUAL_COUNT"
+echo ""
 
-# Get documented count from TESTING.md
-TESTING_FILE="docs/guides/TESTING.md"
-if [ ! -f "$TESTING_FILE" ]; then
-    echo "❌ $TESTING_FILE not found"
-    exit 1
-fi
+# Files to check (TESTING.md is canonical source)
+# Format: "file_path"
+DOC_FILES=(
+    "docs/guides/TESTING.md"
+    "README.md"
+    ".claude/CLAUDE.md"
+    "docs/reference/API_REFERENCE.md"
+    "docs/project/ROADMAP.md"
+    "docs/guides/CONTRIBUTING.md"
+    "docs/guides/README.md"
+    ".claude/commands/test-coverage.md"
+)
 
-# Look for test count patterns in TESTING.md
-DOCUMENTED_COUNT=$(grep -oE "[0-9]+ (passing )?tests?" "$TESTING_FILE" | grep -oE "[0-9]+" | head -1)
+MISMATCH_COUNT=0
+MISMATCHED_FILES=()
 
-if [ -z "$DOCUMENTED_COUNT" ]; then
-    echo "⚠️  Could not find test count in $TESTING_FILE"
-    echo "   Search pattern: 'XXX tests' or 'XXX passing tests'"
-    exit 0
-fi
-
-echo "   Documented count (TESTING.md): $DOCUMENTED_COUNT"
-
-# Compare
-if [ "$ACTUAL_COUNT" -eq "$DOCUMENTED_COUNT" ]; then
-    echo "✅ Test counts match!"
-    exit 0
-else
-    DIFF=$((ACTUAL_COUNT - DOCUMENTED_COUNT))
-    if [ $DIFF -gt 0 ]; then
-        DIRECTION="increased"
-    else
-        DIRECTION="decreased"
-        DIFF=$((-DIFF))
+# Check each file
+for FILE in "${DOC_FILES[@]}"; do
+    if [ ! -f "$FILE" ]; then
+        echo "⚠️  $FILE not found (skipping)"
+        continue
     fi
 
-    echo ""
+    # Extract test count from file using priority patterns
+    # Try specific patterns first (markdown bold, labeled counts), then fall back to generic pattern
+
+    # Priority 1: Markdown bold "**XXX tests**"
+    DOCUMENTED_COUNT=$(grep -oE "\*\*[0-9]+ (tests|passing tests)\*\*" "$FILE" | grep -oE "[0-9]+" | head -1)
+
+    # Priority 2: Labeled counts like "Test count: XXX" or "Total Test Coverage: XXX"
+    if [ -z "$DOCUMENTED_COUNT" ]; then
+        DOCUMENTED_COUNT=$(grep -E "([Tt]est [Cc]ount|[Tt]otal [Tt]est [Cc]overage):" "$FILE" | grep -oE "[0-9]+" | head -1)
+    fi
+
+    # Priority 3: Line starting with "- ✅ Unit tests" (from CLAUDE.md)
+    if [ -z "$DOCUMENTED_COUNT" ]; then
+        DOCUMENTED_COUNT=$(grep "Unit tests.*[0-9]\+ tests" "$FILE" | grep -oE "[0-9]+" | tail -1)
+    fi
+
+    # Fallback: Any "XXX tests" pattern (but skip "test files")
+    if [ -z "$DOCUMENTED_COUNT" ]; then
+        DOCUMENTED_COUNT=$(grep -oE "[0-9]+ (passing )?tests" "$FILE" | grep -v "test files" | grep -oE "[0-9]+" | head -1)
+    fi
+
+    if [ -z "$DOCUMENTED_COUNT" ]; then
+        echo "⚠️  No test count found in $FILE"
+        continue
+    fi
+
+    # Compare with actual count
+    if [ "$DOCUMENTED_COUNT" -eq "$ACTUAL_COUNT" ]; then
+        echo "✅ $FILE: $DOCUMENTED_COUNT tests (match)"
+    else
+        DIFF=$((ACTUAL_COUNT - DOCUMENTED_COUNT))
+        if [ $DIFF -gt 0 ]; then
+            DIRECTION="↑"
+        else
+            DIRECTION="↓"
+            DIFF=$((-DIFF))
+        fi
+        echo "❌ $FILE: $DOCUMENTED_COUNT tests (should be $ACTUAL_COUNT, $DIRECTION$DIFF)"
+        MISMATCH_COUNT=$((MISMATCH_COUNT + 1))
+        MISMATCHED_FILES+=("$FILE")
+    fi
+done
+
+echo ""
+
+# Summary
+if [ $MISMATCH_COUNT -eq 0 ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "❌ Test count mismatch!"
+    echo "✅ All documentation files have synchronized test counts!"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "   Actual: $ACTUAL_COUNT tests"
-    echo "   Documented: $DOCUMENTED_COUNT tests"
-    echo "   Difference: $DIFF tests ($DIRECTION)"
+    exit 0
+else
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ Test count mismatch in $MISMATCH_COUNT file(s)!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "   Actual test count: $ACTUAL_COUNT"
     echo ""
-    echo "📝 Action required:"
-    echo "   1. Update $TESTING_FILE with correct count: $ACTUAL_COUNT"
-    echo "   2. Search and replace: s/$DOCUMENTED_COUNT tests/$ACTUAL_COUNT tests/"
-    echo "   3. Verify no other docs reference the old count"
+    echo "📝 Files needing updates:"
+    for FILE in "${MISMATCHED_FILES[@]}"; do
+        echo "   - $FILE"
+    done
     echo ""
-    echo "💡 Prevention (MISTAKE-002):"
+    echo "💡 Action required:"
+    echo "   1. Update each file above with correct count: $ACTUAL_COUNT"
+    echo "   2. Ensure docs/guides/TESTING.md is the canonical source"
+    echo "   3. Run this script again to verify: ./scripts/check_test_count_sync.sh"
+    echo ""
+    echo "💡 Prevention (issue #169):"
+    echo "   - This check runs in pre-tag hook (blocks RC creation)"
+    echo "   - Warning in pre-commit hook (alerts early)"
     echo "   - TESTING.md is single source of truth"
-    echo "   - All other docs should reference it"
-    echo "   - Run this script before committing test changes"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     exit 1

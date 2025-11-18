@@ -65,7 +65,7 @@ Essential guides for daily development work on the OmniFocus MCP Server.
 - **Test Organization** - What each test file covers (33 test files total)
 - **Writing Tests** - Patterns, fixtures, best practices
 
-**Test count:** 333 passing tests
+**Test count:** 544 tests (406 passing, 138 skipped)
 
 **Coverage breakdown:**
 - omnifocus_connector.py: 94% (core implementation)

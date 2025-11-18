@@ -107,17 +107,17 @@ if echo "$STAGED_FILES" | grep -q "pyproject.toml"; then
     fi
 fi
 
-# Check 5: Test Count Sync (missing-docs)
-# If test files changed significantly, remind to update TESTING.md
+# Check 5: Test Count Sync (missing-docs, issue #169)
+# If test files changed or docs changed, verify test counts are synchronized
 TEST_FILES_CHANGED=$(echo "$STAGED_FILES" | grep "test_.*\.py" | wc -l | tr -d ' ')
-if [ "$TEST_FILES_CHANGED" -gt 0 ]; then
-    # Check if many test changes (crude heuristic: >50 lines changed in tests)
-    LINES_CHANGED=$(git diff --cached --stat | grep "test_.*\.py" | awk '{sum += $4} END {print sum}')
-    if [ -n "$LINES_CHANGED" ] && [ "$LINES_CHANGED" -gt 50 ]; then
-        if ! echo "$STAGED_FILES" | grep -q "TESTING.md"; then
-            WARNINGS+=("ℹ️  INFO: Significant test changes ($LINES_CHANGED+ lines)")
-            WARNINGS+=("   Consider: Does TESTING.md test count need updating?")
-        fi
+DOC_FILES_CHANGED=$(echo "$STAGED_FILES" | grep -E "(TESTING|README|CLAUDE|CONTRIBUTING|ROADMAP|API_REFERENCE)" | wc -l | tr -d ' ')
+
+if [ "$TEST_FILES_CHANGED" -gt 0 ] || [ "$DOC_FILES_CHANGED" -gt 0 ]; then
+    # Run the actual test count sync check
+    if ! ./scripts/check_test_count_sync.sh > /dev/null 2>&1; then
+        WARNINGS+=("⚠️  TEST-COUNT-MISMATCH: Test counts out of sync in documentation")
+        WARNINGS+=("   Run: ./scripts/check_test_count_sync.sh")
+        WARNINGS+=("   Update all 8 documentation files to match actual test count")
     fi
 fi
 
