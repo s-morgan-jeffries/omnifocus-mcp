@@ -322,10 +322,12 @@ class TestRealOmniFocusSafetyVerification:
             note="If this task was created, safety guards are working!"
         )
 
-        assert task_id is not None
-        # Clean up
-        client.delete_tasks(task_id)
-        print("\n✓ Destructive operation verified database name before proceeding")
+        try:
+            assert task_id is not None
+            print("\n✓ Destructive operation verified database name before proceeding")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks(task_id)
 
 
 class TestProjectCRUD:
@@ -727,26 +729,27 @@ class TestTaskCRUD:
         # Create a task with tags using fixture project
         task_id = client.create_task("Task with Tags for Testing", project_id=test_project, tags=["test-work", "test-urgent"])
 
-        # Get full task details
-        results = client.get_tasks(task_id=task_id)
-        assert len(results) == 1
-        full_task = results[0]
+        try:
+            # Get full task details
+            results = client.get_tasks(task_id=task_id)
+            assert len(results) == 1
+            full_task = results[0]
 
-        # Verify tags field is present
-        assert 'tags' in full_task
-        assert isinstance(full_task['tags'], list)
+            # Verify tags field is present
+            assert 'tags' in full_task
+            assert isinstance(full_task['tags'], list)
 
-        # Should have the tags we added
-        assert len(full_task['tags']) >= 2
-        tag_names = [t if isinstance(t, str) else t.get('name') for t in full_task['tags']]
-        assert "test-work" in tag_names
-        assert "test-urgent" in tag_names
+            # Should have the tags we added
+            assert len(full_task['tags']) >= 2
+            tag_names = [t if isinstance(t, str) else t.get('name') for t in full_task['tags']]
+            assert "test-work" in tag_names
+            assert "test-urgent" in tag_names
 
-        print("\n✓ Task includes tags array")
-        print(f"  Tags: {tag_names}")
-
-        # Cleanup
-        client.delete_tasks(task_id)
+            print("\n✓ Task includes tags array")
+            print(f"  Tags: {tag_names}")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks(task_id)
 
     def test_get_tasks_includes_timestamp_fields(self, client, test_task):
         """Test that get_tasks includes timestamp fields in list results."""
@@ -777,24 +780,25 @@ class TestTaskCRUD:
         # Create a task with tags
         task_id = client.create_task("Task for get_tasks Tags Test", project_id=test_project, tags=["test-work"])
 
-        # Get tasks
-        tasks = client.get_tasks(project_id=test_project)
-        task = next((t for t in tasks if t['name'] == "Task for get_tasks Tags Test"), None)
-        assert task is not None
+        try:
+            # Get tasks
+            tasks = client.get_tasks(project_id=test_project)
+            task = next((t for t in tasks if t['name'] == "Task for get_tasks Tags Test"), None)
+            assert task is not None
 
-        # Verify tags field is present and is an array
-        assert 'tags' in task
-        assert isinstance(task['tags'], list)
+            # Verify tags field is present and is an array
+            assert 'tags' in task
+            assert isinstance(task['tags'], list)
 
-        # Should have the tag we added
-        tag_names = [t if isinstance(t, str) else t.get('name') for t in task['tags']]
-        assert "test-work" in tag_names
+            # Should have the tag we added
+            tag_names = [t if isinstance(t, str) else t.get('name') for t in task['tags']]
+            assert "test-work" in tag_names
 
-        print("\n✓ get_tasks includes tags array")
-        print(f"  Tags: {tag_names}")
-
-        # Cleanup
-        client.delete_tasks(task_id)
+            print("\n✓ get_tasks includes tags array")
+            print(f"  Tags: {tag_names}")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks(task_id)
 
     def test_get_subtasks(self, client, test_parent_task_with_subtasks):
         """Test getting subtasks of a parent task."""
@@ -871,13 +875,14 @@ class TestTaskCRUD:
         parent_id = client.create_task("New Parent Task", project_id=test_project)
         child_id = client.create_task("New Child Task", project_id=test_project)
 
-        # Set parent
-        result = client.update_task(child_id, parent_task_id=parent_id)
-        assert result["success"] is True
-        print("\n✓ Set task parent relationship")
-
-        # Cleanup
-        client.delete_tasks([parent_id, child_id])
+        try:
+            # Set parent
+            result = client.update_task(child_id, parent_task_id=parent_id)
+            assert result["success"] is True
+            print("\n✓ Set task parent relationship")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks([parent_id, child_id])
 
     def test_complete_tasks_batch(self, client, test_tasks):
         """Test batch completing multiple tasks."""
@@ -930,7 +935,10 @@ class TestFolderOperations:
         sub_folder = next((f for f in folders if f['id'] == sub_folder_id), None)
         assert sub_folder is not None
         print("\n✓ Created folders with hierarchy")
-        # NOTE: Folders cannot be deleted, will remain in database
+
+        # NOTE: OmniFocus API limitation - folders cannot be deleted via AppleScript
+        # This test creates folders that will remain in the test database
+        # The unique naming strategy (timestamp-based) prevents test pollution
 
 
 class TestNoteOperations:
@@ -1374,16 +1382,19 @@ class TestAddTaskParameterVariations:
             project_id=test_project,
             defer_date=defer_date
         )
-        assert task_id is not None
 
-        # Verify task was created with defer date
-        tasks = client.get_tasks(project_id=test_project, query="Task with Defer Date")
-        assert len(tasks) > 0
-        assert tasks[0].get('deferDate') is not None
+        try:
+            assert task_id is not None
 
-        # Cleanup
-        client.delete_tasks(task_id)
-        print("\n✓ Created task with defer date")
+            # Verify task was created with defer date
+            tasks = client.get_tasks(project_id=test_project, query="Task with Defer Date")
+            assert len(tasks) > 0
+            assert tasks[0].get('deferDate') is not None
+
+            print("\n✓ Created task with defer date")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks(task_id)
 
     def test_add_task_with_estimated_minutes(self, client, test_project):
         """Test create_task with estimated time."""
@@ -1392,17 +1403,20 @@ class TestAddTaskParameterVariations:
             project_id=test_project,
             estimated_minutes=45
         )
-        assert task_id is not None
 
-        # Verify estimate was set
-        results = client.get_tasks(task_id=task_id)
-        assert len(results) == 1
-        task = results[0]
-        assert task.get('estimatedMinutes') == 45
+        try:
+            assert task_id is not None
 
-        # Cleanup
-        client.delete_tasks(task_id)
-        print("\n✓ Created task with time estimate")
+            # Verify estimate was set
+            results = client.get_tasks(task_id=task_id)
+            assert len(results) == 1
+            task = results[0]
+            assert task.get('estimatedMinutes') == 45
+
+            print("\n✓ Created task with time estimate")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks(task_id)
 
     def test_add_task_with_recurrence(self, client, test_project):
         """Test create_task with recurrence pattern."""
@@ -1412,15 +1426,18 @@ class TestAddTaskParameterVariations:
             "Recurring Task Test",
             project_id=test_project
         )
-        assert task_id is not None
 
-        # Verify task was created
-        tasks = client.get_tasks(project_id=test_project, query="Recurring Task Test")
-        assert len(tasks) > 0
+        try:
+            assert task_id is not None
 
-        # Cleanup
-        client.delete_tasks(task_id)
-        print("\n✓ Created task (recurrence parameters removed in v0.6.0)")
+            # Verify task was created
+            tasks = client.get_tasks(project_id=test_project, query="Recurring Task Test")
+            assert len(tasks) > 0
+
+            print("\n✓ Created task (recurrence parameters removed in v0.6.0)")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks(task_id)
 
 
 class TestUpdateTaskParameterVariations:
@@ -1691,25 +1708,27 @@ class TestTaskReordering:
     def test_reorder_task_requires_one_parameter(self, client):
         """Test that reorder_task requires either before_task_id or after_task_id."""
         project_id = client.create_project("Reorder Test Project 3")
-        client.create_task("Task 1", project_id=project_id)
-        client.create_task("Task 2", project_id=project_id)
 
-        tasks = client.get_tasks(project_id=project_id)
-        task1_id = tasks[0]['id']
-        task2_id = tasks[1]['id']
+        try:
+            client.create_task("Task 1", project_id=project_id)
+            client.create_task("Task 2", project_id=project_id)
 
-        # Should raise ValueError if neither parameter provided
-        with pytest.raises(ValueError, match="Must provide either before_task_id or after_task_id"):
-            client.reorder_task(task1_id)
+            tasks = client.get_tasks(project_id=project_id)
+            task1_id = tasks[0]['id']
+            task2_id = tasks[1]['id']
 
-        # Should raise ValueError if both parameters provided
-        with pytest.raises(ValueError, match="Cannot provide both"):
-            client.reorder_task(task1_id, before_task_id=task2_id, after_task_id=task2_id)
+            # Should raise ValueError if neither parameter provided
+            with pytest.raises(ValueError, match="Must provide either before_task_id or after_task_id"):
+                client.reorder_task(task1_id)
 
-        print("\n✓ Parameter validation works correctly")
+            # Should raise ValueError if both parameters provided
+            with pytest.raises(ValueError, match="Cannot provide both"):
+                client.reorder_task(task1_id, before_task_id=task2_id, after_task_id=task2_id)
 
-        # Cleanup
-        client.delete_projects(project_id)
+            print("\n✓ Parameter validation works correctly")
+        finally:
+            # Guaranteed cleanup
+            client.delete_projects(project_id)
 
 
 class TestAvailabilityFields:
@@ -1723,112 +1742,116 @@ class TestAvailabilityFields:
         # Create a sequential project with parent task and subtask
         project_id = client.create_project("Availability Test Project", sequential=True)
 
-        # Add parent task and subtask
-        client.create_task("Parent Task", project_id=project_id)
-        tasks = client.get_tasks(project_id=project_id)
-        parent_id = tasks[0]['id']
+        try:
+            # Add parent task and subtask
+            client.create_task("Parent Task", project_id=project_id)
+            tasks = client.get_tasks(project_id=project_id)
+            parent_id = tasks[0]['id']
 
-        # Make it have a subtask
-        client.create_task("Subtask", project_id=project_id)
-        all_tasks = client.get_tasks(project_id=project_id)
-        subtask = next(t for t in all_tasks if t['name'] == 'Subtask')
-        client.update_task(subtask['id'], parent_task_id=parent_id)
+            # Make it have a subtask
+            client.create_task("Subtask", project_id=project_id)
+            all_tasks = client.get_tasks(project_id=project_id)
+            subtask = next(t for t in all_tasks if t['name'] == 'Subtask')
+            client.update_task(subtask['id'], parent_task_id=parent_id)
 
-        # Get updated parent
-        results = client.get_tasks(task_id=parent_id)
-        assert len(results) == 1
-        parent = results[0]
+            # Get updated parent
+            results = client.get_tasks(task_id=parent_id)
+            assert len(results) == 1
+            parent = results[0]
 
-        # Check fields exist
-        assert 'available' in parent, "Should have available field"
-        assert 'numberOfAvailableTasks' in parent, "Should have numberOfAvailableTasks field"
+            # Check fields exist
+            assert 'available' in parent, "Should have available field"
+            assert 'numberOfAvailableTasks' in parent, "Should have numberOfAvailableTasks field"
 
-        # Check types
-        assert isinstance(parent['available'], bool), "available should be boolean"
-        assert isinstance(parent['numberOfAvailableTasks'], int), "numberOfAvailableTasks should be int"
+            # Check types
+            assert isinstance(parent['available'], bool), "available should be boolean"
+            assert isinstance(parent['numberOfAvailableTasks'], int), "numberOfAvailableTasks should be int"
 
-        # For a sequential project, first task is available, parent should have available subtasks
-        assert parent['numberOfAvailableTasks'] >= 0, "Should have count of available subtasks"
+            # For a sequential project, first task is available, parent should have available subtasks
+            assert parent['numberOfAvailableTasks'] >= 0, "Should have count of available subtasks"
 
-        print(f"\n✓ Task has availability fields:")
-        print(f"  available: {parent['available']}")
-        print(f"  numberOfAvailableTasks: {parent['numberOfAvailableTasks']}")
-        print(f"  blocked: {parent['blocked']}")
-
-        # Cleanup
-        client.delete_projects(project_id)
+            print(f"\n✓ Task has availability fields:")
+            print(f"  available: {parent['available']}")
+            print(f"  numberOfAvailableTasks: {parent['numberOfAvailableTasks']}")
+            print(f"  blocked: {parent['blocked']}")
+        finally:
+            # Guaranteed cleanup
+            client.delete_projects(project_id)
 
     def test_available_true_when_task_actionable(self, client):
         """Test that available is true for directly actionable tasks."""
         project_id = client.create_project("Available Task Test")
-        client.create_task("Available Task", project_id=project_id)
 
-        tasks = client.get_tasks(project_id=project_id)
-        task = tasks[0]
+        try:
+            client.create_task("Available Task", project_id=project_id)
 
-        # Task should be available (not blocked, not completed, not dropped, not deferred)
-        assert task['completed'] == False
-        assert task['dropped'] == False
-        assert task['blocked'] == False
-        assert task['deferDate'] == ""
-        assert task['available'] == True, "Actionable task should be available"
+            tasks = client.get_tasks(project_id=project_id)
+            task = tasks[0]
 
-        print(f"\n✓ Directly actionable task shows available: true")
+            # Task should be available (not blocked, not completed, not dropped, not deferred)
+            assert task['completed'] == False
+            assert task['dropped'] == False
+            assert task['blocked'] == False
+            assert task['deferDate'] == ""
+            assert task['available'] == True, "Actionable task should be available"
 
-        # Cleanup
-        client.delete_projects(project_id)
+            print(f"\n✓ Directly actionable task shows available: true")
+        finally:
+            # Guaranteed cleanup
+            client.delete_projects(project_id)
 
     def test_available_true_when_blocked_with_available_children(self, client):
         """Test that available is true for blocked tasks with available subtasks."""
         # Create sequential project - parent task will be sequential action group
         project_id = client.create_project("Blocked Parent Test", sequential=True)
 
-        # Add first task and a parent task (which will be blocked)
-        client.create_task("First Task", project_id=project_id)
-        client.create_task("Blocked Parent", project_id=project_id)
+        try:
+            # Add first task and a parent task (which will be blocked)
+            client.create_task("First Task", project_id=project_id)
+            client.create_task("Blocked Parent", project_id=project_id)
 
-        tasks = client.get_tasks(project_id=project_id)
-        first_task = tasks[0]
-        blocked_parent_task = tasks[1]
+            tasks = client.get_tasks(project_id=project_id)
+            first_task = tasks[0]
+            blocked_parent_task = tasks[1]
 
-        # Add two children to the blocked parent, making it an action group
-        # Make the parent itself parallel so children are available
-        client.create_task("Child 1", project_id=project_id)
-        client.create_task("Child 2", project_id=project_id)
-        all_tasks = client.get_tasks(project_id=project_id)
-        child1 = next(t for t in all_tasks if t['name'] == 'Child 1')
-        child2 = next(t for t in all_tasks if t['name'] == 'Child 2')
+            # Add two children to the blocked parent, making it an action group
+            # Make the parent itself parallel so children are available
+            client.create_task("Child 1", project_id=project_id)
+            client.create_task("Child 2", project_id=project_id)
+            all_tasks = client.get_tasks(project_id=project_id)
+            child1 = next(t for t in all_tasks if t['name'] == 'Child 1')
+            child2 = next(t for t in all_tasks if t['name'] == 'Child 2')
 
-        # Move children under blocked parent
-        client.update_task(child1['id'], parent_task_id=blocked_parent_task['id'])
-        client.update_task(child2['id'], parent_task_id=blocked_parent_task['id'])
+            # Move children under blocked parent
+            client.update_task(child1['id'], parent_task_id=blocked_parent_task['id'])
+            client.update_task(child2['id'], parent_task_id=blocked_parent_task['id'])
 
-        # Get updated parent
-        results = client.get_tasks(task_id=blocked_parent_task['id'])
-        assert len(results) == 1
-        blocked_parent = results[0]
+            # Get updated parent
+            results = client.get_tasks(task_id=blocked_parent_task['id'])
+            assert len(results) == 1
+            blocked_parent = results[0]
 
-        # Parent should be blocked (second in sequential project)
-        # The parent action group itself is parallel (default), so children are available
-        # Parent should be available (has available children)
-        assert blocked_parent['blocked'] == True, "Second task in sequential project should be blocked"
+            # Parent should be blocked (second in sequential project)
+            # The parent action group itself is parallel (default), so children are available
+            # Parent should be available (has available children)
+            assert blocked_parent['blocked'] == True, "Second task in sequential project should be blocked"
 
-        # Even if numberOfAvailableTasks is 0 (children might inherit blocked status),
-        # we still test that the available field is computed correctly
-        if blocked_parent['numberOfAvailableTasks'] > 0:
-            assert blocked_parent['available'] == True, "Should be available due to available children"
-            print(f"\n✓ Blocked task with available children shows available: true")
-        else:
-            # If children are also blocked (sequential inheritance), available should be false
-            assert blocked_parent['available'] == False, "Should not be available if no available children"
-            print(f"\n✓ Blocked task without available children shows available: false")
+            # Even if numberOfAvailableTasks is 0 (children might inherit blocked status),
+            # we still test that the available field is computed correctly
+            if blocked_parent['numberOfAvailableTasks'] > 0:
+                assert blocked_parent['available'] == True, "Should be available due to available children"
+                print(f"\n✓ Blocked task with available children shows available: true")
+            else:
+                # If children are also blocked (sequential inheritance), available should be false
+                assert blocked_parent['available'] == False, "Should not be available if no available children"
+                print(f"\n✓ Blocked task without available children shows available: false")
 
-        print(f"  blocked: {blocked_parent['blocked']}")
-        print(f"  numberOfAvailableTasks: {blocked_parent['numberOfAvailableTasks']}")
-        print(f"  available: {blocked_parent['available']}")
-
-        # Cleanup
-        client.delete_projects(project_id)
+            print(f"  blocked: {blocked_parent['blocked']}")
+            print(f"  numberOfAvailableTasks: {blocked_parent['numberOfAvailableTasks']}")
+            print(f"  available: {blocked_parent['available']}")
+        finally:
+            # Guaranteed cleanup
+            client.delete_projects(project_id)
 
 
 class TestUINavigation:
