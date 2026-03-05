@@ -1,7 +1,7 @@
 #!/bin/bash
 # Check that all public client functions have corresponding MCP tools
 
-CLIENT_FILE="src/omnifocus_mcp/omnifocus_client.py"
+CLIENT_FILE="src/omnifocus_mcp/omnifocus_connector.py"
 SERVER_FILE="src/omnifocus_mcp/server_fastmcp.py"
 
 echo "Checking client/server parity..."
