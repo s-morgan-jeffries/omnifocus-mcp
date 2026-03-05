@@ -10,7 +10,7 @@ from unittest import mock
 import omnifocus_mcp.server_fastmcp as server
 
 # Extract function from FunctionTool wrapper
-delete_tasks = server.delete_tasks.fn
+delete_tasks = server.delete_tasks
 
 
 class TestDeleteTasksServerRedesign:

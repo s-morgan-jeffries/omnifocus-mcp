@@ -32,12 +32,12 @@ import pytest
 # Import the MCP server tools
 import omnifocus_mcp.server_fastmcp as server
 
-# Extract tool functions from FunctionTool wrappers
-create_task = server.create_task.fn
-update_task = server.update_task.fn
-update_tasks = server.update_tasks.fn
-delete_tasks = server.delete_tasks.fn
-get_tasks = server.get_tasks.fn
+# Extract tool functions (FastMCP @mcp.tool() returns the function directly)
+create_task = server.create_task
+update_task = server.update_task
+update_tasks = server.update_tasks
+delete_tasks = server.delete_tasks
+get_tasks = server.get_tasks
 
 # Skip all tests unless in test mode
 pytestmark = pytest.mark.skipif(
