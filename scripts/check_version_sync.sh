@@ -20,7 +20,7 @@ MATCHED=0
 
 # Check .claude/CLAUDE.md
 FILE=".claude/CLAUDE.md"
-PATTERN="Current Version.*v?$VERSION"
+PATTERN="(Current Version|Version:).*v?$VERSION"
 if [ ! -f "$FILE" ]; then
     echo "⚠️  $FILE not found (skipping)"
 else
