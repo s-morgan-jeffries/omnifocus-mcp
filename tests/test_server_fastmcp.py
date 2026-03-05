@@ -5,20 +5,20 @@ from unittest import mock
 # Import the server module to access tool functions
 import omnifocus_mcp.server_fastmcp as server
 
-# Extract underlying functions from FunctionTool wrappers
+# Extract tool functions (FastMCP @mcp.tool() returns the function directly)
 get_client = server.get_client
-get_projects = server.get_projects.fn
-create_project = server.create_project.fn
-update_project = server.update_project.fn
-get_tasks = server.get_tasks.fn
-update_task = server.update_task.fn
-get_tags = server.get_tags.fn
-get_folders = server.get_folders.fn
-create_folder = server.create_folder.fn
-get_perspectives = server.get_perspectives.fn
-switch_perspective = server.switch_perspective.fn
-delete_tasks = server.delete_tasks.fn
-delete_projects = server.delete_projects.fn
+get_projects = server.get_projects
+create_project = server.create_project
+update_project = server.update_project
+get_tasks = server.get_tasks
+update_task = server.update_task
+get_tags = server.get_tags
+get_folders = server.get_folders
+create_folder = server.create_folder
+get_perspectives = server.get_perspectives
+switch_perspective = server.switch_perspective
+delete_tasks = server.delete_tasks
+delete_projects = server.delete_projects
 
 
 @pytest.fixture(autouse=True)

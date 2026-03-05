@@ -9,9 +9,9 @@ from unittest import mock
 # Import server module
 import omnifocus_mcp.server_fastmcp as server
 
-# Extract functions from FunctionTool wrapper
-update_task = server.update_task.fn
-update_tasks = server.update_tasks.fn
+# Extract tool functions (FastMCP @mcp.tool() returns the function directly)
+update_task = server.update_task
+update_tasks = server.update_tasks
 
 
 class TestUpdateTaskServerRedesign:

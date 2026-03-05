@@ -25,7 +25,7 @@ class TestUpdateProjectsServerRedesign:
             mock_get_client.return_value = mock_client
 
             # Get the actual MCP tool function
-            update_projects = server.update_projects.fn
+            update_projects = server.update_projects
 
             result = update_projects(
                 project_ids=["proj-001", "proj-002", "proj-003"],
@@ -55,7 +55,7 @@ class TestUpdateProjectsServerRedesign:
             }
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects.fn
+            update_projects = server.update_projects
 
             result = update_projects(project_ids="proj-001", status="on_hold")
 
@@ -78,7 +78,7 @@ class TestUpdateProjectsServerRedesign:
             }
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects.fn
+            update_projects = server.update_projects
 
             result = update_projects(
                 project_ids=["proj-001", "proj-002"],
@@ -106,7 +106,7 @@ class TestUpdateProjectsServerRedesign:
             }
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects.fn
+            update_projects = server.update_projects
 
             result = update_projects(
                 project_ids=["proj-001", "proj-002", "proj-003"],
@@ -126,7 +126,7 @@ class TestUpdateProjectsServerRedesign:
             mock_client.update_projects.side_effect = ValueError("Invalid status")
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects.fn
+            update_projects = server.update_projects
 
             result = update_projects(
                 project_ids=["proj-001"],
@@ -149,7 +149,7 @@ class TestUpdateProjectsServerRedesign:
             }
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects.fn
+            update_projects = server.update_projects
 
             # Test with "true"
             result = update_projects(project_ids="proj-001", sequential="true")
@@ -178,7 +178,7 @@ class TestUpdateProjectsServerRedesign:
             }
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects.fn
+            update_projects = server.update_projects
 
             result = update_projects(
                 project_ids=["p1", "p2", "p3", "p4", "p5"],

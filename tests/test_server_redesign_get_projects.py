@@ -16,8 +16,7 @@ class TestGetProjectsServerEnhancements:
             ]
             mock_get_client.return_value = mock_client
 
-            get_projects = server.get_projects.fn
-            result = get_projects(project_id="proj-001")
+            result = server.get_projects(project_id="proj-001")
 
             # Verify project_id was passed correctly
             call_kwargs = mock_client.get_projects.call_args[1]
@@ -32,8 +31,7 @@ class TestGetProjectsServerEnhancements:
             mock_client.get_projects.return_value = []
             mock_get_client.return_value = mock_client
 
-            get_projects = server.get_projects.fn
-            result = get_projects(include_full_notes=True)
+            result = server.get_projects(include_full_notes=True)
 
             # Verify include_full_notes was passed correctly
             call_kwargs = mock_client.get_projects.call_args[1]

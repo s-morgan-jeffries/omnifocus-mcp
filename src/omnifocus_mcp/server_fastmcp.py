@@ -123,6 +123,22 @@ def _format_project(proj: dict, truncate_notes: bool = True) -> str:
         note_text = proj['note'] if not truncate_notes else _truncate_note(proj['note'])
         result += f"Note: {note_text}\n"
 
+    # Task health fields (when include_task_health=True)
+    if 'remainingCount' in proj:
+        result += f"Remaining Tasks: {proj['remainingCount']}\n"
+        result += f"Available Tasks: {proj['availableCount']}\n"
+        result += f"Overdue Tasks: {proj['overdueCount']}\n"
+        result += f"Deferred Tasks: {proj['deferredCount']}\n"
+        # Health status
+        if proj.get('availableCount', 0) > 0:
+            result += "Health: On Track\n"
+        elif proj.get('hasDeferredOnly'):
+            result += "Health: Appropriately Scheduled\n"
+        elif proj.get('remainingCount', 0) == 0:
+            result += "Health: No Remaining Tasks\n"
+        else:
+            result += "Health: Stuck\n"
+
     return result
 
 
@@ -135,7 +151,9 @@ def get_projects(
     project_id: Optional[str] = None,  # NEW (Phase 3.2)
     include_full_notes: bool = False,  # NEW (Phase 3.2)
     on_hold_only: bool = False,
-    query: Optional[str] = None
+    query: Optional[str] = None,
+    include_task_health: bool = False,
+    include_last_activity: bool = False
 ) -> str:
     """Retrieve ALL active projects with full details and hierarchy, optionally filtered by search query.
 
@@ -147,6 +165,8 @@ def get_projects(
         include_full_notes: NEW - Return full note content (consolidates get_note())
         on_hold_only: If True, only return projects with "on hold" status
         query: Optional search term to filter by name, note, or folder path (case-insensitive)
+        include_task_health: If True, include per-project task health counts (remaining, available, overdue, deferred)
+        include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
 
     Returns:
         Formatted text with project list (one per line with ID, name, folder, status, and note preview)
@@ -156,7 +176,9 @@ def get_projects(
         project_id=project_id,
         include_full_notes=include_full_notes,
         on_hold_only=on_hold_only,
-        query=query
+        query=query,
+        include_task_health=include_task_health,
+        include_last_activity=include_last_activity,
     )
 
     if not projects:

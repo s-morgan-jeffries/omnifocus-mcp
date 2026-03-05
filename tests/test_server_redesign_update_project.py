@@ -10,7 +10,7 @@ from unittest import mock
 import omnifocus_mcp.server_fastmcp as server
 
 # Extract function from FunctionTool wrapper
-update_project = server.update_project.fn
+update_project = server.update_project
 
 
 class TestUpdateProjectServerRedesign:

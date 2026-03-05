@@ -50,7 +50,7 @@ class TestConditionalProjectFilters:
             with mock.patch.object(client, '_get_tasks_batch_for_filtering') as mock_batch:
                 mock_batch.return_value = {
                     "p1": [{"id": "t1", "dueDate": "2024-01-01T00:00:00Z"}],  # Overdue
-                    "p2": [{"id": "t1", "dueDate": "2026-01-01T00:00:00Z"}]   # Future
+                    "p2": [{"id": "t1", "dueDate": "2027-01-01T00:00:00Z"}]   # Future
                 }
 
                 projects = client.get_projects(has_overdue_tasks=True)

@@ -10,7 +10,7 @@ from unittest import mock
 import omnifocus_mcp.server_fastmcp as server
 
 # Extract function from FunctionTool wrapper
-create_task = server.create_task.fn
+create_task = server.create_task
 
 
 class TestCreateTaskServerRedesign:

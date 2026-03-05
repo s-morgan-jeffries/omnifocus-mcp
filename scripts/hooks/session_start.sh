@@ -22,6 +22,7 @@ if command -v gh &> /dev/null; then
     CURRENT_VERSION=$(grep '^version = ' pyproject.toml 2>/dev/null | cut -d'"' -f2)
 
     if [ -n "$CURRENT_VERSION" ]; then
+        CONTEXT+="**Version:** v$CURRENT_VERSION\n\n"
         # Parse version components for next milestone
         IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
         NEXT_PATCH=$((PATCH + 1))
