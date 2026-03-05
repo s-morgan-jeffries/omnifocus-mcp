@@ -3,7 +3,7 @@
 An MCP server bridging Claude and OmniFocus via AppleScript on macOS.
 
 **Stack:** Python 3.10+, FastMCP, AppleScript (via `osascript`)
-**Version:** v0.7.2 | **Tests:** 544 (406 passing, 138 skipped) | **Coverage:** 89%
+**Tests:** 416 passing, 10 skipped + 8 integration | **Coverage:** 89%
 
 ## Commands
 
@@ -63,7 +63,11 @@ The API was consolidated from 40+ functions to 16 in October 2025. This is inten
 
 **Key optimization:** `_get_tasks_batch_for_filtering()` fetches all project tasks in one AppleScript call instead of N calls. This pattern should be used for any new filtering that crosses project boundaries.
 
-**Conditional filter-first architecture:** `get_tasks()` detects whether selective filters (flagged, overdue, etc.) are active. If yes, it filters BEFORE extracting full properties. If no, it extracts first. This matters — wrong order can be 19x slower.
+**Conditional filter-first architecture:** `get_tasks()` detects whether selective filters (flagged, overdue, query, etc.) are active. If yes, it filters BEFORE extracting full properties. If no, it extracts first. This matters — wrong order can be 19x slower.
+
+**Project task health:** `get_projects(include_task_health=True)` returns per-project task counts (remaining, available, overdue, deferred) in a single AppleScript call. Use this for project review workflows instead of N per-project `get_tasks()` calls.
+
+**Conditional data loading:** `get_projects()` supports `include_last_activity=True` for expensive per-project calculations. Without this flag, `lastActivityDate` returns null (saves ~260ms for 33 projects).
 
 ## Database Safety
 

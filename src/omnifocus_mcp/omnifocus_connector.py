@@ -522,6 +522,8 @@ class OmniFocusConnector:
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
         query: Optional[str] = None,
+        include_task_health: bool = False,
+        include_last_activity: bool = False,
         timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
@@ -668,34 +670,9 @@ class OmniFocusConnector:
 
                         -- Calculate last activity date (most recent task creation or completion)
                         set lastActivityStr to "null"
-                        try
-                            set projTasks to flattened tasks of proj
-                            set lastActivity to missing value
+                        {last_activity_block}
 
-                            repeat with t in projTasks
-                                try
-                                    set createDate to creation date of t
-                                    if lastActivity is missing value or createDate > lastActivity then
-                                        set lastActivity to createDate
-                                    end if
-                                end try
-
-                                try
-                                    if completed of t is true then
-                                        set compDate to completion date of t
-                                        if compDate is not missing value then
-                                            if lastActivity is missing value or compDate > lastActivity then
-                                                set lastActivity to compDate
-                                            end if
-                                        end if
-                                    end if
-                                end try
-                            end repeat
-
-                            if lastActivity is not missing value then
-                                set lastActivityStr to "\\"" & (lastActivity as «class isot» as string) & "\\""
-                            end if
-                        end try
+                        {task_health_block}
 
                         -- Get review dates
                         set lastReviewDateStr to "null"
@@ -728,7 +705,7 @@ class OmniFocusConnector:
                             "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
                             "\\"lastActivityDate\\": " & lastActivityStr & ", " & ¬
                             "\\"lastReviewDate\\": " & lastReviewDateStr & ", " & ¬
-                            "\\"nextReviewDate\\": " & nextReviewDateStr & ¬
+                            "\\"nextReviewDate\\": " & nextReviewDateStr{task_health_json} & ¬
                             "}}"
 
                         if output is not "" then
@@ -750,7 +727,98 @@ class OmniFocusConnector:
                             error "skip non-on-hold project"
                         end if"""
 
-        script = script.format(project_source=project_source, on_hold_check=on_hold_check)
+        # Build last_activity block (opt-in to avoid iterating all tasks)
+        if include_last_activity:
+            last_activity_block = """try
+                            set projTasks to flattened tasks of proj
+                            set lastActivity to missing value
+
+                            repeat with t in projTasks
+                                try
+                                    set createDate to creation date of t
+                                    if lastActivity is missing value or createDate > lastActivity then
+                                        set lastActivity to createDate
+                                    end if
+                                end try
+
+                                try
+                                    if completed of t is true then
+                                        set compDate to completion date of t
+                                        if compDate is not missing value then
+                                            if lastActivity is missing value or compDate > lastActivity then
+                                                set lastActivity to compDate
+                                            end if
+                                        end if
+                                    end if
+                                end try
+                            end repeat
+
+                            if lastActivity is not missing value then
+                                set lastActivityStr to "\\"" & (lastActivity as «class isot» as string) & "\\""
+                            end if
+                        end try"""
+        else:
+            last_activity_block = ""
+
+        # Build task health block (counts remaining/available/overdue/deferred per project)
+        if include_task_health:
+            task_health_block = """set remainingCount to 0
+                        set availableCount to 0
+                        set overdueCount to 0
+                        set deferredCount to 0
+                        set todayDate to current date
+                        try
+                            set healthTasks to flattened tasks of proj
+                            repeat with t in healthTasks
+                                try
+                                    set taskCompleted to completed of t
+                                    set taskDropped to dropped of t
+                                    if taskCompleted is false and taskDropped is false then
+                                        set remainingCount to remainingCount + 1
+
+                                        set taskBlocked to blocked of t
+                                        set taskDeferred to false
+                                        try
+                                            set deferDate to defer date of t
+                                            if deferDate is not missing value and deferDate > todayDate then
+                                                set taskDeferred to true
+                                            end if
+                                        end try
+
+                                        if taskDeferred then
+                                            set deferredCount to deferredCount + 1
+                                        else if taskBlocked is false then
+                                            set availableCount to availableCount + 1
+                                        end if
+
+                                        try
+                                            set dueDate to due date of t
+                                            if dueDate is not missing value and dueDate < todayDate then
+                                                set overdueCount to overdueCount + 1
+                                            end if
+                                        end try
+                                    end if
+                                end try
+                            end repeat
+                        end try
+                        set hasDeferredOnly to (remainingCount > 0 and availableCount = 0)"""
+            task_health_json = (' & ", " & ¬\n'
+                '                            "\\"remainingCount\\": " & remainingCount & ", " & ¬\n'
+                '                            "\\"availableCount\\": " & availableCount & ", " & ¬\n'
+                '                            "\\"overdueCount\\": " & overdueCount & ", " & ¬\n'
+                '                            "\\"deferredCount\\": " & deferredCount & ", " & ¬\n'
+                '                            "\\"hasDeferredOnly\\": " & hasDeferredOnly')
+        else:
+            task_health_block = ""
+            task_health_json = ""
+
+        script = script.format(
+            project_source=project_source,
+            on_hold_check=on_hold_check,
+            last_activity_block=last_activity_block,
+            task_health_block=task_health_block,
+            task_health_json=task_health_json,
+        )
 
         try:
             result = run_applescript(script, timeout=timeout)
@@ -1896,6 +1964,24 @@ class OmniFocusConnector:
                         end if''')
             tag_check = "".join(tag_checks)
 
+        # Build query filter (AppleScript-side name/note matching)
+        # AppleScript's 'contains' is case-insensitive by default
+        query_check = ""
+        if query:
+            query_escaped = self._escape_applescript_string(query)
+            query_check = f"""
+                        -- Skip tasks not matching query (AppleScript contains is case-insensitive)
+                        set queryCheck to false
+                        if (name of t) contains "{query_escaped}" then
+                            set queryCheck to true
+                        end if
+                        if (note of t) contains "{query_escaped}" then
+                            set queryCheck to true
+                        end if
+                        if not queryCheck then
+                            error "skip non-matching task"
+                        end if"""
+
         # Build AppleScript with conditional architecture (Phase 2 optimization)
         if selective_filters_active:
             # FILTER-FIRST: Apply filters BEFORE property extraction (selective filters benefit)
@@ -1925,6 +2011,7 @@ class OmniFocusConnector:
                         {defer_relative_check}
                         {estimate_check}
                         {tag_check}
+                        {query_check}
 
                         -- PHASE 2: Extract ALL properties (only for tasks that passed filters)
                         set taskId to id of t
@@ -1972,7 +2059,8 @@ class OmniFocusConnector:
                         {due_relative_check}
                         {defer_relative_check}
                         {estimate_check}
-                        {tag_check}'''
+                        {tag_check}
+                        {query_check}'''
 
         # Common section: Rest of property extraction (same for both modes)
         script += f'''
