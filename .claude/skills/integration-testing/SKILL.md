@@ -34,8 +34,6 @@ export OMNIFOCUS_TEST_DATABASE=OmniFocus-TEST.ofocus
 
 # Generate test fixtures
 ./scripts/setup_test_database.sh
-# Or for comprehensive test data:
-./scripts/setup_comprehensive_test_data.sh
 ```
 
 ### Switching Databases
@@ -51,9 +49,6 @@ export OMNIFOCUS_TEST_DATABASE=OmniFocus-TEST.ofocus
 ```bash
 # Remove test data (keeps database)
 ./scripts/cleanup_test_data.sh
-
-# Remove comprehensive test data
-./scripts/cleanup_comprehensive_test_data.sh
 ```
 
 ## Running Integration Tests
@@ -89,7 +84,6 @@ The project uses TaskPaper-format fixtures for consistent test data. Test fixtur
 
 **Key fixture scripts:**
 - `scripts/setup_test_database.sh` — Basic fixtures (projects, tasks, tags)
-- `scripts/setup_comprehensive_test_data.sh` — Extended fixtures for performance testing
 
 **Fixture design principles:**
 - Fixtures create known-state data that tests can assert against

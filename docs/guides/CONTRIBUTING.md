@@ -266,7 +266,7 @@ git pull
 git checkout -b release/v0.6.4
 
 # 3. Bump version and update CHANGELOG (on release branch)
-./scripts/sync_version.sh  # Or manual edit of pyproject.toml
+# Edit pyproject.toml (authoritative version source)
 # Edit CHANGELOG.md to add v0.6.4 entry
 git commit -m "chore: bump version to v0.6.4"
 
