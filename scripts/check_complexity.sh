@@ -27,11 +27,11 @@ if ! $PYTHON -c "import radon" 2>/dev/null; then
     exit 1
 fi
 
-echo "1. Cyclomatic Complexity (src/omnifocus_mcp/omnifocus_client.py)"
+echo "1. Cyclomatic Complexity (src/omnifocus_mcp/omnifocus_connector.py)"
 echo "----------------------------------------------------------------"
 echo "Ratings: A (1-5), B (6-10), C (11-20), D (21-50), F (51+)"
 echo ""
-$RADON cc src/omnifocus_mcp/omnifocus_client.py -s -a --total-average
+$RADON cc src/omnifocus_mcp/omnifocus_connector.py -s -a --total-average
 echo ""
 
 echo "2. Cyclomatic Complexity (src/omnifocus_mcp/server_fastmcp.py)"
@@ -113,6 +113,6 @@ echo "  - update_task(): CC ≤ 50 (extensive property handling)"
 echo "  - get_projects(), update_project(): CC ≤ 30"
 echo "  - All other functions: CC ≤ 20"
 echo ""
-echo "See inline documentation in omnifocus_client.py for rationale."
+echo "See inline documentation in omnifocus_connector.py for rationale."
 echo ""
 exit 0
