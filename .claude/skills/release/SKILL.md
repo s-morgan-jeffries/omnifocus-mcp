@@ -49,8 +49,9 @@ git checkout -b release/vX.Y.Z
 Update version in ALL of these files (pyproject.toml is authoritative):
 
 1. **pyproject.toml** - `version = "X.Y.Z"`
-2. **CLAUDE.md** (.claude/CLAUDE.md) - `**Version:** vX.Y.Z` in the header line
-3. **README.md** - All references to the old version (check with grep for old version string)
+2. **src/omnifocus_mcp/__init__.py** - `__version__ = "X.Y.Z"`
+3. **CLAUDE.md** (.claude/CLAUDE.md) - `**Version:** vX.Y.Z` in the header line
+4. **README.md** - All references to the old version (check with grep for old version string)
 
 Use the Edit tool for each file. Be precise about what to change.
 

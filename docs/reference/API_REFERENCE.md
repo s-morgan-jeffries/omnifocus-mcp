@@ -1,16 +1,16 @@
 # OmniFocus MCP Server - API Reference
 
-**Current Version:** v0.7.0 (Release Process Infrastructure & Quality Checks)
+**Current Version:** v0.7.3
 **Total MCP Tools:** 17 (reduced from 40+)
 
 This document shows the complete API surface that Claude Desktop sees when connecting to the OmniFocus MCP server. Each tool is exposed via the Model Context Protocol and can be invoked by Claude.
 
-**Last Updated:** 2025-11-02
-**Latest Change:** v0.7.0 added release process infrastructure, interactive quality check slash commands, workflow enforcement, and Claude Code hooks
+**Last Updated:** 2026-03-06
+**Latest Change:** v0.7.3 added `include_task_health` and `include_last_activity` parameters to `get_projects()`, and filter-first `query` optimization for `get_tasks()`
 
 ## ⚠️ Version History Notice
 
-**v0.6.0 (Current - October 2025):** Major API redesign completed
+**v0.6.0 (October 2025):** Major API redesign completed
 - Consolidated 40+ functions → 16 core functions
 - Removed 26 deprecated functions (functionality preserved in new API)
 - All proposals from this document have been **IMPLEMENTED ✅**
@@ -22,7 +22,7 @@ This document shows the complete API surface that Claude Desktop sees when conne
 
 ## Table of Contents
 
-**Current API (v0.7.0 - 17 Core Functions):**
+**Current API (v0.7.3 - 17 Core Functions):**
 - [Projects](#projects) (5 functions) - `create`, `get`, `update`, `update_batch`, `delete`
 - [Tasks](#tasks) (6 functions) - `create`, `get`, `update`, `update_batch`, `delete`, `reorder`
 - [Folders](#folders) (2 functions) - `create`, `get`
@@ -35,7 +35,7 @@ This document shows the complete API surface that Claude Desktop sees when conne
 
 ---
 
-## Implementation Status (v0.7.0)
+## Implementation Status (v0.7.3)
 
 ### ✅ Implemented Functions (17 Core Functions)
 
@@ -224,24 +224,24 @@ Dropping a project is different from deleting it - the project remains in OmniFo
 
 **PROPOSED: KEEP and enhance** - Add filtering and note control parameters. Return structured data for easier parsing.
 
-**Enhanced proposed signature:**
+**Current signature (v0.7.3):**
 ```python
 get_projects(
-    project_id: Optional[str] = None,  # Filter to specific project (replaces get_project)
+    project_id: Optional[str] = None,
     on_hold_only: bool = False,
     query: Optional[str] = None,
-    include_full_notes: bool = False  # Return full notes instead of truncated preview
+    include_full_notes: bool = False,
+    include_task_health: bool = False,   # v0.7.3: per-project task counts
+    include_last_activity: bool = False,  # v0.7.3: opt-in expensive calculation
+    timeout: int = 60
 ) -> list[dict]
 ```
 
-**Returns:** List of project dictionaries with all project data. When `include_full_notes=False`, notes are truncated to preview length. When `include_full_notes=True`, complete note content is included.
+**Returns:** List of project dictionaries with all project data.
 
-**Performance note:** Using `include_full_notes=True` without appropriate filtering can result in large data transfers. Recommended to use with specific `project_id` or narrow `query` filters when full notes are needed.
-
-**Enhancements:**
-- `project_id` parameter filters to a specific project, replacing the need for `get_project()`
-- `include_full_notes` flag returns complete note content instead of truncated previews, replacing the need for `get_note()` for projects
-- Returns structured data (list of dicts) instead of formatted text for easier parsing by MCP clients
+**v0.7.3 additions:**
+- `include_task_health=True` returns per-project task counts (remainingCount, availableCount, overdueCount, deferredCount, hasDeferredOnly) in a single AppleScript call. Eliminates N+1 pattern for project review workflows.
+- `include_last_activity=True` computes lastActivityDate per project (expensive — iterates all tasks including completed). Without this flag, lastActivityDate returns null.
 
 ---
 
