@@ -3,7 +3,7 @@
 An MCP server bridging Claude and OmniFocus via AppleScript on macOS.
 
 **Stack:** Python 3.10+, FastMCP, AppleScript (via `osascript`)
-**Version:** v0.7.3 | **Tests:** 416 passing, 10 skipped + 8 integration | **Coverage:** 89%
+**Version:** v0.7.3 | **Tests:** 412 unit, 128 integration/E2E, 25 benchmark/profiling | **Coverage:** 89%
 
 ## Commands
 
@@ -91,7 +91,7 @@ Load these skills when working in their domains:
 
 ## Key Files
 
-- `src/omnifocus_mcp/omnifocus_connector.py` — Core AppleScript client (~3250 lines)
-- `src/omnifocus_mcp/server_fastmcp.py` — FastMCP server wrapping the connector (~1030 lines)
+- `src/omnifocus_mcp/omnifocus_connector.py` — Core AppleScript client (~3350 lines)
+- `src/omnifocus_mcp/server_fastmcp.py` — FastMCP server wrapping the connector (~1050 lines)
 - `docs/reference/ARCHITECTURE.md` — Full API design rationale
 - `docs/reference/APPLESCRIPT_GOTCHAS.md` — Complete AppleScript limitations reference

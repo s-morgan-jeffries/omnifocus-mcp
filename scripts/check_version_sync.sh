@@ -66,6 +66,22 @@ else
     fi
 fi
 
+# Check src/omnifocus_mcp/__init__.py
+FILE="src/omnifocus_mcp/__init__.py"
+PATTERN="__version__ = \"$VERSION\""
+if [ ! -f "$FILE" ]; then
+    echo "⚠️  $FILE not found (skipping)"
+else
+    if grep -qF "$PATTERN" "$FILE"; then
+        echo "✅ $FILE: $VERSION found"
+        ((MATCHED++))
+    else
+        echo "❌ $FILE: $VERSION NOT found"
+        echo "   Expected: $PATTERN"
+        ((MISMATCHES++))
+    fi
+fi
+
 echo ""
 
 if [ $MISMATCHES -eq 0 ]; then
