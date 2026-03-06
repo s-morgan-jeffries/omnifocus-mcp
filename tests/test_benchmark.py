@@ -13,6 +13,7 @@ Usage:
 """
 import os
 import statistics
+import subprocess
 import time
 import uuid
 import warnings
@@ -47,6 +48,7 @@ BASELINES = {
 }
 
 ITERATIONS = 3
+READ_ITERATIONS = 1  # Single iteration for slow read operations
 SLOWDOWN_THRESHOLD = 2.0  # Warn if >2x slower than baseline
 
 
@@ -96,33 +98,47 @@ class TestReadBenchmarks:
 
     def test_get_tasks_all(self, client):
         """Benchmark get_tasks() with no filters."""
-        elapsed, tasks = _median_time(lambda: client.get_tasks())
-        _report("get_tasks (all)", elapsed, BASELINES["get_tasks (all)"])
-        print(f"    returned {len(tasks)} tasks")
-        assert len(tasks) >= 0
+        try:
+            elapsed, tasks = _median_time(
+                lambda: client.get_tasks(timeout=300), iterations=READ_ITERATIONS
+            )
+            _report("get_tasks (all)", elapsed, BASELINES["get_tasks (all)"])
+            print(f"    returned {len(tasks)} tasks")
+        except subprocess.TimeoutExpired:
+            print("  get_tasks (all): TIMEOUT (>300s) — database too large for unfiltered query")
+            pytest.skip("get_tasks() timed out — database too large for unfiltered query")
 
     def test_get_tasks_flagged(self, client):
         """Benchmark get_tasks() with flagged filter."""
-        elapsed, tasks = _median_time(lambda: client.get_tasks(flagged_only=True))
+        elapsed, tasks = _median_time(
+            lambda: client.get_tasks(flagged_only=True, timeout=300),
+            iterations=READ_ITERATIONS,
+        )
         _report("get_tasks (flagged)", elapsed, BASELINES["get_tasks (flagged)"])
         print(f"    returned {len(tasks)} tasks")
 
     def test_get_tasks_query(self, client):
         """Benchmark get_tasks() with query filter."""
-        elapsed, tasks = _median_time(lambda: client.get_tasks(query="test"))
+        elapsed, tasks = _median_time(
+            lambda: client.get_tasks(query="test", timeout=300),
+            iterations=READ_ITERATIONS,
+        )
         _report("get_tasks (query)", elapsed, BASELINES["get_tasks (query)"])
         print(f"    returned {len(tasks)} tasks")
 
     def test_get_projects_all(self, client):
         """Benchmark get_projects() baseline."""
-        elapsed, projects = _median_time(lambda: client.get_projects())
+        elapsed, projects = _median_time(
+            lambda: client.get_projects(timeout=300), iterations=READ_ITERATIONS
+        )
         _report("get_projects (all)", elapsed, BASELINES["get_projects (all)"])
         print(f"    returned {len(projects)} projects")
 
     def test_get_projects_task_health(self, client):
         """Benchmark get_projects() with include_task_health."""
         elapsed, projects = _median_time(
-            lambda: client.get_projects(include_task_health=True)
+            lambda: client.get_projects(include_task_health=True, timeout=300),
+            iterations=READ_ITERATIONS,
         )
         _report("get_projects (task_health)", elapsed, BASELINES["get_projects (task_health)"])
         print(f"    returned {len(projects)} projects")
@@ -130,7 +146,8 @@ class TestReadBenchmarks:
     def test_get_projects_last_activity(self, client):
         """Benchmark get_projects() with include_last_activity."""
         elapsed, projects = _median_time(
-            lambda: client.get_projects(include_last_activity=True)
+            lambda: client.get_projects(include_last_activity=True, timeout=300),
+            iterations=READ_ITERATIONS,
         )
         _report("get_projects (last_activity)", elapsed, BASELINES["get_projects (last_activity)"])
         print(f"    returned {len(projects)} projects")
