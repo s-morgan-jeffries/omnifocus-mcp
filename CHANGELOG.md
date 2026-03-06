@@ -5,6 +5,46 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-03-05
+
+### Added
+
+- **Performance benchmark suite** (#187, #190)
+  - 15 benchmarks covering all major read and write operations
+  - Compares against documented baselines from CLAUDE.md
+  - Handles production database timeouts gracefully with `pytest.skip()`
+  - Surfaced real performance regression on large databases (#191)
+
+- **Release workflow automation** (#186)
+  - New `/release` skill orchestrating 8-phase release process
+  - Milestone check, version bump, changelog, validation, tagging, PR creation
+  - Updated pre-tag hook to allow tags on `release/*` branches
+
+- **Project task health** (#185)
+  - `get_projects(include_task_health=True)` returns per-project task counts (remaining, available, overdue, deferred) in a single AppleScript call
+  - Eliminates N+1 query pattern for project review workflows
+
+- **Opt-in lastActivityDate** (#185)
+  - `get_projects(include_last_activity=True)` makes expensive per-project calculations opt-in
+  - Saves ~260ms for 33 projects when not needed
+
+- **AppleScript query filter** (#185)
+  - `get_tasks(query="...")` now filters in AppleScript (filter-first) instead of Python
+  - Significant performance improvement for text search queries
+
+### Fixed
+
+- **Scripts audit** (#188, #189)
+  - Fixed `check_client_server_parity.sh` referencing deleted `omnifocus_client.py` (renamed in v0.6.1)
+  - Fixed `check_complexity.sh` referencing deleted `omnifocus_client.py`
+  - Removed 8 dead/unreferenced scripts (-998 lines)
+  - Removed 4 CI references to scripts that never existed
+  - Updated integration-testing skill to remove references to deleted scripts
+
+- **Claude Code config cleanup** (#184)
+  - Modernized Claude Code configuration
+  - Purged dead scaffolding and stale references
+
 ## [0.7.2] - 2025-11-18
 
 ### Added
