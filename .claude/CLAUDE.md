@@ -83,6 +83,7 @@ CHANGELOG.md is only updated on release branches, never on feature branches.
 
 Load these skills when working in their domains:
 
+- **release** — Full release workflow: milestone check, version bump, changelog, validation, tagging, PR
 - **applescript-omnifocus** — OmniFocus AppleScript patterns, quirks, and workarounds
 - **api-design** — API consolidation philosophy, decision tree for new functions, anti-patterns
 - **performance-patterns** — Batch fetching, round-trip minimization, filter architecture
