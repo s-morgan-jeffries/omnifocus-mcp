@@ -15,22 +15,15 @@ Utility scripts for development, testing, and release of the OmniFocus MCP serve
 
 | Script | Purpose |
 |--------|---------|
-| `run_all_tests.sh` | Run unit + integration + E2E tests |
-| `run_integration_tests.sh` | Run integration test workflow |
-| `check_test_coverage.sh` | Verify coverage meets 85% threshold |
 | `setup_test_database.sh` | Create OmniFocus test database |
-| `setup_comprehensive_test_data.sh` | Populate test database with fixtures |
-| `cleanup_test_data.sh` | Remove test data |
-| `cleanup_comprehensive_test_data.sh` | Remove comprehensive test data |
+| `cleanup_test_data.sh` | Remove test data from OmniFocus |
 
 ## Release
 
 | Script | Purpose |
 |--------|---------|
-| `create_tag.sh` | Create version tags (RC and final) |
-| `sync_version.sh` | Bump version across all files |
-| `check_code_quality.sh` | Code quality scan (TODOs, print statements, bare excepts) |
-| `check_directory_organization.sh` | Directory structure check |
+| `create_tag.sh` | Create version tags with pre-tag hygiene checks |
+| `install-git-hooks.sh` | Install git hooks for local development |
 
 ## Git Hooks
 
