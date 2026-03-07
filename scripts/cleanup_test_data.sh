@@ -4,6 +4,7 @@
 # Removes projects, tasks, tags, and folders created by:
 #   - scripts/setup_benchmark_data.sh (prefix: "Bench ", "bench-")
 #   - scripts/setup_test_database.sh (prefix: "Test ", "test-")
+#   - scripts/local/setup_profiling_data.sh (prefix: "Profile ", "Profiling ")
 #   - integration tests (prefix: "__bench_", "__test_")
 #
 # Prerequisites:
@@ -46,16 +47,16 @@ tell application "OmniFocus"
             end try
         end repeat
 
-        -- Delete test/benchmark folders (cascades to contained projects/tasks)
-        set testFolders to every flattened folder whose name starts with "Bench " or name starts with "Test "
+        -- Delete test/benchmark/profiling folders (cascades to contained projects/tasks)
+        set testFolders to every flattened folder whose name starts with "Bench " or name starts with "Test " or name starts with "Profile " or name starts with "Profiling "
         set folderCount to count of testFolders
         repeat with f in testFolders
             delete f
         end repeat
         set deletedCount to deletedCount + folderCount
 
-        -- Delete standalone test/benchmark projects (not in folders)
-        set testProjects to every flattened project whose name starts with "Bench " or name starts with "Test " or name starts with "__bench_" or name starts with "Active Test" or name starts with "On Hold Test" or name starts with "Completed Test" or name starts with "Standalone " or name starts with "Subfolder "
+        -- Delete standalone test/benchmark/profiling projects (not in folders)
+        set testProjects to every flattened project whose name starts with "Bench " or name starts with "Test " or name starts with "Profile " or name starts with "__bench_" or name starts with "Active Test" or name starts with "On Hold Test" or name starts with "Completed Test" or name starts with "Standalone " or name starts with "Subfolder "
         set projCount to count of testProjects
         repeat with p in testProjects
             delete p
@@ -63,7 +64,7 @@ tell application "OmniFocus"
         set deletedCount to deletedCount + projCount
 
         -- Delete test inbox tasks
-        set testInbox to every inbox task whose name starts with "Bench " or name starts with "Test " or name starts with "Inbox Task" or name starts with "__bench_"
+        set testInbox to every inbox task whose name starts with "Bench " or name starts with "Test " or name starts with "Profile " or name starts with "Inbox Task" or name starts with "__bench_"
         set inboxCount to count of testInbox
         repeat with t in testInbox
             delete t

@@ -262,8 +262,49 @@ The experiments used a larger, dirtier database (381 tasks, accumulated from pri
 
 ### Remaining per-task IPC in batch mode
 
-Two operations still require per-task IPC within the batch loop:
-1. **Subtask count**: `count of (tasks of t)` — cannot be batch-read (~17ms per task)
-2. **Repetition details**: `recurrence of repRuleVal`, `repetition method of repRuleVal` — only for tasks with rules (most have none)
+One operation still requires per-task IPC within the batch loop:
+- **Repetition details**: `recurrence of repRuleVal`, `repetition method of repRuleVal` — only for tasks with rules (most have none)
 
-For 150 tasks: 150 × 17ms = ~2.6s subtask count overhead. This is the dominant remaining cost.
+**Subtask count resolved:** Discovered `number of tasks` is a batch-readable property on task objects. Replaced per-task `count of (tasks of t)` IPC with batch `number of tasks of ft` — zero per-task IPC cost.
+
+## Apples-to-Apples Benchmark (batch + subtask fix, comparable dataset)
+
+Measured on clean benchmark dataset matching original profiling conditions.
+Test database: 32 projects, 191 tasks (14 flagged, 8 overdue, 27 next, 10 inbox), 10 tags, 4 folders.
+
+### get_tasks() — full comparison
+
+| Operation | Original | + whose (PR #196) | + batch + subtask fix | Total speedup |
+|-----------|----------|-------------------|-----------------------|---------------|
+| `get_tasks(flagged_only)` | 18.9s | 6.3s | **0.82s** | **23x** |
+| `get_tasks(overdue)` | 16.6s | 3.6s | **0.60s** | **28x** |
+| `get_tasks(next_only)` | 41.9s | 29.3s | **1.10s** | **38x** |
+| `get_tasks(query='bench')` | 80.8s | 16.3s | **2.00s** | **40x** |
+| `get_tasks(available_only)` | >120s | >120s | **5.79s** | **>20x** |
+| `get_tasks()` (unfiltered) | >120s | >120s | **5.70s** | **>21x** |
+| `get_tasks(inbox_only)` | 5.4s | 5.4s | **4.20s** | 1.3x |
+
+### get_projects()
+
+| Operation | Time | Overhead vs baseline |
+|-----------|------|---------------------|
+| `get_projects()` | 8.79s | baseline |
+| `get_projects(+task_health)` | 22.26s | +153% |
+| `get_projects(+last_activity)` | 14.11s | +60% |
+| `get_projects(all options)` | 27.63s | +214% |
+
+### Other reads
+
+| Operation | Time | Items |
+|-----------|------|-------|
+| `get_folders()` | 0.60s | 4 |
+| `get_tags()` | 0.96s | 24 |
+| `get_perspectives()` | 0.21s | 24 |
+
+### Analysis
+
+1. **`get_tasks()` is now fast across all filters.** The subtask count batch read eliminated the last per-task IPC bottleneck. Even `available_only` (previously >120s timeout) completes in under 6s.
+
+2. **`get_projects()` is now the primary bottleneck.** The task_health and last_activity nested loops iterate all tasks per project with per-task property reads. These could benefit from the same `a reference to` batch optimization.
+
+3. **Remaining per-task IPC:** Only repetition rule details (`recurrence`, `repetition method`) require per-task reads, and only for tasks with recurrence rules (typically few).
