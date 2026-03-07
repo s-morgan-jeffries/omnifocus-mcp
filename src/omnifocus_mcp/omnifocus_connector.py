@@ -2178,6 +2178,7 @@ class OmniFocusConnector:
                 set estMins to estimated minutes of ft
                 set repRules to repetition rule of ft
                 set availCounts to number of available tasks of ft
+                set subtaskCounts to number of tasks of ft
 
                 -- Nested batch reads (project, parent, tags)
                 set projIds to id of (containing project of ft)
@@ -2186,9 +2187,6 @@ class OmniFocusConnector:
                 set tagNameLists to name of (tags of ft)
 
                 set taskCount to count of ids
-
-                -- Dereference task list once for subtask count (avoids re-evaluating whose per iteration)
-                set taskList to contents of ft
 
                 -- Build JSON from parallel lists (local loop, minimal IPC)
                 repeat with i from 1 to taskCount
@@ -2290,11 +2288,8 @@ class OmniFocusConnector:
                             end try
                         end if
 
-                        -- Subtask count (per-task — cannot batch 'count of tasks')
-                        set taskSubtaskCount to 0
-                        try
-                            set taskSubtaskCount to count of (tasks of (item i of taskList))
-                        end try
+                        -- Subtask count (batch-read)
+                        set taskSubtaskCount to item i of subtaskCounts
 
                         -- Availability (computed from batch-read data)
                         set numAvailableTasks to item i of availCounts

@@ -734,6 +734,17 @@ class TestBatchPropertyExtraction:
             assert "a reference to" in script
             assert "id of ft" in script
 
+    def test_batch_uses_batch_subtask_count(self, client, sample_tasks_json):
+        """Batch mode should batch-read subtask counts, not per-task IPC."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            # Should batch-read subtask counts before the loop
+            assert "number of tasks of ft" in script
+            # Should NOT use per-task count of tasks
+            assert "count of (tasks of" not in script
+
 
 class TestUpdateTask:
     """Tests for update_task functionality."""
