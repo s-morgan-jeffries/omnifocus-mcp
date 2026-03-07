@@ -364,7 +364,9 @@ class TestGetTasks:
             assert tasks[0]['dropped'] is False
             # Verify the AppleScript retrieves the dropped field
             call_args = mock_run.call_args[0][0]
-            assert "set taskDropped to dropped of t" in call_args
+            # Accept either batch mode or per-task mode
+            assert ("set taskDrops to dropped of ft" in call_args or
+                    "set taskDropped to dropped of t" in call_args)
             # Verify the AppleScript includes dropped in JSON output
             assert '\\"dropped\\"' in call_args
 
@@ -422,7 +424,9 @@ class TestGetTasks:
             assert tasks[0]['blocked'] is True
             # Verify the AppleScript retrieves the blocked field
             call_args = mock_run.call_args[0][0]
-            assert "set taskBlocked to blocked of t" in call_args
+            # Accept either batch mode or per-task mode
+            assert ("set taskBlocks to blocked of ft" in call_args or
+                    "set taskBlocked to blocked of t" in call_args)
             # Verify the AppleScript includes blocked in JSON output
             assert '\\"blocked\\"' in call_args
 
@@ -636,6 +640,99 @@ class TestWhoseClauseOptimization:
             # Should use whose for due date filtering
             assert "whose" in script.lower()
             assert "due date" in script
+
+
+class TestBatchPropertyExtraction:
+    """Tests that get_tasks uses batch property extraction via 'a reference to' when whose is active."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    @pytest.fixture
+    def sample_tasks_json(self):
+        return json.dumps([{
+            "id": "task-001", "name": "Test Task", "note": "", "completed": False,
+            "flagged": True, "dropped": False, "blocked": False, "next": True,
+            "projectId": "proj-001", "projectName": "Test Project",
+            "dueDate": "", "deferDate": "", "creationDate": None,
+            "modificationDate": None, "completionDate": None, "droppedDate": None,
+            "tags": [], "estimatedMinutes": None, "isRecurring": False,
+            "recurrence": "", "repetitionMethod": "", "parentTaskId": "",
+            "subtaskCount": 0, "sequential": False, "position": 1,
+            "numberOfAvailableTasks": 0, "available": True
+        }])
+
+    def test_flagged_uses_batch_extraction(self, client, sample_tasks_json):
+        """flagged_only should use 'a reference to' for batch property reads."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            assert "a reference to" in script
+            assert "id of ft" in script
+            assert "name of ft" in script
+
+    def test_batch_uses_nested_project_reads(self, client, sample_tasks_json):
+        """Batch mode should use nested batch reads for project info."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            assert "id of (containing project of ft)" in script
+            assert "name of (containing project of ft)" in script
+
+    def test_batch_uses_nested_tag_reads(self, client, sample_tasks_json):
+        """Batch mode should use nested batch reads for tag names."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            assert "name of (tags of ft)" in script
+
+    def test_batch_uses_nested_parent_reads(self, client, sample_tasks_json):
+        """Batch mode should use nested batch reads for parent task IDs."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            assert "id of (parent task of ft)" in script
+
+    def test_batch_zips_parallel_lists(self, client, sample_tasks_json):
+        """Batch mode should iterate by index (zip pattern) not per-task reference."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            # Should use indexed access pattern
+            assert "item i of ids" in script
+            # Should NOT use per-task loop with property reads
+            assert "set taskId to id of t" not in script
+
+    def test_project_id_does_not_use_batch(self, client, sample_tasks_json):
+        """project_id path should NOT use batch extraction (already fast)."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(project_id="proj-001")
+            script = mock_run.call_args[0][0]
+            assert "a reference to" not in script
+
+    def test_inbox_does_not_use_batch(self, client, sample_tasks_json):
+        """inbox path should NOT use batch extraction."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(inbox_only=True)
+            script = mock_run.call_args[0][0]
+            assert "a reference to" not in script
+
+    def test_no_filter_uses_batch(self, client, sample_tasks_json):
+        """Unfiltered get_tasks should also use batch extraction (whose completed is false)."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks()
+            script = mock_run.call_args[0][0]
+            assert "a reference to" in script
+            assert "id of ft" in script
 
 
 class TestUpdateTask:

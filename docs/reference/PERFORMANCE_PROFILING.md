@@ -181,4 +181,89 @@ With 27 properties × ~17ms per property × N matching tasks:
 | query | 39 | 39 × 27 × 17ms = 17.9s | 16.3s ✓ |
 | next | 67 | 67 × 27 × 17ms = 30.7s | 29.3s ✓ |
 
-The optimization eliminates iteration over non-matching tasks. Further gains require reducing properties per task.
+The optimization eliminates iteration over non-matching tasks. Further gains require reducing per-task IPC.
+
+## Batch Property Extraction Experiments
+
+Tested replacing the per-task property extraction loop with batch reads via `a reference to`.
+
+### Key discovery: `a reference to` enables batch reads
+
+```applescript
+-- This fails (evaluated list, mixed types):
+set ft to flattened tasks whose flagged is true
+set ids to id of ft  -- ERROR -1728
+
+-- This works (lazy reference, native batch evaluation):
+set ft to a reference to (flattened tasks whose flagged is true)
+set ids to id of ft  -- OK, returns list of all IDs in ~0.2s
+```
+
+All 21 properties work via reference batch reads, including nested properties:
+- `id of (containing project of ft)` — batch project IDs
+- `name of (containing project of ft)` — batch project names
+- `name of (tags of ft)` — batch tag name lists
+- `id of (parent task of ft)` — batch parent IDs
+
+Missing values are returned inline (no errors). Date coercion requires `contents of` dereferencing.
+
+### Batch timing: individual property reads
+
+Each batch read takes ~0.2s regardless of result set size (1 Apple Event round-trip):
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| `id of ft` (14 tasks) | 0.21s | vs 14 × 17ms = 0.24s loop |
+| `id of ft` (67 tasks) | 0.22s | vs 67 × 17ms = 1.14s loop |
+| 8 props batch (14 tasks) | 0.55s | vs 2.08s loop (3.8x) |
+| 8 props batch (67 tasks) | 1.83s | vs 9.96s loop (5.4x) |
+| 21 props batch (14 tasks) | 1.10s | vs ~6.3s current (5.7x) |
+
+### Full pipeline: batch + nested batch + JSON assembly
+
+| Filter | Tasks | Current | Batch v1 | Batch v2 (nested) | Speedup |
+|--------|-------|---------|----------|-------------------|---------|
+| flagged | 14 | 6.3s | 2.4s | **1.3s** | **4.9x** |
+| next | 67 | 29.3s | 9.9s | **4.6s** | **6.4x** |
+
+Batch v1: batch property reads + per-task IPC for project/parent/tag info.
+Batch v2: nested batch reads eliminate per-task IPC entirely. JSON loop is pure local AppleScript.
+
+### Remaining cost in batch v2
+
+The ~1.3s for 14 tasks is the JSON assembly loop: date coercion (`as «class isot»`), tag name iteration, and string concatenation. All local AppleScript with zero IPC. This is near the floor for what's achievable without moving JSON building out of AppleScript.
+
+### Cumulative speedup from original baseline (experiments)
+
+| Filter | Original (no whose) | + whose clauses | + batch extraction | Total |
+|--------|---------------------|-----------------|-------------------|-------|
+| flagged (14) | 18.9s | 6.3s (3.0x) | **1.3s (4.9x)** | **14.5x** |
+| next (67) | 41.9s | 29.3s (1.4x) | **4.6s (6.4x)** | **9.1x** |
+
+## Implementation Benchmark (batch extraction in production code)
+
+Measured after implementing batch extraction via `a reference to` in `get_tasks()`.
+Clean test database: 30 projects, 150 tasks (15 flagged, 10 overdue, 30 next).
+
+### get_tasks() before vs after (full pipeline)
+
+| Operation | Original | + whose (PR #196) | + batch extraction | Total speedup |
+|-----------|----------|-------------------|--------------------|---------------|
+| `get_tasks(flagged_only)` | 18.9s | 6.3s | **0.88s** | **21.5x** |
+| `get_tasks(overdue)` | 16.6s | 3.6s | **0.72s** | **23.1x** |
+| `get_tasks(next_only)` | 41.9s | 29.3s | **1.50s** | **27.9x** |
+| `get_tasks(query='bench')` | 80.8s | 16.3s | **1.61s** | **50.2x** |
+| `get_tasks()` (no filter) | >120s | >120s | **5.65s** | **>21x** |
+| `get_tasks(inbox_only)` | 5.4s | 5.4s | 0.16s | — (fast path) |
+
+### Why implementation is faster than experiments predicted
+
+The experiments used a larger, dirtier database (381 tasks, accumulated from prior runs). The clean implementation benchmark uses 150 tasks. Per-task costs scale linearly, so fewer tasks = proportionally faster. The key result is that **unfiltered get_tasks() now completes in ~6s** instead of timing out — resolving issue #191.
+
+### Remaining per-task IPC in batch mode
+
+Two operations still require per-task IPC within the batch loop:
+1. **Subtask count**: `count of (tasks of t)` — cannot be batch-read (~17ms per task)
+2. **Repetition details**: `recurrence of repRuleVal`, `repetition method of repRuleVal` — only for tasks with rules (most have none)
+
+For 150 tasks: 150 × 17ms = ~2.6s subtask count overhead. This is the dominant remaining cost.

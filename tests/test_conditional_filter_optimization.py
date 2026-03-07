@@ -21,14 +21,32 @@ class TestFilterDetectionLogic:
     """Tests for detecting whether selective filters are active."""
 
     def _check_extract_then_filter_mode(self, script):
-        """Verify script uses extract-then-filter architecture."""
+        """Verify script uses extract-then-filter or batch architecture.
+
+        Unfiltered queries now use batch mode (a reference to) which is
+        a superset of extract-then-filter — both extract all properties
+        without pre-filtering.
+        """
+        # Batch mode is acceptable — it's the optimized version of extract-then-filter
+        if 'a reference to' in script:
+            assert 'id of ft' in script  # batch property reads
+            return
         # Check for PHASE 1 comment indicating property extraction first
         assert '-- PHASE 1: Extract basic properties' in script
         # Check for PHASE 2 comment indicating filters second
         assert '-- PHASE 2: Apply filters' in script
 
     def _check_filter_first_mode(self, script):
-        """Verify script uses filter-first architecture."""
+        """Verify script uses filter-first or batch architecture.
+
+        Filters with whose clauses now use batch mode (a reference to)
+        which is a superset of filter-first — whose pre-filters then
+        batch reads extract properties only for matching tasks.
+        """
+        # Batch mode is acceptable — it's the optimized version with whose + batch reads
+        if 'a reference to' in script:
+            assert 'id of ft' in script  # batch property reads
+            return
         # Check for PHASE 1 comment indicating filters first
         assert '-- PHASE 1: Apply ALL filters using direct property access' in script
         # Check for PHASE 2 comment indicating property extraction second

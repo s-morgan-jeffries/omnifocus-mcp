@@ -2013,9 +2013,347 @@ class OmniFocusConnector:
                             error "skip non-matching task"
                         end if"""
 
-        # Build AppleScript with conditional architecture (Phase 2 optimization)
-        if selective_filters_active:
-            # FILTER-FIRST: Apply filters BEFORE property extraction (selective filters benefit)
+        # Build AppleScript with conditional architecture
+        # Three modes:
+        # 1. BATCH: whose_active — batch property reads via 'a reference to' (fastest)
+        # 2. FILTER-FIRST: selective_filters_active but not whose — per-task loop, filters before extraction
+        # 3. EXTRACT-THEN-FILTER: no selective filters — per-task loop, extraction before filters
+
+        # Build batch-mode filter checks (use indexed batch data instead of per-task reads)
+        available_check_batch = ""
+        if available_only:
+            available_check_batch = """
+                        -- Skip unavailable tasks (using batch-read data)
+                        if item i of taskDrops then error "skip unavailable"
+                        if item i of taskBlocks then error "skip unavailable"
+                        set dVal to contents of (item i of deferDates)
+                        if dVal is not missing value then
+                            if dVal > (current date) then error "skip unavailable"
+                        end if"""
+
+        due_relative_check_batch = ""
+        if due_relative:
+            if due_relative == "today":
+                due_relative_check_batch = """
+                        set taskDue to contents of (item i of dueDates)
+                        if taskDue is missing value then error "skip task"
+                        set todayStart to (current date)
+                        set time of todayStart to 0
+                        set todayEnd to todayStart + (24 * hours)
+                        if taskDue < todayStart or taskDue ≥ todayEnd then error "skip task"
+                        """
+            elif due_relative == "tomorrow":
+                due_relative_check_batch = """
+                        set taskDue to contents of (item i of dueDates)
+                        if taskDue is missing value then error "skip task"
+                        set tomorrowStart to (current date) + (1 * days)
+                        set time of tomorrowStart to 0
+                        set tomorrowEnd to tomorrowStart + (24 * hours)
+                        if taskDue < tomorrowStart or taskDue ≥ tomorrowEnd then error "skip task"
+                        """
+            elif due_relative == "this_week":
+                due_relative_check_batch = """
+                        set taskDue to contents of (item i of dueDates)
+                        if taskDue is missing value then error "skip task"
+                        set weekEnd to (current date) + (7 * days)
+                        if taskDue > weekEnd then error "skip task"
+                        """
+            elif due_relative == "next_week":
+                due_relative_check_batch = """
+                        set taskDue to contents of (item i of dueDates)
+                        if taskDue is missing value then error "skip task"
+                        set nextWeekStart to (current date) + (7 * days)
+                        set nextWeekEnd to nextWeekStart + (7 * days)
+                        if taskDue < nextWeekStart or taskDue > nextWeekEnd then error "skip task"
+                        """
+            elif due_relative == "overdue":
+                due_relative_check_batch = """
+                        set taskDue to contents of (item i of dueDates)
+                        if taskDue is missing value then error "skip task"
+                        if taskDue >= (current date) then error "skip task"
+                        """
+
+        defer_relative_check_batch = ""
+        if defer_relative:
+            if defer_relative == "today":
+                defer_relative_check_batch = """
+                        set taskDefer to contents of (item i of deferDates)
+                        if taskDefer is missing value then error "skip task"
+                        set todayStart to (current date)
+                        set time of todayStart to 0
+                        set todayEnd to todayStart + (24 * hours)
+                        if taskDefer < todayStart or taskDefer ≥ todayEnd then error "skip task"
+                        """
+            elif defer_relative == "tomorrow":
+                defer_relative_check_batch = """
+                        set taskDefer to contents of (item i of deferDates)
+                        if taskDefer is missing value then error "skip task"
+                        set tomorrowStart to (current date) + (1 * days)
+                        set time of tomorrowStart to 0
+                        set tomorrowEnd to tomorrowStart + (24 * hours)
+                        if taskDefer < tomorrowStart or taskDefer ≥ tomorrowEnd then error "skip task"
+                        """
+            elif defer_relative == "this_week":
+                defer_relative_check_batch = """
+                        set taskDefer to contents of (item i of deferDates)
+                        if taskDefer is missing value then error "skip task"
+                        set weekEnd to (current date) + (7 * days)
+                        if taskDefer > weekEnd then error "skip task"
+                        """
+            elif defer_relative == "next_week":
+                defer_relative_check_batch = """
+                        set taskDefer to contents of (item i of deferDates)
+                        if taskDefer is missing value then error "skip task"
+                        set nextWeekStart to (current date) + (7 * days)
+                        set nextWeekEnd to nextWeekStart + (7 * days)
+                        if taskDefer < nextWeekStart or taskDefer > nextWeekEnd then error "skip task"
+                        """
+
+        estimate_check_batch = ""
+        if max_estimated_minutes is not None:
+            estimate_check_batch = f"""
+                        set emVal to contents of (item i of estMins)
+                        if emVal is missing value or emVal = 0 or emVal > {max_estimated_minutes} then error "skip task"
+                        """
+        elif has_estimate is not None:
+            if has_estimate:
+                estimate_check_batch = """
+                        set emVal to contents of (item i of estMins)
+                        if emVal is missing value or emVal = 0 then error "skip task"
+                        """
+            else:
+                estimate_check_batch = """
+                        set emVal to contents of (item i of estMins)
+                        if emVal is not missing value and emVal > 0 then error "skip task"
+                        """
+
+        tag_check_batch = ""
+        if tag_filter and len(tag_filter) > 0 and tag_filter_mode == "and":
+            tag_checks_batch = []
+            for tag_name in tag_filter:
+                tag_escaped = tag_name.replace('"', '\\"')
+                tag_checks_batch.append(f'''
+                        set hasTag to false
+                        set taskTagNames to contents of (item i of tagNameLists)
+                        repeat with tn in taskTagNames
+                            if tn is "{tag_escaped}" then
+                                set hasTag to true
+                                exit repeat
+                            end if
+                        end repeat
+                        if not hasTag then error "skip task without required tag"
+                        ''')
+            tag_check_batch = "".join(tag_checks_batch)
+
+        if whose_active:
+            # BATCH MODE: Use 'a reference to' for batch property reads.
+            # All properties are read in O(P) Apple Events instead of O(N×P).
+            # See docs/reference/PERFORMANCE_PROFILING.md for experiment results.
+            script = f'''
+        use AppleScript version "2.4"
+        use scripting additions
+
+        set output to ""
+
+        tell application "OmniFocus"
+            tell front document
+                set ft to a reference to {task_source}
+
+                -- Batch read all properties (one Apple Event each)
+                set ids to id of ft
+                set taskNames to name of ft
+                set taskNotes to note of ft
+                set taskFlags to flagged of ft
+                set taskComps to completed of ft
+                set taskDrops to dropped of ft
+                set taskBlocks to blocked of ft
+                set taskNexts to next of ft
+                set taskSeqs to sequential of ft
+                set dueDates to due date of ft
+                set deferDates to defer date of ft
+                set creationDates to creation date of ft
+                set modDates to modification date of ft
+                set compDates to completion date of ft
+                set dropDates to dropped date of ft
+                set estMins to estimated minutes of ft
+                set repRules to repetition rule of ft
+                set availCounts to number of available tasks of ft
+
+                -- Nested batch reads (project, parent, tags)
+                set projIds to id of (containing project of ft)
+                set projNames to name of (containing project of ft)
+                set parentIds to id of (parent task of ft)
+                set tagNameLists to name of (tags of ft)
+
+                set taskCount to count of ids
+
+                -- Dereference task list once for subtask count (avoids re-evaluating whose per iteration)
+                set taskList to contents of ft
+
+                -- Build JSON from parallel lists (local loop, minimal IPC)
+                repeat with i from 1 to taskCount
+                    try
+                        -- Apply remaining filters using batch-read data
+                        {available_check_batch}
+                        {due_relative_check_batch}
+                        {defer_relative_check_batch}
+                        {estimate_check_batch}
+                        {tag_check_batch}
+
+                        -- Date coercion (local, no IPC)
+                        set dueDateStr to ""
+                        set dVal to contents of (item i of dueDates)
+                        if dVal is not missing value then
+                            set dueDateStr to (dVal as «class isot» as string)
+                        end if
+
+                        set deferDateStr to ""
+                        set dVal to contents of (item i of deferDates)
+                        if dVal is not missing value then
+                            set deferDateStr to (dVal as «class isot» as string)
+                        end if
+
+                        set creationDateStr to "null"
+                        set dVal to contents of (item i of creationDates)
+                        if dVal is not missing value then
+                            set creationDateStr to "\\"" & (dVal as «class isot» as string) & "\\""
+                        end if
+
+                        set modificationDateStr to "null"
+                        set dVal to contents of (item i of modDates)
+                        if dVal is not missing value then
+                            set modificationDateStr to "\\"" & (dVal as «class isot» as string) & "\\""
+                        end if
+
+                        set completionDateStr to "null"
+                        set dVal to contents of (item i of compDates)
+                        if dVal is not missing value then
+                            set completionDateStr to "\\"" & (dVal as «class isot» as string) & "\\""
+                        end if
+
+                        set droppedDateStr to "null"
+                        set dVal to contents of (item i of dropDates)
+                        if dVal is not missing value then
+                            set droppedDateStr to "\\"" & (dVal as «class isot» as string) & "\\""
+                        end if
+
+                        -- Project info (batch-read)
+                        set projectId to ""
+                        set projIdVal to contents of (item i of projIds)
+                        if projIdVal is not missing value then set projectId to projIdVal
+
+                        set projectName to ""
+                        set projNameVal to contents of (item i of projNames)
+                        if projNameVal is not missing value then set projectName to projNameVal
+
+                        -- Estimated minutes
+                        set estimatedMins to "null"
+                        set emVal to contents of (item i of estMins)
+                        if emVal is not missing value and emVal is not 0 then
+                            set estimatedMins to emVal as text
+                        end if
+
+                        -- Tags (batch-read as list of name-lists)
+                        set tagsJSON to "[]"
+                        set taskTagNames to contents of (item i of tagNameLists)
+                        if (count of taskTagNames) > 0 then
+                            set tagItems to {{}}
+                            repeat with tn in taskTagNames
+                                set end of tagItems to "\\"" & my escapeJSON(tn) & "\\""
+                            end repeat
+                            set AppleScript's text item delimiters to ", "
+                            set tagsJSON to "[" & (tagItems as text) & "]"
+                            set AppleScript's text item delimiters to ""
+                        end if
+
+                        -- Parent task (batch-read, exclude project-level parents)
+                        set parentTaskId to ""
+                        set parentIdVal to contents of (item i of parentIds)
+                        if parentIdVal is not missing value then
+                            if parentIdVal is not equal to projectId then
+                                set parentTaskId to parentIdVal
+                            end if
+                        end if
+
+                        -- Repetition info (per-task IPC — most tasks have no rules)
+                        set isRecurring to "false"
+                        set recurrenceStr to ""
+                        set repetitionMethodStr to ""
+                        set repRuleVal to contents of (item i of repRules)
+                        if repRuleVal is not missing value then
+                            set isRecurring to "true"
+                            try
+                                set recurrenceStr to recurrence of repRuleVal
+                            end try
+                            try
+                                set repetitionMethodStr to (repetition method of repRuleVal) as text
+                            end try
+                        end if
+
+                        -- Subtask count (per-task — cannot batch 'count of tasks')
+                        set taskSubtaskCount to 0
+                        try
+                            set taskSubtaskCount to count of (tasks of (item i of taskList))
+                        end try
+
+                        -- Availability (computed from batch-read data)
+                        set numAvailableTasks to item i of availCounts
+                        set isDeferred to false
+                        set deferVal to contents of (item i of deferDates)
+                        if deferVal is not missing value then
+                            set isDeferred to (deferVal > (current date))
+                        end if
+                        set taskCompleted to item i of taskComps
+                        set taskDropped to item i of taskDrops
+                        set taskBlocked to item i of taskBlocks
+                        set directlyAvailable to (not taskCompleted) and (not taskDropped) and (not taskBlocked) and (not isDeferred)
+                        set taskAvailable to directlyAvailable or (numAvailableTasks > 0)
+
+                        -- Build JSON
+                        set jsonLine to "{{" & ¬
+                            "\\"id\\": \\"" & item i of ids & "\\", " & ¬
+                            "\\"name\\": \\"" & my escapeJSON(item i of taskNames) & "\\", " & ¬
+                            "\\"note\\": \\"" & my escapeJSON(item i of taskNotes) & "\\", " & ¬
+                            "\\"completed\\": " & (taskCompleted as text) & ", " & ¬
+                            "\\"flagged\\": " & (item i of taskFlags as text) & ", " & ¬
+                            "\\"dropped\\": " & (taskDropped as text) & ", " & ¬
+                            "\\"blocked\\": " & (taskBlocked as text) & ", " & ¬
+                            "\\"next\\": " & (item i of taskNexts as text) & ", " & ¬
+                            "\\"projectId\\": \\"" & projectId & "\\", " & ¬
+                            "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
+                            "\\"dueDate\\": \\"" & dueDateStr & "\\", " & ¬
+                            "\\"deferDate\\": \\"" & deferDateStr & "\\", " & ¬
+                            "\\"creationDate\\": " & creationDateStr & ", " & ¬
+                            "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
+                            "\\"completionDate\\": " & completionDateStr & ", " & ¬
+                            "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
+                            "\\"tags\\": " & tagsJSON & ", " & ¬
+                            "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
+                            "\\"isRecurring\\": " & isRecurring & ", " & ¬
+                            "\\"recurrence\\": \\"" & my escapeJSON(recurrenceStr) & "\\", " & ¬
+                            "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethodStr) & "\\", " & ¬
+                            "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
+                            "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
+                            "\\"sequential\\": " & (item i of taskSeqs as text) & ", " & ¬
+                            "\\"position\\": " & (i as text) & ", " & ¬
+                            "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
+                            "\\"available\\": " & (taskAvailable as text) & ¬
+                            "}}"
+
+                        if output is not "" then
+                            set output to output & "," & linefeed
+                        end if
+                        set output to output & jsonLine
+                    end try
+                end repeat
+            end tell
+        end tell
+
+        return "[" & linefeed & output & linefeed & "]"
+        ''' + APPLESCRIPT_JSON_HELPERS
+
+        elif selective_filters_active:
+            # FILTER-FIRST: Apply filters BEFORE property extraction (per-task loop)
             script = f'''
         use AppleScript version "2.4"
         use scripting additions
@@ -2093,8 +2431,9 @@ class OmniFocusConnector:
                         {tag_check}
                         {query_check}'''
 
-        # Common section: Rest of property extraction (same for both modes)
-        script += f'''
+        # For non-batch modes: common per-task property extraction and JSON building
+        if not whose_active:
+            script += f'''
 
                         -- Get project info
                         set projectId to ""
