@@ -131,20 +131,54 @@ OmniFocus evaluates `whose` natively — 20-30x faster than manual iteration wit
 
 ### Optimization strategy
 
-1. **Use `whose` clauses** to pre-filter tasks before the property extraction loop
-2. **Reduce properties extracted** — not all 26 are needed for every use case
+1. **Use `whose` clauses** to pre-filter tasks before the property extraction loop ✅ (implemented)
+2. **Reduce properties extracted** — not all 27 are needed for every use case (future work)
 3. **Pre-filter to small sets** — the per-task cost is fixed, so fewer tasks = proportionally faster
 4. `get_projects()` nested loops (task_health, last_activity) should use similar pre-filtering
 
 ### Filters that map to `whose` clauses
 
-| Filter | `whose` equivalent | Works? |
+| Filter | `whose` equivalent | Implemented? |
 |--------|-------------------|--------|
-| `flagged_only` | `whose flagged is true` | Yes (tested) |
-| `overdue` | `whose due date < (current date)` | Needs testing |
-| `next_only` | `whose next is true` | Needs testing |
-| `completed` | `whose completed is true/false` | Yes (tested) |
-| `query` | `whose name contains "X"` | Yes (tested, name only) |
-| `available_only` | Complex (dropped, blocked, deferred) | Needs testing |
+| `flagged_only` | `whose flagged is true` | ✅ Yes |
+| `overdue` | `whose due date < (current date)` | ✅ Yes |
+| `next_only` | `whose next is true` | ✅ Yes |
+| `completed` | `whose completed is false` | ✅ Yes (default) |
+| `dropped_only` | `whose dropped is true` | ✅ Yes |
+| `blocked_only` | `whose blocked is true` | ✅ Yes |
+| `query` | `whose name contains "X" or note contains "X"` | ✅ Yes |
+| `available_only` | Complex (dropped, blocked, deferred) | No (still times out) |
 | `inbox_only` | Already uses `inbox tasks` (fast path) | N/A |
 | `project_id` | Already uses scoped task source (fast path) | N/A |
+
+## Post-Optimization Benchmark (whose-clause implementation)
+
+Measured after implementing `whose` clause pre-filtering for get_tasks().
+Same test database: 32 projects, ~200 tasks, 10 tags, 4 folders.
+
+### get_tasks() before vs after
+
+| Operation | Before | After | Speedup |
+|-----------|--------|-------|---------|
+| `get_tasks(flagged_only)` | 18.9s | **6.3s** | **3.0x** |
+| `get_tasks(overdue)` | 16.6s | **3.6s** | **4.6x** |
+| `get_tasks(query='bench')` | 80.8s | **16.3s** | **5.0x** |
+| `get_tasks(next_only)` | 41.9s | **29.3s** | **1.4x** |
+| `get_tasks(inbox_only)` | 5.4s | 5.4s | — (already fast path) |
+| `get_tasks(project_id=X)` | 0.20s | 0.18s | — (already fast path) |
+| `get_tasks(available_only)` | >120s | >120s | — (still times out) |
+| `get_tasks()` (no filter) | >120s | >120s | — (still times out) |
+
+### Why speedups are less than the 20-30x from whose experiments
+
+The `whose` clause itself is fast (0.2s), but the remaining bottleneck is per-task property extraction.
+With 27 properties × ~17ms per property × N matching tasks:
+
+| Filter | Matching tasks | Expected time | Actual time |
+|--------|---------------|--------------|-------------|
+| overdue | 8 | 8 × 27 × 17ms = 3.7s | 3.6s ✓ |
+| flagged | 14 | 14 × 27 × 17ms = 6.4s | 6.3s ✓ |
+| query | 39 | 39 × 27 × 17ms = 17.9s | 16.3s ✓ |
+| next | 67 | 67 × 27 × 17ms = 30.7s | 29.3s ✓ |
+
+The optimization eliminates iteration over non-matching tasks. Further gains require reducing properties per task.

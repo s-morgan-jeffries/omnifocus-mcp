@@ -122,25 +122,21 @@ class TestFilterDetectionLogic:
             script = mock_run.call_args[0][0]
             self._check_filter_first_mode(script)
 
-    def test_query_not_selective(self, client):
-        """Test that query uses extract-then-filter mode.
-
-        Query filtering performs equivalently in Python vs AppleScript (see #172),
-        so we don't use filter-first architecture for query parameter.
-        """
+    def test_query_is_selective(self, client):
+        """Test that query triggers filter-first mode (uses whose clause)."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
             client.get_tasks(query="test")
             script = mock_run.call_args[0][0]
-            self._check_extract_then_filter_mode(script)
+            self._check_filter_first_mode(script)
 
-    def test_available_only_not_selective(self, client):
-        """Test that available_only uses extract-then-filter mode (inclusive)."""
+    def test_available_only_is_selective(self, client):
+        """Test that available_only triggers filter-first mode."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
             client.get_tasks(available_only=True)
             script = mock_run.call_args[0][0]
-            self._check_extract_then_filter_mode(script)
+            self._check_filter_first_mode(script)
 
     def test_include_completed_not_selective(self, client):
         """Test that include_completed uses extract-then-filter mode (inclusive)."""

@@ -304,9 +304,9 @@ class TestGetTasks:
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = sample_tasks_json
             client.get_tasks(flagged_only=True)
-            # Verify flagged filter is in script
+            # Verify flagged filter uses whose clause
             call_args = mock_run.call_args[0][0]
-            assert "skip non-flagged task" in call_args
+            assert "flagged is true" in call_args
 
     def test_get_tasks_empty(self, client):
         """Test handling of empty tasks list."""
@@ -391,11 +391,9 @@ class TestGetTasks:
             tasks = client.get_tasks(dropped_only=True)
             assert len(tasks) == 1
             assert tasks[0]['dropped'] is True
-            # Verify the filter is in the script
+            # Verify dropped filter uses whose clause
             call_args = mock_run.call_args[0][0]
-            assert "dropped of t" in call_args
-            # Should skip non-dropped tasks
-            assert "skip" in call_args.lower() or "error" in call_args.lower()
+            assert "dropped is true" in call_args
 
     def test_get_tasks_includes_blocked_field(self, client):
         """Test that get_tasks includes the blocked field in the AppleScript and response."""
@@ -452,11 +450,9 @@ class TestGetTasks:
             tasks = client.get_tasks(blocked_only=True)
             assert len(tasks) == 1
             assert tasks[0]['blocked'] is True
-            # Verify the filter is in the script
+            # Verify blocked filter uses whose clause
             call_args = mock_run.call_args[0][0]
-            assert "blocked of t" in call_args
-            # Should skip non-blocked tasks
-            assert "skip" in call_args.lower() or "error" in call_args.lower()
+            assert "blocked is true" in call_args
 
     def test_get_tasks_available_only(self, client):
         """Test getting only available tasks (not deferred or blocked)."""
@@ -554,6 +550,92 @@ class TestGetTasks:
             mock_run.return_value = tasks_json
             tasks = client.get_tasks(tag_filter=["urgent", "work"])
             assert len(tasks) == 1
+
+
+class TestWhoseClauseOptimization:
+    """Tests that get_tasks uses 'whose' clauses for pre-filtering instead of manual iteration."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    @pytest.fixture
+    def sample_tasks_json(self):
+        return json.dumps([{
+            "id": "task-001", "name": "Test Task", "note": "", "completed": False,
+            "flagged": True, "dropped": False, "blocked": False, "next": True,
+            "projectId": "proj-001", "projectName": "Test Project",
+            "dueDate": "", "deferDate": "", "creationDate": None,
+            "modificationDate": None, "completionDate": None, "droppedDate": None,
+            "tags": [], "estimatedMinutes": None, "isRecurring": False,
+            "recurrence": "", "repetitionMethod": "", "parentTaskId": "",
+            "subtaskCount": 0, "sequential": False, "position": 1,
+            "numberOfAvailableTasks": 0, "available": True
+        }])
+
+    def test_flagged_uses_whose_clause(self, client, sample_tasks_json):
+        """flagged_only should use 'whose' with 'flagged is true' in task source."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            assert "whose" in script
+            assert "flagged is true" in script
+
+    def test_next_uses_whose_clause(self, client, sample_tasks_json):
+        """next_only should use 'whose' with 'next is true' in task source."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(next_only=True)
+            script = mock_run.call_args[0][0]
+            assert "whose" in script
+            assert "next is true" in script
+
+    def test_query_uses_whose_clause(self, client, sample_tasks_json):
+        """query should use 'whose ... name contains' in task source."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(query="bench")
+            script = mock_run.call_args[0][0]
+            assert 'name contains "bench"' in script
+            assert 'note contains "bench"' in script
+            assert "whose" in script
+
+    def test_no_filter_uses_whose_completed_false(self, client, sample_tasks_json):
+        """No explicit filter should still use whose to exclude completed tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks()
+            script = mock_run.call_args[0][0]
+            assert "whose completed is false" in script
+
+    def test_project_id_not_affected(self, client, sample_tasks_json):
+        """project_id filter should still use its existing fast path."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(project_id="proj-001")
+            script = mock_run.call_args[0][0]
+            assert 'whose id is "proj-001"' in script
+
+    def test_flagged_whose_excludes_completed(self, client, sample_tasks_json):
+        """flagged_only should combine whose with completed filter."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(flagged_only=True)
+            script = mock_run.call_args[0][0]
+            # Should combine both conditions in whose clause
+            assert "completed is false" in script
+            assert "flagged is true" in script
+
+    def test_overdue_uses_whose_clause(self, client, sample_tasks_json):
+        """overdue should use 'whose' with due date comparison."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(overdue=True)
+            script = mock_run.call_args[0][0]
+            # Should use whose for due date filtering
+            assert "whose" in script.lower()
+            assert "due date" in script
 
 
 class TestUpdateTask:
