@@ -54,39 +54,26 @@ The API was consolidated from 40+ functions to 16 in October 2025. This is inten
 
 ## Performance Constraints
 
-**AppleScript round-trips are expensive.** Each `osascript` subprocess call takes 100-300ms minimum. Design for fewer calls with more data per call.
+**The bottleneck is per-property IPC cost.** Each AppleScript property read from OmniFocus costs ~17ms (inter-process communication). With 26 properties per task, iterating 381 tasks = ~168s. This single fact explains nearly all performance issues. See `docs/reference/PERFORMANCE_PROFILING.md` for full experiment data.
 
-Benchmarked baselines (32 projects, ~200 tasks, clean test DB):
+**`whose` clauses are 20-30x faster than manual iteration.** OmniFocus evaluates `whose` natively:
+- `flattened tasks whose flagged is true`: 0.22s
+- Manual loop checking `flagged of t`: 6.59s
+- Current `get_tasks(flagged)` (loop + 26 props): 18.9s
 
-| Operation | Time | Items | Notes |
-|-----------|------|-------|-------|
-| `get_tasks(project_id=X)` | 0.20s | varies | Scoped to one project — fast |
-| `get_tasks(inbox_only)` | 5.4s | 13 | |
-| `get_tasks(overdue)` | 16.6s | 8 | Full scan despite filter |
-| `get_tasks(flagged_only)` | 18.9s | 14 | Full scan despite filter |
-| `get_tasks(next_only)` | 41.9s | 67 | |
-| `get_tasks(query='...')` | 80.8s | 39 | Slowest filter path |
-| `get_tasks(available_only)` | >120s | — | Times out |
-| `get_projects()` | 18.7s | 71 | Baseline |
-| `get_projects(+task_health)` | 43.6s | 71 | +133% overhead |
-| `get_projects(+last_activity)` | 28.8s | 71 | +54% overhead |
-| `get_projects(+full_notes)` | 18.7s | 71 | +0% overhead |
-| `get_folders()` | 0.68s | 5 | |
-| `get_tags()` | 1.01s | 25 | |
-| `get_perspectives()` | 0.17s | 24 | |
-| All write ops | 0.63-0.67s | — | create/update/delete |
+**What is NOT a bottleneck:** Loop iteration itself (0.17s for 381 tasks), string concatenation (<100ms for 400 items), JSON building.
 
-**Critical finding:** All `get_tasks()` filters except `project_id` iterate `flattened tasks` (full table scan). The filter is applied per-task inside the loop but the scan itself is the bottleneck. `project_id` is 100x faster because it scopes to one project's task list.
+**Current baselines** (32 projects, ~381 tasks — see profiling doc for full table):
+- `get_tasks(project_id)`: 0.20s | `get_tasks(flagged)`: 18.9s | `get_tasks(query)`: 80.8s
+- `get_projects()`: 18.7s | `get_perspectives()`: 0.17s | Write ops: 0.63-0.67s
 
-- Default timeout: 60s, max: 300s (configurable)
+Default timeout: 60s, max: 300s (configurable).
 
-**Key optimization:** `_get_tasks_batch_for_filtering()` fetches all project tasks in one AppleScript call instead of N calls. This pattern should be used for any new filtering that crosses project boundaries.
+**Optimization path:** Use `whose` to pre-filter, then extract properties only from the small result set. Projected: `get_tasks(flagged)` from 18.9s to ~3.5s.
 
-**Conditional filter-first architecture:** `get_tasks()` detects whether selective filters (flagged, overdue, query, etc.) are active. If yes, it filters BEFORE extracting full properties. If no, it extracts first. This matters — wrong order can be 19x slower.
+**Project task health:** `get_projects(include_task_health=True)` returns per-project task counts in a single AppleScript call. +133% overhead due to nested per-project task loops.
 
-**Project task health:** `get_projects(include_task_health=True)` returns per-project task counts (remaining, available, overdue, deferred) in a single AppleScript call. Use this for project review workflows instead of N per-project `get_tasks()` calls.
-
-**Conditional data loading:** `get_projects()` supports `include_last_activity=True` for expensive per-project calculations. Without this flag, `lastActivityDate` returns null (saves ~260ms for 33 projects).
+**Conditional data loading:** `get_projects()` supports `include_last_activity=True` for expensive per-project calculations (+54% overhead).
 
 ## Database Safety
 
