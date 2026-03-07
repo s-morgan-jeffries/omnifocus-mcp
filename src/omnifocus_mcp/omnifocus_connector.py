@@ -1699,23 +1699,23 @@ class OmniFocusConnector:
 
         # Detect if selective filters are active (Phase 2: Conditional filter-first optimization)
         # Selective filters eliminate >80% of tasks and benefit from filter-first architecture
-        # Note: query is NOT included - Python-side filtering performs equivalently (see #172)
         selective_filters_active = (
             flagged_only or
             overdue or
             dropped_only or
             blocked_only or
             next_only or
+            query or
+            available_only or
             due_relative in ['today', 'tomorrow', 'this_week', 'next_week', 'overdue']
         )
 
-        # Build task source (inbox, project, specific task, parent's subtasks, or all tasks)
-        # NEW (Phase 3.1): task_id and parent_task_id parameters
+        # Build task source with native 'whose' pre-filtering where possible.
+        # OmniFocus evaluates 'whose' clauses natively (~20-30x faster than
+        # manual iteration with per-task property checks). See PERFORMANCE_PROFILING.md.
         if task_id:
-            # Most specific: filter to single task by ID
             task_source = f'(flattened tasks whose id is "{task_id}")'
         elif parent_task_id:
-            # Filter to subtasks of a specific parent task
             parent_filter = f'whose id is "{parent_task_id}"'
             task_source = f'tasks of (first flattened task {parent_filter})'
         elif inbox_only:
@@ -1724,38 +1724,74 @@ class OmniFocusConnector:
             project_filter = f'whose id is "{project_id}"'
             task_source = f'flattened tasks of (first flattened project {project_filter})'
         else:
-            task_source = 'flattened tasks'
+            # Build whose conditions for filters that OmniFocus can evaluate natively
+            whose_conditions = []
+            if not include_completed:
+                whose_conditions.append("completed is false")
+            if flagged_only:
+                whose_conditions.append("flagged is true")
+            if next_only:
+                whose_conditions.append("next is true")
+            if dropped_only:
+                whose_conditions.append("dropped is true")
+            if blocked_only:
+                whose_conditions.append("blocked is true")
+            if overdue:
+                whose_conditions.append("due date < (current date)")
+            if query:
+                query_escaped = self._escape_applescript_string(query)
+                whose_conditions.append(f'(name contains "{query_escaped}" or note contains "{query_escaped}")')
 
-        # Build completion filter
-        completion_check = "" if include_completed else """
+            if whose_conditions:
+                task_source = f'(flattened tasks whose {" and ".join(whose_conditions)})'
+            else:
+                task_source = 'flattened tasks'
+
+        # Build in-loop filter checks. These are skipped when 'whose' handles the filter
+        # natively (whose_active). Filters handled by whose: completed, flagged, next,
+        # dropped, blocked, overdue, query.
+        whose_active = len(whose_conditions) > 0 if not (task_id or parent_task_id or inbox_only or project_id) else False
+
+        # Completion filter — skip if whose already filters completed
+        completion_check = ""
+        if not include_completed and not whose_active:
+            completion_check = """
                         -- Skip completed tasks
                         if completed of t then
                             error "skip completed task"
                         end if"""
 
-        # Build flagged filter
-        flagged_check = "" if not flagged_only else """
+        # Flagged filter — skip if whose already filters flagged
+        flagged_check = ""
+        if flagged_only and not whose_active:
+            flagged_check = """
                         -- Skip non-flagged tasks
                         if not flagged of t then
                             error "skip non-flagged task"
                         end if"""
 
-        # Build dropped filter
-        dropped_check = "" if not dropped_only else """
+        # Dropped filter — skip if whose already filters dropped
+        dropped_check = ""
+        if dropped_only and not whose_active:
+            dropped_check = """
                         -- Skip non-dropped tasks
                         if not dropped of t then
                             error "skip non-dropped task"
                         end if"""
 
-        # Build blocked filter
-        blocked_check = "" if not blocked_only else """
+        # Blocked filter — skip if whose already filters blocked
+        blocked_check = ""
+        if blocked_only and not whose_active:
+            blocked_check = """
                         -- Skip non-blocked tasks
                         if not blocked of t then
                             error "skip non-blocked task"
                         end if"""
 
-        # Build next filter
-        next_check = "" if not next_only else """
+        # Next filter — skip if whose already filters next
+        next_check = ""
+        if next_only and not whose_active:
+            next_check = """
                         -- Skip non-next tasks
                         if not next of t then
                             error "skip non-next task"
@@ -1780,8 +1816,10 @@ class OmniFocusConnector:
                             end if
                         end try"""
 
-        # Build overdue filter
-        overdue_check = "" if not overdue else """
+        # Overdue filter — skip if whose already filters by due date
+        overdue_check = ""
+        if overdue and not whose_active:
+            overdue_check = """
                         -- Skip non-overdue tasks
                         try
                             set taskDueDate to due date of t
@@ -1958,10 +1996,9 @@ class OmniFocusConnector:
                         end if''')
             tag_check = "".join(tag_checks)
 
-        # Build query filter (AppleScript-side name/note matching)
-        # AppleScript's 'contains' is case-insensitive by default
+        # Query filter — skip if whose already filters by name/note contains
         query_check = ""
-        if query:
+        if query and not whose_active:
             query_escaped = self._escape_applescript_string(query)
             query_check = f"""
                         -- Skip tasks not matching query (AppleScript contains is case-insensitive)
