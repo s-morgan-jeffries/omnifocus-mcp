@@ -746,6 +746,97 @@ class TestBatchPropertyExtraction:
             assert "count of (tasks of" not in script
 
 
+class TestGetProjectsBatchOptimization:
+    """Tests that get_projects task_health/last_activity use batch property reads."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    @pytest.fixture
+    def sample_projects_json(self):
+        return json.dumps([{
+            "id": "proj-001", "name": "Test Project", "note": "",
+            "status": "active", "sequential": False, "folderPath": "",
+            "creationDate": None, "modificationDate": None,
+            "completionDate": None, "droppedDate": None,
+            "lastActivityDate": None, "lastReviewDate": None,
+            "nextReviewDate": None, "remainingCount": 3,
+            "availableCount": 2, "overdueCount": 1, "deferredCount": 0,
+            "hasDeferredOnly": False
+        }])
+
+    def test_baseline_uses_batch_project_reads(self, client, sample_projects_json):
+        """Baseline get_projects should batch-read project properties, not per-project IPC."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects()
+            script = mock_run.call_args[0][0]
+            # Should batch-read project properties
+            assert "id of fp" in script
+            assert "name of fp" in script
+            assert "note of fp" in script
+            assert "status of fp" in script
+            # Should NOT use per-project property reads in a repeat loop
+            assert "set projId to id of proj" not in script
+
+    def test_task_health_uses_global_batch(self, client, sample_projects_json):
+        """include_task_health should use global task batch, not per-project reads."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects(include_task_health=True)
+            script = mock_run.call_args[0][0]
+            # Should batch-read ALL tasks globally
+            assert "a reference to flattened tasks" in script
+            assert "id of (containing project of ft)" in script
+            # Should NOT do per-project task reads
+            assert "flattened tasks of (item i of projRefs)" not in script
+
+    def test_last_activity_uses_global_batch(self, client, sample_projects_json):
+        """include_last_activity should use global task batch, not per-project reads."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects(include_last_activity=True)
+            script = mock_run.call_args[0][0]
+            # Should batch-read ALL tasks globally
+            assert "a reference to flattened tasks" in script
+            assert "id of (containing project of ft)" in script
+            # Should NOT do per-project task reads
+            assert "flattened tasks of (item i of projRefs)" not in script
+
+    def test_task_health_global_batch_reads_required_properties(self, client, sample_projects_json):
+        """Task health global batch should read completed, dropped, blocked, defer date, due date."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects(include_task_health=True)
+            script = mock_run.call_args[0][0]
+            assert "completed of ft" in script
+            assert "dropped of ft" in script
+            assert "blocked of ft" in script
+            assert "defer date of ft" in script
+            assert "due date of ft" in script
+
+    def test_last_activity_global_batch_reads_required_properties(self, client, sample_projects_json):
+        """Last activity global batch should read creation date and completion date."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects(include_last_activity=True)
+            script = mock_run.call_args[0][0]
+            assert "creation date of ft" in script
+            assert "completion date of ft" in script
+
+    def test_task_health_uses_parallel_counter_lists(self, client, sample_projects_json):
+        """Task health should use parallel counter lists indexed by project position."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects(include_task_health=True)
+            script = mock_run.call_args[0][0]
+            assert "remainingCounts" in script
+            assert "availableCounts" in script
+            assert "overdueCounts" in script
+            assert "deferredCounts" in script
+
+
 class TestUpdateTask:
     """Tests for update_task functionality."""
 
