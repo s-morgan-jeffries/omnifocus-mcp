@@ -1,16 +1,22 @@
 """Performance benchmarks for OmniFocus MCP operations.
 
-Measures timing of all major operations against a real OmniFocus instance.
-Reports results with comparison to documented baselines from CLAUDE.md.
+Measures timing of all MCP functions against a real OmniFocus test database.
+Reports statistical results: mean, stddev, min, max, coefficient of variation.
+Detects cold start effects and compares against documented baselines.
 
 Prerequisites:
     export OMNIFOCUS_TEST_MODE=true
     export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
     OmniFocus must be running with test database active.
+    Run scripts/setup_benchmark_data.sh first for representative data.
 
 Usage:
     pytest tests/test_benchmark.py -v -s
+    pytest tests/test_benchmark.py -v -s -k "read"     # Read benchmarks only
+    pytest tests/test_benchmark.py -v -s -k "write"    # Write benchmarks only
+    pytest tests/test_benchmark.py -v -s -k "param"    # Parameter variation tests
 """
+import math
 import os
 import statistics
 import subprocess
@@ -28,32 +34,49 @@ pytestmark = pytest.mark.skipif(
     reason="Benchmarks require OMNIFOCUS_TEST_MODE=true"
 )
 
-# Documented baselines from CLAUDE.md (seconds)
-BASELINES = {
-    "get_tasks (all)": 2.3,
-    "get_projects (all)": 0.9,
-    "get_projects (task_health)": None,  # No documented baseline yet
-    "get_projects (last_activity)": None,
-    "get_tasks (flagged)": None,
-    "get_tasks (query)": None,
-    "create_task": 0.4,
-    "update_task": 0.4,
-    "delete_tasks": 0.4,
-    "create_project": 0.4,
-    "update_project": 0.4,
-    "delete_projects": 0.4,
-    "get_folders": None,
-    "get_tags": None,
-    "get_perspectives": None,
-}
-
+# Number of iterations per benchmark
 ITERATIONS = 3
-READ_ITERATIONS = 1  # Single iteration for slow read operations
-SLOWDOWN_THRESHOLD = 2.0  # Warn if >2x slower than baseline
+WRITE_ITERATIONS = 3  # Fewer for write ops (they modify state)
 
 
-def _median_time(func, iterations=ITERATIONS):
-    """Run func multiple times and return median elapsed time."""
+class BenchmarkResult:
+    """Statistical summary of benchmark runs."""
+
+    def __init__(self, name, times, result=None, result_count=None):
+        self.name = name
+        self.times = times
+        self.result = result
+        self.result_count = result_count
+        self.mean = statistics.mean(times)
+        self.stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+        self.min = min(times)
+        self.max = max(times)
+        self.median = statistics.median(times)
+        self.cv = (self.stdev / self.mean * 100) if self.mean > 0 else 0.0
+        # Cold start detection: first run >2x slower than median of rest
+        if len(times) > 2:
+            rest_median = statistics.median(times[1:])
+            self.cold_start = times[0] > rest_median * 2
+            self.cold_start_overhead = times[0] - rest_median if self.cold_start else 0.0
+        else:
+            self.cold_start = False
+            self.cold_start_overhead = 0.0
+
+    def report(self):
+        """Print formatted benchmark report."""
+        print(f"\n  {self.name}:")
+        print(f"    mean={self.mean:.3f}s  stdev={self.stdev:.3f}s  "
+              f"min={self.min:.3f}s  max={self.max:.3f}s  CV={self.cv:.1f}%")
+        if self.result_count is not None:
+            print(f"    returned {self.result_count} items")
+        if self.cold_start:
+            print(f"    COLD START detected: first run {self.times[0]:.3f}s "
+                  f"(+{self.cold_start_overhead:.3f}s overhead)")
+        print(f"    runs: [{', '.join(f'{t:.3f}' for t in self.times)}]")
+
+
+def _benchmark(name, func, iterations=ITERATIONS):
+    """Run func multiple times and return BenchmarkResult."""
     times = []
     result = None
     for _ in range(iterations):
@@ -61,30 +84,35 @@ def _median_time(func, iterations=ITERATIONS):
         result = func()
         elapsed = time.perf_counter() - start
         times.append(elapsed)
-    return statistics.median(times), result
 
+    count = None
+    if isinstance(result, list):
+        count = len(result)
 
-def _report(name, elapsed, baseline=None):
-    """Print benchmark result with optional baseline comparison."""
-    msg = f"  {name}: {elapsed:.3f}s"
-    if baseline is not None:
-        ratio = elapsed / baseline
-        if ratio > SLOWDOWN_THRESHOLD:
-            msg += f" (SLOW: {ratio:.1f}x baseline {baseline:.1f}s)"
-        else:
-            msg += f" ({ratio:.1f}x baseline {baseline:.1f}s)"
-    print(msg)
+    br = BenchmarkResult(name, times, result=result, result_count=count)
+    br.report()
+    return br
 
 
 @pytest.fixture(scope="module")
 def client():
+    """Create connector with safety checks enabled."""
     return OmniFocusConnector(enable_safety_checks=True)
 
 
 @pytest.fixture(scope="module")
+def warmup(client):
+    """Warm up OmniFocus connection to avoid cold start in first real test."""
+    try:
+        client.get_tags()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="module")
 def test_project(client):
-    """Create a project with tasks for benchmarking write operations."""
-    name = f"Benchmark {uuid.uuid4()}"
+    """Create a temporary project for write benchmarks."""
+    name = f"__benchmark_temp_{uuid.uuid4().hex[:8]}"
     project_id = client.create_project(name)
     yield project_id
     try:
@@ -94,101 +122,131 @@ def test_project(client):
 
 
 class TestReadBenchmarks:
-    """Benchmark read operations (non-destructive)."""
+    """Benchmark all read operations."""
+
+    def test_warmup(self, warmup):
+        """Warm up OmniFocus connection."""
+        pass
 
     def test_get_tasks_all(self, client):
-        """Benchmark get_tasks() with no filters."""
+        """get_tasks() with no filters — full table scan."""
         try:
-            elapsed, tasks = _median_time(
-                lambda: client.get_tasks(timeout=300), iterations=READ_ITERATIONS
-            )
-            _report("get_tasks (all)", elapsed, BASELINES["get_tasks (all)"])
-            print(f"    returned {len(tasks)} tasks")
+            _benchmark("get_tasks (all)", lambda: client.get_tasks(timeout=120))
         except subprocess.TimeoutExpired:
-            print("  get_tasks (all): TIMEOUT (>300s) — database too large for unfiltered query")
-            pytest.skip("get_tasks() timed out — database too large for unfiltered query")
+            print("\n  get_tasks (all): TIMEOUT (>120s)")
+            pytest.skip("get_tasks() timed out")
 
     def test_get_tasks_flagged(self, client):
-        """Benchmark get_tasks() with flagged filter."""
-        elapsed, tasks = _median_time(
-            lambda: client.get_tasks(flagged_only=True, timeout=300),
-            iterations=READ_ITERATIONS,
-        )
-        _report("get_tasks (flagged)", elapsed, BASELINES["get_tasks (flagged)"])
-        print(f"    returned {len(tasks)} tasks")
+        """get_tasks() with flagged_only=True — filter-first path."""
+        _benchmark("get_tasks (flagged)", lambda: client.get_tasks(flagged_only=True))
 
     def test_get_tasks_query(self, client):
-        """Benchmark get_tasks() with query filter."""
-        elapsed, tasks = _median_time(
-            lambda: client.get_tasks(query="test", timeout=300),
-            iterations=READ_ITERATIONS,
+        """get_tasks() with query filter — AppleScript-side filtering."""
+        _benchmark("get_tasks (query='bench')", lambda: client.get_tasks(query="bench"))
+
+    def test_get_tasks_overdue(self, client):
+        """get_tasks() with overdue filter."""
+        _benchmark("get_tasks (overdue)", lambda: client.get_tasks(overdue=True))
+
+    def test_get_tasks_inbox(self, client):
+        """get_tasks() with inbox_only filter."""
+        _benchmark("get_tasks (inbox)", lambda: client.get_tasks(inbox_only=True))
+
+    def test_get_tasks_by_project(self, client):
+        """get_tasks() filtered to a single project."""
+        # Get first project to use as filter
+        projects = client.get_projects()
+        if not projects:
+            pytest.skip("No projects in test database")
+        project_id = projects[0]["id"]
+        _benchmark(
+            "get_tasks (project_id)",
+            lambda: client.get_tasks(project_id=project_id),
         )
-        _report("get_tasks (query)", elapsed, BASELINES["get_tasks (query)"])
-        print(f"    returned {len(tasks)} tasks")
+
+    def test_get_tasks_available(self, client):
+        """get_tasks() with available_only filter."""
+        try:
+            _benchmark(
+                "get_tasks (available)",
+                lambda: client.get_tasks(available_only=True, timeout=120),
+            )
+        except subprocess.TimeoutExpired:
+            print("\n  get_tasks (available): TIMEOUT (>120s)")
+            pytest.skip("get_tasks(available_only) timed out")
+
+    def test_get_tasks_next(self, client):
+        """get_tasks() with next_only filter."""
+        _benchmark("get_tasks (next)", lambda: client.get_tasks(next_only=True))
 
     def test_get_projects_all(self, client):
-        """Benchmark get_projects() baseline."""
-        elapsed, projects = _median_time(
-            lambda: client.get_projects(timeout=300), iterations=READ_ITERATIONS
-        )
-        _report("get_projects (all)", elapsed, BASELINES["get_projects (all)"])
-        print(f"    returned {len(projects)} projects")
+        """get_projects() baseline."""
+        _benchmark("get_projects (all)", lambda: client.get_projects())
 
     def test_get_projects_task_health(self, client):
-        """Benchmark get_projects() with include_task_health."""
-        elapsed, projects = _median_time(
-            lambda: client.get_projects(include_task_health=True, timeout=300),
-            iterations=READ_ITERATIONS,
+        """get_projects() with include_task_health — single batch call."""
+        _benchmark(
+            "get_projects (task_health)",
+            lambda: client.get_projects(include_task_health=True),
         )
-        _report("get_projects (task_health)", elapsed, BASELINES["get_projects (task_health)"])
-        print(f"    returned {len(projects)} projects")
 
     def test_get_projects_last_activity(self, client):
-        """Benchmark get_projects() with include_last_activity."""
-        elapsed, projects = _median_time(
-            lambda: client.get_projects(include_last_activity=True, timeout=300),
-            iterations=READ_ITERATIONS,
+        """get_projects() with include_last_activity — expensive per-project calc."""
+        _benchmark(
+            "get_projects (last_activity)",
+            lambda: client.get_projects(include_last_activity=True),
         )
-        _report("get_projects (last_activity)", elapsed, BASELINES["get_projects (last_activity)"])
-        print(f"    returned {len(projects)} projects")
+
+    def test_get_projects_full_notes(self, client):
+        """get_projects() with include_full_notes."""
+        _benchmark(
+            "get_projects (full_notes)",
+            lambda: client.get_projects(include_full_notes=True),
+        )
+
+    def test_get_projects_all_options(self, client):
+        """get_projects() with all optional data enabled."""
+        _benchmark(
+            "get_projects (all options)",
+            lambda: client.get_projects(
+                include_task_health=True,
+                include_last_activity=True,
+                include_full_notes=True,
+            ),
+        )
 
     def test_get_folders(self, client):
-        """Benchmark get_folders()."""
-        elapsed, folders = _median_time(lambda: client.get_folders())
-        _report("get_folders", elapsed, BASELINES["get_folders"])
-        print(f"    returned {len(folders)} folders")
+        """get_folders() baseline."""
+        _benchmark("get_folders", lambda: client.get_folders())
 
     def test_get_tags(self, client):
-        """Benchmark get_tags()."""
-        elapsed, tags = _median_time(lambda: client.get_tags())
-        _report("get_tags", elapsed, BASELINES["get_tags"])
-        print(f"    returned {len(tags)} tags")
+        """get_tags() baseline."""
+        _benchmark("get_tags", lambda: client.get_tags())
 
     def test_get_perspectives(self, client):
-        """Benchmark get_perspectives()."""
-        elapsed, perspectives = _median_time(lambda: client.get_perspectives())
-        _report("get_perspectives", elapsed, BASELINES["get_perspectives"])
-        print(f"    returned {len(perspectives)} perspectives")
+        """get_perspectives() baseline."""
+        _benchmark("get_perspectives", lambda: client.get_perspectives())
 
 
 class TestWriteBenchmarks:
     """Benchmark write operations (creates and cleans up test data)."""
 
+    def test_warmup(self, warmup):
+        """Warm up OmniFocus connection."""
+        pass
+
     def test_create_task(self, client, test_project):
-        """Benchmark create_task()."""
+        """create_task() — single task creation."""
         task_ids = []
 
         def create():
             tid = client.create_task(
-                f"Bench task {uuid.uuid4()}", project_id=test_project
+                f"__bench_{uuid.uuid4().hex[:8]}", project_id=test_project
             )
             task_ids.append(tid)
             return tid
 
-        elapsed, _ = _median_time(create)
-        _report("create_task", elapsed, BASELINES["create_task"])
-
-        # Cleanup
+        _benchmark("create_task", create, iterations=WRITE_ITERATIONS)
         for tid in task_ids:
             try:
                 client.delete_tasks(tid)
@@ -196,15 +254,20 @@ class TestWriteBenchmarks:
                 pass
 
     def test_update_task(self, client, test_project):
-        """Benchmark update_task()."""
+        """update_task() — single field update."""
         task_id = client.create_task(
-            f"Bench update {uuid.uuid4()}", project_id=test_project
+            f"__bench_update_{uuid.uuid4().hex[:8]}", project_id=test_project
         )
         try:
-            elapsed, _ = _median_time(
-                lambda: client.update_task(task_id, flagged=True)
-            )
-            _report("update_task", elapsed, BASELINES["update_task"])
+            toggle = [True, False, True, False, True]
+            idx = 0
+
+            def update():
+                nonlocal idx
+                client.update_task(task_id, flagged=toggle[idx % len(toggle)])
+                idx += 1
+
+            _benchmark("update_task", update, iterations=WRITE_ITERATIONS)
         finally:
             try:
                 client.delete_tasks(task_id)
@@ -212,30 +275,27 @@ class TestWriteBenchmarks:
                 pass
 
     def test_delete_task(self, client, test_project):
-        """Benchmark delete_tasks() (single task)."""
+        """delete_tasks() — single task deletion."""
         times = []
-        for _ in range(ITERATIONS):
+        for _ in range(WRITE_ITERATIONS):
             task_id = client.create_task(
-                f"Bench delete {uuid.uuid4()}", project_id=test_project
+                f"__bench_del_{uuid.uuid4().hex[:8]}", project_id=test_project
             )
             start = time.perf_counter()
             client.delete_tasks(task_id)
             times.append(time.perf_counter() - start)
-        elapsed = statistics.median(times)
-        _report("delete_tasks", elapsed, BASELINES["delete_tasks"])
+        BenchmarkResult("delete_tasks", times).report()
 
     def test_create_project(self, client):
-        """Benchmark create_project()."""
+        """create_project() — single project creation."""
         project_ids = []
 
         def create():
-            pid = client.create_project(f"Bench proj {uuid.uuid4()}")
+            pid = client.create_project(f"__bench_proj_{uuid.uuid4().hex[:8]}")
             project_ids.append(pid)
             return pid
 
-        elapsed, _ = _median_time(create)
-        _report("create_project", elapsed, BASELINES["create_project"])
-
+        _benchmark("create_project", create, iterations=WRITE_ITERATIONS)
         for pid in project_ids:
             try:
                 client.delete_projects(pid)
@@ -243,19 +303,106 @@ class TestWriteBenchmarks:
                 pass
 
     def test_update_project(self, client, test_project):
-        """Benchmark update_project()."""
-        elapsed, _ = _median_time(
-            lambda: client.update_project(test_project, flagged=True)
-        )
-        _report("update_project", elapsed, BASELINES["update_project"])
+        """update_project() — single field update."""
+        toggle = [True, False, True]
+        idx = 0
+
+        def update():
+            nonlocal idx
+            client.update_project(test_project, sequential=toggle[idx % len(toggle)])
+            idx += 1
+
+        _benchmark("update_project", update, iterations=WRITE_ITERATIONS)
 
     def test_delete_project(self, client):
-        """Benchmark delete_projects() (single project)."""
+        """delete_projects() — single project deletion."""
         times = []
-        for _ in range(ITERATIONS):
-            pid = client.create_project(f"Bench del proj {uuid.uuid4()}")
+        for _ in range(WRITE_ITERATIONS):
+            pid = client.create_project(f"__bench_del_proj_{uuid.uuid4().hex[:8]}")
             start = time.perf_counter()
             client.delete_projects(pid)
             times.append(time.perf_counter() - start)
-        elapsed = statistics.median(times)
-        _report("delete_projects", elapsed, BASELINES["delete_projects"])
+        BenchmarkResult("delete_projects", times).report()
+
+
+class TestParameterVariations:
+    """Test how different parameters affect the same function's performance."""
+
+    def test_warmup(self, warmup):
+        """Warm up OmniFocus connection."""
+        pass
+
+    def test_get_projects_parameter_comparison(self, client):
+        """Compare get_projects() with different option combinations."""
+        configs = [
+            ("baseline", {}),
+            ("+task_health", {"include_task_health": True}),
+            ("+last_activity", {"include_last_activity": True}),
+            ("+full_notes", {"include_full_notes": True}),
+            ("+all_options", {
+                "include_task_health": True,
+                "include_last_activity": True,
+                "include_full_notes": True,
+            }),
+        ]
+        print("\n  get_projects() parameter impact:")
+        results = {}
+        for label, kwargs in configs:
+            times = []
+            for _ in range(ITERATIONS):
+                start = time.perf_counter()
+                client.get_projects(**kwargs)
+                times.append(time.perf_counter() - start)
+            mean = statistics.mean(times)
+            stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+            results[label] = mean
+            print(f"    {label:20s}: mean={mean:.3f}s  stdev={stdev:.3f}s")
+
+        baseline = results["baseline"]
+        print(f"\n    Overhead vs baseline ({baseline:.3f}s):")
+        for label, mean in results.items():
+            if label != "baseline":
+                overhead = mean - baseline
+                pct = (overhead / baseline * 100) if baseline > 0 else 0
+                print(f"      {label:20s}: +{overhead:.3f}s ({pct:+.0f}%)")
+
+    def test_get_tasks_filter_comparison(self, client):
+        """Compare get_tasks() with different filter combinations."""
+        configs = [
+            ("no filter", {}),
+            ("flagged_only", {"flagged_only": True}),
+            ("overdue", {"overdue": True}),
+            ("inbox_only", {"inbox_only": True}),
+            ("next_only", {"next_only": True}),
+            ("available_only", {"available_only": True}),
+            ("query='bench'", {"query": "bench"}),
+        ]
+        print("\n  get_tasks() filter impact:")
+        results = {}
+        for label, kwargs in configs:
+            times = []
+            count = 0
+            for _ in range(ITERATIONS):
+                start = time.perf_counter()
+                try:
+                    tasks = client.get_tasks(timeout=120, **kwargs)
+                    count = len(tasks)
+                except subprocess.TimeoutExpired:
+                    times.append(120.0)
+                    count = -1
+                    continue
+                times.append(time.perf_counter() - start)
+            mean = statistics.mean(times)
+            stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+            results[label] = (mean, count)
+            print(f"    {label:20s}: mean={mean:.3f}s  stdev={stdev:.3f}s  "
+                  f"items={count}")
+
+        # Show relative performance
+        baseline_mean = results["no filter"][0]
+        if baseline_mean < 120:
+            print(f"\n    Speed vs unfiltered ({baseline_mean:.3f}s):")
+            for label, (mean, _) in results.items():
+                if label != "no filter" and mean < 120:
+                    speedup = baseline_mean / mean if mean > 0 else float('inf')
+                    print(f"      {label:20s}: {speedup:.1f}x {'faster' if speedup > 1 else 'slower'}")

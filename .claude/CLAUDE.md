@@ -56,9 +56,28 @@ The API was consolidated from 40+ functions to 16 in October 2025. This is inten
 
 **AppleScript round-trips are expensive.** Each `osascript` subprocess call takes 100-300ms minimum. Design for fewer calls with more data per call.
 
-- `get_tasks()` with 188 tasks: ~2.3s baseline
-- `get_projects()` with 33 projects: ~0.9s (after N+1 fix; was 7.6s before batch optimization)
-- Individual task updates: ~200-400ms each
+Benchmarked baselines (32 projects, ~200 tasks, clean test DB):
+
+| Operation | Time | Items | Notes |
+|-----------|------|-------|-------|
+| `get_tasks(project_id=X)` | 0.20s | varies | Scoped to one project — fast |
+| `get_tasks(inbox_only)` | 5.4s | 13 | |
+| `get_tasks(overdue)` | 16.6s | 8 | Full scan despite filter |
+| `get_tasks(flagged_only)` | 18.9s | 14 | Full scan despite filter |
+| `get_tasks(next_only)` | 41.9s | 67 | |
+| `get_tasks(query='...')` | 80.8s | 39 | Slowest filter path |
+| `get_tasks(available_only)` | >120s | — | Times out |
+| `get_projects()` | 18.7s | 71 | Baseline |
+| `get_projects(+task_health)` | 43.6s | 71 | +133% overhead |
+| `get_projects(+last_activity)` | 28.8s | 71 | +54% overhead |
+| `get_projects(+full_notes)` | 18.7s | 71 | +0% overhead |
+| `get_folders()` | 0.68s | 5 | |
+| `get_tags()` | 1.01s | 25 | |
+| `get_perspectives()` | 0.17s | 24 | |
+| All write ops | 0.63-0.67s | — | create/update/delete |
+
+**Critical finding:** All `get_tasks()` filters except `project_id` iterate `flattened tasks` (full table scan). The filter is applied per-task inside the loop but the scan itself is the bottleneck. `project_id` is 100x faster because it scopes to one project's task list.
+
 - Default timeout: 60s, max: 300s (configurable)
 
 **Key optimization:** `_get_tasks_batch_for_filtering()` fetches all project tasks in one AppleScript call instead of N calls. This pattern should be used for any new filtering that crosses project boundaries.

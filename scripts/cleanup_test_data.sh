@@ -1,101 +1,83 @@
 #!/bin/bash
+# Clean up ALL test and benchmark data from the OmniFocus test database.
+#
+# Removes projects, tasks, tags, and folders created by:
+#   - scripts/setup_benchmark_data.sh (prefix: "Bench ", "bench-")
+#   - scripts/setup_test_database.sh (prefix: "Test ", "test-")
+#   - integration tests (prefix: "__bench_", "__test_")
+#
+# Prerequisites:
+#   export OMNIFOCUS_TEST_MODE=true
+#   export OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus"
 
-# Clean up test data from production database
-# This removes the test folder, projects, tasks, and tags created by setup_test_database.sh
+set -e
 
-set -e  # Exit on error
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-echo -e "${GREEN}OmniFocus Test Data Cleanup${NC}"
-echo "================================================"
-echo ""
-
-echo -e "${YELLOW}This will remove the following from your production database:${NC}"
-echo "  - Test Projects folder (and all projects/tasks inside)"
-echo "  - test-urgent tag"
-echo "  - test-work tag"
-echo "  - test-personal tag"
-echo "  - Test Inbox Task"
-echo ""
-
-read -p "Continue with cleanup? (y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Cancelled."
-    exit 0
+if [ "$OMNIFOCUS_TEST_MODE" != "true" ]; then
+    echo "ERROR: OMNIFOCUS_TEST_MODE must be set to 'true'"
+    echo "Run: export OMNIFOCUS_TEST_MODE=true"
+    exit 1
 fi
 
-echo ""
-echo -e "${YELLOW}Cleaning up test data...${NC}"
+echo "Cleaning up ALL test data from OmniFocus test database..."
 echo ""
 
-# Run AppleScript to remove test data
-osascript <<'EOF'
+osascript <<'APPLESCRIPT'
+use AppleScript version "2.4"
+use scripting additions
+
 tell application "OmniFocus"
     tell front document
-        set cleanupLog to ""
+        set deletedCount to 0
 
-        -- Remove test folder and all its contents
-        try
-            set testFolder to first folder whose name is "Test Projects"
-            delete testFolder
-            set cleanupLog to cleanupLog & "✓ Deleted 'Test Projects' folder\n"
-        on error
-            set cleanupLog to cleanupLog & "⚠ 'Test Projects' folder not found (may already be deleted)\n"
-        end try
+        -- Delete test/benchmark tags
+        set testTags to every flattened tag whose name starts with "bench-" or name starts with "test-"
+        set tagCount to count of testTags
+        repeat with t in testTags
+            delete t
+        end repeat
+        set deletedCount to deletedCount + tagCount
 
-        -- Remove test tags
-        try
-            set urgentTag to first tag whose name is "test-urgent"
-            delete urgentTag
-            set cleanupLog to cleanupLog & "✓ Deleted 'test-urgent' tag\n"
-        on error
-            set cleanupLog to cleanupLog & "⚠ 'test-urgent' tag not found\n"
-        end try
+        -- Also delete non-prefixed test tags
+        repeat with tagName in {"urgent", "work", "personal", "waiting", "someday"}
+            try
+                set t to first flattened tag whose name is tagName
+                delete t
+                set deletedCount to deletedCount + 1
+            end try
+        end repeat
 
-        try
-            set workTag to first tag whose name is "test-work"
-            delete workTag
-            set cleanupLog to cleanupLog & "✓ Deleted 'test-work' tag\n"
-        on error
-            set cleanupLog to cleanupLog & "⚠ 'test-work' tag not found\n"
-        end try
+        -- Delete test/benchmark folders (cascades to contained projects/tasks)
+        set testFolders to every flattened folder whose name starts with "Bench " or name starts with "Test "
+        set folderCount to count of testFolders
+        repeat with f in testFolders
+            delete f
+        end repeat
+        set deletedCount to deletedCount + folderCount
 
-        try
-            set personalTag to first tag whose name is "test-personal"
-            delete personalTag
-            set cleanupLog to cleanupLog & "✓ Deleted 'test-personal' tag\n"
-        on error
-            set cleanupLog to cleanupLog & "⚠ 'test-personal' tag not found\n"
-        end try
+        -- Delete standalone test/benchmark projects (not in folders)
+        set testProjects to every flattened project whose name starts with "Bench " or name starts with "Test " or name starts with "__bench_" or name starts with "Active Test" or name starts with "On Hold Test" or name starts with "Completed Test" or name starts with "Standalone " or name starts with "Subfolder "
+        set projCount to count of testProjects
+        repeat with p in testProjects
+            delete p
+        end repeat
+        set deletedCount to deletedCount + projCount
 
-        -- Remove test inbox task
-        try
-            set testInboxTask to first inbox task whose name is "Test Inbox Task"
-            delete testInboxTask
-            set cleanupLog to cleanupLog & "✓ Deleted 'Test Inbox Task' from inbox\n"
-        on error
-            set cleanupLog to cleanupLog & "⚠ 'Test Inbox Task' not found in inbox\n"
-        end try
+        -- Delete test inbox tasks
+        set testInbox to every inbox task whose name starts with "Bench " or name starts with "Test " or name starts with "Inbox Task" or name starts with "__bench_"
+        set inboxCount to count of testInbox
+        repeat with t in testInbox
+            delete t
+        end repeat
+        set deletedCount to deletedCount + inboxCount
 
-        return cleanupLog
+        return "Deleted " & deletedCount & " items (" & tagCount & " tags, " & folderCount & " folders, " & projCount & " projects, " & inboxCount & " inbox tasks)"
     end tell
 end tell
-EOF
+APPLESCRIPT
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}================================================${NC}"
-    echo -e "${GREEN}Cleanup Complete!${NC}"
-    echo -e "${GREEN}================================================${NC}"
+    echo "Test data cleanup complete."
 else
-    echo -e "${RED}Some errors occurred during cleanup${NC}"
+    echo "ERROR: Cleanup failed"
+    exit 1
 fi
-
-echo ""
-echo -e "${YELLOW}Note: Your test database (OmniFocus-TEST.ofocus) was NOT affected.${NC}"
-echo "It still contains the test data for integration testing."
