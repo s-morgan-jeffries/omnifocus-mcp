@@ -503,6 +503,165 @@ class OmniFocusConnector:
             # For name, simple case-insensitive sort
             return sorted(tasks, key=lambda t: t.get(field, "").lower(), reverse=reverse)
 
+    def _build_task_ops_blocks(
+        self,
+        include_task_health: bool,
+        include_last_activity: bool
+    ) -> tuple[str, str, str, str]:
+        """Build AppleScript blocks for global task batch reads.
+
+        Returns (task_ops_preamble, task_ops_block, health_init, task_health_json_fields).
+        Uses global batch reads + parallel counter lists instead of per-project IPC.
+        """
+        if not include_task_health and not include_last_activity:
+            return "", "", "", ""
+
+        # Global batch reads (~8 Apple Events total for ALL tasks)
+        batch_reads = [
+            "set ft to a reference to flattened tasks",
+            "set taskCount to count of ft",
+            "set allTaskProjIds to id of (containing project of ft)",
+        ]
+        if include_task_health:
+            batch_reads += [
+                "set allCompleted to completed of ft",
+                "set allDropped to dropped of ft",
+                "set allBlocked to blocked of ft",
+                "set allDeferDates to defer date of ft",
+                "set allDueDates to due date of ft",
+            ]
+        if include_last_activity:
+            batch_reads += [
+                "set allCreateDates to creation date of ft",
+                "set allCompDates to completion date of ft",
+            ]
+
+        # Initialize parallel counter lists (one entry per project)
+        init_lines = []
+        if include_task_health:
+            init_lines += [
+                "set remainingCounts to {}",
+                "set availableCounts to {}",
+                "set overdueCounts to {}",
+                "set deferredCounts to {}",
+            ]
+        if include_last_activity:
+            init_lines.append("set latestActivityDates to {}")
+        init_lines.append("repeat with idx from 1 to projCount")
+        if include_task_health:
+            init_lines += [
+                "    set end of remainingCounts to 0",
+                "    set end of availableCounts to 0",
+                "    set end of overdueCounts to 0",
+                "    set end of deferredCounts to 0",
+            ]
+        if include_last_activity:
+            init_lines.append("    set end of latestActivityDates to missing value")
+        init_lines.append("end repeat")
+
+        # Single-pass accumulation: find project index, accumulate counters
+        accum_lines = [
+            "set todayDate to current date",
+            "repeat with j from 1 to taskCount",
+            "    set projIdx to 0",
+            "    try",
+            "        set taskProjId to item j of allTaskProjIds",
+            "        repeat with k from 1 to projCount",
+            "            if item k of ids is taskProjId then",
+            "                set projIdx to k",
+            "                exit repeat",
+            "            end if",
+            "        end repeat",
+            "    end try",
+            "    if projIdx > 0 then",
+        ]
+        if include_task_health:
+            accum_lines += [
+                "        try",
+                "            set taskCompleted to item j of allCompleted",
+                "            set taskDropped to item j of allDropped",
+                "            if taskCompleted is false and taskDropped is false then",
+                "                set item projIdx of remainingCounts to (item projIdx of remainingCounts) + 1",
+                "                set taskBlocked to item j of allBlocked",
+                "                set taskDeferred to false",
+                "                try",
+                "                    set deferDateVal to item j of allDeferDates",
+                "                    if deferDateVal is not missing value and deferDateVal > todayDate then",
+                "                        set taskDeferred to true",
+                "                    end if",
+                "                end try",
+                "                if taskDeferred then",
+                "                    set item projIdx of deferredCounts to (item projIdx of deferredCounts) + 1",
+                "                else if taskBlocked is false then",
+                "                    set item projIdx of availableCounts to (item projIdx of availableCounts) + 1",
+                "                end if",
+                "                try",
+                "                    set dueDateVal to item j of allDueDates",
+                "                    if dueDateVal is not missing value and dueDateVal < todayDate then",
+                "                        set item projIdx of overdueCounts to (item projIdx of overdueCounts) + 1",
+                "                    end if",
+                "                end try",
+                "            end if",
+                "        end try",
+            ]
+        if include_last_activity:
+            accum_lines += [
+                "        try",
+                "            set cDate to item j of allCreateDates",
+                "            if cDate is not missing value then",
+                "                set curMax to item projIdx of latestActivityDates",
+                "                if curMax is missing value or cDate > curMax then",
+                "                    set item projIdx of latestActivityDates to cDate",
+                "                end if",
+                "            end if",
+                "        end try",
+                "        try",
+                "            set dDate to item j of allCompDates",
+                "            if dDate is not missing value then",
+                "                set curMax to item projIdx of latestActivityDates",
+                "                if curMax is missing value or dDate > curMax then",
+                "                    set item projIdx of latestActivityDates to dDate",
+                "                end if",
+                "            end if",
+                "        end try",
+            ]
+        accum_lines += ["    end if", "end repeat"]
+
+        # Join with indentation
+        indent = "\n                "
+        task_ops_preamble = indent.join(batch_reads)
+        task_ops_preamble += indent + indent.join(init_lines)
+        task_ops_preamble += indent + indent.join(accum_lines)
+
+        # Per-project reads from counter lists (inside the project JSON loop)
+        health_init = ""
+        if include_task_health:
+            health_init = """set remainingCount to item i of remainingCounts
+                            set availableCount to item i of availableCounts
+                            set overdueCount to item i of overdueCounts
+                            set deferredCount to item i of deferredCounts
+                            set hasDeferredOnly to (remainingCount > 0 and availableCount = 0)"""
+
+        task_ops_block = ""
+        if include_last_activity:
+            task_ops_block = """try
+                                set activityDate to item i of latestActivityDates
+                                if activityDate is not missing value then
+                                    set lastActivityStr to "\\"" & (activityDate as «class isot» as string) & "\\""
+                                end if
+                            end try"""
+
+        task_health_json_fields = ""
+        if include_task_health:
+            task_health_json_fields = (' & ", " & ¬\n'
+                '                            "\\"remainingCount\\": " & remainingCount & ", " & ¬\n'
+                '                            "\\"availableCount\\": " & availableCount & ", " & ¬\n'
+                '                            "\\"overdueCount\\": " & overdueCount & ", " & ¬\n'
+                '                            "\\"deferredCount\\": " & deferredCount & ", " & ¬\n'
+                '                            "\\"hasDeferredOnly\\": " & hasDeferredOnly')
+
+        return task_ops_preamble, task_ops_block, health_init, task_health_json_fields
+
     def get_projects(
         self,
         project_id: Optional[str] = None,  # NEW (Phase 3.2): Filter to specific project
@@ -577,6 +736,15 @@ class OmniFocusConnector:
         else:
             project_source = 'flattened projects'
 
+        # Build task ops AppleScript blocks via helper
+        task_ops_preamble, task_ops_block, health_init, task_health_json_fields = \
+            self._build_task_ops_blocks(include_task_health, include_last_activity)
+
+        # Build on_hold filter condition
+        on_hold_condition = ""
+        if on_hold_only:
+            on_hold_condition = ' or projStatus is not "on hold status"'
+
         script = '''
         use AppleScript version "2.4"
         use scripting additions
@@ -586,112 +754,138 @@ class OmniFocusConnector:
 
         tell application "OmniFocus"
             tell front document
-                set allProjects to {project_source}
+                -- Pre-build folder path cache (folders are few, typically <50)
+                set ff to a reference to flattened folders
+                set folderCount to count of ff
+                set folderIds to id of ff
+                set folderNames to name of ff
+                set folderContainerIds to id of (container of ff)
+                set folderContainerClasses to class of (container of ff)
 
-                repeat with proj in allProjects
+                set folderPaths to {{}}
+                repeat with i from 1 to folderCount
+                    if item i of folderContainerClasses is folder then
+                        set parentId to item i of folderContainerIds
+                        set parentPath to ""
+                        repeat with j from 1 to (i - 1)
+                            if item j of folderIds is parentId then
+                                set parentPath to item j of folderPaths
+                                exit repeat
+                            end if
+                        end repeat
+                        if parentPath is "" then
+                            set end of folderPaths to item i of folderNames
+                        else
+                            set end of folderPaths to parentPath & " > " & (item i of folderNames)
+                        end if
+                    else
+                        set end of folderPaths to item i of folderNames
+                    end if
+                end repeat
+
+                -- Batch read all project properties (one Apple Event per property type)
+                set fp to a reference to {project_source}
+                set projCount to count of fp
+                set ids to id of fp
+                set names to name of fp
+                set notes to note of fp
+                set statuses to status of fp
+                set seqs to sequential of fp
+                set createDates to creation date of fp
+                set modDates to modification date of fp
+                set compDates to completion date of fp
+                set dropDates to dropped date of fp
+                set lastRevDates to last review date of fp
+                set nextRevDates to next review date of fp
+                set containerIds to id of (container of fp)
+                set containerClasses to class of (container of fp)
+
+                {task_ops_preamble}
+
+                -- Iterate by index (all reads are local — no per-project IPC)
+                repeat with i from 1 to projCount
                     try
-                        set projId to id of proj
-                        set projName to name of proj
-                        set projNote to note of proj
-                        set projStatus to status of proj as text
+                        set projStatus to item i of statuses as text
 
-                        -- Skip dropped projects
-                        if projStatus is "dropped status" then
-                            error "skip dropped project"
+                        -- Skip dropped projects (and on_hold filter)
+                        if projStatus is "dropped status"{on_hold_condition} then
+                            error "skip project"
                         end if
 
-                        {on_hold_check}
-
-                        -- Get folder path
+                        -- Look up folder path from cache
                         set folderPath to ""
-                        try
-                            set parentFolder to container of proj
-                            if class of parentFolder is folder then
-                                set folderPath to name of parentFolder
-                                -- Walk up the folder hierarchy
-                                set currentFolder to parentFolder
-                                repeat
-                                    try
-                                        set parentOfFolder to container of currentFolder
-                                        if class of parentOfFolder is folder then
-                                            set folderPath to (name of parentOfFolder) & " > " & folderPath
-                                            set currentFolder to parentOfFolder
-                                        else
-                                            exit repeat
-                                        end if
-                                    on error
-                                        exit repeat
-                                    end try
-                                end repeat
-                            end if
-                        end try
+                        if item i of containerClasses is folder then
+                            set projContainerId to item i of containerIds
+                            repeat with j from 1 to folderCount
+                                if item j of folderIds is projContainerId then
+                                    set folderPath to item j of folderPaths
+                                    exit repeat
+                                end if
+                            end repeat
+                        end if
 
-                        -- Get timestamp fields
+                        -- Format dates (local conversion, no IPC)
                         set creationDateStr to "null"
                         try
-                            set creationDate to creation date of proj
-                            if creationDate is not missing value then
-                                set creationDateStr to "\\"" & (creationDate as «class isot» as string) & "\\""
+                            set createVal to item i of createDates
+                            if createVal is not missing value then
+                                set creationDateStr to "\\"" & (createVal as «class isot» as string) & "\\""
                             end if
                         end try
 
                         set modDateStr to "null"
                         try
-                            set modDate to modification date of proj
-                            if modDate is not missing value then
-                                set modDateStr to "\\"" & (modDate as «class isot» as string) & "\\""
+                            set modVal to item i of modDates
+                            if modVal is not missing value then
+                                set modDateStr to "\\"" & (modVal as «class isot» as string) & "\\""
                             end if
                         end try
 
                         set completionDateStr to "null"
                         try
-                            set completionDate to completion date of proj
-                            if completionDate is not missing value then
-                                set completionDateStr to "\\"" & (completionDate as «class isot» as string) & "\\""
+                            set compVal to item i of compDates
+                            if compVal is not missing value then
+                                set completionDateStr to "\\"" & (compVal as «class isot» as string) & "\\""
                             end if
                         end try
 
                         set droppedDateStr to "null"
                         try
-                            set droppedDate to dropped date of proj
-                            if droppedDate is not missing value then
-                                set droppedDateStr to "\\"" & (droppedDate as «class isot» as string) & "\\""
+                            set dropVal to item i of dropDates
+                            if dropVal is not missing value then
+                                set droppedDateStr to "\\"" & (dropVal as «class isot» as string) & "\\""
                             end if
                         end try
 
-                        -- Get sequential status
-                        set isSequential to sequential of proj
-
-                        -- Calculate last activity date (most recent task creation or completion)
                         set lastActivityStr to "null"
-                        {last_activity_block}
 
-                        {task_health_block}
-
-                        -- Get review dates
                         set lastReviewDateStr to "null"
                         try
-                            set lastReviewDate to last review date of proj
-                            if lastReviewDate is not missing value then
-                                set lastReviewDateStr to "\\"" & (lastReviewDate as «class isot» as string) & "\\""
+                            set lastRevVal to item i of lastRevDates
+                            if lastRevVal is not missing value then
+                                set lastReviewDateStr to "\\"" & (lastRevVal as «class isot» as string) & "\\""
                             end if
                         end try
 
                         set nextReviewDateStr to "null"
                         try
-                            set nextReviewDate to next review date of proj
-                            if nextReviewDate is not missing value then
-                                set nextReviewDateStr to "\\"" & (nextReviewDate as «class isot» as string) & "\\""
+                            set nextRevVal to item i of nextRevDates
+                            if nextRevVal is not missing value then
+                                set nextReviewDateStr to "\\"" & (nextRevVal as «class isot» as string) & "\\""
                             end if
                         end try
 
-                        -- Build JSON manually (AppleScript doesn't have native JSON)
+                        -- Per-project task operations (only when task_health/last_activity requested)
+                        {health_init}
+                        {task_ops_block}
+
+                        -- Build JSON
                         set jsonLine to "{{" & ¬
-                            "\\"id\\": \\"" & projId & "\\", " & ¬
-                            "\\"name\\": \\"" & my escapeJSON(projName) & "\\", " & ¬
-                            "\\"note\\": \\"" & my escapeJSON(projNote) & "\\", " & ¬
+                            "\\"id\\": \\"" & (item i of ids) & "\\", " & ¬
+                            "\\"name\\": \\"" & my escapeJSON(item i of names) & "\\", " & ¬
+                            "\\"note\\": \\"" & my escapeJSON(item i of notes) & "\\", " & ¬
                             "\\"status\\": \\"" & projStatus & "\\", " & ¬
-                            "\\"sequential\\": " & (isSequential as text) & ", " & ¬
+                            "\\"sequential\\": " & ((item i of seqs) as text) & ", " & ¬
                             "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modDateStr & ", " & ¬
@@ -699,7 +893,7 @@ class OmniFocusConnector:
                             "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
                             "\\"lastActivityDate\\": " & lastActivityStr & ", " & ¬
                             "\\"lastReviewDate\\": " & lastReviewDateStr & ", " & ¬
-                            "\\"nextReviewDate\\": " & nextReviewDateStr{task_health_json} & ¬
+                            "\\"nextReviewDate\\": " & nextReviewDateStr{task_health_json_fields} & ¬
                             "}}"
 
                         if output is not "" then
@@ -714,104 +908,13 @@ class OmniFocusConnector:
         return "[" & linefeed & output & linefeed & "]"
         ''' + APPLESCRIPT_JSON_HELPERS
 
-        # Build on_hold filter
-        on_hold_check = "" if not on_hold_only else """
-                        -- Skip non-on-hold projects
-                        if projStatus is not "on hold status" then
-                            error "skip non-on-hold project"
-                        end if"""
-
-        # Build last_activity block (opt-in to avoid iterating all tasks)
-        if include_last_activity:
-            last_activity_block = """try
-                            set projTasks to flattened tasks of proj
-                            set lastActivity to missing value
-
-                            repeat with t in projTasks
-                                try
-                                    set createDate to creation date of t
-                                    if lastActivity is missing value or createDate > lastActivity then
-                                        set lastActivity to createDate
-                                    end if
-                                end try
-
-                                try
-                                    if completed of t is true then
-                                        set compDate to completion date of t
-                                        if compDate is not missing value then
-                                            if lastActivity is missing value or compDate > lastActivity then
-                                                set lastActivity to compDate
-                                            end if
-                                        end if
-                                    end if
-                                end try
-                            end repeat
-
-                            if lastActivity is not missing value then
-                                set lastActivityStr to "\\"" & (lastActivity as «class isot» as string) & "\\""
-                            end if
-                        end try"""
-        else:
-            last_activity_block = ""
-
-        # Build task health block (counts remaining/available/overdue/deferred per project)
-        if include_task_health:
-            task_health_block = """set remainingCount to 0
-                        set availableCount to 0
-                        set overdueCount to 0
-                        set deferredCount to 0
-                        set todayDate to current date
-                        try
-                            set healthTasks to flattened tasks of proj
-                            repeat with t in healthTasks
-                                try
-                                    set taskCompleted to completed of t
-                                    set taskDropped to dropped of t
-                                    if taskCompleted is false and taskDropped is false then
-                                        set remainingCount to remainingCount + 1
-
-                                        set taskBlocked to blocked of t
-                                        set taskDeferred to false
-                                        try
-                                            set deferDate to defer date of t
-                                            if deferDate is not missing value and deferDate > todayDate then
-                                                set taskDeferred to true
-                                            end if
-                                        end try
-
-                                        if taskDeferred then
-                                            set deferredCount to deferredCount + 1
-                                        else if taskBlocked is false then
-                                            set availableCount to availableCount + 1
-                                        end if
-
-                                        try
-                                            set dueDate to due date of t
-                                            if dueDate is not missing value and dueDate < todayDate then
-                                                set overdueCount to overdueCount + 1
-                                            end if
-                                        end try
-                                    end if
-                                end try
-                            end repeat
-                        end try
-                        set hasDeferredOnly to (remainingCount > 0 and availableCount = 0)"""
-            task_health_json = (' & ", " & ¬\n'
-                '                            "\\"remainingCount\\": " & remainingCount & ", " & ¬\n'
-                '                            "\\"availableCount\\": " & availableCount & ", " & ¬\n'
-                '                            "\\"overdueCount\\": " & overdueCount & ", " & ¬\n'
-                '                            "\\"deferredCount\\": " & deferredCount & ", " & ¬\n'
-                '                            "\\"hasDeferredOnly\\": " & hasDeferredOnly')
-        else:
-            task_health_block = ""
-            task_health_json = ""
-
         script = script.format(
             project_source=project_source,
-            on_hold_check=on_hold_check,
-            last_activity_block=last_activity_block,
-            task_health_block=task_health_block,
-            task_health_json=task_health_json,
+            on_hold_condition=on_hold_condition,
+            task_ops_preamble=task_ops_preamble,
+            health_init=health_init,
+            task_ops_block=task_ops_block,
+            task_health_json_fields=task_health_json_fields,
         )
 
         try:
