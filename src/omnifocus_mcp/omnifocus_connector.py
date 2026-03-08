@@ -1095,6 +1095,118 @@ class OmniFocusConnector:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error creating project: {e.stderr}")
 
+    def _build_project_update_commands(
+        self,
+        sequential: Optional[bool] = None,
+        status: Optional[Union['ProjectStatus', str]] = None,
+        review_interval_weeks: Optional[int] = None,
+        last_reviewed: Optional[str] = None,
+        next_review_date: Optional[str] = None,
+        folder_path: Optional[str] = None,
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Build AppleScript command fragments for project updates.
+
+        Shared by update_project() and update_projects() to avoid duplicating
+        the command-building logic. Excludes project_name and note
+        (single-project-only fields).
+
+        Returns:
+            tuple of (properties, separate_commands, updated_fields)
+        """
+        properties = []
+        separate_commands = []
+        updated_fields = []
+
+        if sequential is not None:
+            properties.append(f'sequential:{str(sequential).lower()}')
+            updated_fields.append("sequential")
+
+        # Validate and normalize status
+        if status is not None:
+            if isinstance(status, ProjectStatus):
+                status_str = status.value
+            elif isinstance(status, str):
+                valid_statuses = ["active", "on_hold", "done", "dropped"]
+                if status.lower() not in valid_statuses:
+                    raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join(valid_statuses)}")
+                status_str = status.lower()
+            else:
+                raise ValueError(f"status must be ProjectStatus enum or string, got {type(status)}")
+
+            if status_str == "done":
+                separate_commands.append("mark complete theProject")
+            else:
+                status_map = {
+                    "active": "active",
+                    "on_hold": "on hold",
+                    "dropped": "dropped"
+                }
+                of_status = status_map[status_str]
+                separate_commands.append(f'set status of theProject to {of_status}')
+            updated_fields.append("status")
+
+        if review_interval_weeks is not None:
+            separate_commands.append(
+                f'set review interval of theProject to {{unit:week, steps:{review_interval_weeks}, fixed:true}}'
+            )
+            updated_fields.append("review_interval_weeks")
+
+        if last_reviewed is not None:
+            if last_reviewed.lower() == "now" or last_reviewed == "":
+                separate_commands.append('set last review date of theProject to (current date)')
+            else:
+                separate_commands.append(f'set last review date of theProject to date "{last_reviewed}"')
+            updated_fields.append("last_reviewed")
+
+        if next_review_date is not None:
+            separate_commands.append(f'set next review date of theProject to date "{next_review_date}"')
+            updated_fields.append("next_review_date")
+
+        if folder_path is not None:
+            folder_parts = [part.strip() for part in folder_path.split('>')]
+            if len(folder_parts) == 1:
+                folder_escaped = self._escape_applescript_string(folder_parts[0])
+                separate_commands.append(f'''
+                    set targetFolder to first folder whose name is "{folder_escaped}"
+                    move theProject to end of projects of targetFolder''')
+            else:
+                folder_names_list = ', '.join(f'"{self._escape_applescript_string(p)}"' for p in folder_parts)
+                separate_commands.append(f'''
+                    set folderNames to {{{folder_names_list}}}
+                    set targetFolder to missing value
+                    repeat with i from 1 to count of folderNames
+                        set folderName to item i of folderNames
+                        if i is 1 then
+                            repeat with f in folders
+                                if name of f is folderName then
+                                    set targetFolder to f
+                                    exit repeat
+                                end if
+                            end repeat
+                        else
+                            if targetFolder is not missing value then
+                                set found to false
+                                repeat with f in folders of targetFolder
+                                    if name of f is folderName then
+                                        set targetFolder to f
+                                        set found to true
+                                        exit repeat
+                                    end if
+                                end repeat
+                                if not found then
+                                    error "Folder path not found: {folder_path}"
+                                end if
+                            end if
+                        end if
+                    end repeat
+                    if targetFolder is missing value then
+                        error "Folder path not found: {folder_path}"
+                    end if
+                    move theProject to end of projects of targetFolder''')
+            updated_fields.append("folder_path")
+
+        return properties, separate_commands, updated_fields
+
     def update_project(
         self,
         project_id: str,
@@ -1426,7 +1538,8 @@ class OmniFocusConnector:
 
         # Validate at least one field is provided
         if (folder_path is None and sequential is None and status is None and
-                review_interval_weeks is None and last_reviewed is None):
+                review_interval_weeks is None and last_reviewed is None and
+                next_review_date is None):
             raise ValueError("At least one field must be provided to update")
 
         # Normalize project_ids to list
@@ -1435,48 +1548,66 @@ class OmniFocusConnector:
         else:
             ids_list = project_ids
 
-        # Track results
-        updated_count = 0
-        failed_count = 0
-        updated_ids: list[str] = []
-        failures: list[dict] = []
+        # Build command fragments using shared helper
+        properties, separate_commands, updated_fields = self._build_project_update_commands(
+            sequential=sequential,
+            status=status,
+            review_interval_weeks=review_interval_weeks,
+            last_reviewed=last_reviewed,
+            next_review_date=next_review_date,
+            folder_path=folder_path,
+        )
 
-        # Update each project individually
-        for project_id in ids_list:
-            try:
-                result = self.update_project(
-                    project_id=project_id,
-                    folder_path=folder_path,
-                    sequential=sequential,
-                    status=status,
-                    review_interval_weeks=review_interval_weeks,
-                    last_reviewed=last_reviewed,
-                    next_review_date=next_review_date
-                )
+        # Build single AppleScript with loop (matching delete_projects pattern)
+        ids_applescript = ", ".join(
+            [f'"{self._escape_applescript_string(pid)}"' for pid in ids_list]
+        )
 
-                if result["success"]:
-                    updated_count += 1
-                    updated_ids.append(project_id)
-                else:
-                    failed_count += 1
-                    failures.append({
-                        "project_id": project_id,
-                        "error": result.get("error", "Unknown error")
-                    })
+        props_block = ""
+        if properties:
+            props_str = ", ".join(properties)
+            props_block = f"set properties of theProject to {{{props_str}}}"
 
-            except Exception as e:
-                failed_count += 1
-                failures.append({
-                    "project_id": project_id,
-                    "error": str(e)
-                })
+        cmds_block = "\n                        ".join(separate_commands) if separate_commands else ""
 
-        return {
-            "updated_count": updated_count,
-            "failed_count": failed_count,
-            "updated_ids": updated_ids,
-            "failures": failures
-        }
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set projectIdList to {{{ids_applescript}}}
+                set successCount to 0
+
+                repeat with projectId in projectIdList
+                    try
+                        set theProject to first flattened project whose id is projectId
+                        {props_block}
+                        {cmds_block}
+                        set successCount to successCount + 1
+                    on error
+                        -- Project not found or update failed, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            updated_count = int(result.strip())
+            total_count = len(ids_list)
+            failed_count = total_count - updated_count
+
+            updated_ids = ids_list[:updated_count] if updated_count > 0 else []
+
+            return {
+                "updated_count": updated_count,
+                "failed_count": failed_count,
+                "updated_ids": updated_ids,
+                "failures": []  # Batch AppleScript doesn't provide per-project failure detail
+            }
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error batch updating projects: {e.stderr}")
 
 
 
@@ -2790,6 +2921,140 @@ class OmniFocusConnector:
             raise Exception(f"Error parsing OmniFocus task output: {e}")
 
 
+    def _build_task_update_commands(
+        self,
+        flagged: Optional[bool] = None,
+        status: Optional[Union['TaskStatus', str]] = None,
+        completed: Optional[bool] = None,
+        project_id: Optional[str] = None,
+        parent_task_id: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        add_tags: Optional[list[str]] = None,
+        remove_tags: Optional[list[str]] = None,
+        due_date: Optional[str] = None,
+        defer_date: Optional[str] = None,
+        estimated_minutes: Optional[int] = None,
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Build AppleScript command fragments for task updates.
+
+        Shared by update_task() and update_tasks() to avoid duplicating
+        the command-building logic. Excludes task_name, note, and recurrence
+        (single-task-only fields).
+
+        Args:
+            All fields from update_tasks() batch signature.
+
+        Returns:
+            tuple of (properties, separate_commands, updated_fields):
+                - properties: list of "key:value" for set properties of theTask
+                - separate_commands: list of AppleScript command strings
+                - updated_fields: list of field names that were set
+        """
+        properties = []
+        separate_commands = []
+        updated_fields = []
+
+        # Validate and normalize status
+        if status is not None:
+            if isinstance(status, str):
+                status = TaskStatus(status)
+
+        if flagged is not None:
+            properties.append(f'flagged:{str(flagged).lower()}')
+            updated_fields.append("flagged")
+
+        # Handle dates
+        if due_date is not None:
+            if due_date == "":
+                separate_commands.append("set due date of theTask to missing value")
+            else:
+                as_date = self._iso_to_applescript_date(due_date)
+                separate_commands.append(f'set due date of theTask to date "{as_date}"')
+            updated_fields.append("due_date")
+
+        if defer_date is not None:
+            if defer_date == "":
+                separate_commands.append("set defer date of theTask to missing value")
+            else:
+                as_date = self._iso_to_applescript_date(defer_date)
+                separate_commands.append(f'set defer date of theTask to date "{as_date}"')
+            updated_fields.append("defer_date")
+
+        # Handle estimated minutes
+        if estimated_minutes is not None:
+            separate_commands.append(f'set estimated minutes of theTask to {estimated_minutes}')
+            updated_fields.append("estimated_minutes")
+
+        # Handle completion (use "mark complete" for recurring task safety)
+        if completed is not None:
+            if completed:
+                separate_commands.append("mark complete theTask")
+            else:
+                separate_commands.append("set completed of theTask to false")
+            updated_fields.append("completed")
+
+        # Handle status (use "mark dropped" command)
+        if status is not None:
+            if status == TaskStatus.DROPPED:
+                separate_commands.append("mark dropped theTask")
+            elif status == TaskStatus.ACTIVE:
+                separate_commands.append("set dropped of theTask to false")
+            updated_fields.append("status")
+
+        # Handle hierarchy changes
+        if project_id is not None:
+            project_id_escaped = self._escape_applescript_string(project_id)
+            separate_commands.append(f'''
+                    set theProject to first flattened project whose id is "{project_id_escaped}"
+                    move theTask to end of tasks of theProject''')
+            updated_fields.append("project_id")
+
+        if parent_task_id is not None:
+            parent_id_escaped = self._escape_applescript_string(parent_task_id)
+            separate_commands.append(f'''
+                    set theParent to first flattened task whose id is "{parent_id_escaped}"
+                    if id of theTask is id of theParent then
+                        error "Cannot set task as its own parent"
+                    end if
+                    move theTask to end of tasks of theParent''')
+            updated_fields.append("parent_task_id")
+
+        # Handle tags
+        if tags is not None:
+            if len(tags) > 0:
+                tag_adds = []
+                for tag in tags:
+                    tag_escaped = self._escape_applescript_string(tag)
+                    tag_adds.append(f'''
+                        set tagObj to first flattened tag whose name is "{tag_escaped}"
+                        copy tagObj to end of newTags''')
+                tag_adds_str = "\n                    ".join(tag_adds)
+                separate_commands.append(f'''
+                    set newTags to {{}}
+                    {tag_adds_str}
+                    set tags of theTask to newTags''')
+            else:
+                separate_commands.append("set tags of theTask to {}")
+            updated_fields.append("tags")
+
+        if add_tags is not None:
+            for tag in add_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                separate_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theTask''')
+            updated_fields.append("add_tags")
+
+        if remove_tags is not None:
+            for tag in remove_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                separate_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theTask''')
+            updated_fields.append("remove_tags")
+
+        return properties, separate_commands, updated_fields
+
     def update_task(
         self,
         task_id: str,
@@ -3227,48 +3492,72 @@ class OmniFocusConnector:
         if tags is not None and add_tags is not None:
             raise ValueError("Cannot specify both tags and add_tags (use one or the other)")
 
-        # Process each task individually
-        updated_ids = []
-        failures = []
+        # Build command fragments using shared helper
+        properties, separate_commands, updated_fields = self._build_task_update_commands(
+            flagged=flagged,
+            status=status,
+            completed=completed,
+            project_id=project_id,
+            parent_task_id=parent_task_id,
+            tags=tags,
+            add_tags=add_tags,
+            remove_tags=remove_tags,
+            due_date=due_date,
+            defer_date=defer_date,
+            estimated_minutes=estimated_minutes,
+        )
 
-        for task_id in ids_list:
-            try:
-                # Call update_task for each task
-                result = self.update_task(
-                    task_id=task_id,
-                    flagged=flagged,
-                    status=status,
-                    completed=completed,
-                    project_id=project_id,
-                    parent_task_id=parent_task_id,
-                    tags=tags,
-                    add_tags=add_tags,
-                    remove_tags=remove_tags,
-                    due_date=due_date,
-                    defer_date=defer_date,
-                    estimated_minutes=estimated_minutes
-                )
+        # Build single AppleScript with loop (matching delete_tasks pattern)
+        ids_applescript = ", ".join(
+            [f'"{self._escape_applescript_string(tid)}"' for tid in ids_list]
+        )
 
-                if result["success"]:
-                    updated_ids.append(task_id)
-                else:
-                    failures.append({
-                        "task_id": task_id,
-                        "error": result["error"]
-                    })
-            except Exception as e:
-                # Catch any unexpected errors and continue
-                failures.append({
-                    "task_id": task_id,
-                    "error": str(e)
-                })
+        props_block = ""
+        if properties:
+            props_str = ", ".join(properties)
+            props_block = f"set properties of theTask to {{{props_str}}}"
 
-        return {
-            "updated_count": len(updated_ids),
-            "failed_count": len(failures),
-            "updated_ids": updated_ids,
-            "failures": failures
-        }
+        cmds_block = "\n                        ".join(separate_commands) if separate_commands else ""
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set taskIdList to {{{ids_applescript}}}
+                set successCount to 0
+
+                repeat with taskId in taskIdList
+                    try
+                        set theTask to first flattened task whose id is taskId
+                        {props_block}
+                        {cmds_block}
+                        set successCount to successCount + 1
+                    on error
+                        -- Task not found or update failed, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            updated_count = int(result.strip())
+            total_count = len(ids_list)
+            failed_count = total_count - updated_count
+
+            # Build list of updated IDs (AppleScript doesn't track which specific ones failed)
+            updated_ids = ids_list[:updated_count] if updated_count > 0 else []
+
+            return {
+                "updated_count": updated_count,
+                "failed_count": failed_count,
+                "updated_ids": updated_ids,
+                "failures": []  # Batch AppleScript doesn't provide per-task failure detail
+            }
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error batch updating tasks: {e.stderr}")
 
 
     def get_tags(self) -> list[dict[str, Any]]:
