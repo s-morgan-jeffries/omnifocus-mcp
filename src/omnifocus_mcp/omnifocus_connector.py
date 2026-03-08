@@ -447,10 +447,11 @@ class OmniFocusConnector:
         filter_tags_lower = [tag.lower() for tag in tag_filter]
 
         for task in tasks:
-            # Parse task tags (comma-separated string)
-            task_tags_str = task.get('tags', '')
-            if task_tags_str:
-                task_tags = [t.strip().lower() for t in task_tags_str.split(',')]
+            task_tags_raw = task.get('tags', [])
+            if isinstance(task_tags_raw, list):
+                task_tags = [t.lower() for t in task_tags_raw if isinstance(t, str)]
+            elif task_tags_raw:
+                task_tags = [t.strip().lower() for t in task_tags_raw.split(',')]
             else:
                 task_tags = []
 

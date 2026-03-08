@@ -556,6 +556,67 @@ class TestGetTasks:
             assert len(tasks) == 1
 
 
+class TestTagExtractionAndFiltering:
+    """Tests for tag extraction from AppleScript and tag filtering in Python (issue #199)."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_filter_tasks_by_tags_handles_list_tags(self, client):
+        """_filter_tasks_by_tags must handle tags as a list (JSON array from AppleScript)."""
+        tasks = [
+            {"id": "t1", "tags": ["urgent", "work"]},
+            {"id": "t2", "tags": ["personal"]},
+            {"id": "t3", "tags": []},
+        ]
+        result = client._filter_tasks_by_tags(tasks, ["urgent"], "or")
+        assert len(result) == 1
+        assert result[0]["id"] == "t1"
+
+    def test_filter_tasks_by_tags_and_mode_with_list_tags(self, client):
+        """AND mode must work with list-type tags."""
+        tasks = [
+            {"id": "t1", "tags": ["urgent", "work"]},
+            {"id": "t2", "tags": ["urgent"]},
+        ]
+        result = client._filter_tasks_by_tags(tasks, ["urgent", "work"], "and")
+        assert len(result) == 1
+        assert result[0]["id"] == "t1"
+
+    def test_filter_tasks_by_tags_not_mode_with_list_tags(self, client):
+        """NOT mode must work with list-type tags."""
+        tasks = [
+            {"id": "t1", "tags": ["urgent", "work"]},
+            {"id": "t2", "tags": ["personal"]},
+        ]
+        result = client._filter_tasks_by_tags(tasks, ["urgent"], "not")
+        assert len(result) == 1
+        assert result[0]["id"] == "t2"
+
+    def test_get_tasks_tag_filter_with_list_tags(self, client):
+        """get_tasks with tag_filter must work when AppleScript returns tags as JSON arrays."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001", "name": "Tagged Task", "note": "",
+                "completed": False, "flagged": False, "dropped": False,
+                "blocked": False, "next": True,
+                "projectId": "proj-001", "projectName": "Test Project",
+                "dueDate": "", "deferDate": "", "creationDate": None,
+                "modificationDate": None, "completionDate": None, "droppedDate": None,
+                "tags": ["urgent", "work"], "estimatedMinutes": None,
+                "isRecurring": False, "recurrence": "", "repetitionMethod": "",
+                "parentTaskId": "", "subtaskCount": 0, "sequential": False,
+                "position": 1, "numberOfAvailableTasks": 0, "available": True
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks(tag_filter=["urgent"])
+            assert len(tasks) == 1
+            assert tasks[0]["id"] == "task-001"
+
+
 class TestWhoseClauseOptimization:
     """Tests that get_tasks uses 'whose' clauses for pre-filtering instead of manual iteration."""
 
