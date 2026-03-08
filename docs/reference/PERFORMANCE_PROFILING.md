@@ -308,3 +308,55 @@ Test database: 32 projects, 191 tasks (14 flagged, 8 overdue, 27 next, 10 inbox)
 2. **`get_projects()` is now the primary bottleneck.** The task_health and last_activity nested loops iterate all tasks per project with per-task property reads. These could benefit from the same `a reference to` batch optimization.
 
 3. **Remaining per-task IPC:** Only repetition rule details (`recurrence`, `repetition method`) require per-task reads, and only for tasks with recurrence rules (typically few).
+
+## Write Operation Benchmarks (Pre-Optimization Baselines)
+
+Measured 2026-03-08 on test database. These are baselines before batch optimization of `update_tasks()` and `update_projects()`.
+
+### Single write operations
+
+| Operation | Mean | CV |
+|-----------|------|----|
+| `create_task` | 0.66s | — |
+| `update_task` (1 field) | 0.65s | — |
+| `update_task` (3 fields) | ~0.45s* | 51% |
+| `delete_tasks` (single) | 0.64s | — |
+| `create_project` | 0.65s | — |
+| `update_project` (1 field) | 0.67s | — |
+| `delete_projects` (single) | 0.65s | — |
+| `mark complete` (single) | 0.70s | 0.6% |
+
+*Multi-field updates show high variance due to cold start effects; steady-state is ~0.34s.
+
+### Batch write operations (N sequential AppleScript calls)
+
+| Operation | Mean | Per-item |
+|-----------|------|----------|
+| `update_tasks` (5 tasks) | 3.64s | 0.73s |
+| `update_tasks` (10 tasks) | 7.46s | 0.75s |
+| `update_projects` (3 projects) | 2.26s | 0.75s |
+| `mark complete` (batch 5) | 3.78s | 0.76s |
+
+### Batch size scaling
+
+| Tasks | Mean | Per-task | Ratio vs expected |
+|-------|------|----------|-------------------|
+| 1 | 0.89s | 0.89s | baseline |
+| 3 | 2.38s | 0.79s | 0.90x |
+| 5 | 3.84s | 0.77s | 0.86x |
+| 10 | 7.46s | 0.75s | 0.84x |
+
+Scaling is linear — each additional task adds ~0.75s. The slight sub-linear trend (ratio <1.0x) suggests minor per-invocation overhead amortization.
+
+### Multi-field overhead
+
+| Fields | Mean | Overhead vs 1-field |
+|--------|------|---------------------|
+| 1 (flagged) | 0.46s | baseline |
+| 3 (flagged + due_date + estimated_minutes) | 0.61s | +35% |
+
+Additional property sets within a single AppleScript call add modest overhead — the IPC round-trip dominates.
+
+### Optimization target
+
+After batch optimization (#205), `update_tasks()` and `update_projects()` will use a single AppleScript call with an internal loop (matching the `delete_tasks()` pattern). Projected improvement: 5 tasks from ~3.6s to ~0.75s (5x speedup).
