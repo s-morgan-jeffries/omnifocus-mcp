@@ -5,6 +5,41 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-03-07
+
+### Added
+
+- **35x `get_projects()` performance optimization** (#201)
+  - Batch property extraction via `a reference to` pattern eliminates per-project Apple Events
+  - Global task batch with parallel counter lists for `include_task_health` and `include_last_activity`
+  - 114 projects: 62s → 1.78s (all options enabled)
+  - Extracted `_build_task_ops_blocks()` helper to keep cyclomatic complexity within thresholds
+
+- **`get_tasks()` batch property extraction** (#196, #197)
+  - Native `whose` clauses for filter pre-filtering (21-50x speedup on selective queries)
+  - `a reference to` batch reads for all task properties in a single Apple Event per property type
+
+- **Comprehensive benchmark infrastructure** (#194)
+  - Test database setup/teardown scripts for reproducible profiling
+  - AppleScript automation reference documentation
+
+### Fixed
+
+- **Tag filtering crash on list-type tags** (#199, #202)
+  - `_filter_tasks_by_tags()` called `.split(',')` on a Python list (tags returned as JSON arrays from AppleScript)
+  - Now handles both list and legacy string formats
+  - Added `ensure_test_tags` fixture for integration tests requiring tags in the test database
+
+- **Architecture and test suite review** (#174, #175, #193)
+  - Fixed stale test assertions, dead tests, and `.fn` accessor pattern
+  - Repaired broken test suite compatibility
+
+### Changed
+
+- **Batch subtask counts** (#200)
+  - Per-project subtask counting now uses batch reads instead of per-task iteration
+  - Fixed test database scripts for reliable profiling setup
+
 ## [0.7.3] - 2026-03-05
 
 ### Added
