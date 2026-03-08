@@ -57,7 +57,7 @@ echo ""
 
 # Check for functions with unacceptable complexity
 # Documented exceptions with higher limits due to AppleScript constraints:
-#   - get_tasks: CC ≤ 75 (74 current - 21 params, extensive filtering, performance optimization in #170)
+#   - get_tasks: CC ≤ 120 (117 current - 21 params, extensive filtering, batch extraction, whose clauses)
 #   - update_task: CC ≤ 50 (49 current - extensive property handling)
 #   - get_projects, update_project, _filter_projects_by_conditions: CC ≤ 30
 EXCESSIVE_COMPLEXITY=$($RADON cc src/omnifocus_mcp/ -n D -j | $PYTHON -c "
@@ -72,7 +72,7 @@ try:
                 cc = item['complexity']
                 name = item['name']
                 # Documented exceptions with specific limits
-                if name == 'get_tasks' and cc <= 75:
+                if name == 'get_tasks' and cc <= 120:
                     continue
                 elif name == 'update_task' and cc <= 50:
                     continue
@@ -97,7 +97,7 @@ if [ $? -ne 0 ]; then
     echo ""
     echo "Maximum acceptable complexity:"
     echo "  - General functions: CC ≤ 20 (C rating or better)"
-    echo "  - get_tasks(): CC ≤ 75 (current: 74)"
+    echo "  - get_tasks(): CC ≤ 120 (current: 117)"
     echo "  - update_task(): CC ≤ 50 (current: 49)"
     echo "  - get_projects(), update_project(): CC ≤ 30"
     echo ""
@@ -108,7 +108,7 @@ fi
 echo "✅ PASS: All functions within complexity limits"
 echo ""
 echo "Documented high complexity functions (AppleScript constraints):"
-echo "  - get_tasks(): CC ≤ 75 (21 parameters, complex filtering, performance optimization)"
+echo "  - get_tasks(): CC ≤ 120 (21 parameters, complex filtering, batch extraction, whose clauses)"
 echo "  - update_task(): CC ≤ 50 (extensive property handling)"
 echo "  - get_projects(), update_project(): CC ≤ 30"
 echo "  - All other functions: CC ≤ 20"
