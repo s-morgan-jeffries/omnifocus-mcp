@@ -324,6 +324,142 @@ class TestWriteBenchmarks:
             times.append(time.perf_counter() - start)
         BenchmarkResult("delete_projects", times).report()
 
+    def test_update_tasks_batch(self, client, test_project):
+        """update_tasks() — batch update (N sequential calls, pre-optimization baseline)."""
+        batch_size = 5
+        task_ids = []
+        for i in range(batch_size):
+            tid = client.create_task(
+                f"__bench_batch_{uuid.uuid4().hex[:8]}", project_id=test_project
+            )
+            task_ids.append(tid)
+
+        try:
+            toggle = [True, False, True]
+            idx = 0
+
+            def batch_update():
+                nonlocal idx
+                client.update_tasks(task_ids, flagged=toggle[idx % len(toggle)])
+                idx += 1
+
+            _benchmark(
+                f"update_tasks ({batch_size} tasks)",
+                batch_update,
+                iterations=WRITE_ITERATIONS,
+            )
+        finally:
+            try:
+                client.delete_tasks(task_ids)
+            except Exception:
+                pass
+
+    def test_update_projects_batch(self, client):
+        """update_projects() — batch update (N sequential calls, pre-optimization baseline)."""
+        batch_size = 3
+        project_ids = []
+        for i in range(batch_size):
+            pid = client.create_project(f"__bench_batch_proj_{uuid.uuid4().hex[:8]}")
+            project_ids.append(pid)
+
+        try:
+            toggle = [True, False, True]
+            idx = 0
+
+            def batch_update():
+                nonlocal idx
+                client.update_projects(
+                    project_ids, sequential=toggle[idx % len(toggle)]
+                )
+                idx += 1
+
+            _benchmark(
+                f"update_projects ({batch_size} projects)",
+                batch_update,
+                iterations=WRITE_ITERATIONS,
+            )
+        finally:
+            try:
+                client.delete_projects(project_ids)
+            except Exception:
+                pass
+
+    def test_mark_complete_single(self, client, test_project):
+        """update_task(completed=True) — single task mark complete."""
+        times = []
+        for _ in range(WRITE_ITERATIONS):
+            tid = client.create_task(
+                f"__bench_complete_{uuid.uuid4().hex[:8]}", project_id=test_project
+            )
+            start = time.perf_counter()
+            client.update_task(tid, completed=True)
+            times.append(time.perf_counter() - start)
+            try:
+                client.delete_tasks(tid)
+            except Exception:
+                pass
+        BenchmarkResult("mark_complete (single)", times).report()
+
+    def test_mark_complete_batch(self, client, test_project):
+        """update_tasks(completed=True) — batch mark complete."""
+        batch_size = 5
+        task_ids = []
+        for i in range(batch_size):
+            tid = client.create_task(
+                f"__bench_batch_complete_{uuid.uuid4().hex[:8]}",
+                project_id=test_project,
+            )
+            task_ids.append(tid)
+
+        start = time.perf_counter()
+        client.update_tasks(task_ids, completed=True)
+        elapsed = time.perf_counter() - start
+        BenchmarkResult(f"mark_complete (batch {batch_size})", [elapsed]).report()
+
+        try:
+            client.delete_tasks(task_ids)
+        except Exception:
+            pass
+
+    def test_update_task_multi_field(self, client, test_project):
+        """update_task() — multiple fields in single call vs single field."""
+        task_id = client.create_task(
+            f"__bench_multi_{uuid.uuid4().hex[:8]}", project_id=test_project
+        )
+        try:
+            # Single field update
+            single_times = []
+            for _ in range(WRITE_ITERATIONS):
+                start = time.perf_counter()
+                client.update_task(task_id, flagged=True)
+                single_times.append(time.perf_counter() - start)
+            BenchmarkResult("update_task (1 field)", single_times).report()
+
+            # Multi-field update
+            multi_times = []
+            future_date = "2026-12-31T17:00:00"
+            for _ in range(WRITE_ITERATIONS):
+                start = time.perf_counter()
+                client.update_task(
+                    task_id,
+                    flagged=True,
+                    due_date=future_date,
+                    estimated_minutes=30,
+                )
+                multi_times.append(time.perf_counter() - start)
+            BenchmarkResult("update_task (3 fields)", multi_times).report()
+
+            single_mean = statistics.mean(single_times)
+            multi_mean = statistics.mean(multi_times)
+            overhead = multi_mean - single_mean
+            pct = (overhead / single_mean * 100) if single_mean > 0 else 0
+            print(f"\n    Multi-field overhead: +{overhead:.3f}s ({pct:+.0f}%)")
+        finally:
+            try:
+                client.delete_tasks(task_id)
+            except Exception:
+                pass
+
 
 class TestParameterVariations:
     """Test how different parameters affect the same function's performance."""
@@ -406,3 +542,57 @@ class TestParameterVariations:
                 if label != "no filter" and mean < 120:
                     speedup = baseline_mean / mean if mean > 0 else float('inf')
                     print(f"      {label:20s}: {speedup:.1f}x {'faster' if speedup > 1 else 'slower'}")
+
+    def test_batch_size_scaling(self, client):
+        """Measure how update_tasks() scales with batch size (pre-optimization)."""
+        batch_sizes = [1, 3, 5, 10]
+        print("\n  update_tasks() batch size scaling:")
+        results = {}
+
+        # Create a project to hold all test tasks
+        proj_id = client.create_project(f"__bench_scaling_{uuid.uuid4().hex[:8]}")
+        try:
+            for n in batch_sizes:
+                task_ids = []
+                for i in range(n):
+                    tid = client.create_task(
+                        f"__bench_scale_{uuid.uuid4().hex[:8]}",
+                        project_id=proj_id,
+                    )
+                    task_ids.append(tid)
+
+                times = []
+                toggle = [True, False, True]
+                for run_idx in range(WRITE_ITERATIONS):
+                    start = time.perf_counter()
+                    client.update_tasks(
+                        task_ids, flagged=toggle[run_idx % len(toggle)]
+                    )
+                    times.append(time.perf_counter() - start)
+
+                mean = statistics.mean(times)
+                stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+                results[n] = mean
+                print(f"    {n:2d} tasks: mean={mean:.3f}s  stdev={stdev:.3f}s  "
+                      f"per_task={mean/n:.3f}s")
+
+                try:
+                    client.delete_tasks(task_ids)
+                except Exception:
+                    pass
+
+            # Show scaling linearity
+            if 1 in results and len(results) > 1:
+                per_task_1 = results[1]
+                print(f"\n    Scaling analysis (baseline per-task: {per_task_1:.3f}s):")
+                for n, mean in results.items():
+                    if n > 1:
+                        expected = per_task_1 * n
+                        ratio = mean / expected if expected > 0 else 0
+                        print(f"      {n:2d} tasks: actual={mean:.3f}s  "
+                              f"expected={expected:.3f}s  ratio={ratio:.2f}x")
+        finally:
+            try:
+                client.delete_projects(proj_id)
+            except Exception:
+                pass
