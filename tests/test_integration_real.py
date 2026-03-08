@@ -724,7 +724,7 @@ class TestTaskCRUD:
         print(f"  Created: {task['creationDate']}")
         print(f"  Modified: {task['modificationDate']}")
 
-    def test_get_task_includes_tags(self, client, test_project):
+    def test_get_task_includes_tags(self, client, test_project, ensure_test_tags):
         """Test that get_task includes tags array."""
         # Create a task with tags using fixture project
         task_id = client.create_task("Task with Tags for Testing", project_id=test_project, tags=["test-work", "test-urgent"])
@@ -775,7 +775,7 @@ class TestTaskCRUD:
         print(f"  Created: {task['creationDate']}")
         print(f"  Modified: {task['modificationDate']}")
 
-    def test_get_tasks_includes_tags(self, client, test_project):
+    def test_get_tasks_includes_tags(self, client, test_project, ensure_test_tags):
         """Test that get_tasks includes tags array."""
         # Create a task with tags
         task_id = client.create_task("Task for get_tasks Tags Test", project_id=test_project, tags=["test-work"])
@@ -991,7 +991,7 @@ class TestTagBatchOperations:
     All tests use fixtures from conftest.py for automatic cleanup.
     """
 
-    def test_add_tag_to_multiple_tasks(self, client, test_tasks, test_project):
+    def test_add_tag_to_multiple_tasks(self, client, test_tasks, test_project, ensure_test_tags):
         """Test adding a tag to multiple tasks."""
         # Use fixture tasks (3 tasks created by test_tasks fixture)
         # Add 'urgent' tag to all tasks
@@ -1005,7 +1005,7 @@ class TestTagBatchOperations:
             if task['id'] in test_tasks:
                 assert "urgent" in task.get('tags', [])
 
-    def test_remove_tag_from_multiple_tasks(self, client, test_tasks, test_project):
+    def test_remove_tag_from_multiple_tasks(self, client, test_tasks, test_project, ensure_test_tags):
         """Test removing a tag from multiple tasks."""
         # Use fixture tasks
         # First add a tag

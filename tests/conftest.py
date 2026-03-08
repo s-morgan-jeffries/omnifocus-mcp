@@ -17,7 +17,7 @@ from typing import Optional
 
 import pytest
 
-from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector, run_applescript
 
 
 # ============================================================================
@@ -430,3 +430,31 @@ def test_project_with_folder(client, test_folder):
         client.delete_projects(project_id)
     except Exception as e:
         warnings.warn(f"Failed to clean up project in folder: {e}")
+
+
+@pytest.fixture(scope="class")
+def ensure_test_tags():
+    """Ensure required test tags exist in OmniFocus.
+
+    Creates tags needed by integration tests if they don't already exist.
+    Tags persist across tests in the class (not cleaned up, as OmniFocus
+    doesn't support tag deletion via AppleScript).
+
+    Tags created: test-work, test-urgent, urgent, work
+    """
+    tag_names = ["test-work", "test-urgent", "urgent", "work"]
+    for tag_name in tag_names:
+        try:
+            run_applescript(f'''
+                tell application "OmniFocus"
+                    tell front document
+                        try
+                            first flattened tag whose name is "{tag_name}"
+                        on error
+                            make new tag with properties {{name:"{tag_name}"}}
+                        end try
+                    end tell
+                end tell
+            ''')
+        except Exception as e:
+            warnings.warn(f"Failed to create test tag '{tag_name}': {e}")
