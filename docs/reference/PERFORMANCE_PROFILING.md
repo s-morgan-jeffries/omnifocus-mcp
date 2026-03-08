@@ -357,6 +357,43 @@ Scaling is linear — each additional task adds ~0.75s. The slight sub-linear tr
 
 Additional property sets within a single AppleScript call add modest overhead — the IPC round-trip dominates.
 
-### Optimization target
+## Write Operation Benchmarks (Post-Optimization)
 
-After batch optimization (#205), `update_tasks()` and `update_projects()` will use a single AppleScript call with an internal loop (matching the `delete_tasks()` pattern). Projected improvement: 5 tasks from ~3.6s to ~0.75s (5x speedup).
+Measured 2026-03-08, after batch optimization (#205). `update_tasks()` and `update_projects()` now use a single AppleScript call with an internal `repeat` loop.
+
+### Single write operations (unchanged)
+
+| Operation | Mean | CV |
+|-----------|------|----|
+| `create_task` | 0.71s | 4.5% |
+| `update_task` (1 field) | 0.70s | 0.8% |
+| `delete_tasks` (single) | 0.71s | 0.3% |
+| `create_project` | 0.70s | 0.2% |
+| `update_project` (1 field) | 0.71s | 0.7% |
+| `delete_projects` (single) | 0.71s | 2.3% |
+| `mark complete` (single) | 0.72s | 0.6% |
+
+### Batch write operations (single AppleScript call with internal loop)
+
+| Operation | Pre-opt | Post-opt | Speedup |
+|-----------|---------|----------|---------|
+| `update_tasks` (5 tasks) | 3.64s | 2.40s | 1.5x |
+| `update_projects` (3 projects) | 2.26s | 1.56s | 1.4x |
+| `mark complete` (batch 5) | 3.78s | 2.43s | 1.6x |
+
+### Batch size scaling (post-optimization)
+
+| Tasks | Mean | Per-task | Ratio vs N×single |
+|-------|------|----------|-------------------|
+| 1 | 0.73s | 0.73s | baseline |
+| 3 | 1.58s | 0.53s | 0.73x |
+| 5 | 2.40s | 0.48s | 0.66x |
+| 10 | 4.48s | 0.45s | 0.62x |
+
+Per-task cost drops from 0.73s (single) to 0.45s at 10 tasks — a 38% reduction. The savings come from eliminating N-1 `osascript` process launches (~0.25s each). The remaining per-task cost is OmniFocus IPC for `first flattened task whose id is X` + property sets within the loop.
+
+### Analysis
+
+The original projection of 5x speedup assumed the per-task IPC within a single AppleScript call would be negligible. In practice, each task lookup + property set within the loop still costs ~0.35s of IPC time. The actual speedup is 1.4-1.6x, growing with batch size as the fixed overhead of a single `osascript` launch is amortized across more tasks.
+
+Further speedup would require action group-scoped updates (e.g., `every flattened task of project`) to eliminate per-task ID lookups entirely.

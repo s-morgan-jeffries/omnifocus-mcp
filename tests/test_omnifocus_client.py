@@ -1259,3 +1259,300 @@ class TestSetFocus:
             assert result["success"] is True
             # Verify the script was called (escaping happens inside the implementation)
             mock_run.assert_called_once()
+
+
+class TestBuildTaskUpdateCommands:
+    """Tests for _build_task_update_commands() helper method."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_flagged_returns_property(self, client):
+        """Flagged should produce a property, not a separate command."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            flagged=True
+        )
+        assert any("flagged:true" in p for p in properties)
+        assert "flagged" in updated_fields
+
+    def test_completed_true_uses_mark_complete(self, client):
+        """completed=True must use 'mark complete' for recurring task safety."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            completed=True
+        )
+        assert any("mark complete theTask" in cmd for cmd in separate_commands)
+        assert "completed" in updated_fields
+
+    def test_completed_false_uses_set_completed(self, client):
+        """completed=False should use 'set completed of theTask to false'."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            completed=False
+        )
+        assert any("set completed of theTask to false" in cmd for cmd in separate_commands)
+
+    def test_due_date_produces_separate_command(self, client):
+        """Due date should produce a separate command with converted date."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            due_date="2026-12-25"
+        )
+        assert any("set due date of theTask" in cmd for cmd in separate_commands)
+        assert any("December 25, 2026" in cmd for cmd in separate_commands)
+        assert "due_date" in updated_fields
+
+    def test_clear_due_date(self, client):
+        """Empty string due_date should set to missing value."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            due_date=""
+        )
+        assert any("missing value" in cmd for cmd in separate_commands)
+
+    def test_defer_date(self, client):
+        """Defer date should produce a separate command."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            defer_date="2026-12-20"
+        )
+        assert any("set defer date of theTask" in cmd for cmd in separate_commands)
+        assert "defer_date" in updated_fields
+
+    def test_estimated_minutes(self, client):
+        """Estimated minutes should produce a separate command."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            estimated_minutes=30
+        )
+        assert any("set estimated minutes of theTask to 30" in cmd for cmd in separate_commands)
+        assert "estimated_minutes" in updated_fields
+
+    def test_status_dropped(self, client):
+        """Dropped status should use 'mark dropped'."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            status="dropped"
+        )
+        assert any("mark dropped theTask" in cmd for cmd in separate_commands)
+        assert "status" in updated_fields
+
+    def test_status_active(self, client):
+        """Active status should unset dropped."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            status="active"
+        )
+        assert any("set dropped of theTask to false" in cmd for cmd in separate_commands)
+
+    def test_tags_replacement(self, client):
+        """Tags list should replace all tags."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            tags=["work", "urgent"]
+        )
+        cmds_str = "\n".join(separate_commands)
+        assert "work" in cmds_str
+        assert "urgent" in cmds_str
+        assert "tags" in updated_fields
+
+    def test_add_tags(self, client):
+        """add_tags should add tags incrementally."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            add_tags=["new-tag"]
+        )
+        cmds_str = "\n".join(separate_commands)
+        assert "add tagObj to tags of theTask" in cmds_str
+        assert "new-tag" in cmds_str
+        assert "add_tags" in updated_fields
+
+    def test_remove_tags(self, client):
+        """remove_tags should remove tags."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            remove_tags=["old-tag"]
+        )
+        cmds_str = "\n".join(separate_commands)
+        assert "remove tagObj from tags of theTask" in cmds_str
+        assert "old-tag" in cmds_str
+
+    def test_project_id_move(self, client):
+        """project_id should move task to project."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            project_id="proj-123"
+        )
+        cmds_str = "\n".join(separate_commands)
+        assert "proj-123" in cmds_str
+        assert "move theTask" in cmds_str
+        assert "project_id" in updated_fields
+
+    def test_parent_task_id(self, client):
+        """parent_task_id should move task under parent."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            parent_task_id="parent-001"
+        )
+        cmds_str = "\n".join(separate_commands)
+        assert "parent-001" in cmds_str
+        assert "move theTask" in cmds_str
+        assert "parent_task_id" in updated_fields
+
+    def test_multiple_fields(self, client):
+        """Multiple fields should all appear in output."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands(
+            flagged=True, completed=True, estimated_minutes=45
+        )
+        assert "flagged" in updated_fields
+        assert "completed" in updated_fields
+        assert "estimated_minutes" in updated_fields
+
+    def test_no_fields_returns_empty(self, client):
+        """No fields should return empty lists."""
+        properties, separate_commands, updated_fields = client._build_task_update_commands()
+        assert properties == []
+        assert separate_commands == []
+        assert updated_fields == []
+
+
+class TestBatchUpdateTasks:
+    """Tests for batched update_tasks() — single AppleScript call."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_batch_update_single_applescript_call(self, client):
+        """update_tasks() should make exactly one AppleScript call, not N calls."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "3"
+            result = client.update_tasks(
+                ["task-001", "task-002", "task-003"],
+                flagged=True
+            )
+            assert mock_run.call_count == 1
+            assert result["updated_count"] == 3
+
+    def test_batch_update_script_contains_loop(self, client):
+        """Generated AppleScript should contain a repeat loop over task IDs."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["task-001", "task-002"], flagged=True)
+            script = mock_run.call_args[0][0]
+            assert "repeat with" in script
+            assert "task-001" in script
+            assert "task-002" in script
+
+    def test_batch_update_script_contains_flagged(self, client):
+        """Batch flagged update should set flagged property in script."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            client.update_tasks(["task-001"], flagged=True)
+            script = mock_run.call_args[0][0]
+            assert "flagged" in script
+
+    def test_batch_update_completed_uses_mark_complete(self, client):
+        """Batch completed=True should use 'mark complete' in the loop."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["task-001", "task-002"], completed=True)
+            script = mock_run.call_args[0][0]
+            assert "mark complete" in script
+
+    def test_batch_update_returns_correct_counts(self, client):
+        """Return value should reflect success count from AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            result = client.update_tasks(
+                ["task-001", "task-002", "task-003"],
+                flagged=True
+            )
+            assert result["updated_count"] == 2
+            assert result["failed_count"] == 1
+
+    def test_batch_update_single_id_string(self, client):
+        """Single string task_id should work (normalized to list)."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            result = client.update_tasks("task-001", flagged=True)
+            assert result["updated_count"] == 1
+
+    def test_batch_update_validation_no_fields(self, client):
+        """Should raise ValueError if no fields provided."""
+        with pytest.raises(ValueError, match="Must provide at least one field"):
+            client.update_tasks(["task-001"])
+
+    def test_batch_update_validation_task_name_rejected(self, client):
+        """Should raise ValueError if task_name is passed."""
+        with pytest.raises(ValueError, match="task_name is not allowed"):
+            client.update_tasks(["task-001"], task_name="New Name")
+
+    def test_batch_update_validation_note_rejected(self, client):
+        """Should raise ValueError if note is passed."""
+        with pytest.raises(ValueError, match="note is not allowed"):
+            client.update_tasks(["task-001"], note="New note")
+
+    def test_batch_update_script_has_try_on_error(self, client):
+        """Script should have per-task error handling."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["task-001", "task-002"], flagged=True)
+            script = mock_run.call_args[0][0]
+            assert "try" in script
+            assert "on error" in script
+
+    def test_batch_update_with_due_date(self, client):
+        """Batch update with due_date should include date conversion."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            client.update_tasks(["task-001"], due_date="2026-12-25")
+            script = mock_run.call_args[0][0]
+            assert "due date" in script
+            assert "December 25, 2026" in script
+
+
+class TestBatchUpdateProjects:
+    """Tests for batched update_projects() — single AppleScript call."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_batch_update_single_applescript_call(self, client):
+        """update_projects() should make exactly one AppleScript call."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            result = client.update_projects(
+                ["proj-001", "proj-002"],
+                sequential=True
+            )
+            assert mock_run.call_count == 1
+            assert result["updated_count"] == 2
+
+    def test_batch_update_script_contains_loop(self, client):
+        """Generated AppleScript should loop over project IDs."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_projects(["proj-001", "proj-002"], sequential=True)
+            script = mock_run.call_args[0][0]
+            assert "repeat with" in script
+            assert "proj-001" in script
+            assert "proj-002" in script
+
+    def test_batch_update_status_done_uses_mark_complete(self, client):
+        """Batch status='done' should use 'mark complete' in loop."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            client.update_projects(["proj-001"], status="done")
+            script = mock_run.call_args[0][0]
+            assert "mark complete" in script
+
+    def test_batch_update_returns_correct_counts(self, client):
+        """Return value should reflect success count."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            result = client.update_projects(
+                ["proj-001", "proj-002"],
+                status="on_hold"
+            )
+            assert result["updated_count"] == 1
+            assert result["failed_count"] == 1
+
+    def test_batch_update_validation_name_rejected(self, client):
+        """Should raise ValueError if project_name is passed."""
+        with pytest.raises(ValueError, match="project_name"):
+            client.update_projects(["proj-001"], project_name="New Name")
+
+    def test_batch_update_validation_note_rejected(self, client):
+        """Should raise ValueError if note is passed."""
+        with pytest.raises(ValueError, match="note"):
+            client.update_projects(["proj-001"], note="New note")

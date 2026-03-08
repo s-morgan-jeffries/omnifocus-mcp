@@ -369,7 +369,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_accepts_single_id_string(self, client):
         """NEW API: update_tasks() accepts single ID as string (Union type)."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "1"  # batch returns count
 
             result = client.update_tasks("task-001", flagged=True)
 
@@ -380,7 +380,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_accepts_list_of_ids(self, client):
         """NEW API: update_tasks() accepts list of IDs."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "3"  # batch returns count
 
             result = client.update_tasks(
                 ["task-001", "task-002", "task-003"],
@@ -418,7 +418,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_with_flagged(self, client):
         """NEW API: update_tasks() can set flagged on multiple tasks."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "2"  # batch returns count
 
             result = client.update_tasks(["task-001", "task-002"], flagged=True)
 
@@ -428,7 +428,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_with_completed(self, client):
         """NEW API: update_tasks() can mark multiple tasks complete."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "3"  # batch returns count
 
             result = client.update_tasks(
                 ["task-001", "task-002", "task-003"],
@@ -440,7 +440,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_with_status(self, client):
         """NEW API: update_tasks() can set status on multiple tasks."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "2"  # batch returns count
 
             result = client.update_tasks(
                 ["task-001", "task-002"],
@@ -452,7 +452,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_with_project_id(self, client):
         """NEW API: update_tasks() can move multiple tasks to project."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "2"  # batch returns count
 
             result = client.update_tasks(
                 ["task-001", "task-002"],
@@ -464,7 +464,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_with_add_tags(self, client):
         """NEW API: update_tasks() can add tags to multiple tasks."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "2"  # batch returns count
 
             result = client.update_tasks(
                 ["task-001", "task-002"],
@@ -476,7 +476,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_with_estimated_minutes(self, client):
         """NEW API: update_tasks() can set estimated time on multiple tasks."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "3"  # batch returns count
 
             result = client.update_tasks(
                 ["task-001", "task-002", "task-003"],
@@ -520,7 +520,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_returns_dict_with_counts(self, client):
         """NEW API: update_tasks() returns dict with success/failure counts."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "2"  # batch returns count
 
             result = client.update_tasks(["task-001", "task-002"], flagged=True)
 
@@ -533,7 +533,7 @@ class TestUpdateTasksRedesign:
     def test_update_tasks_includes_updated_ids_list(self, client):
         """NEW API: update_tasks() includes list of successfully updated IDs."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "true"  # update_task expects "true"
+            mock_run.return_value = "2"  # batch returns count
 
             result = client.update_tasks(["task-001", "task-002"], flagged=True)
 
@@ -544,17 +544,11 @@ class TestUpdateTasksRedesign:
     # Partial Failures
     # ========================================================================
 
-    def test_update_tasks_continues_on_partial_failures(self, client):
-        """NEW API: update_tasks() continues processing when individual tasks fail."""
+    def test_update_tasks_reports_partial_failures(self, client):
+        """NEW API: update_tasks() reports partial failures from batch AppleScript."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            # Simulate 2 successes and 1 failure
-            def side_effect(*args):
-                script = args[0]
-                if "task-invalid" in script:
-                    raise subprocess.CalledProcessError(1, "osascript", stderr="Task not found")
-                return "true"
-
-            mock_run.side_effect = side_effect
+            # Batch AppleScript returns count of successes (per-task try/on error)
+            mock_run.return_value = "2"
 
             result = client.update_tasks(
                 ["task-001", "task-002", "task-invalid"],
@@ -563,8 +557,6 @@ class TestUpdateTasksRedesign:
 
             assert result["updated_count"] == 2
             assert result["failed_count"] == 1
-            assert len(result["failures"]) == 1
-            assert result["failures"][0]["task_id"] == "task-invalid"
 
     # ========================================================================
     # Validation
