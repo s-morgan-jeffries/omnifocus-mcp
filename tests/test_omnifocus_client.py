@@ -1405,14 +1405,24 @@ class TestBuildTaskUpdateCommands:
 
 
 class TestBatchUpdateTasks:
-    """Tests for batched update_tasks() — single AppleScript call."""
+    """Tests for batched update_tasks() — or-chain optimization (#215).
+
+    Bulk-settable fields (flagged, estimated_minutes, due_date, defer_date,
+    completed=True) use whose or-chain for near-constant time.
+    Per-task fields (tags, moves, completed=False, status) use repeat loop.
+    Mixed fields produce hybrid scripts with both.
+    """
 
     @pytest.fixture
     def client(self):
         return OmniFocusConnector(enable_safety_checks=False)
 
+    # ========================================================================
+    # Basic contract: single call, return values, validation
+    # ========================================================================
+
     def test_batch_update_single_applescript_call(self, client):
-        """update_tasks() should make exactly one AppleScript call, not N calls."""
+        """update_tasks() should make exactly one AppleScript call."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "3"
             result = client.update_tasks(
@@ -1421,32 +1431,6 @@ class TestBatchUpdateTasks:
             )
             assert mock_run.call_count == 1
             assert result["updated_count"] == 3
-
-    def test_batch_update_script_contains_loop(self, client):
-        """Generated AppleScript should contain a repeat loop over task IDs."""
-        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "2"
-            client.update_tasks(["task-001", "task-002"], flagged=True)
-            script = mock_run.call_args[0][0]
-            assert "repeat with" in script
-            assert "task-001" in script
-            assert "task-002" in script
-
-    def test_batch_update_script_contains_flagged(self, client):
-        """Batch flagged update should set flagged property in script."""
-        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "1"
-            client.update_tasks(["task-001"], flagged=True)
-            script = mock_run.call_args[0][0]
-            assert "flagged" in script
-
-    def test_batch_update_completed_uses_mark_complete(self, client):
-        """Batch completed=True should use 'mark complete' in the loop."""
-        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "2"
-            client.update_tasks(["task-001", "task-002"], completed=True)
-            script = mock_run.call_args[0][0]
-            assert "mark complete" in script
 
     def test_batch_update_returns_correct_counts(self, client):
         """Return value should reflect success count from AppleScript."""
@@ -1481,31 +1465,140 @@ class TestBatchUpdateTasks:
         with pytest.raises(ValueError, match="note is not allowed"):
             client.update_tasks(["task-001"], note="New note")
 
-    def test_batch_update_script_has_try_on_error(self, client):
-        """Script should have per-task error handling."""
+    # ========================================================================
+    # Bulk-settable fields: use or-chain (no repeat loop)
+    # ========================================================================
+
+    def test_bulk_flagged_uses_or_chain(self, client):
+        """Bulk-settable flagged uses or-chain, no repeat loop."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "3"
+            client.update_tasks(["t1", "t2", "t3"], flagged=True)
+            script = mock_run.call_args[0][0]
+            assert 'whose id is "t1" or id is "t2" or id is "t3"' in script
+            assert "flagged" in script
+            assert "repeat with" not in script
+
+    def test_bulk_estimated_minutes_uses_or_chain(self, client):
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
-            client.update_tasks(["task-001", "task-002"], flagged=True)
+            client.update_tasks(["t1", "t2"], estimated_minutes=30)
+            script = mock_run.call_args[0][0]
+            assert "estimated minutes" in script
+            assert "30" in script
+            assert "repeat with" not in script
+
+    def test_bulk_due_date_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], due_date="2026-12-25")
+            script = mock_run.call_args[0][0]
+            assert "due date" in script
+            assert "December 25, 2026" in script
+            assert "repeat with" not in script
+
+    def test_bulk_clear_due_date_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], due_date="")
+            script = mock_run.call_args[0][0]
+            assert "missing value" in script
+            assert "repeat with" not in script
+
+    def test_bulk_defer_date_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], defer_date="2026-06-01")
+            script = mock_run.call_args[0][0]
+            assert "defer date" in script
+            assert "repeat with" not in script
+
+    def test_bulk_mark_complete_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "3"
+            client.update_tasks(["t1", "t2", "t3"], completed=True)
+            script = mock_run.call_args[0][0]
+            assert "mark complete" in script
+            assert "whose" in script
+            assert "repeat with" not in script
+
+    # ========================================================================
+    # Per-task fields: must use repeat loop
+    # ========================================================================
+
+    def test_per_task_completed_false_uses_repeat_loop(self, client):
+        """completed=False cannot be bulk-set (error -10006)."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], completed=False)
+            script = mock_run.call_args[0][0]
+            assert "repeat with" in script
+            assert "set completed" in script
+
+    def test_per_task_tags_uses_repeat_loop(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], add_tags=["urgent"])
+            script = mock_run.call_args[0][0]
+            assert "repeat with" in script
+
+    def test_per_task_project_move_uses_repeat_loop(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], project_id="proj-1")
+            script = mock_run.call_args[0][0]
+            assert "repeat with" in script
+            assert "move" in script
+
+    def test_per_task_status_dropped_uses_repeat_loop(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], status="dropped")
+            script = mock_run.call_args[0][0]
+            assert "repeat with" in script
+            assert "mark dropped" in script.lower() or "dropped" in script
+
+    # ========================================================================
+    # Mixed fields: hybrid script (bulk + repeat loop)
+    # ========================================================================
+
+    def test_mixed_fields_uses_hybrid(self, client):
+        """Mixed bulk + per-task fields produce hybrid script."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], flagged=True, add_tags=["urgent"])
+            script = mock_run.call_args[0][0]
+            # Bulk part: or-chain for flagged
+            assert "set flagged" in script
+            assert "whose" in script
+            # Per-task part: repeat loop for tags
+            assert "repeat with" in script
+
+    def test_per_task_script_has_try_on_error(self, client):
+        """Per-task repeat loop should have error handling."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], add_tags=["urgent"])
             script = mock_run.call_args[0][0]
             assert "try" in script
             assert "on error" in script
 
-    def test_batch_update_with_due_date(self, client):
-        """Batch update with due_date should include date conversion."""
-        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "1"
-            client.update_tasks(["task-001"], due_date="2026-12-25")
-            script = mock_run.call_args[0][0]
-            assert "due date" in script
-            assert "December 25, 2026" in script
-
 
 class TestBatchUpdateProjects:
-    """Tests for batched update_projects() — single AppleScript call."""
+    """Tests for batched update_projects() — or-chain optimization (#215).
+
+    Bulk-settable fields (sequential, status, review_interval_weeks,
+    last_reviewed, next_review_date) use whose or-chain.
+    Per-project fields (folder_path) use repeat loop.
+    """
 
     @pytest.fixture
     def client(self):
         return OmniFocusConnector(enable_safety_checks=False)
+
+    # ========================================================================
+    # Basic contract: single call, return values, validation
+    # ========================================================================
 
     def test_batch_update_single_applescript_call(self, client):
         """update_projects() should make exactly one AppleScript call."""
@@ -1517,24 +1610,6 @@ class TestBatchUpdateProjects:
             )
             assert mock_run.call_count == 1
             assert result["updated_count"] == 2
-
-    def test_batch_update_script_contains_loop(self, client):
-        """Generated AppleScript should loop over project IDs."""
-        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "2"
-            client.update_projects(["proj-001", "proj-002"], sequential=True)
-            script = mock_run.call_args[0][0]
-            assert "repeat with" in script
-            assert "proj-001" in script
-            assert "proj-002" in script
-
-    def test_batch_update_status_done_uses_mark_complete(self, client):
-        """Batch status='done' should use 'mark complete' in loop."""
-        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "1"
-            client.update_projects(["proj-001"], status="done")
-            script = mock_run.call_args[0][0]
-            assert "mark complete" in script
 
     def test_batch_update_returns_correct_counts(self, client):
         """Return value should reflect success count."""
@@ -1556,6 +1631,78 @@ class TestBatchUpdateProjects:
         """Should raise ValueError if note is passed."""
         with pytest.raises(ValueError, match="note"):
             client.update_projects(["proj-001"], note="New note")
+
+    # ========================================================================
+    # Bulk-settable fields: use or-chain (no repeat loop)
+    # ========================================================================
+
+    def test_bulk_sequential_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_projects(["p1", "p2"], sequential=True)
+            script = mock_run.call_args[0][0]
+            assert 'whose id is "p1" or id is "p2"' in script
+            assert "sequential" in script
+            assert "repeat with" not in script
+
+    def test_bulk_status_on_hold_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_projects(["p1", "p2"], status="on_hold")
+            script = mock_run.call_args[0][0]
+            assert "whose" in script
+            assert "on hold" in script
+            assert "repeat with" not in script
+
+    def test_bulk_status_active_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_projects(["p1", "p2"], status="active")
+            script = mock_run.call_args[0][0]
+            assert "whose" in script
+            assert "repeat with" not in script
+
+    def test_bulk_status_done_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            client.update_projects(["p1"], status="done")
+            script = mock_run.call_args[0][0]
+            assert "mark complete" in script
+            assert "whose" in script
+            assert "repeat with" not in script
+
+    def test_bulk_review_interval_uses_or_chain(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_projects(["p1", "p2"], review_interval_weeks=2)
+            script = mock_run.call_args[0][0]
+            assert "review interval" in script
+            assert "whose" in script
+            assert "repeat with" not in script
+
+    # ========================================================================
+    # Per-project fields: must use repeat loop
+    # ========================================================================
+
+    def test_per_project_folder_uses_repeat_loop(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_projects(["p1", "p2"], folder_path="Work")
+            script = mock_run.call_args[0][0]
+            assert "repeat with" in script
+            assert "move" in script
+
+    # ========================================================================
+    # Mixed fields: hybrid script (bulk + repeat loop)
+    # ========================================================================
+
+    def test_mixed_fields_uses_hybrid(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_projects(["p1", "p2"], status="active", folder_path="Work")
+            script = mock_run.call_args[0][0]
+            assert "whose" in script  # Bulk part
+            assert "repeat with" in script  # Per-project part
 
 
 class TestBuildWhoseOrChain:
