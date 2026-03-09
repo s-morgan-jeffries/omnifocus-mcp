@@ -192,6 +192,16 @@ class OmniFocusConnector:
         text = text.replace('"', '\\"')
         return text
 
+    def _build_whose_or_chain(self, ids_list: list[str], entity_type: str) -> str:
+        """Build a 'whose' or-chain clause for targeting multiple items by ID.
+
+        Returns: 'every <entity_type> whose id is "X" or id is "Y" or ...'
+        """
+        clauses = " or ".join(
+            f'id is "{self._escape_applescript_string(tid)}"' for tid in ids_list
+        )
+        return f"every {entity_type} whose {clauses}"
+
     def _get_tasks_batch_for_filtering(
         self,
         project_ids: list[str]

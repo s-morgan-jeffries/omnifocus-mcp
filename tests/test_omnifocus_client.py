@@ -1556,3 +1556,27 @@ class TestBatchUpdateProjects:
         """Should raise ValueError if note is passed."""
         with pytest.raises(ValueError, match="note"):
             client.update_projects(["proj-001"], note="New note")
+
+
+class TestBuildWhoseOrChain:
+    """Tests for _build_whose_or_chain() helper."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_single_id(self, client):
+        result = client._build_whose_or_chain(["abc"], "flattened task")
+        assert result == 'every flattened task whose id is "abc"'
+
+    def test_multiple_ids(self, client):
+        result = client._build_whose_or_chain(["abc", "def", "ghi"], "flattened task")
+        assert result == 'every flattened task whose id is "abc" or id is "def" or id is "ghi"'
+
+    def test_project_entity(self, client):
+        result = client._build_whose_or_chain(["p1", "p2"], "flattened project")
+        assert result == 'every flattened project whose id is "p1" or id is "p2"'
+
+    def test_escapes_ids(self, client):
+        result = client._build_whose_or_chain(['a"b'], "flattened task")
+        assert 'a\\"b' in result
