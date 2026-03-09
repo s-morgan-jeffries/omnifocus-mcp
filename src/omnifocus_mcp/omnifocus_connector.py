@@ -192,6 +192,16 @@ class OmniFocusConnector:
         text = text.replace('"', '\\"')
         return text
 
+    def _build_whose_or_chain(self, ids_list: list[str], entity_type: str) -> str:
+        """Build a 'whose' or-chain clause for targeting multiple items by ID.
+
+        Returns: 'every <entity_type> whose id is "X" or id is "Y" or ...'
+        """
+        clauses = " or ".join(
+            f'id is "{self._escape_applescript_string(tid)}"' for tid in ids_list
+        )
+        return f"every {entity_type} whose {clauses}"
+
     def _get_tasks_batch_for_filtering(
         self,
         project_ids: list[str]
@@ -1548,45 +1558,171 @@ class OmniFocusConnector:
         else:
             ids_list = project_ids
 
-        # Build command fragments using shared helper
-        properties, separate_commands, updated_fields = self._build_project_update_commands(
-            sequential=sequential,
-            status=status,
-            review_interval_weeks=review_interval_weeks,
-            last_reviewed=last_reviewed,
-            next_review_date=next_review_date,
-            folder_path=folder_path,
-        )
+        # Classify fields into bulk-settable (or-chain) vs per-project (repeat loop)
+        # Bulk: sequential, status, review_interval_weeks, last_reviewed, next_review_date
+        # Per-project: folder_path (move operation)
+        has_bulk = False
+        has_per_project = False
 
-        # Build single AppleScript with loop (matching delete_projects pattern)
-        ids_applescript = ", ".join(
-            [f'"{self._escape_applescript_string(pid)}"' for pid in ids_list]
-        )
+        bulk_commands = []
+        or_chain_target = self._build_whose_or_chain(ids_list, "flattened project")
 
-        props_block = ""
-        if properties:
-            props_str = ", ".join(properties)
-            props_block = f"set properties of theProject to {{{props_str}}}"
+        # --- Bulk-settable fields ---
 
-        cmds_block = "\n                        ".join(separate_commands) if separate_commands else ""
+        if sequential is not None:
+            bulk_commands.append(
+                f"set sequential of ({or_chain_target}) to {str(sequential).lower()}"
+            )
+            has_bulk = True
 
-        script = f'''
-        tell application "OmniFocus"
-            tell front document
+        if status is not None:
+            if isinstance(status, ProjectStatus):
+                status_str = status.value
+            elif isinstance(status, str):
+                valid_statuses = ["active", "on_hold", "done", "dropped"]
+                if status.lower() not in valid_statuses:
+                    raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join(valid_statuses)}")
+                status_str = status.lower()
+            else:
+                raise ValueError(f"status must be ProjectStatus enum or string, got {type(status)}")
+
+            if status_str == "done":
+                bulk_commands.append(f"mark complete ({or_chain_target})")
+            else:
+                status_map = {
+                    "active": "active",
+                    "on_hold": "on hold",
+                    "dropped": "dropped"
+                }
+                of_status = status_map[status_str]
+                bulk_commands.append(
+                    f"set status of ({or_chain_target}) to {of_status}"
+                )
+            has_bulk = True
+
+        if review_interval_weeks is not None:
+            bulk_commands.append(
+                f"set review interval of ({or_chain_target}) to {{unit:week, steps:{review_interval_weeks}, fixed:true}}"
+            )
+            has_bulk = True
+
+        if last_reviewed is not None:
+            if last_reviewed.lower() == "now" or last_reviewed == "":
+                bulk_commands.append(
+                    f"set last review date of ({or_chain_target}) to (current date)"
+                )
+            else:
+                bulk_commands.append(
+                    f'set last review date of ({or_chain_target}) to date "{last_reviewed}"'
+                )
+            has_bulk = True
+
+        if next_review_date is not None:
+            bulk_commands.append(
+                f'set next review date of ({or_chain_target}) to date "{next_review_date}"'
+            )
+            has_bulk = True
+
+        # --- Per-project fields (need repeat loop) ---
+
+        per_project_commands = []
+
+        if folder_path is not None:
+            # Build folder navigation commands (reuse existing logic)
+            folder_parts = [part.strip() for part in folder_path.split('>')]
+            if len(folder_parts) == 1:
+                folder_escaped = self._escape_applescript_string(folder_parts[0])
+                per_project_commands.append(f'''
+                    set targetFolder to first folder whose name is "{folder_escaped}"
+                    move theProject to end of projects of targetFolder''')
+            else:
+                folder_names_list = ', '.join(f'"{self._escape_applescript_string(p)}"' for p in folder_parts)
+                per_project_commands.append(f'''
+                    set folderNames to {{{folder_names_list}}}
+                    set targetFolder to missing value
+                    repeat with i from 1 to count of folderNames
+                        set folderName to item i of folderNames
+                        if i is 1 then
+                            repeat with f in folders
+                                if name of f is folderName then
+                                    set targetFolder to f
+                                    exit repeat
+                                end if
+                            end repeat
+                        else
+                            if targetFolder is not missing value then
+                                set found to false
+                                repeat with f in folders of targetFolder
+                                    if name of f is folderName then
+                                        set targetFolder to f
+                                        set found to true
+                                        exit repeat
+                                    end if
+                                end repeat
+                                if not found then
+                                    error "Folder path not found: {folder_path}"
+                                end if
+                            end if
+                        end if
+                    end repeat
+                    if targetFolder is missing value then
+                        error "Folder path not found: {folder_path}"
+                    end if
+                    move theProject to end of projects of targetFolder''')
+            has_per_project = True
+
+        # --- Build AppleScript ---
+
+        bulk_block = ""
+        if has_bulk:
+            bulk_block = "\n                ".join(bulk_commands)
+
+        per_project_block = ""
+        if has_per_project:
+            ids_applescript = ", ".join(
+                [f'"{self._escape_applescript_string(pid)}"' for pid in ids_list]
+            )
+            per_project_cmds_str = "\n                        ".join(per_project_commands)
+            per_project_block = f'''
                 set projectIdList to {{{ids_applescript}}}
                 set successCount to 0
 
                 repeat with projectId in projectIdList
                     try
                         set theProject to first flattened project whose id is projectId
-                        {props_block}
-                        {cmds_block}
+                        {per_project_cmds_str}
                         set successCount to successCount + 1
                     on error
                         -- Project not found or update failed, skip
                     end try
-                end repeat
+                end repeat'''
 
+        if has_bulk and not has_per_project:
+            count_expr = f"count of ({or_chain_target})"
+            script = f'''
+        tell application "OmniFocus"
+            tell front document
+                {bulk_block}
+                return ({count_expr}) as text
+            end tell
+        end tell
+        '''
+        elif has_per_project and not has_bulk:
+            script = f'''
+        tell application "OmniFocus"
+            tell front document
+                {per_project_block}
+                return successCount as text
+            end tell
+        end tell
+        '''
+        else:
+            # Hybrid: bulk commands first, then repeat loop
+            script = f'''
+        tell application "OmniFocus"
+            tell front document
+                {bulk_block}
+                {per_project_block}
                 return successCount as text
             end tell
         end tell
@@ -3492,50 +3628,180 @@ class OmniFocusConnector:
         if tags is not None and add_tags is not None:
             raise ValueError("Cannot specify both tags and add_tags (use one or the other)")
 
-        # Build command fragments using shared helper
-        properties, separate_commands, updated_fields = self._build_task_update_commands(
-            flagged=flagged,
-            status=status,
-            completed=completed,
-            project_id=project_id,
-            parent_task_id=parent_task_id,
-            tags=tags,
-            add_tags=add_tags,
-            remove_tags=remove_tags,
-            due_date=due_date,
-            defer_date=defer_date,
-            estimated_minutes=estimated_minutes,
-        )
+        # Classify fields into bulk-settable (or-chain) vs per-task (repeat loop)
+        # Bulk: flagged, estimated_minutes, due_date, defer_date, completed=True
+        # Per-task: completed=False, status, project_id, parent_task_id, tags, add_tags, remove_tags
+        has_bulk = False
+        has_per_task = False
 
-        # Build single AppleScript with loop (matching delete_tasks pattern)
-        ids_applescript = ", ".join(
-            [f'"{self._escape_applescript_string(tid)}"' for tid in ids_list]
-        )
+        bulk_commands = []
+        or_chain_target = self._build_whose_or_chain(ids_list, "flattened task")
 
-        props_block = ""
-        if properties:
-            props_str = ", ".join(properties)
-            props_block = f"set properties of theTask to {{{props_str}}}"
+        # --- Bulk-settable fields ---
 
-        cmds_block = "\n                        ".join(separate_commands) if separate_commands else ""
+        if flagged is not None:
+            bulk_commands.append(
+                f"set flagged of ({or_chain_target}) to {str(flagged).lower()}"
+            )
+            has_bulk = True
 
-        script = f'''
-        tell application "OmniFocus"
-            tell front document
+        if estimated_minutes is not None:
+            bulk_commands.append(
+                f"set estimated minutes of ({or_chain_target}) to {estimated_minutes}"
+            )
+            has_bulk = True
+
+        if due_date is not None:
+            if due_date == "":
+                bulk_commands.append(
+                    f"set due date of ({or_chain_target}) to missing value"
+                )
+            else:
+                as_date = self._iso_to_applescript_date(due_date)
+                bulk_commands.append(
+                    f'set due date of ({or_chain_target}) to date "{as_date}"'
+                )
+            has_bulk = True
+
+        if defer_date is not None:
+            if defer_date == "":
+                bulk_commands.append(
+                    f"set defer date of ({or_chain_target}) to missing value"
+                )
+            else:
+                as_date = self._iso_to_applescript_date(defer_date)
+                bulk_commands.append(
+                    f'set defer date of ({or_chain_target}) to date "{as_date}"'
+                )
+            has_bulk = True
+
+        if completed is True:
+            bulk_commands.append(f"mark complete ({or_chain_target})")
+            has_bulk = True
+
+        # --- Per-task fields (need repeat loop) ---
+
+        per_task_properties = []
+        per_task_commands = []
+
+        if completed is False:
+            per_task_commands.append("set completed of theTask to false")
+            has_per_task = True
+
+        # Validate and normalize status
+        if status is not None:
+            if isinstance(status, str):
+                status = TaskStatus(status)
+            if status == TaskStatus.DROPPED:
+                per_task_commands.append("mark dropped theTask")
+            elif status == TaskStatus.ACTIVE:
+                per_task_commands.append("set dropped of theTask to false")
+            has_per_task = True
+
+        if project_id is not None:
+            project_id_escaped = self._escape_applescript_string(project_id)
+            per_task_commands.append(f'''
+                    set theProject to first flattened project whose id is "{project_id_escaped}"
+                    move theTask to end of tasks of theProject''')
+            has_per_task = True
+
+        if parent_task_id is not None:
+            parent_id_escaped = self._escape_applescript_string(parent_task_id)
+            per_task_commands.append(f'''
+                    set theParent to first flattened task whose id is "{parent_id_escaped}"
+                    if id of theTask is id of theParent then
+                        error "Cannot set task as its own parent"
+                    end if
+                    move theTask to end of tasks of theParent''')
+            has_per_task = True
+
+        if tags is not None:
+            if len(tags) > 0:
+                tag_adds = []
+                for tag in tags:
+                    tag_escaped = self._escape_applescript_string(tag)
+                    tag_adds.append(f'''
+                        set tagObj to first flattened tag whose name is "{tag_escaped}"
+                        copy tagObj to end of newTags''')
+                tag_adds_str = "\n                    ".join(tag_adds)
+                per_task_commands.append(f'''
+                    set newTags to {{}}
+                    {tag_adds_str}
+                    set tags of theTask to newTags''')
+            else:
+                per_task_commands.append("set tags of theTask to {}")
+            has_per_task = True
+
+        if add_tags is not None:
+            for tag in add_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                per_task_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theTask''')
+            has_per_task = True
+
+        if remove_tags is not None:
+            for tag in remove_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                per_task_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theTask''')
+            has_per_task = True
+
+        # --- Build AppleScript ---
+
+        bulk_block = ""
+        if has_bulk:
+            bulk_block = "\n                ".join(bulk_commands)
+
+        per_task_block = ""
+        if has_per_task:
+            ids_applescript = ", ".join(
+                [f'"{self._escape_applescript_string(tid)}"' for tid in ids_list]
+            )
+            per_task_cmds_str = "\n                        ".join(per_task_commands)
+            per_task_block = f'''
                 set taskIdList to {{{ids_applescript}}}
                 set successCount to 0
 
                 repeat with taskId in taskIdList
                     try
                         set theTask to first flattened task whose id is taskId
-                        {props_block}
-                        {cmds_block}
+                        {per_task_cmds_str}
                         set successCount to successCount + 1
                     on error
                         -- Task not found or update failed, skip
                     end try
-                end repeat
+                end repeat'''
 
+        # Count: bulk uses `count of`, per-task uses successCount
+        if has_bulk and not has_per_task:
+            count_expr = f"count of ({or_chain_target})"
+            script = f'''
+        tell application "OmniFocus"
+            tell front document
+                {bulk_block}
+                return ({count_expr}) as text
+            end tell
+        end tell
+        '''
+        elif has_per_task and not has_bulk:
+            script = f'''
+        tell application "OmniFocus"
+            tell front document
+                {per_task_block}
+                return successCount as text
+            end tell
+        end tell
+        '''
+        else:
+            # Hybrid: bulk commands first, then repeat loop
+            count_expr = f"count of ({or_chain_target})"
+            script = f'''
+        tell application "OmniFocus"
+            tell front document
+                {bulk_block}
+                {per_task_block}
                 return successCount as text
             end tell
         end tell

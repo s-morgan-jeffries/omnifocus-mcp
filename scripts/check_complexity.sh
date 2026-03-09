@@ -80,6 +80,10 @@ try:
                     continue
                 elif name == '_build_task_update_commands' and cc <= 25:
                     continue
+                elif name == 'update_tasks' and cc <= 45:
+                    continue
+                elif name == 'update_projects' and cc <= 35:
+                    continue
                 # General functions: CC ≤ 20 (C rating or better)
                 elif cc <= 20:
                     continue

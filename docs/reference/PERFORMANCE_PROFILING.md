@@ -432,15 +432,37 @@ The whose or-chain approach shows **near-constant time (~0.22-0.25s)** regardles
 
 The per-ID loop scales linearly at ~0.05s per additional task within the loop (the `first flattened task whose id is X` lookup + property set).
 
-**Projected savings at realistic batch sizes:**
-
-| N tasks | Current (loop) | Projected (or-chain) | Savings |
-|---------|---------------|---------------------|---------|
-| 5 | 2.40s | ~0.23s | ~10x |
-| 10 | 4.48s | ~0.25s | ~18x |
-
-Note: Current batch baselines (2.40s, 4.48s) include `osascript` launch overhead (~0.5s) which the or-chain approach would also incur. The projected savings compare the property-setting portion only within a single `osascript` call.
-
 **Limitation:** The or-chain requires generating `id is "X" or id is "Y"` dynamically. The `whose id is in {list}` syntax does not work (error -1700). Tested up to 10 IDs; upper limit unknown.
 
-**What this enables:** Batch `update_tasks()` could replace the internal per-ID `repeat` loop with a single `whose or-chain` property set, potentially achieving 10-18x speedup on the property-setting portion of batch writes.
+### Implementation and measured results (v0.8.2, #215)
+
+Both `update_tasks()` and `update_projects()` now use the or-chain pattern for bulk-settable fields. Fields are classified as:
+
+- **Bulk-settable (or-chain):** `flagged`, `estimated_minutes`, `due_date`, `defer_date`, `completed=True` (tasks); `sequential`, `status`, `review_interval_weeks`, `last_reviewed`, `next_review_date` (projects)
+- **Per-item (repeat loop):** `completed=False`, `status` (tasks), `project_id`, `parent_task_id`, `tags`, `add_tags`, `remove_tags` (tasks); `folder_path` (projects)
+
+When a call includes both types, a hybrid script is generated: bulk commands first (or-chain), then a repeat loop for per-item fields only. Pure bulk calls eliminate the repeat loop entirely.
+
+#### Batch write benchmarks (3 iterations each, benchmarked 2026-03-09)
+
+**Bulk-settable fields (or-chain) — near-constant time:**
+
+| Operation | N=5 | N=10 | Pre-optimization | Speedup (N=10) |
+|-----------|-----|------|-----------------|----------------|
+| `update_tasks(flagged)` | 0.839s | 0.796s | 4.48s | **5.6x** |
+| `update_projects(status)` | 0.783s | 0.790s | — | — |
+| `update_projects(sequential)` | 0.788s | 0.795s | — | — |
+
+**Per-item fields (repeat loop) — linear scaling (unchanged):**
+
+| Operation | N=5 | N=10 | Per-item overhead |
+|-----------|-----|------|-------------------|
+| `update_tasks(add_tags)` | 2.511s | 5.004s | ~0.50s/task |
+
+Key observations:
+- Bulk operations show **near-constant time** (~0.8s) regardless of batch size, confirming the or-chain eliminates per-ID scaling
+- The ~0.8s floor is osascript launch + OmniFocus IPC overhead (unavoidable)
+- Per-task operations (tags) still scale linearly as expected (~0.50s/task)
+- N=5 bulk vs per-task: 0.84s vs 2.51s = **3x faster**
+- N=10 bulk vs per-task: 0.80s vs 5.00s = **6.3x faster**
+- Speedup grows with N since bulk is O(1) and per-task is O(N)
