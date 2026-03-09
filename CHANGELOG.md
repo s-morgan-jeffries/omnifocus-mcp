@@ -5,6 +5,37 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-03-09
+
+### Added
+
+- **Write operation benchmarks** (#204, #208)
+  - Benchmarks for batch updates, mark complete, and payload sizes
+  - Baselines added to performance profiling documentation
+
+- **Batch optimize `update_tasks()` and `update_projects()`** (#205, #209)
+  - Single AppleScript call with internal repeat loop replaces N separate calls
+  - 1.4-1.6x speedup for batch write operations
+
+### Changed
+
+- **Document structured updates as plugin-level orchestration** (#207, #216)
+  - Added architecture guidance: project+tasks updates belong at plugin layer, not MCP API
+  - Two fast MCP calls beat one complex combined function
+  - Updated `/daily-wrapup` plugin to use `update_tasks` for batch completions
+
+### Research
+
+- **Group-scoped update patterns** (#210, #214)
+  - Empirically tested containment-scoped property sets, `mark complete`, filtered scopes, and `whose` or-chain pattern
+  - Or-chain achieves near-constant time (~0.25s) regardless of batch size — 2.9x faster than per-ID loop at 10 tasks
+  - Documented in OMNIFOCUS_AUTOMATION_NOTES.md and PERFORMANCE_PROFILING.md
+
+- **RTF note manipulation via OmniAutomation** (#206, #211)
+  - Documented `evaluate javascript` for rich text access (`noteText`, `attributeRuns`, style attributes)
+  - Discovered headless test database crash limitation — OmniAutomation features require manual testing
+  - Documented RTF-safe append pattern vs RTF-destructive AppleScript pattern
+
 ## [0.8.0] - 2026-03-07
 
 ### Added

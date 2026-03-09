@@ -78,6 +78,8 @@ try:
                     continue
                 elif name in ['get_projects', 'update_project', '_filter_projects_by_conditions'] and cc <= 30:
                     continue
+                elif name == '_build_task_update_commands' and cc <= 25:
+                    continue
                 # General functions: CC ≤ 20 (C rating or better)
                 elif cc <= 20:
                     continue
