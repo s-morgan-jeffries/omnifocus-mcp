@@ -139,6 +139,78 @@ set note of t to (note of t) & " appended"
 -- Destroys ALL formatting — read strips RTF, write replaces it
 ```
 
+## Group-Scoped Updates (2026-03-09, Issue #210)
+
+OmniFocus AppleScript supports setting properties on collections of tasks in a single operation, bypassing the per-task ID lookup cost.
+
+### Containment-scoped property sets
+
+Set a property on all tasks in a project at once:
+
+```applescript
+tell front document
+    set theProject to first flattened project whose name is "My Project"
+    set flagged of every flattened task of theProject to true
+    set estimated minutes of every flattened task of theProject to 30
+end tell
+```
+
+**Works for:** `flagged`, `estimated minutes`, and other settable scalar properties.
+
+### Containment-scoped mark complete
+
+```applescript
+mark complete every flattened task of theProject
+```
+
+Works. Uses the `mark complete` verb (not property assignment), so recurring tasks will spawn next occurrences correctly.
+
+### Filtered containment scopes
+
+`whose` clauses combine with containment scoping:
+
+```applescript
+-- Flag only incomplete, unflagged tasks in a project
+set flagged of (every flattened task of theProject whose flagged is false and completed is false) to true
+```
+
+Multi-condition `whose` filters work. Only matching tasks are affected.
+
+### Arbitrary ID set scoping (whose or-chain)
+
+Target specific tasks by ID without per-task lookups:
+
+```applescript
+-- Works: or-chained whose clause
+set flagged of (every flattened task whose id is "abc" or id is "def" or id is "ghi") to true
+```
+
+**Does NOT work:** `whose id is in {"abc", "def"}` — error -1700, can't convert list to specifier.
+
+The `or`-chain pattern scales to at least 10 IDs. For Python code generation:
+
+```python
+clauses = " or ".join(f'id is "{tid}"' for tid in task_ids)
+script = f'set flagged of (every flattened task whose {clauses}) to true'
+```
+
+### Performance characteristics
+
+| Approach | N=1 | N=3 | N=5 | N=10 |
+|----------|-----|-----|-----|------|
+| Per-ID loop (current) | 0.24s | 0.36s | 0.48s | 0.73s |
+| Whose or-chain | 0.22s | 0.23s | 0.23s | 0.25s |
+| Containment scope | — | — | — | 0.21s |
+
+Key insight: **whose or-chain time is nearly constant (~0.22-0.25s) regardless of batch size**, while per-ID loop scales linearly at ~0.05s/task. At 10 tasks, or-chain is 2.9x faster.
+
+### Limitations
+
+- `whose id is in {list}` syntax is not supported (error -1700)
+- `set completed of collection to false` fails (error -10006) — uncomplete must be done per-task
+- Containment scope applies to ALL tasks in a project; use `whose` filters for subsets
+- The `or`-chain approach has unknown upper limits on clause count (tested up to 10)
+
 ## Future Investigation
 
 - `taskStatus` enum could simplify availability calculations (Available, Blocked, etc.)

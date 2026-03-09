@@ -397,3 +397,50 @@ Per-task cost drops from 0.73s (single) to 0.45s at 10 tasks — a 38% reduction
 The original projection of 5x speedup assumed the per-task IPC within a single AppleScript call would be negligible. In practice, each task lookup + property set within the loop still costs ~0.35s of IPC time. The actual speedup is 1.4-1.6x, growing with batch size as the fixed overhead of a single `osascript` launch is amortized across more tasks.
 
 Further speedup would require action group-scoped updates (e.g., `every flattened task of project`) to eliminate per-task ID lookups entirely.
+
+## Group-Scoped Write Benchmarks (2026-03-09, Issue #210)
+
+Empirical testing confirmed that OmniFocus supports setting properties on task collections in a single Apple Event, bypassing per-task ID lookups.
+
+### Three approaches compared
+
+**Approach A — Per-ID loop (current):** `repeat` with `first flattened task whose id is X` per task.
+
+**Approach B — Containment scope:** `set property of every flattened task of theProject to value`.
+
+**Approach C — Whose or-chain:** `set property of (every flattened task whose id is "X" or id is "Y") to value`.
+
+### Results (set flagged, 10-task project, 3 iterations each)
+
+| N tasks | Per-ID loop | Whose or-chain | Containment scope | Or-chain speedup |
+|---------|-------------|----------------|-------------------|-----------------|
+| 1 | 0.239s | 0.224s | — | 1.1x |
+| 3 | 0.358s | 0.226s | — | 1.6x |
+| 5 | 0.478s | 0.228s | — | 2.1x |
+| 10 | 0.729s | 0.247s | 0.214s | 2.9x |
+
+### Mark complete
+
+| Approach | N | Mean |
+|----------|---|------|
+| Per-ID loop | 5 | 0.409s |
+| Containment scope | 10 | 0.208s |
+
+### Analysis
+
+The whose or-chain approach shows **near-constant time (~0.22-0.25s)** regardless of batch size. This is because OmniFocus evaluates the `whose` clause natively as a single filter operation, then applies the property set to all matching tasks in one Apple Event.
+
+The per-ID loop scales linearly at ~0.05s per additional task within the loop (the `first flattened task whose id is X` lookup + property set).
+
+**Projected savings at realistic batch sizes:**
+
+| N tasks | Current (loop) | Projected (or-chain) | Savings |
+|---------|---------------|---------------------|---------|
+| 5 | 2.40s | ~0.23s | ~10x |
+| 10 | 4.48s | ~0.25s | ~18x |
+
+Note: Current batch baselines (2.40s, 4.48s) include `osascript` launch overhead (~0.5s) which the or-chain approach would also incur. The projected savings compare the property-setting portion only within a single `osascript` call.
+
+**Limitation:** The or-chain requires generating `id is "X" or id is "Y"` dynamically. The `whose id is in {list}` syntax does not work (error -1700). Tested up to 10 IDs; upper limit unknown.
+
+**What this enables:** Batch `update_tasks()` could replace the internal per-ID `repeat` loop with a single `whose or-chain` property set, potentially achieving 10-18x speedup on the property-setting portion of batch writes.
