@@ -443,4 +443,9 @@ Note: Current batch baselines (2.40s, 4.48s) include `osascript` launch overhead
 
 **Limitation:** The or-chain requires generating `id is "X" or id is "Y"` dynamically. The `whose id is in {list}` syntax does not work (error -1700). Tested up to 10 IDs; upper limit unknown.
 
-**What this enables:** Batch `update_tasks()` could replace the internal per-ID `repeat` loop with a single `whose or-chain` property set, potentially achieving 10-18x speedup on the property-setting portion of batch writes.
+**Implementation (v0.8.2, #215):** Both `update_tasks()` and `update_projects()` now use the or-chain pattern for bulk-settable fields. Fields are classified as:
+
+- **Bulk-settable (or-chain):** `flagged`, `estimated_minutes`, `due_date`, `defer_date`, `completed=True` (tasks); `sequential`, `status`, `review_interval_weeks`, `last_reviewed`, `next_review_date` (projects)
+- **Per-item (repeat loop):** `completed=False`, `status` (tasks), `project_id`, `parent_task_id`, `tags`, `add_tags`, `remove_tags` (tasks); `folder_path` (projects)
+
+When a call includes both types, a hybrid script is generated: bulk commands first (or-chain), then a repeat loop for per-item fields only. Pure bulk calls eliminate the repeat loop entirely.
