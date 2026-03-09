@@ -2,24 +2,180 @@
 
 **Purpose:** Documents known limitations, workarounds, and gotchas when working with OmniFocus via AppleScript.
 
-**Last Updated:** 2025-10-19
+**Last Updated:** 2026-03-08
 
 ---
 
 ## Rich Text Notes
 
-- ❌ **Cannot read formatted/rich text** (OmniFocus API limitation)
-- ✅ **Can only access plain text** via AppleScript
-- ⚠️ **Updating notes removes all formatting**
-- **Implication:** Document this warning in all note-related functions
+- ❌ **AppleScript `note` property is plain text only** — reads strip formatting, writes destroy it
+- ✅ **OmniAutomation can read and write rich text** via `evaluate javascript`
+- ⚠️ **OmniAutomation crashes on headless test databases** — only works with production DB (full UI context)
+- **Implication:** The connector currently uses AppleScript for notes, so all note operations are plain-text-only. Rich text support would require switching note operations to OmniAutomation.
 
-**Technical Details:**
-- OmniFocus supports rich text in notes (bold, italic, links, etc.)
-- AppleScript API only exposes the plain text content
-- OmniAutomation (JavaScript API) has RTF access but cannot be called externally with result retrieval
-- When you update a note via AppleScript, any existing rich text formatting is lost
+### Empirical Investigation (2026-03-08, Issue #206)
 
-**Workaround:** None available. Document the limitation clearly in function descriptions.
+Five approaches were tested against real OmniFocus (v4, macOS). Initial testing on the headless test database produced crashes; subsequent testing on the production database (with manual confirmation before each step) revealed that OmniAutomation works correctly with full UI context.
+
+#### 1. AppleScript `styled text` — No effect
+
+The `note` property reports its class as `rich text`, but this is nominal only. Rich text sub-properties are not accessible:
+
+```applescript
+-- class of (note of t) returns "rich text" — but...
+set attrRuns to attribute runs of (note of t)
+-- ERROR: Can't get every attribute run of "..."
+
+set firstRun to first attribute run of (note of t)
+set f to font of firstRun
+-- ERROR: Can't get font of "B".
+```
+
+Setting a note via `styled text` coercion is accepted but stores plain text:
+```applescript
+set styledNote to "Bold test" as styled text
+set note of t to styledNote  -- Accepted, but no formatting applied
+```
+
+`rich text of note of t` fails: `Can't get rich text of note of inbox task`.
+
+**Conclusion:** The AppleScript `note` property is a plain text string that claims to be `rich text` class. No rich text manipulation is possible through it.
+
+#### 2. OmniAutomation (`evaluate javascript`) — Works on production DB
+
+`evaluate javascript` is documented in OmniFocus's AppleScript dictionary for calling OmniAutomation from AppleScript.
+
+**⚠️ Test database crash:** On the headless test database, `evaluate javascript` crashes OmniFocus silently when accessing OmniFocus objects (e.g., `Task.byIdentifier()`). Simple string expressions work, but any object model access causes a crash with no crash report dialog. OmniFocus restarts with the production database open. This is likely because the test database opens as a headless document without proper window/UI context.
+
+**✅ Production database:** With the production database and full UI context, `evaluate javascript` works correctly for both reads and writes:
+
+```applescript
+tell application "OmniFocus"
+    evaluate javascript "
+        var tasks = flattenedTasks;
+        var t = null;
+        for (var i = 0; i < tasks.length; i++) {
+            if (tasks[i].name === 'My Task') { t = tasks[i]; break; }
+        }
+        t.note = 'Note set via OmniAutomation';
+        t.note;  // Returns the note
+    "
+end tell
+```
+
+**Conclusion:** `evaluate javascript` is viable for external automation on the production database. The crash is specific to headless/test database contexts.
+
+#### 3. OmniAutomation Rich Text — Full read/write support
+
+OmniAutomation exposes `task.noteText` (a `Text` object) with `attributeRuns` and `Style` API:
+
+**Reading formatting:**
+```applescript
+tell application "OmniFocus"
+    evaluate javascript "
+        var t = flattenedTasks[0];  // find your task
+        var runs = t.noteText.attributeRuns;
+        var result = [];
+        for (var j = 0; j < runs.length; j++) {
+            var r = runs[j];
+            result.push({
+                text: r.string,
+                fontWeight: r.style.get(Style.Attribute.FontWeight),
+                fontItalic: r.style.get(Style.Attribute.FontItalic),
+                underlineStyle: String(r.style.get(Style.Attribute.UnderlineStyle))
+            });
+        }
+        JSON.stringify(result);
+    "
+end tell
+```
+
+**Available style attributes (tested):**
+
+| Attribute | Values | Notes |
+|-----------|--------|-------|
+| `FontWeight` | 5 (normal), 11-12 (bold) | Setting to 11 produces bold |
+| `FontItalic` | `true` / `false` | |
+| `UnderlineStyle` | `None`, `Single` | Also `UnderlinePattern` (Solid) and `UnderlineColor` |
+| `FontFamily` | e.g., `.AppleSystemUIFont` | |
+| `FontSize` | e.g., 12 | |
+| `BaselineOffset` | Number | |
+| `Obliqueness` | Number | |
+| `Expansion` | Number | |
+| `BackgroundColor` | Color object | |
+| `Link` | URL object | |
+
+**Attributes that error:** `FontSlant`, `Underline`, `Strikethrough`, `ForegroundColor`, `Kern`, `Ligature`, `Shadow`, `StrokeWidth`, `Superscript`
+
+**Writing formatting:**
+```applescript
+tell application "OmniFocus"
+    evaluate javascript "
+        var t = flattenedTasks[0];  // find your task
+        t.noteText.style.set(Style.Attribute.FontWeight, 11);  // Bold
+        t.noteText.style.set(Style.Attribute.FontItalic, true);  // Italic
+    "
+end tell
+```
+
+#### 4. AppleScript append — Destroys RTF
+
+Confirmed empirically: a read-modify-write cycle via AppleScript's `note` property destroys all formatting.
+
+**Before:** 10 attribute runs with bold, italic, and underline formatting.
+**After `set note of t to (note of t) & " appended"`:** 1 attribute run, all plain text.
+
+```applescript
+-- This DESTROYS all rich text formatting:
+set existingNote to note of t      -- Strips formatting to plain text
+set note of t to existingNote & return & "Appended"  -- Writes plain text back
+```
+
+The `note of t` read returns plain text, so the write replaces all RTF with the plain text version.
+
+#### 5. OmniAutomation append — Preserves RTF
+
+Using `noteText.insert()` appends text without touching existing formatting:
+
+```applescript
+tell application "OmniFocus"
+    evaluate javascript "
+        var t = flattenedTasks[0];  // find your task
+        var nt = t.noteText;
+        var appendText = new Text('\\nAppended text', nt.style);
+        nt.insert(nt.end, appendText);
+    "
+end tell
+```
+
+**Before:** 10 attribute runs with bold, italic, and underline formatting.
+**After `insert()`:** 11 attribute runs — all original formatting preserved, new run appended as plain text with base style.
+
+The `new Text(string, style)` constructor creates a Text object; `insert(position, textObj)` places it without modifying existing runs.
+
+### Summary
+
+| Approach | Result | Viable? |
+|----------|--------|---------|
+| AppleScript `styled text` | Accepted but no effect — note property is functionally plain text | No |
+| AppleScript read-modify-write | Destroys RTF by design (read strips formatting) | No |
+| OmniAutomation read (`noteText.attributeRuns`) | Full formatting data: bold, italic, underline, font, size | Yes (production DB only) |
+| OmniAutomation write (`style.set()`) | Can set bold, italic, underline, and other attributes | Yes (production DB only) |
+| OmniAutomation append (`noteText.insert()`) | Appends without destroying existing formatting | Yes (production DB only) |
+
+### Implications for the Connector
+
+**Current state:** The connector uses AppleScript `note of t` for all note operations. This is plain-text-only and will remain so unless note operations are migrated to OmniAutomation.
+
+**What migration would enable:**
+- Reading notes with formatting metadata (bold, italic, underline, links)
+- Writing formatted notes
+- Appending to notes without destroying existing formatting
+
+**Migration risks:**
+- `evaluate javascript` crashes on headless test databases — integration tests cannot cover OmniAutomation note operations
+- The crash appears to be a bug in OmniFocus 4's AppleScript-to-OmniAutomation bridge when no UI context exists
+- All OmniAutomation testing must be done manually against the production database
 
 ---
 

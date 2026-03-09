@@ -89,9 +89,55 @@ From omni-automation.com/omnifocus/task.html:
 ## OmniAutomation vs AppleScript
 
 - OmniAutomation (JavaScript) runs inside OmniFocus, eliminating IPC overhead
-- **BUT** cannot return results to external callers (documented limitation)
-- AppleScript via `osascript` is the only option for external MCP servers
+- `evaluate javascript` can call OmniAutomation from AppleScript and return results
+- AppleScript via `osascript` remains the primary interface for external MCP servers
 - `a reference to` batch reads are the best AppleScript optimization available
+
+### `evaluate javascript` (2026-03-08, Issue #206)
+
+The `evaluate javascript` AppleScript command calls OmniAutomation from AppleScript. It works correctly on the production database with full UI context, but **crashes on headless test databases**.
+
+**Production database (works):**
+- Can access OmniFocus objects (`flattenedTasks`, task properties, etc.)
+- Can read and write data, including rich text formatting via `noteText`
+- Returns results as strings (use `JSON.stringify()` for structured data)
+
+**Headless test database (crashes):**
+- Simple string expressions work: `evaluate javascript "\"hello\""` returns correctly
+- Accessing OmniFocus objects (e.g., `Task.byIdentifier()`) causes a silent crash
+- No crash report dialog is shown; OmniFocus restarts with the production database
+- Tested twice with consistent crashes
+- Likely cause: test database opens without proper window/UI context that OmniAutomation requires
+
+**Implication:** Any connector feature using `evaluate javascript` cannot be covered by integration tests (which use the headless test database). Such features would require manual testing against the production database.
+
+### Rich Text via OmniAutomation
+
+OmniAutomation provides full rich text access through `task.noteText` (a `Text` object):
+
+- **`task.note`** — plain string (same as AppleScript `note of task`)
+- **`task.noteText`** — `Text` object with `attributeRuns`, `style`, `string`, `insert()`, `end`
+
+**Readable style attributes:**
+- `Style.Attribute.FontWeight` — 5 (normal), 11-12 (bold)
+- `Style.Attribute.FontItalic` — boolean
+- `Style.Attribute.UnderlineStyle` — None, Single
+- `Style.Attribute.UnderlinePattern` — Solid
+- `Style.Attribute.FontFamily`, `FontSize`, `BaselineOffset`, `Obliqueness`, `Expansion`
+
+**RTF-safe append pattern:**
+```javascript
+var nt = task.noteText;
+var appendText = new Text('\nNew text', nt.style);
+nt.insert(nt.end, appendText);
+// Existing formatting preserved, new text appended with base style
+```
+
+**RTF-destructive pattern (AppleScript):**
+```applescript
+set note of t to (note of t) & " appended"
+-- Destroys ALL formatting — read strips RTF, write replaces it
+```
 
 ## Future Investigation
 
