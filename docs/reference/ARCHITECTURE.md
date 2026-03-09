@@ -383,8 +383,55 @@ update_project(
 
 **Decision:** This requires complex logic (reading task, creating new task, recursively duplicating subtasks). Warrant a new `duplicate_task()` function.
 
+## Structured Updates as Plugin-Level Orchestration
+
+### The Pattern
+
+Complex workflows that update a project and its tasks together (e.g., put a project on hold and complete 3 of its tasks) require multiple MCP calls. This is by design — the alternative would be a combined function like `update_project_with_tasks()` that violates every principle above.
+
+### Why This Belongs at the Plugin Layer
+
+**Two fast calls beat one complex function:**
+
+After batch optimization, the pattern is:
+```python
+# Plugin orchestrates two calls (~1.3s total)
+update_project(project_id, status="on_hold")
+update_tasks([task_1, task_2, task_3], completed=True)
+```
+
+With the whose or-chain optimization (#215), batch writes are near-constant time (~0.25s regardless of batch size). Two calls at ~0.65s each is fast enough that a combined function adds API complexity without meaningful performance benefit.
+
+**Error semantics are cleaner:**
+
+A combined `update_project_with_tasks()` raises difficult questions:
+- If the project update succeeds but task 2 of 3 fails, is that a success or failure?
+- Should the project update roll back?
+- OmniFocus has no transaction support, so partial failure is the only honest answer.
+
+With separate calls, the plugin handles partial failure naturally — each call returns its own success/failure status, and the plugin reports both.
+
+**The plugin layer is the right abstraction:**
+
+Plugins understand user intent ("wrap up this project") and can orchestrate the right sequence of MCP calls. The MCP layer provides primitive operations; plugins compose them. This follows the Unix philosophy: small tools that compose well.
+
+### Example: Daily Wrapup
+
+The `/daily-wrapup` plugin completes multiple tasks and updates projects in a single workflow:
+
+```python
+# Step 1: Batch-complete all finished tasks (one MCP call)
+update_tasks([id1, id2, id3], completed=True)
+
+# Step 2: Update project status (one MCP call)
+update_project(project_id, note="Wrapped up 2026-03-09")
+```
+
+This replaces N individual `update_task()` calls with a single `update_tasks()` call, reducing both MCP overhead and AppleScript IPC.
+
 ## Version History
 
+- **2026-03-09:** Added structured updates as plugin-level orchestration pattern (#207)
 - **2025-10-17:** Initial architecture document based on API redesign from 40 to 16 functions
 
 ## References
