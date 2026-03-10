@@ -104,7 +104,7 @@ class OmniFocusConnector:
     DESTRUCTIVE_OPERATIONS = {
         'create_task', 'update_task', 'update_tasks',
         'create_project', 'update_project', 'update_projects',
-        'create_folder', 'delete_tasks', 'delete_projects',
+        'create_folder', 'create_tag', 'delete_tasks', 'delete_projects',
         'reorder_task',
     }
 
@@ -3646,7 +3646,81 @@ class OmniFocusConnector:
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing tags output: {e}")
 
+    def create_tag(self, name: str, parent_tag: Optional[str] = None) -> str:
+        """Create a new tag in OmniFocus.
 
+        Args:
+            name: The name of the tag to create
+            parent_tag: Optional parent tag name for nesting (e.g., "Energy" to create "Energy : High")
+
+        Returns:
+            The ID of the created tag
+
+        Raises:
+            ValueError: If a tag with the same name already exists at the target level
+            Exception: If parent tag not found or creation fails
+        """
+        self._verify_database_safety('create_tag')
+
+        name_escaped = self._escape_applescript_string(name)
+
+        if parent_tag is None:
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set existingTag to first flattened tag whose name is "{name_escaped}"
+                        return "EXISTS: " & id of existingTag
+                    on error
+                        -- Tag doesn't exist, create it
+                    end try
+                    try
+                        set newTag to make new tag with properties {{name:"{name_escaped}"}}
+                        return id of newTag
+                    on error errMsg
+                        return "ERROR: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+        else:
+            parent_escaped = self._escape_applescript_string(parent_tag)
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set parentTag to first flattened tag whose name is "{parent_escaped}"
+                    on error
+                        return "ERROR: Parent tag '{parent_escaped}' not found"
+                    end try
+                    -- Check if child tag already exists under parent
+                    try
+                        set existingChild to first tag of parentTag whose name is "{name_escaped}"
+                        return "EXISTS: " & id of existingChild
+                    on error
+                        -- Child doesn't exist, create it
+                    end try
+                    try
+                        set newTag to make new tag at end of tags of parentTag with properties {{name:"{name_escaped}"}}
+                        return id of newTag
+                    on error errMsg
+                        return "ERROR: " & errMsg
+                    end try
+                end tell
+            end tell
+            '''
+
+        try:
+            result = run_applescript(script)
+            result = result.strip()
+            if result.startswith("EXISTS:"):
+                tag_id = result[len("EXISTS:"):].strip()
+                raise ValueError(f"Tag '{name}' already exists (ID: {tag_id})")
+            if result.startswith("ERROR:"):
+                raise Exception(f"Error creating tag: {result[len('ERROR:'):]}")
+            return result
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error creating tag: {e.stderr}")
 
 
     def delete_tasks(self, task_ids: Union[str, list[str]]) -> dict:

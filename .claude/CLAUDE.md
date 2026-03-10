@@ -18,14 +18,14 @@ make test-e2e              # End-to-end MCP tool tests (requires test DB)
 
 **Running the server:** `uv run python -m omnifocus_mcp.server_fastmcp` or via Claude Desktop config.
 
-## API Surface (17 functions: 16 core + UI navigation)
+## API Surface (18 functions: 17 core + UI navigation)
 
 The API was consolidated from 40+ functions to 16 in October 2025. This is intentional — resist adding new functions.
 
 **Projects (5):** create_project, get_projects, update_project, update_projects, delete_projects
 **Tasks (6):** create_task, get_tasks, update_task, update_tasks, delete_tasks, reorder_task
 **Folders (2):** create_folder, get_folders
-**Tags (1):** get_tags
+**Tags (2):** create_tag, get_tags
 **Perspectives (2):** get_perspectives, switch_perspective
 **Navigation (1):** set_focus
 

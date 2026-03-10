@@ -861,6 +861,39 @@ def get_tags() -> str:
     return result
 
 
+@mcp.tool()
+def create_tag(
+    name: str,
+    parent_tag: Optional[str] = None
+) -> str:
+    """Create a new tag in OmniFocus.
+
+    Tags (formerly 'contexts') represent contexts for doing work — location, tools,
+    energy level, people, or workflow states. Tags can be nested (e.g., create "High"
+    under parent "Energy" to get "Energy : High").
+
+    Args:
+        name: The name of the tag to create
+        parent_tag: Optional parent tag name for nesting (e.g., "Energy" to create
+            "Energy : High"). Parent tag must already exist.
+
+    Returns:
+        Success message with tag ID and name
+
+    Raises:
+        ValueError: If a tag with the same name already exists
+    """
+    client = get_client()
+    try:
+        tag_id = client.create_tag(name=name, parent_tag=parent_tag)
+    except ValueError as e:
+        return f"Error: {str(e)}"
+
+    result = f"Successfully created tag '{name}'\nTag ID: {tag_id}"
+    if parent_tag:
+        result += f"\nParent: {parent_tag}"
+
+    return result
 
 
 @mcp.tool()
