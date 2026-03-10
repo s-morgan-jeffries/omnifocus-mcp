@@ -173,3 +173,26 @@ class TestProjectFormatting:
         result = _format_project(project, truncate_notes=False)
         assert f"Note: {long_note}" in result
         assert result.count("x") >= 300
+
+    def test_format_project_with_last_activity_date(self):
+        """Test formatting project with lastActivityDate."""
+        project = {
+            "id": "proj123",
+            "name": "Project",
+            "status": "active",
+            "lastActivityDate": "2026-03-05T14:30:00"
+        }
+
+        result = _format_project(project)
+        assert "Last Activity: 2026-03-05T14:30:00" in result
+
+    def test_format_project_without_last_activity_date(self):
+        """Test formatting project without lastActivityDate omits the line."""
+        project = {
+            "id": "proj123",
+            "name": "Project",
+            "status": "active",
+        }
+
+        result = _format_project(project)
+        assert "Last Activity" not in result

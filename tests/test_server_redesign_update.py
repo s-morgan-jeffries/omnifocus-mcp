@@ -466,3 +466,25 @@ class TestUpdateTasksServerRedesign:
 
             assert "failed" in result.lower() or "Failed" in result
             assert "2" in result  # 2 failed
+
+    def test_update_task_handles_value_error(self):
+        """Server: update_task() catches ValueError and returns error string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_task.side_effect = ValueError("Empty task_id")
+            mock_get_client.return_value = mock_client
+
+            result = update_task(task_id="", flagged=True)
+            assert isinstance(result, str)
+            assert "error" in result.lower()
+
+    def test_update_tasks_handles_value_error(self):
+        """Server: update_tasks() catches ValueError and returns error string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tasks.side_effect = ValueError("task_name is not allowed")
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks(["task-001"], flagged=True)
+            assert isinstance(result, str)
+            assert "error" in result.lower()

@@ -1,5 +1,4 @@
 """Server tests for get_projects() enhancements (Phase 3.2)."""
-import pytest
 from unittest import mock
 import omnifocus_mcp.server_fastmcp as server
 
@@ -37,3 +36,15 @@ class TestGetProjectsServerEnhancements:
             call_kwargs = mock_client.get_projects.call_args[1]
             assert call_kwargs['include_full_notes'] is True
             assert isinstance(result, str)
+
+    def test_get_projects_handles_value_error(self):
+        """Server: get_projects() catches ValueError and returns error string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_projects.side_effect = ValueError("Invalid date range")
+            mock_get_client.return_value = mock_client
+
+            result = server.get_projects()
+            assert isinstance(result, str)
+            assert "error" in result.lower()
+            assert "invalid date range" in result.lower()
