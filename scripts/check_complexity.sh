@@ -78,8 +78,6 @@ try:
                     continue
                 elif name in ['get_projects', 'update_project', '_filter_projects_by_conditions'] and cc <= 30:
                     continue
-                elif name == '_build_task_update_commands' and cc <= 25:
-                    continue
                 elif name == 'update_tasks' and cc <= 45:
                     continue
                 elif name == 'update_projects' and cc <= 35:

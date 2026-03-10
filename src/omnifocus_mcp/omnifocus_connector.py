@@ -3057,6 +3057,75 @@ class OmniFocusConnector:
             raise Exception(f"Error parsing OmniFocus task output: {e}")
 
 
+    def _build_date_command(self, date_value: str, property_name: str) -> str:
+        """Build an AppleScript command to set or clear a date property.
+
+        Args:
+            date_value: ISO 8601 date string, or "" to clear.
+            property_name: AppleScript property name (e.g., "due date", "defer date").
+
+        Returns:
+            AppleScript command string.
+        """
+        if date_value == "":
+            return f"set {property_name} of theTask to missing value"
+        as_date = self._iso_to_applescript_date(date_value)
+        return f'set {property_name} of theTask to date "{as_date}"'
+
+    def _build_tag_commands(
+        self,
+        tags: Optional[list[str]],
+        add_tags: Optional[list[str]],
+        remove_tags: Optional[list[str]],
+    ) -> tuple[list[str], list[str]]:
+        """Build AppleScript commands for tag operations.
+
+        Args:
+            tags: Full replacement tag list, or None.
+            add_tags: Tags to add incrementally, or None.
+            remove_tags: Tags to remove, or None.
+
+        Returns:
+            tuple of (commands, updated_fields).
+        """
+        commands = []
+        updated_fields = []
+
+        if tags is not None:
+            if len(tags) > 0:
+                tag_adds = []
+                for tag in tags:
+                    tag_escaped = self._escape_applescript_string(tag)
+                    tag_adds.append(f'''
+                        set tagObj to first flattened tag whose name is "{tag_escaped}"
+                        copy tagObj to end of newTags''')
+                tag_adds_str = "\n                    ".join(tag_adds)
+                commands.append(f'''
+                    set newTags to {{}}
+                    {tag_adds_str}
+                    set tags of theTask to newTags''')
+            else:
+                commands.append("set tags of theTask to {}")
+            updated_fields.append("tags")
+
+        if add_tags is not None:
+            for tag in add_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theTask''')
+            updated_fields.append("add_tags")
+
+        if remove_tags is not None:
+            for tag in remove_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theTask''')
+            updated_fields.append("remove_tags")
+
+        return commands, updated_fields
+
     def _build_task_update_commands(
         self,
         flagged: Optional[bool] = None,
@@ -3099,24 +3168,14 @@ class OmniFocusConnector:
             properties.append(f'flagged:{str(flagged).lower()}')
             updated_fields.append("flagged")
 
-        # Handle dates
         if due_date is not None:
-            if due_date == "":
-                separate_commands.append("set due date of theTask to missing value")
-            else:
-                as_date = self._iso_to_applescript_date(due_date)
-                separate_commands.append(f'set due date of theTask to date "{as_date}"')
+            separate_commands.append(self._build_date_command(due_date, "due date"))
             updated_fields.append("due_date")
 
         if defer_date is not None:
-            if defer_date == "":
-                separate_commands.append("set defer date of theTask to missing value")
-            else:
-                as_date = self._iso_to_applescript_date(defer_date)
-                separate_commands.append(f'set defer date of theTask to date "{as_date}"')
+            separate_commands.append(self._build_date_command(defer_date, "defer date"))
             updated_fields.append("defer_date")
 
-        # Handle estimated minutes
         if estimated_minutes is not None:
             separate_commands.append(f'set estimated minutes of theTask to {estimated_minutes}')
             updated_fields.append("estimated_minutes")
@@ -3156,38 +3215,9 @@ class OmniFocusConnector:
             updated_fields.append("parent_task_id")
 
         # Handle tags
-        if tags is not None:
-            if len(tags) > 0:
-                tag_adds = []
-                for tag in tags:
-                    tag_escaped = self._escape_applescript_string(tag)
-                    tag_adds.append(f'''
-                        set tagObj to first flattened tag whose name is "{tag_escaped}"
-                        copy tagObj to end of newTags''')
-                tag_adds_str = "\n                    ".join(tag_adds)
-                separate_commands.append(f'''
-                    set newTags to {{}}
-                    {tag_adds_str}
-                    set tags of theTask to newTags''')
-            else:
-                separate_commands.append("set tags of theTask to {}")
-            updated_fields.append("tags")
-
-        if add_tags is not None:
-            for tag in add_tags:
-                tag_escaped = self._escape_applescript_string(tag)
-                separate_commands.append(f'''
-                    set tagObj to first flattened tag whose name is "{tag_escaped}"
-                    add tagObj to tags of theTask''')
-            updated_fields.append("add_tags")
-
-        if remove_tags is not None:
-            for tag in remove_tags:
-                tag_escaped = self._escape_applescript_string(tag)
-                separate_commands.append(f'''
-                    set tagObj to first flattened tag whose name is "{tag_escaped}"
-                    remove tagObj from tags of theTask''')
-            updated_fields.append("remove_tags")
+        tag_commands, tag_fields = self._build_tag_commands(tags, add_tags, remove_tags)
+        separate_commands.extend(tag_commands)
+        updated_fields.extend(tag_fields)
 
         return properties, separate_commands, updated_fields
 
