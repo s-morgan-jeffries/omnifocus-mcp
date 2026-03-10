@@ -218,3 +218,35 @@ Key insight: **whose or-chain time is nearly constant (~0.22-0.25s) regardless o
 - `effective*` date properties (effectiveDueDate, effectiveDeferDate) might simplify
   inherited date calculations
 - `planned date` (v4.7+) is a new property we don't currently expose
+
+## Perspective Automation (March 2026)
+
+Tested against OmniFocus 4.8.4 with Pro license.
+
+### AppleScript
+
+**Full CRUD on custom perspectives:**
+- `get every perspective` — returns all perspectives (built-in + custom)
+- `make new perspective with properties {name:"X"}` — creates empty custom perspective
+- `set name of perspective to "Y"` — renames
+- `delete perspective` — deletes
+
+**Only 3 properties exposed:** `class`, `name`, `id`. No filter rules, sorting, grouping, or icons.
+
+**Built-in vs custom:** Built-in perspectives (Inbox, Projects, Tags, Forecast, Flagged, Nearby, Review) return `class:item` and `missing value` for name/id. Custom perspectives return `class:custom perspective` with stable IDs.
+
+### OmniAutomation (JavaScript)
+
+**Read + rename only:**
+- `Perspective.Custom.all` / `Perspective.BuiltIn.all` — list perspectives
+- `Perspective.Custom.byName(name)` / `Perspective.Custom.byIdentifier(id)` — lookup
+- `p.name = "X"` — rename works (writable property)
+- No constructor (`new Perspective.Custom()` throws TypeError)
+- No `remove` method
+- `fileWrapper` / `writeFileRepresentationIntoDirectory` — export support
+
+**Built-in perspectives:** `Perspective.BuiltIn.Inbox`, `.Projects`, `.Tags`, `.Forecast`, `.Flagged`, `.Nearby`, `.Review`, `.Search` — have names but no IDs.
+
+### Limitation
+
+Cannot programmatically configure what a perspective shows (filter rules, sorting, grouping, icons). Created perspectives are blank — users must configure them in the OmniFocus UI.
