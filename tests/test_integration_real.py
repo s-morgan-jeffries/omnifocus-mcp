@@ -1023,6 +1023,158 @@ class TestTagBatchOperations:
                 assert "work" not in task.get('tags', [])
 
 
+class TestTagCRUD:
+    """Integration tests for tag Create/Update/Delete operations.
+
+    Tests verify that the AppleScript for tag CRUD actually works
+    against real OmniFocus. Unit tests mock run_applescript() and
+    cannot catch AppleScript syntax errors or behavioral quirks.
+    """
+
+    def test_create_tag(self, client):
+        """Create a root-level tag and verify it exists."""
+        import uuid
+        import warnings
+        tag_name = f"test-integ-{uuid.uuid4()}"
+        tag_id = None
+        try:
+            tag_id = client.create_tag(tag_name)
+            assert tag_id, "create_tag should return a tag ID"
+
+            # Verify tag appears in get_tags
+            tags = client.get_tags()
+            matching = [t for t in tags if t['id'] == tag_id]
+            assert len(matching) == 1
+            assert matching[0]['name'] == tag_name
+        finally:
+            if tag_id:
+                try:
+                    client.delete_tags(tag_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")
+
+    def test_create_nested_tag(self, client):
+        """Create a nested tag under a parent."""
+        import uuid
+        import warnings
+        parent_name = f"test-parent-{uuid.uuid4()}"
+        child_name = f"test-child-{uuid.uuid4()}"
+        parent_id = None
+        child_id = None
+        try:
+            parent_id = client.create_tag(parent_name)
+            assert parent_id
+
+            child_id = client.create_tag(child_name, parent_tag=parent_name)
+            assert child_id
+            assert child_id != parent_id
+
+            # Both should appear in get_tags (flattened)
+            tags = client.get_tags()
+            tag_ids = [t['id'] for t in tags]
+            assert parent_id in tag_ids
+            assert child_id in tag_ids
+        finally:
+            for tid in [child_id, parent_id]:
+                if tid:
+                    try:
+                        client.delete_tags(tid)
+                    except Exception as e:
+                        warnings.warn(f"Failed to clean up test tag {tid}: {e}")
+
+    def test_create_tag_already_exists(self, client):
+        """Creating a duplicate tag raises ValueError."""
+        import uuid
+        import warnings
+        tag_name = f"test-dup-{uuid.uuid4()}"
+        tag_id = None
+        try:
+            tag_id = client.create_tag(tag_name)
+            with pytest.raises(ValueError, match="already exists"):
+                client.create_tag(tag_name)
+        finally:
+            if tag_id:
+                try:
+                    client.delete_tags(tag_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")
+
+    def test_update_tag_name(self, client):
+        """Rename a tag and verify the change took."""
+        import uuid
+        import warnings
+        original_name = f"test-rename-{uuid.uuid4()}"
+        new_name = f"test-renamed-{uuid.uuid4()}"
+        tag_id = None
+        try:
+            tag_id = client.create_tag(original_name)
+            result = client.update_tag(tag_id, name=new_name)
+            assert result["success"] is True
+            assert "name" in result["updated_fields"]
+
+            # Verify rename in get_tags
+            tags = client.get_tags()
+            matching = [t for t in tags if t['id'] == tag_id]
+            assert len(matching) == 1
+            assert matching[0]['name'] == new_name
+        finally:
+            if tag_id:
+                try:
+                    client.delete_tags(tag_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")
+
+    def test_update_tag_active(self, client):
+        """Set a tag to on-hold and verify."""
+        import uuid
+        import warnings
+        tag_name = f"test-active-{uuid.uuid4()}"
+        tag_id = None
+        try:
+            tag_id = client.create_tag(tag_name)
+            result = client.update_tag(tag_id, active=False)
+            assert result["success"] is True
+            assert "active" in result["updated_fields"]
+
+            # Note: get_tags currently hardcodes status to "active"
+            # so we can't verify via get_tags. But the AppleScript
+            # ran without error, confirming 'allows next action'
+            # property is settable.
+        finally:
+            if tag_id:
+                try:
+                    client.delete_tags(tag_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")
+
+    def test_delete_tags(self, client):
+        """Delete multiple tags and verify they're gone."""
+        import uuid
+        import warnings
+        tag_ids = []
+        try:
+            for i in range(2):
+                tid = client.create_tag(f"test-delete-{uuid.uuid4()}")
+                tag_ids.append(tid)
+
+            result = client.delete_tags(tag_ids)
+            assert result["deleted_count"] == 2
+            assert result["failed_count"] == 0
+
+            # Verify tags are gone
+            tags = client.get_tags()
+            remaining_ids = [t['id'] for t in tags]
+            for tid in tag_ids:
+                assert tid not in remaining_ids
+            tag_ids = []  # Already deleted, skip cleanup
+        finally:
+            for tid in tag_ids:
+                try:
+                    client.delete_tags(tid)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up test tag {tid}: {e}")
+
+
 class TestTimeEstimation:
     """Test time estimation operations.
 

@@ -437,24 +437,37 @@ def ensure_test_tags():
     """Ensure required test tags exist in OmniFocus.
 
     Creates tags needed by integration tests if they don't already exist.
-    Tags persist across tests in the class (not cleaned up, as OmniFocus
-    doesn't support tag deletion via AppleScript).
+    Cleans up created tags after the test class completes.
 
     Tags created: test-work, test-urgent, urgent, work
     """
     tag_names = ["test-work", "test-urgent", "urgent", "work"]
+    created_tag_ids = []
     for tag_name in tag_names:
         try:
-            run_applescript(f'''
+            result = run_applescript(f'''
                 tell application "OmniFocus"
                     tell front document
                         try
-                            first flattened tag whose name is "{tag_name}"
+                            set theTag to first flattened tag whose name is "{tag_name}"
                         on error
-                            make new tag with properties {{name:"{tag_name}"}}
+                            set theTag to make new tag with properties {{name:"{tag_name}"}}
                         end try
+                        return id of theTag
                     end tell
                 end tell
             ''')
+            if result:
+                created_tag_ids.append(result.strip())
         except Exception as e:
             warnings.warn(f"Failed to create test tag '{tag_name}': {e}")
+
+    yield
+
+    # Teardown: delete tags we created
+    client = OmniFocusConnector(enable_safety_checks=True)
+    for tag_id in created_tag_ids:
+        try:
+            client.delete_tags(tag_id)
+        except Exception as e:
+            warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")

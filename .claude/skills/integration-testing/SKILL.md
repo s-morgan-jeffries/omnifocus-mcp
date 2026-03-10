@@ -134,6 +134,32 @@ def test_create_and_retrieve_task():
 - Modifying server-level parameter handling
 - Updating response formatting in server_fastmcp.py
 
+## Smoke Test Pattern for CRUD Operations
+
+Every CRUD connector method should have a minimal integration test:
+
+1. **Create** — make a test entity, verify it gets an ID back
+2. **Read** — fetch it, verify the fields match what was created
+3. **Update** — change a field, re-fetch, verify the change took
+4. **Delete** — delete it, verify it's gone
+
+Use try/finally for cleanup. Prefix test data with `test-` or `Test `.
+
+```python
+tag_id = None
+try:
+    tag_id = client.create_tag(f"test-integ-{uuid.uuid4()}")
+    assert tag_id  # Create returns ID
+    tags = client.get_tags()
+    assert any(t['id'] == tag_id for t in tags)  # Read confirms
+finally:
+    if tag_id:
+        try:
+            client.delete_tags(tag_id)
+        except Exception as e:
+            warnings.warn(f"Cleanup failed: {e}")
+```
+
 ## Detailed Setup Guide
 
 For complete setup instructions including troubleshooting, see `docs/guides/INTEGRATION_TESTING.md`.
