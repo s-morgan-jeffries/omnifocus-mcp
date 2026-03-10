@@ -18,6 +18,7 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
     "radon>=6.0.0",
+    "pip-audit>=2.7.0",
 ]
 
 [project.scripts]

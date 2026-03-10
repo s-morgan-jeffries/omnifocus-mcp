@@ -14,6 +14,8 @@ make test-e2e              # End-to-end MCP tool tests (requires test DB)
 ./scripts/check_complexity.sh       # Cyclomatic complexity check
 ./scripts/check_client_server_parity.sh  # Verify all client functions are exposed in server
 ./scripts/check_version_sync.sh     # Version consistency across files
+./scripts/check_dependencies.sh     # Dependency vulnerability scan (pip-audit)
+./scripts/check_applescript_safety.sh   # AppleScript unsafe pattern detection
 ```
 
 **Running the server:** `uv run python -m omnifocus_mcp.server_fastmcp` or via Claude Desktop config.

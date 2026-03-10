@@ -102,6 +102,16 @@ Run ALL validation checks. Stop on any failure.
    make test
    ```
 
+5. **Dependency audit:**
+   ```bash
+   ./scripts/check_dependencies.sh
+   ```
+
+6. **AppleScript safety audit:**
+   ```bash
+   ./scripts/check_applescript_safety.sh
+   ```
+
 If any check fails, fix the issue and re-run. Do not proceed with failures.
 
 ## Phase 7: Commit, Push, and PR

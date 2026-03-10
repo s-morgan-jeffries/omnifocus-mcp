@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration test-e2e test-verbose install clean complexity help
+.PHONY: test test-unit test-integration test-e2e test-verbose install clean complexity audit help
 
 help:
 	@echo "Available targets:"
@@ -34,6 +34,10 @@ test-verbose:
 
 complexity:
 	@./scripts/check_complexity.sh
+
+audit:
+	@./scripts/check_dependencies.sh
+	@./scripts/check_applescript_safety.sh
 
 clean:
 	rm -rf __pycache__ .pytest_cache .coverage htmlcov/
