@@ -1,6 +1,6 @@
 """OmniFocus MCP Server - Model Context Protocol server for OmniFocus integration."""
 
-__version__ = "0.8.1"
+__version__ = "0.8.2"
 
 from .omnifocus_connector import OmniFocusConnector, run_applescript
 
