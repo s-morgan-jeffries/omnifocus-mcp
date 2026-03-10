@@ -57,12 +57,13 @@ Use the Edit tool for each file. Be precise about what to change.
 
 ## Phase 5: Generate CHANGELOG
 
-1. Get all commits since the last tag:
+1. Get all commits since the last release:
    ```bash
-   git log $(git describe --tags --abbrev=0)..HEAD --oneline
+   git log v{previous_version}..HEAD --oneline
    ```
+   Use the previous version tag directly (e.g., `v0.8.1`). Do NOT use `git describe --tags --abbrev=0` — it walks commit ancestry and may not find tags that were created before a squash/rebase merge.
 
-2. Get merged PRs since the last tag:
+2. Get merged PRs since the last release:
    ```bash
    gh pr list --state merged --base main --search "merged:>YYYY-MM-DD" --json number,title,labels
    ```
@@ -103,7 +104,7 @@ Run ALL validation checks. Stop on any failure.
 
 If any check fails, fix the issue and re-run. Do not proceed with failures.
 
-## Phase 7: Commit, Tag, Push, and PR
+## Phase 7: Commit, Push, and PR
 
 1. **Commit** the version bump and changelog:
    ```bash
@@ -111,28 +112,51 @@ If any check fails, fix the issue and re-run. Do not proceed with failures.
    git commit -m "release: vX.Y.Z"
    ```
 
-2. **Create the tag** on the release branch:
+2. **Push** the branch:
+   ```bash
+   git push -u origin release/vX.Y.Z
+   ```
+
+3. **Create the PR** to main:
+   ```bash
+   gh pr create --title "release: vX.Y.Z" --body "..."
+   ```
+
+4. Tell the user the PR is ready for review. Do NOT merge it automatically.
+
+## Phase 8: Merge, Tag, and Push Tag
+
+After the user approves the PR:
+
+1. **Merge** using rebase merge:
+   ```bash
+   gh pr merge NNN --rebase --delete-branch
+   ```
+
+2. **Switch to main and pull:**
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+3. **Create the tag on main** (where it will be reachable via `git describe`):
    ```bash
    ./scripts/create_tag.sh vX.Y.Z
    ```
 
-3. **Push** the branch and tag:
+4. **Push the tag:**
    ```bash
-   git push -u origin release/vX.Y.Z
    git push origin vX.Y.Z
    ```
 
-4. **Create the PR** to main:
+5. **Verify** tag reachability:
    ```bash
-   gh pr create --title "release: vX.Y.Z" --body "..."
+   git describe --tags --abbrev=0  # Should return vX.Y.Z
    ```
-   Use a merge commit (not squash) for release PRs — the individual commits are meaningful.
 
-5. Tell the user the PR is ready for review. Do NOT merge it automatically.
+## Phase 9: Close Milestone
 
-## Phase 8: Close Milestone
-
-After the PR is created (not merged), close the milestone:
+After the tag is pushed, close the milestone:
 
 ```bash
 gh api -X PATCH "repos/{owner}/{repo}/milestones/{number}" -f state=closed
@@ -141,6 +165,6 @@ gh api -X PATCH "repos/{owner}/{repo}/milestones/{number}" -f state=closed
 ## Notes
 
 - CHANGELOG is only updated on release branches, never on feature branches.
-- The pre-tag hook validates that final release tags are on main and that CHANGELOG dates are set. Since we tag on the release branch and merge to main, the tag is created here before merging.
-- If `create_tag.sh` fails due to the pre-tag hook requiring main branch, create the tag after the PR is merged instead. Adjust the workflow accordingly and inform the user.
+- Tags are created on main **after** the PR merge. This ensures they are reachable via `git describe`, which walks commit ancestry. Squash/rebase merges create new commits, so tags on the release branch would become orphaned.
+- Use **rebase merge** for release PRs. Merge commits are blocked by `required_linear_history` on main.
 - Integration tests (`make test-integration`, `make test-e2e`) require a real OmniFocus test database. Ask the user if they want to run them — they're optional for the release validation.
