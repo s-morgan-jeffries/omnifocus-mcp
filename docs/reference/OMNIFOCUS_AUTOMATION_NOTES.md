@@ -250,3 +250,25 @@ Tested against OmniFocus 4.8.4 with Pro license.
 ### Limitation
 
 Cannot programmatically configure what a perspective shows (filter rules, sorting, grouping, icons). Created perspectives are blank — users must configure them in the OmniFocus UI.
+
+## Focus Automation (March 2026)
+
+Tested against OmniFocus 4.8.4.
+
+### AppleScript
+
+**Multi-item focus:** `set focus to {project1, project2, folder1}` — any mix of projects and folders.
+
+**Read focus:** `get every item of focus` returns focused items with class (project/folder) and name. `count of every item of focus` returns 0 when unfocused.
+
+**Clear focus:** `set focus to {}` (empty list). `missing value` does NOT work.
+
+**Focus + perspectives:** Focus persists across perspective switches. Setting focus on a project then switching to "Flagged" shows only flagged items within that project. This is the primary mechanism for programmatically narrowing what the user sees.
+
+### OmniAutomation (JavaScript)
+
+Focus is read-only: `window.focus` returns a `SectionArray` with `.length` and `.byName()`. Cannot set focus via JS.
+
+### Key Insight
+
+Focus + perspective switching is more useful than programmatic perspective creation. While perspectives can't have their filter rules set via API (#235), focus can narrow scope to specific projects/folders, and perspective switching applies filters within that scope. This combination achieves ad-hoc filtered views without needing custom perspective configuration.
