@@ -151,6 +151,10 @@ The connector has a safety system that prevents destructive operations on produc
 
 This adds ~100ms per destructive call but prevents catastrophic data loss. Do not bypass it.
 
+## Integration Test Requirement
+
+If you wrote or modified AppleScript in the connector, you MUST write or update integration tests before the PR is ready. Unit tests mock `run_applescript()` — they prove your Python logic works but say nothing about whether the AppleScript is valid. Offer to run `make test-integration` before creating the PR.
+
 ## OmniFocus-Specific AppleScript Quirks
 
 - **`first flattened task whose id is X`** — works for tasks. Use `flattened projects` for projects, `folders` for folders.

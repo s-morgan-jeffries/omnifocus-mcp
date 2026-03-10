@@ -81,6 +81,17 @@ Default timeout: 60s, max: 300s (configurable).
 
 Destructive operations require `OMNIFOCUS_TEST_MODE=true` and `OMNIFOCUS_TEST_DATABASE=OmniFocus-TEST.ofocus` environment variables. Each destructive operation verifies the database name via AppleScript before proceeding. This prevents accidental production data loss during development.
 
+## Testing Requirements
+
+| Type | When Required | How |
+|------|--------------|-----|
+| Unit tests | Every code change | `make test` (pre-push hook) |
+| Integration tests | New/modified AppleScript operations | `make test-integration` (requires test DB) |
+| Performance benchmarks | Changes to fetch/filter paths | `tests/benchmarks/` |
+| Blind agent evals | Before release if tool descriptions changed | Issue #227 |
+
+**Hard rule:** If you wrote or modified an AppleScript string in the connector, integration tests must cover that operation before merge. Unit tests mock `run_applescript()` and cannot catch AppleScript syntax errors, variable naming collisions, or OmniFocus behavioral quirks.
+
 ## Branch Convention
 
 `{type}/issue-{num}-{description}` — e.g., `feature/issue-42-batch-tags`, `fix/issue-99-timeout`
