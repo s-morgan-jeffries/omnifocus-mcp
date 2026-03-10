@@ -5,6 +5,37 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2026-03-10
+
+### Fixed
+
+- **AppleScript injection hardening** (#222, #223)
+  - Applied `_escape_applescript_string()` to all IDs embedded in AppleScript (`get_tasks`, `get_projects`, `delete_tasks`, `delete_projects`, `reorder_task`)
+  - Escaped folder path components in `create_folder()` and tag names in `get_tasks()` tag filtering
+  - Added `ValueError` handling to 9 MCP server tools that were missing it
+
+### Changed
+
+- **Batch write or-chain optimization** (#215, #219)
+  - Applied `whose` or-chain pattern to `update_tasks()` and `update_projects()` bulk-settable fields
+  - Near-constant time (~0.25s) regardless of batch size for flagged, estimated_minutes, due_date, defer_date, completed
+
+- **Complexity refactoring** (#218, #220)
+  - Extracted `_build_date_command` and `_build_tag_commands` helpers from `_build_task_update_commands`
+  - Reduced cyclomatic complexity from CC 23 → CC 14
+
+### Removed
+
+- **Dead code cleanup** (#222, #223)
+  - Removed 4 unused helper methods: `_build_date_command`, `_build_tag_commands`, `_build_task_update_commands`, `_build_project_update_commands`
+  - Removed 16 associated dead code tests
+
+### Documentation
+
+- **Contribution policy** (#212, #221)
+  - Added CONTRIBUTING.md clarifying this is a personal project not accepting external contributions
+  - Added notice to README.md
+
 ## [0.8.1] - 2026-03-09
 
 ### Added
