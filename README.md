@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server that provides tools for interacting with OmniFocus on macOS.
 
+> **Note:** This is a personal project. You're welcome to fork, clone, and adapt it for your own use, but I'm not accepting pull requests or feature requests. Issues are used for internal tracking.
+
 ## Features
 
 This server provides **17 comprehensive tools** for managing OmniFocus (v0.8.1 API):
