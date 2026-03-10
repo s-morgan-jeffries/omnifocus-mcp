@@ -1261,148 +1261,6 @@ class TestSetFocus:
             mock_run.assert_called_once()
 
 
-class TestBuildTaskUpdateCommands:
-    """Tests for _build_task_update_commands() helper method."""
-
-    @pytest.fixture
-    def client(self):
-        return OmniFocusConnector(enable_safety_checks=False)
-
-    def test_flagged_returns_property(self, client):
-        """Flagged should produce a property, not a separate command."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            flagged=True
-        )
-        assert any("flagged:true" in p for p in properties)
-        assert "flagged" in updated_fields
-
-    def test_completed_true_uses_mark_complete(self, client):
-        """completed=True must use 'mark complete' for recurring task safety."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            completed=True
-        )
-        assert any("mark complete theTask" in cmd for cmd in separate_commands)
-        assert "completed" in updated_fields
-
-    def test_completed_false_uses_set_completed(self, client):
-        """completed=False should use 'set completed of theTask to false'."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            completed=False
-        )
-        assert any("set completed of theTask to false" in cmd for cmd in separate_commands)
-
-    def test_due_date_produces_separate_command(self, client):
-        """Due date should produce a separate command with converted date."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            due_date="2026-12-25"
-        )
-        assert any("set due date of theTask" in cmd for cmd in separate_commands)
-        assert any("December 25, 2026" in cmd for cmd in separate_commands)
-        assert "due_date" in updated_fields
-
-    def test_clear_due_date(self, client):
-        """Empty string due_date should set to missing value."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            due_date=""
-        )
-        assert any("missing value" in cmd for cmd in separate_commands)
-
-    def test_defer_date(self, client):
-        """Defer date should produce a separate command."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            defer_date="2026-12-20"
-        )
-        assert any("set defer date of theTask" in cmd for cmd in separate_commands)
-        assert "defer_date" in updated_fields
-
-    def test_estimated_minutes(self, client):
-        """Estimated minutes should produce a separate command."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            estimated_minutes=30
-        )
-        assert any("set estimated minutes of theTask to 30" in cmd for cmd in separate_commands)
-        assert "estimated_minutes" in updated_fields
-
-    def test_status_dropped(self, client):
-        """Dropped status should use 'mark dropped'."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            status="dropped"
-        )
-        assert any("mark dropped theTask" in cmd for cmd in separate_commands)
-        assert "status" in updated_fields
-
-    def test_status_active(self, client):
-        """Active status should unset dropped."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            status="active"
-        )
-        assert any("set dropped of theTask to false" in cmd for cmd in separate_commands)
-
-    def test_tags_replacement(self, client):
-        """Tags list should replace all tags."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            tags=["work", "urgent"]
-        )
-        cmds_str = "\n".join(separate_commands)
-        assert "work" in cmds_str
-        assert "urgent" in cmds_str
-        assert "tags" in updated_fields
-
-    def test_add_tags(self, client):
-        """add_tags should add tags incrementally."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            add_tags=["new-tag"]
-        )
-        cmds_str = "\n".join(separate_commands)
-        assert "add tagObj to tags of theTask" in cmds_str
-        assert "new-tag" in cmds_str
-        assert "add_tags" in updated_fields
-
-    def test_remove_tags(self, client):
-        """remove_tags should remove tags."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            remove_tags=["old-tag"]
-        )
-        cmds_str = "\n".join(separate_commands)
-        assert "remove tagObj from tags of theTask" in cmds_str
-        assert "old-tag" in cmds_str
-
-    def test_project_id_move(self, client):
-        """project_id should move task to project."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            project_id="proj-123"
-        )
-        cmds_str = "\n".join(separate_commands)
-        assert "proj-123" in cmds_str
-        assert "move theTask" in cmds_str
-        assert "project_id" in updated_fields
-
-    def test_parent_task_id(self, client):
-        """parent_task_id should move task under parent."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            parent_task_id="parent-001"
-        )
-        cmds_str = "\n".join(separate_commands)
-        assert "parent-001" in cmds_str
-        assert "move theTask" in cmds_str
-        assert "parent_task_id" in updated_fields
-
-    def test_multiple_fields(self, client):
-        """Multiple fields should all appear in output."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands(
-            flagged=True, completed=True, estimated_minutes=45
-        )
-        assert "flagged" in updated_fields
-        assert "completed" in updated_fields
-        assert "estimated_minutes" in updated_fields
-
-    def test_no_fields_returns_empty(self, client):
-        """No fields should return empty lists."""
-        properties, separate_commands, updated_fields = client._build_task_update_commands()
-        assert properties == []
-        assert separate_commands == []
-        assert updated_fields == []
-
 
 class TestBatchUpdateTasks:
     """Tests for batched update_tasks() — or-chain optimization (#215).
@@ -1727,3 +1585,62 @@ class TestBuildWhoseOrChain:
     def test_escapes_ids(self, client):
         result = client._build_whose_or_chain(['a"b'], "flattened task")
         assert 'a\\"b' in result
+
+
+class TestIdEscapingInMethods:
+    """Verify _escape_applescript_string is applied to IDs in all methods."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_get_tasks_escapes_task_id(self, client):
+        """get_tasks() should escape task_id in whose clause."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "[]"
+            client.get_tasks(task_id='id"inject')
+            script = mock_run.call_args[0][0]
+            assert 'id\\"inject' in script
+            assert 'id"inject' not in script
+
+    def test_get_tasks_escapes_project_id(self, client):
+        """get_tasks() should escape project_id in whose clause."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "[]"
+            client.get_tasks(project_id='proj"bad')
+            script = mock_run.call_args[0][0]
+            assert 'proj\\"bad' in script
+
+    def test_get_projects_escapes_project_id(self, client):
+        """get_projects() should escape project_id in whose clause."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "[]"
+            client.get_projects(project_id='p"inject')
+            script = mock_run.call_args[0][0]
+            assert 'p\\"inject' in script
+
+    def test_delete_tasks_escapes_ids(self, client):
+        """delete_tasks() should escape IDs in the AppleScript list."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            client.delete_tasks(['t"bad'])
+            script = mock_run.call_args[0][0]
+            assert 't\\"bad' in script
+            assert 't"bad' not in script
+
+    def test_delete_projects_escapes_ids(self, client):
+        """delete_projects() should escape IDs in the AppleScript list."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "1"
+            client.delete_projects(['p"bad'])
+            script = mock_run.call_args[0][0]
+            assert 'p\\"bad' in script
+
+    def test_reorder_task_escapes_ids(self, client):
+        """reorder_task() should escape task_id and reference_task_id."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            client.reorder_task(task_id='t"1', before_task_id='t"2')
+            script = mock_run.call_args[0][0]
+            assert 't\\"1' in script
+            assert 't\\"2' in script

@@ -3,7 +3,6 @@
 This file tests the MCP server layer for the NEW API (v1.0.0 redesign).
 Tests are written FIRST (TDD) before implementing server changes.
 """
-import pytest
 from unittest import mock
 
 # Import server module
@@ -146,7 +145,7 @@ class TestCreateTaskServerRedesign:
     # ========================================================================
 
     def test_create_task_handles_client_error(self):
-        """NEW API: Server handles client exceptions gracefully."""
+        """NEW API: Server handles client ValueError gracefully."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
             mock_client.create_task.side_effect = ValueError(
@@ -154,15 +153,16 @@ class TestCreateTaskServerRedesign:
             )
             mock_get_client.return_value = mock_client
 
-            with pytest.raises(ValueError) as exc_info:
-                create_task(
-                    task_name="Bad Task",
-                    project_id="proj-123",
-                    parent_task_id="task-parent"
-                )
+            result = create_task(
+                task_name="Bad Task",
+                project_id="proj-123",
+                parent_task_id="task-parent"
+            )
 
-            assert "project_id" in str(exc_info.value).lower()
-            assert "parent_task_id" in str(exc_info.value).lower()
+            assert isinstance(result, str)
+            assert "error" in result.lower()
+            assert "project_id" in result.lower()
+            assert "parent_task_id" in result.lower()
 
     # ========================================================================
     # Return Format
@@ -181,3 +181,18 @@ class TestCreateTaskServerRedesign:
             assert "task-new-id" in result
             # Should be human-readable, not just the ID
             assert len(result) > len("task-new-id")
+
+
+class TestCreateProjectServerRedesign:
+    """Tests for create_project() MCP tool ValueError handling."""
+
+    def test_create_project_handles_value_error(self):
+        """Server: create_project() catches ValueError and returns error string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.side_effect = ValueError("Project name cannot be empty")
+            mock_get_client.return_value = mock_client
+
+            result = server.create_project(name="")
+            assert isinstance(result, str)
+            assert "error" in result.lower()

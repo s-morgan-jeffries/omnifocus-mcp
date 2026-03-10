@@ -139,6 +139,10 @@ def _format_project(proj: dict, truncate_notes: bool = True) -> str:
         else:
             result += "Health: Stuck\n"
 
+    # Last activity (when include_last_activity=True)
+    if proj.get('lastActivityDate'):
+        result += f"Last Activity: {proj['lastActivityDate']}\n"
+
     return result
 
 
@@ -172,14 +176,17 @@ def get_projects(
         Formatted text with project list (one per line with ID, name, folder, status, and note preview)
     """
     client = get_client()
-    projects = client.get_projects(
-        project_id=project_id,
-        include_full_notes=include_full_notes,
-        on_hold_only=on_hold_only,
-        query=query,
-        include_task_health=include_task_health,
-        include_last_activity=include_last_activity,
-    )
+    try:
+        projects = client.get_projects(
+            project_id=project_id,
+            include_full_notes=include_full_notes,
+            on_hold_only=on_hold_only,
+            query=query,
+            include_task_health=include_task_health,
+            include_last_activity=include_last_activity,
+        )
+    except ValueError as e:
+        return f"Error: {str(e)}"
 
     if not projects:
         if query:
@@ -219,13 +226,16 @@ def create_project(
         Success message with project ID and configuration details
     """
     client = get_client()
-    project_id = client.create_project(
-        name=name,
-        note=note,
-        folder_path=folder_path,
-        sequential=sequential,
-        review_interval_weeks=review_interval_weeks
-    )
+    try:
+        project_id = client.create_project(
+            name=name,
+            note=note,
+            folder_path=folder_path,
+            sequential=sequential,
+            review_interval_weeks=review_interval_weeks
+        )
+    except ValueError as e:
+        return f"Error: {str(e)}"
 
     result = f"Successfully created project '{name}'"
     result += f"\nProject ID: {project_id}"
@@ -294,16 +304,19 @@ def update_project(
                 return f"Error: Invalid sequential value '{sequential}'. Must be 'true' or 'false'."
 
     client = get_client()
-    result = client.update_project(
-        project_id=project_id,
-        project_name=project_name,
-        folder_path=folder_path,
-        note=note,
-        sequential=sequential_bool,
-        status=status,
-        review_interval_weeks=review_interval_weeks,
-        last_reviewed=last_reviewed
-    )
+    try:
+        result = client.update_project(
+            project_id=project_id,
+            project_name=project_name,
+            folder_path=folder_path,
+            note=note,
+            sequential=sequential_bool,
+            status=status,
+            review_interval_weeks=review_interval_weeks,
+            last_reviewed=last_reviewed
+        )
+    except ValueError as e:
+        return f"Error: {str(e)}"
 
     # Handle dict return from client
     if result["success"]:
@@ -456,22 +469,25 @@ def get_tasks(
         Formatted text with task list including ID, name, project, due date, tags, and completion status
     """
     client = get_client()
-    tasks = client.get_tasks(
-        task_id=task_id,
-        parent_task_id=parent_task_id,
-        include_full_notes=include_full_notes,
-        project_id=project_id,
-        flagged_only=flagged_only,
-        include_completed=include_completed,
-        available_only=available_only,
-        overdue=overdue,
-        dropped_only=dropped_only,
-        blocked_only=blocked_only,
-        next_only=next_only,
-        tag_filter=tag_filter,
-        query=query,
-        inbox_only=inbox_only
-    )
+    try:
+        tasks = client.get_tasks(
+            task_id=task_id,
+            parent_task_id=parent_task_id,
+            include_full_notes=include_full_notes,
+            project_id=project_id,
+            flagged_only=flagged_only,
+            include_completed=include_completed,
+            available_only=available_only,
+            overdue=overdue,
+            dropped_only=dropped_only,
+            blocked_only=blocked_only,
+            next_only=next_only,
+            tag_filter=tag_filter,
+            query=query,
+            inbox_only=inbox_only
+        )
+    except ValueError as e:
+        return f"Error: {str(e)}"
 
     if not tasks:
         if query:
@@ -547,19 +563,20 @@ def create_task(
         except json.JSONDecodeError as e:
             return f"Error: Invalid JSON for tags parameter: {e}"
 
-    # Validation errors should raise immediately (before calling client)
-    # This allows MCP to report them properly
-    task_id = client.create_task(
-        task_name=task_name,
-        project_id=project_id,
-        parent_task_id=parent_task_id,
-        note=note,
-        due_date=due_date,
-        defer_date=defer_date,
-        flagged=flagged,
-        tags=tags_list,
-        estimated_minutes=estimated_minutes
-    )
+    try:
+        task_id = client.create_task(
+            task_name=task_name,
+            project_id=project_id,
+            parent_task_id=parent_task_id,
+            note=note,
+            due_date=due_date,
+            defer_date=defer_date,
+            flagged=flagged,
+            tags=tags_list,
+            estimated_minutes=estimated_minutes
+        )
+    except ValueError as e:
+        return f"Error: {str(e)}"
 
     # Build human-readable response
     if parent_task_id:
@@ -647,23 +664,26 @@ def update_task(
         task_name = name
 
     client = get_client()
-    result = client.update_task(
-        task_id=task_id,
-        task_name=task_name,
-        project_id=project_id,
-        parent_task_id=parent_task_id,
-        note=note,
-        due_date=due_date,
-        defer_date=defer_date,
-        flagged=flagged,
-        tags=tags,
-        add_tags=add_tags,
-        remove_tags=remove_tags,
-        estimated_minutes=estimated_minutes,
-        completed=completed,
-        status=status,
-        name=name  # Pass to client for its own backward compat handling
-    )
+    try:
+        result = client.update_task(
+            task_id=task_id,
+            task_name=task_name,
+            project_id=project_id,
+            parent_task_id=parent_task_id,
+            note=note,
+            due_date=due_date,
+            defer_date=defer_date,
+            flagged=flagged,
+            tags=tags,
+            add_tags=add_tags,
+            remove_tags=remove_tags,
+            estimated_minutes=estimated_minutes,
+            completed=completed,
+            status=status,
+            name=name  # Pass to client for its own backward compat handling
+        )
+    except ValueError as e:
+        return f"Error: {str(e)}"
 
     # Handle dict return from client (NEW API)
     if result["success"]:
@@ -729,20 +749,23 @@ def update_tasks(
         update_tasks(["task-001", "task-002", "task-003"], status="dropped")  # Drop multiple
     """
     client = get_client()
-    result = client.update_tasks(
-        task_ids=task_ids,
-        flagged=flagged,
-        status=status,
-        completed=completed,
-        project_id=project_id,
-        parent_task_id=parent_task_id,
-        tags=tags,
-        add_tags=add_tags,
-        remove_tags=remove_tags,
-        due_date=due_date,
-        defer_date=defer_date,
-        estimated_minutes=estimated_minutes
-    )
+    try:
+        result = client.update_tasks(
+            task_ids=task_ids,
+            flagged=flagged,
+            status=status,
+            completed=completed,
+            project_id=project_id,
+            parent_task_id=parent_task_id,
+            tags=tags,
+            add_tags=add_tags,
+            remove_tags=remove_tags,
+            due_date=due_date,
+            defer_date=defer_date,
+            estimated_minutes=estimated_minutes
+        )
+    except ValueError as e:
+        return f"Error: {str(e)}"
 
     # Handle dict return with counts
     updated_count = result["updated_count"]
@@ -838,6 +861,8 @@ def delete_tasks(task_ids: Union[str, list[str]]) -> str:
         else:
             # Partial success
             return f"Deleted {deleted_count} tasks successfully, {failed_count} failed"
+    except ValueError as e:
+        return f"Error: {str(e)}"
     except Exception as e:
         return f"Error deleting tasks: {str(e)}"
 
@@ -877,6 +902,8 @@ def delete_projects(project_ids: Union[str, list[str]]) -> str:
                 return f"Successfully deleted {deleted_count} projects"
         else:
             return f"Deleted {deleted_count} of {total_count} projects ({failed_count} failed)"
+    except ValueError as e:
+        return f"Error: {str(e)}"
     except Exception as e:
         return f"Error deleting projects: {str(e)}"
 

@@ -172,14 +172,16 @@ class TestUpdateProjectServerRedesign:
             assert "not found" in result.lower() or "999" in result
 
     def test_update_project_handles_client_exception(self):
-        """Server: update_project() handles client exceptions."""
+        """Server: update_project() handles client ValueError gracefully."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
             mock_client.update_project.side_effect = ValueError("Invalid status")
             mock_get_client.return_value = mock_client
 
-            with pytest.raises(ValueError):
-                update_project(project_id="proj-001", status="invalid")
+            result = update_project(project_id="proj-001", status="invalid")
+            assert isinstance(result, str)
+            assert "error" in result.lower()
+            assert "invalid status" in result.lower()
 
     # ========================================================================
     # Response Format

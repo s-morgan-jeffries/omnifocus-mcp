@@ -3,7 +3,6 @@
 This file tests the MCP server layer for the NEW API (v1.0.0 redesign).
 Tests are written FIRST (TDD) before implementing server changes.
 """
-import pytest
 from unittest import mock
 
 # Import server module
@@ -11,6 +10,7 @@ import omnifocus_mcp.server_fastmcp as server
 
 # Extract function from FunctionTool wrapper
 delete_tasks = server.delete_tasks
+delete_projects = server.delete_projects
 
 
 class TestDeleteTasksServerRedesign:
@@ -120,3 +120,25 @@ class TestDeleteTasksServerRedesign:
             result = delete_tasks(["task-001", "task-002"])
 
             assert "0" in result or "no tasks" in result.lower() or "failed" in result.lower()
+
+    def test_delete_tasks_handles_value_error(self):
+        """Server: delete_tasks() catches ValueError and returns error string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.delete_tasks.side_effect = ValueError("Empty task IDs")
+            mock_get_client.return_value = mock_client
+
+            result = delete_tasks([""])
+            assert isinstance(result, str)
+            assert "error" in result.lower()
+
+    def test_delete_projects_handles_value_error(self):
+        """Server: delete_projects() catches ValueError and returns error string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.delete_projects.side_effect = ValueError("Empty project IDs")
+            mock_get_client.return_value = mock_client
+
+            result = delete_projects([""])
+            assert isinstance(result, str)
+            assert "error" in result.lower()
