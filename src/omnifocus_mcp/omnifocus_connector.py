@@ -104,8 +104,8 @@ class OmniFocusConnector:
     DESTRUCTIVE_OPERATIONS = {
         'create_task', 'update_task', 'update_tasks',
         'create_project', 'update_project', 'update_projects',
-        'create_folder', 'create_tag', 'delete_tasks', 'delete_projects',
-        'reorder_task',
+        'create_folder', 'create_tag', 'update_tag', 'delete_tasks',
+        'delete_projects', 'delete_tags', 'reorder_task',
     }
 
     def __init__(self, enable_safety_checks: bool = True):
@@ -3722,6 +3722,159 @@ class OmniFocusConnector:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error creating tag: {e.stderr}")
 
+    def update_tag(
+        self,
+        tag_id: str,
+        name: Optional[str] = None,
+        active: Optional[bool] = None
+    ) -> dict:
+        """Update properties of an existing tag.
+
+        Args:
+            tag_id: The ID of the tag to update
+            name: New tag name (optional)
+            active: Whether the tag is active (optional). False puts the tag
+                on hold — tasks with on-hold tags are excluded from available
+                task queries.
+
+        Returns:
+            dict: {
+                "success": bool,
+                "tag_id": str,
+                "updated_fields": list[str],
+                "error": Optional[str]
+            }
+
+        Raises:
+            ValueError: If tag_id is empty or no fields provided
+            Exception: If tag not found or update fails
+        """
+        self._verify_database_safety('update_tag')
+
+        if not tag_id:
+            raise ValueError("tag_id is required")
+
+        all_fields = {"name": name, "active": active}
+        if all(v is None for v in all_fields.values()):
+            raise ValueError("At least one field must be provided to update")
+
+        tag_id_escaped = self._escape_applescript_string(tag_id)
+        updated_fields = []
+        set_lines = []
+
+        if name is not None:
+            name_escaped = self._escape_applescript_string(name)
+            set_lines.append(f'set name of theTag to "{name_escaped}"')
+            updated_fields.append("name")
+
+        if active is not None:
+            active_str = "true" if active else "false"
+            set_lines.append(f'set allows next action of theTag to {active_str}')
+            updated_fields.append("active")
+
+        set_block = "\n                        ".join(set_lines)
+        fields_json = ", ".join(f'\\"{f}\\"' for f in updated_fields)
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theTag to first flattened tag whose id is "{tag_id_escaped}"
+                on error
+                    return "ERROR: Tag not found"
+                end try
+                try
+                    {set_block}
+                    return "{{\\"success\\": true, \\"updated_fields\\": [{fields_json}]}}"
+                on error errMsg
+                    return "ERROR: " & errMsg
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            result = result.strip()
+            if result.startswith("ERROR:"):
+                raise Exception(f"Error updating tag: {result[len('ERROR:'):]}")
+            parsed = json.loads(result)
+            parsed["tag_id"] = tag_id
+            parsed["error"] = None
+            return parsed
+        except json.JSONDecodeError:
+            raise Exception(f"Error parsing update tag result: {result}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error updating tag: {e.stderr}")
+
+    def delete_tags(self, tag_ids: Union[str, list[str]]) -> dict:
+        """Delete one or more tags from OmniFocus.
+
+        Args:
+            tag_ids: Single tag ID (str) or list of tag IDs to delete
+
+        Returns:
+            dict: {
+                "deleted_count": int,
+                "failed_count": int,
+                "deleted_ids": list[str],
+                "failures": list[dict]
+            }
+
+        Raises:
+            ValueError: If tag_ids is empty
+            Exception: If the operation fails
+        """
+        self._verify_database_safety('delete_tags')
+
+        if isinstance(tag_ids, str):
+            ids_list_input = [tag_ids]
+        else:
+            ids_list_input = tag_ids
+
+        if not ids_list_input:
+            raise ValueError("tag_ids cannot be empty")
+
+        ids_list = ", ".join([f'"{self._escape_applescript_string(tid)}"' for tid in ids_list_input])
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set tagIdList to {{{ids_list}}}
+                set successCount to 0
+
+                repeat with tagId in tagIdList
+                    try
+                        set theTag to first flattened tag whose id is tagId
+                        delete theTag
+                        set successCount to successCount + 1
+                    on error
+                        -- Tag not found, skip
+                    end try
+                end repeat
+
+                return successCount as text
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            deleted_count = int(result.strip())
+            total_count = len(ids_list_input)
+            failed_count = total_count - deleted_count
+            deleted_ids = ids_list_input[:deleted_count] if deleted_count > 0 else []
+
+            return {
+                "deleted_count": deleted_count,
+                "failed_count": failed_count,
+                "deleted_ids": deleted_ids,
+                "failures": []
+            }
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error deleting tags: {e.stderr}")
+        except ValueError as e:
+            raise Exception(f"Error parsing delete result: {e}")
 
     def delete_tasks(self, task_ids: Union[str, list[str]]) -> dict:
         """Delete multiple tasks from OmniFocus in a single operation.

@@ -897,6 +897,80 @@ def create_tag(
 
 
 @mcp.tool()
+def update_tag(
+    tag_id: str,
+    name: Optional[str] = None,
+    active: Optional[bool] = None
+) -> str:
+    """Update properties of an existing tag in OmniFocus.
+
+    Tags can be renamed or put on hold. Setting active=False puts a tag on hold —
+    tasks with on-hold tags are excluded from available task queries.
+
+    Args:
+        tag_id: The ID of the tag to update (from get_tags)
+        name: New tag name (optional)
+        active: Whether the tag is active (optional). False = on hold (tasks with
+            this tag become unavailable). True = active.
+
+    Returns:
+        Success message with updated fields, or error message
+    """
+    client = get_client()
+    try:
+        result = client.update_tag(tag_id=tag_id, name=name, active=active)
+
+        fields = ", ".join(result["updated_fields"])
+        return f"Successfully updated tag {tag_id}\nUpdated fields: {fields}"
+    except ValueError as e:
+        return f"Error: {str(e)}"
+    except Exception as e:
+        return f"Error updating tag: {str(e)}"
+
+
+@mcp.tool()
+def delete_tags(tag_ids: Union[str, list[str]]) -> str:
+    """Delete one or more tags from OmniFocus.
+
+    WARNING: This permanently deletes the tags. Tasks that had these tags will
+    lose the tag association but are not themselves deleted.
+
+    Args:
+        tag_ids: Single tag ID (str) or list of tag IDs to delete
+
+    Returns:
+        Summary of deleted tags with count and any errors encountered
+
+    Examples:
+        delete_tags("tag-123")  # Delete single tag
+        delete_tags(["tag-001", "tag-002"])  # Delete multiple
+    """
+    client = get_client()
+    try:
+        result = client.delete_tags(tag_ids)
+
+        deleted_count = result["deleted_count"]
+        failed_count = result["failed_count"]
+
+        if failed_count == 0:
+            if deleted_count == 1:
+                return "Successfully deleted 1 tag"
+            else:
+                return f"Successfully deleted {deleted_count} tags"
+        elif deleted_count == 0:
+            if failed_count == 1:
+                return "Failed to delete tag (not found or error)"
+            else:
+                return f"Failed to delete all {failed_count} tags"
+        else:
+            return f"Deleted {deleted_count} tags successfully, {failed_count} failed"
+    except ValueError as e:
+        return f"Error: {str(e)}"
+    except Exception as e:
+        return f"Error deleting tags: {str(e)}"
+
+
+@mcp.tool()
 def delete_tasks(task_ids: Union[str, list[str]]) -> str:
     """Delete multiple tasks from OmniFocus in a single operation (NEW API - Enhanced).
 
