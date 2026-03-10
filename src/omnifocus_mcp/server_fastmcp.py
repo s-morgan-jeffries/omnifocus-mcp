@@ -9,7 +9,24 @@ from fastmcp import FastMCP
 from .omnifocus_connector import OmniFocusConnector
 
 # Create FastMCP server
-mcp = FastMCP("omnifocus-mcp")
+mcp = FastMCP("omnifocus-mcp", instructions="""OmniFocus is a GTD (Getting Things Done) task manager. Key concepts:
+
+TASK STATES: Available (can work on now), Blocked (waiting on predecessor in sequential project), Deferred (has future defer date — hidden until then), Flagged (user marked as priority/today), Overdue (past due date), Completed, Dropped.
+
+PROJECT STATES: Active (tasks are actionable), On Hold (paused — tasks hidden), Dropped (abandoned), Completed.
+
+HIERARCHY: Folders → Projects → Tasks → Subtasks. Folders organize projects. Projects contain tasks. Tasks can have subtasks via parent_task_id.
+
+SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links.
+
+TAGS: Formerly "contexts." Represent work contexts (location, tools, energy, people, workflow states like Waiting-for or Agenda). Cut across projects. Use for filtering.
+
+PLANNING PATTERN: To plan a day, query: (1) overdue tasks, (2) flagged + available tasks, (3) inbox items, (4) next actions. Prioritize overdue+flagged first.
+
+INBOX: Unprocessed capture bucket. Tasks without a project land here. Non-empty inbox = items need organizing.
+
+REVIEW: Projects have review intervals. Use get_projects() to find projects due for review (check last_reviewed + review_interval_weeks).
+""")
 
 # Configuration
 NOTE_TRUNCATION_LENGTH = 100  # Maximum note length in get_projects/get_tasks responses
@@ -173,7 +190,10 @@ def get_projects(
         include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
 
     Returns:
-        Formatted text with project list (one per line with ID, name, folder, status, and note preview)
+        Each project includes: id, name, folderPath, status, sequential, creationDate,
+        note (truncated unless include_full_notes=True).
+        With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status.
+        With include_last_activity: lastActivityDate.
     """
     client = get_client()
     try:
@@ -219,7 +239,10 @@ def create_project(
         name: The name of the project
         note: Optional note/description for the project (plain text only - rich text formatting is not supported via automation APIs)
         folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
-        sequential: If True, tasks must be completed in order; if False, tasks can be done in parallel (default: False)
+        sequential: If True, tasks must be completed in order — the first incomplete task is
+            'available' and the rest are 'blocked.' If False, all tasks are available in parallel.
+            OmniFocus represents dependencies via task ordering in sequential projects;
+            there are no explicit task-to-task dependency links. (default: False)
         review_interval_weeks: Optional review interval in weeks for GTD review cycle
 
     Returns:
@@ -466,7 +489,9 @@ def get_tasks(
         inbox_only: If True, only return inbox tasks
 
     Returns:
-        Formatted text with task list including ID, name, project, due date, tags, and completion status
+        Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
+        flagged, dueDate, deferDate, estimatedMinutes, tags, note (truncated unless
+        include_full_notes=True), parentTaskId, subtaskCount, sequential.
     """
     client = get_client()
     try:
@@ -536,13 +561,17 @@ def create_task(
 
     Args:
         task_name: The name/title of the task (required)
-        project_id: Optional project ID. If None, creates in inbox (unless parent_task_id is set)
-        parent_task_id: Optional parent task ID to create as subtask. Cannot be used with project_id.
+        project_id: Optional project ID. If None, creates in inbox (unless parent_task_id is set).
+            Mutually exclusive with parent_task_id — a subtask inherits its parent's project.
+        parent_task_id: Optional parent task ID to create as subtask.
+            Mutually exclusive with project_id — a subtask inherits its parent's project.
         note: Optional note/description for the task (plain text only)
         due_date: Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
-        defer_date: Defer date in ISO 8601 format (when task becomes available)
-        flagged: Whether to flag the task (default: False)
-        tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist.
+        defer_date: Defer date in ISO 8601 format (when task becomes available — hidden until then)
+        flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
+            Flagged tasks can be queried with get_tasks(flagged_only=True). (default: False)
+        tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must
+            already exist. Note: this takes a JSON string; update_task takes a native list instead.
         estimated_minutes: Estimated time in minutes to complete the task
 
     Returns:
@@ -635,13 +664,19 @@ def update_task(
     Args:
         task_id: The ID of the task to update
         task_name: New task name (optional)
-        project_id: Move task to this project (optional, conflicts with parent_task_id)
-        parent_task_id: Make task a subtask of this parent (optional, conflicts with project_id)
+        project_id: Move task to this project (optional). Mutually exclusive with
+            parent_task_id — a subtask inherits its parent's project.
+        parent_task_id: Make task a subtask of this parent (optional). Mutually exclusive
+            with project_id — a subtask inherits its parent's project.
         note: New note content (optional). WARNING: Removes rich text formatting
-        due_date: New due date in ISO 8601 format, or empty string to clear (optional)
-        defer_date: New defer date in ISO 8601 format, or empty string to clear (optional)
-        flagged: Flag/unflag the task (optional)
-        tags: Full replacement - set exact tag list (optional, conflicts with add_tags/remove_tags)
+        due_date: New due date in ISO 8601 format, or empty string to clear.
+            Omitting means no change. (optional)
+        defer_date: New defer date in ISO 8601 format (when task becomes available), or
+            empty string to clear. Omitting means no change. (optional)
+        flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
+            Pass True to flag, False to unflag. (optional)
+        tags: Full replacement — set exact tag list as a native list (optional, conflicts
+            with add_tags/remove_tags). Note: unlike create_task, this takes a list not a JSON string.
         add_tags: Add these tags incrementally (optional, conflicts with tags)
         remove_tags: Remove these tags (optional, conflicts with tags)
         estimated_minutes: Estimated time in minutes (optional)
@@ -731,13 +766,17 @@ def update_tasks(
         flagged: Flag/unflag all tasks (optional)
         status: Set status for all tasks - "active" or "dropped" (optional)
         completed: Mark all tasks complete/incomplete (optional)
-        project_id: Move all tasks to this project (optional, conflicts with parent_task_id)
-        parent_task_id: Make all tasks subtasks of this parent (optional, conflicts with project_id)
+        project_id: Move all tasks to this project (optional). Mutually exclusive with
+            parent_task_id — a subtask inherits its parent's project.
+        parent_task_id: Make all tasks subtasks of this parent (optional). Mutually exclusive
+            with project_id — a subtask inherits its parent's project.
         tags: Full replacement - set exact tag list for all tasks (optional, conflicts with add_tags)
         add_tags: Add these tags to all tasks (optional, conflicts with tags)
         remove_tags: Remove these tags from all tasks (optional)
-        due_date: Set due date for all tasks in ISO 8601 format, or empty string to clear (optional)
-        defer_date: Set defer date for all tasks in ISO 8601 format, or empty string to clear (optional)
+        due_date: Set due date for all tasks in ISO 8601 format, or empty string to clear.
+            Omitting means no change. (optional)
+        defer_date: Set defer date for all tasks in ISO 8601 format, or empty string to clear.
+            Omitting means no change. (optional)
         estimated_minutes: Set estimated time in minutes for all tasks (optional)
 
     Returns:
@@ -796,10 +835,15 @@ def update_tasks(
 
 @mcp.tool()
 def get_tags() -> str:
-    """Retrieve all available tags from OmniFocus with their names.
+    """Retrieve all available tags from OmniFocus.
+
+    Tags (formerly 'contexts') represent contexts for doing work — location (Office, Home),
+    tools (Computer, Phone), energy level (High, Low), people, or workflow states
+    (Waiting-for, Agenda). They cut across projects and are used for filtering tasks
+    via get_tasks(tag_filter=[...]).
 
     Returns:
-        Formatted list of all tag names (one per line)
+        Each tag includes: id, name, status.
     """
     client = get_client()
     tags = client.get_tags()
@@ -971,7 +1015,8 @@ def reorder_task(task_id: str, before_task_id: Optional[str] = None, after_task_
     """Move a task before or after another task to change its position.
 
     Use this to reorder tasks within a project or within a parent task's subtasks.
-    This is essential for sequential projects where task order matters.
+    In sequential projects, task order determines dependencies — reordering changes
+    which task is available next (first incomplete = available, rest = blocked).
 
     Args:
         task_id: The ID of the task to move
