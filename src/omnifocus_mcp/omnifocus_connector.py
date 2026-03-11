@@ -480,6 +480,87 @@ class OmniFocusConnector:
 
         return filtered_tasks
 
+    def _get_task_ids_for_tags(
+        self,
+        tag_names: list[str],
+        mode: str,
+        include_completed: bool = False
+    ) -> set[str] | None:
+        """Query task IDs from the tag side for pre-filtering.
+
+        Instead of scanning all tasks and checking their tags (O(N) with full
+        property extraction), this queries OmniFocus for tasks belonging to
+        each tag directly. Returns task IDs for use in a 'whose' clause.
+
+        Args:
+            tag_names: List of tag names to query
+            mode: "and" (intersection) or "or" (union)
+            include_completed: Whether to include completed tasks
+
+        Returns:
+            set of task IDs, empty set if no matches, or None if a tag was not found
+        """
+        # Build AppleScript that queries tasks for each tag
+        escaped_names = [self._escape_applescript_string(name) for name in tag_names]
+        tag_list_items = ", ".join(f'"{name}"' for name in escaped_names)
+
+        completed_filter = ""
+        if not include_completed:
+            completed_filter = " whose completed is false"
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                set output to ""
+                set tagNames to {{{tag_list_items}}}
+                repeat with tagName in tagNames
+                    try
+                        set tagObj to first flattened tag whose name is tagName
+                        set tIds to id of (tasks of tagObj{completed_filter})
+                        set AppleScript's text item delimiters to ","
+                        set output to output & (tIds as string) & "|"
+                    on error
+                        set output to output & "TAG_NOT_FOUND|"
+                    end try
+                end repeat
+                return output
+            end tell
+        end tell
+        '''
+
+        result = run_applescript(script)
+
+        # Parse pipe-delimited groups (one per tag)
+        groups = result.rstrip("|").split("|") if result.strip() else []
+
+        id_sets = []
+        for group in groups:
+            group = group.strip()
+            if group == "TAG_NOT_FOUND":
+                return None  # Signal fallback to caller
+            if group == "":
+                id_sets.append(set())
+            else:
+                id_sets.append(set(group.split(",")))
+
+        if not id_sets:
+            return set()
+
+        if mode == "and":
+            # Intersection: task must be in ALL tag sets
+            result_ids = id_sets[0]
+            for s in id_sets[1:]:
+                result_ids = result_ids & s
+            return result_ids
+        elif mode == "or":
+            # Union: task must be in ANY tag set
+            result_ids: set[str] = set()
+            for s in id_sets:
+                result_ids = result_ids | s
+            return result_ids
+        else:
+            return None  # NOT mode not supported here
+
     def _sort_tasks(self, tasks: list[dict[str, Any]], sort_by: str, sort_order: str) -> list[dict[str, Any]]:
         """Sort tasks by specified field and order.
 
@@ -1972,8 +2053,23 @@ class OmniFocusConnector:
             next_only or
             query or
             available_only or
+            tag_filter or  # Ensures NOT mode uses FILTER-FIRST, not EXTRACT-THEN-FILTER
             due_relative in ['today', 'tomorrow', 'this_week', 'next_week', 'overdue']
         )
+
+        # Tag-side pre-filter: query task IDs from tag objects instead of
+        # scanning all tasks. This reverses the lookup direction for massive
+        # speedup (from 120s+ to ~1-2s). Only for AND/OR modes — NOT mode
+        # is inherently a full scan and uses the fallback path.
+        tag_prefiltered_ids = None
+        if (tag_filter and len(tag_filter) > 0
+                and tag_filter_mode != "not"
+                and not task_id and not parent_task_id and not inbox_only):
+            tag_prefiltered_ids = self._get_task_ids_for_tags(
+                tag_filter, tag_filter_mode, include_completed
+            )
+            if tag_prefiltered_ids is not None and len(tag_prefiltered_ids) == 0:
+                return []  # No tasks match — early return
 
         # Build task source with native 'whose' pre-filtering where possible.
         # OmniFocus evaluates 'whose' clauses natively (~20-30x faster than
@@ -2009,6 +2105,14 @@ class OmniFocusConnector:
             if query:
                 query_escaped = self._escape_applescript_string(query)
                 whose_conditions.append(f'(name contains "{query_escaped}" or note contains "{query_escaped}")')
+
+            # Tag pre-filter: add ID-based whose condition from tag-side query
+            if tag_prefiltered_ids is not None and len(tag_prefiltered_ids) > 0:
+                id_conditions = " or ".join(
+                    f'id is "{self._escape_applescript_string(tid)}"'
+                    for tid in tag_prefiltered_ids
+                )
+                whose_conditions.append(f'({id_conditions})')
 
             if whose_conditions:
                 task_source = f'(flattened tasks whose {" and ".join(whose_conditions)})'
@@ -2396,7 +2500,7 @@ class OmniFocusConnector:
                         """
 
         tag_check_batch = ""
-        if tag_filter and len(tag_filter) > 0 and tag_filter_mode == "and":
+        if tag_filter and len(tag_filter) > 0 and tag_filter_mode == "and" and tag_prefiltered_ids is None:
             tag_checks_batch = []
             for tag_name in tag_filter:
                 tag_escaped = self._escape_applescript_string(tag_name)
@@ -2906,11 +3010,9 @@ class OmniFocusConnector:
                         task['recurrence'] = None
 
                 # Apply Python-based tag filtering
-                # For AND mode: AppleScript already filtered, but we apply Python filter too for consistency in tests
-                # For OR/NOT modes: always filter in Python
-                if tag_filter and len(tag_filter) > 0:
+                # Skip when tag pre-filter already narrowed the task set via whose ID clause
+                if tag_filter and len(tag_filter) > 0 and tag_prefiltered_ids is None:
                     if tag_filter_mode == "and":
-                        # For AND mode, filter to ensure all tags are present (redundant if AppleScript worked, but needed for tests)
                         tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
                     elif tag_filter_mode in ["or", "not"]:
                         tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)

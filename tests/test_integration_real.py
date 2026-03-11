@@ -2152,3 +2152,93 @@ class TestUINavigation:
         assert inbox["id"] is None
 
         print(f"\n✓ Got {len(perspectives)} enriched perspectives")
+
+
+# ============================================================================
+# TAG-SIDE PRE-FILTER TESTS (#249)
+# ============================================================================
+
+class TestTagSidePreFilter:
+    """Integration tests for tag-side task ID lookup.
+
+    Validates the AppleScript pattern:
+        tasks of (first flattened tag whose name is "X")
+    which is used by _get_task_ids_for_tags() for the tag pre-filter
+    optimization (issue #249).
+    """
+
+    def test_tasks_of_tag_returns_task_ids(self, client, test_project, ensure_test_tags):
+        """Create a tagged task, verify _get_task_ids_for_tags finds it."""
+        import warnings
+        task_id = None
+        try:
+            task_id = client.create_task(
+                "test-tag-prefilter-task",
+                project_id=test_project,
+                tags=["test-work"],
+            )
+            assert task_id, "create_task should return a task ID"
+
+            # Use the tag-side pre-filter to find the task
+            result = client._get_task_ids_for_tags(["test-work"], "and")
+            assert result is not None, "_get_task_ids_for_tags should not return None"
+            assert task_id in result, f"Task {task_id} should be in tag pre-filter results"
+            print(f"\n✓ _get_task_ids_for_tags found task {task_id} via tag 'test-work'")
+        finally:
+            if task_id:
+                try:
+                    client.delete_tasks(task_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up task {task_id}: {e}")
+
+    def test_tag_prefilter_and_mode(self, client, test_project, ensure_test_tags):
+        """AND mode: task with both tags is found, task with one tag is not."""
+        import warnings
+        task_both = None
+        task_one = None
+        try:
+            task_both = client.create_task(
+                "test-tag-both",
+                project_id=test_project,
+                tags=["test-work", "test-urgent"],
+            )
+            task_one = client.create_task(
+                "test-tag-one",
+                project_id=test_project,
+                tags=["test-work"],
+            )
+
+            result = client._get_task_ids_for_tags(["test-work", "test-urgent"], "and")
+            assert result is not None
+            assert task_both in result, "Task with both tags should be in AND result"
+            assert task_one not in result, "Task with only one tag should NOT be in AND result"
+            print(f"\n✓ AND mode correctly filters: both={task_both in result}, one={task_one in result}")
+        finally:
+            for tid in [task_both, task_one]:
+                if tid:
+                    try:
+                        client.delete_tasks(tid)
+                    except Exception as e:
+                        warnings.warn(f"Failed to clean up task {tid}: {e}")
+
+    def test_get_tasks_tag_filter_uses_prefilter(self, client, test_project, ensure_test_tags):
+        """Full get_tasks(tag_filter=...) returns correct results via pre-filter path."""
+        import warnings
+        task_id = None
+        try:
+            task_id = client.create_task(
+                "test-tag-filter-e2e",
+                project_id=test_project,
+                tags=["test-work"],
+            )
+
+            tasks = client.get_tasks(tag_filter=["test-work"], project_id=test_project)
+            task_ids = [t['id'] for t in tasks]
+            assert task_id in task_ids, "Tagged task should appear in get_tasks(tag_filter=...) results"
+            print(f"\n✓ get_tasks(tag_filter=['test-work']) found task {task_id}")
+        finally:
+            if task_id:
+                try:
+                    client.delete_tasks(task_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up task {task_id}: {e}")

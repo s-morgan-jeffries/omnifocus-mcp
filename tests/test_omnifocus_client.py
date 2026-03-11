@@ -703,6 +703,69 @@ class TestWhoseClauseOptimization:
             assert "due date" in script
 
 
+    def test_tag_filter_uses_tag_side_prefilter(self, client, sample_tasks_json):
+        """tag_filter should query from tag side first, then use whose id clause."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # First call: _get_task_ids_for_tags returns IDs
+            # Second call: get_tasks main query uses those IDs in whose clause
+            mock_run.side_effect = [
+                "task-001|",  # tag pre-filter returns one task ID
+                sample_tasks_json,  # main batch query
+            ]
+            result = client.get_tasks(tag_filter=["urgent"])
+            assert len(result) == 1
+
+            # Should have made 2 calls: tag pre-filter + main query
+            assert mock_run.call_count == 2
+
+            # First call should query from the tag side
+            tag_script = mock_run.call_args_list[0][0][0]
+            assert "first flattened tag whose name is" in tag_script
+
+            # Second call should use whose with the pre-filtered ID
+            main_script = mock_run.call_args_list[1][0][0]
+            assert 'id is "task-001"' in main_script
+            assert "a reference to" in main_script  # Should enter batch mode
+
+    def test_tag_filter_empty_result_returns_early(self, client):
+        """tag_filter with no matching tasks should return empty list without main query."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "|"  # Tag exists but no tasks
+            result = client.get_tasks(tag_filter=["empty-tag"])
+            assert result == []
+            # Should only make 1 call (the tag pre-filter), not the main query
+            assert mock_run.call_count == 1
+
+    def test_tag_filter_not_found_falls_back(self, client, sample_tasks_json):
+        """tag_filter with unknown tag should fall back to standard path."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json  # All calls return same JSON
+            # When tag not found, _get_task_ids_for_tags returns None
+            with mock.patch.object(client, '_get_task_ids_for_tags', return_value=None):
+                result = client.get_tasks(tag_filter=["nonexistent"])
+            # Should still return results (fallback path)
+            assert isinstance(result, list)
+
+    def test_tag_filter_not_mode_uses_filter_first(self, client, sample_tasks_json):
+        """NOT mode tag_filter should route through FILTER-FIRST, not EXTRACT-THEN-FILTER.
+
+        With include_completed=True and no other filters, tag_filter alone must
+        trigger selective_filters_active so the FILTER-FIRST path is used.
+        Without tag_filter in selective_filters_active, this falls to the slow path.
+        """
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(
+                tag_filter=["waiting"], tag_filter_mode="not",
+                include_completed=True
+            )
+            script = mock_run.call_args[0][0]
+            # FILTER-FIRST has "PHASE 1: Apply ALL filters" before extraction
+            # EXTRACT-THEN-FILTER has "PHASE 1: Extract basic properties" before filters
+            assert "PHASE 1: Apply ALL filters" in script
+            assert "PHASE 1: Extract basic properties" not in script
+
+
 class TestBatchPropertyExtraction:
     """Tests that get_tasks uses batch property extraction via 'a reference to' when whose is active."""
 
@@ -1663,6 +1726,79 @@ class TestBuildWhoseOrChain:
     def test_escapes_ids(self, client):
         result = client._build_whose_or_chain(['a"b'], "flattened task")
         assert 'a\\"b' in result
+
+
+class TestGetTaskIdsForTags:
+    """Tests for _get_task_ids_for_tags() — tag-side pre-filter for performance."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_and_mode_single_tag(self, client):
+        """AND mode with one tag returns task IDs from that tag's tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # AppleScript returns pipe-delimited groups, one per tag
+            mock_run.return_value = "task-1,task-2,task-3|"
+            result = client._get_task_ids_for_tags(["urgent"], "and", include_completed=False)
+            assert result == {"task-1", "task-2", "task-3"}
+            # Verify AppleScript queries from the tag side
+            script = mock_run.call_args[0][0]
+            assert "first flattened tag whose name is" in script
+            assert "urgent" in script
+
+    def test_and_mode_multiple_tags_intersects(self, client):
+        """AND mode with multiple tags returns intersection of task ID sets."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # Tag "urgent" has tasks 1,2,3; tag "work" has tasks 2,3,4
+            mock_run.return_value = "task-1,task-2,task-3|task-2,task-3,task-4|"
+            result = client._get_task_ids_for_tags(["urgent", "work"], "and", include_completed=False)
+            assert result == {"task-2", "task-3"}
+
+    def test_or_mode_unions(self, client):
+        """OR mode returns union of task ID sets."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-1,task-2|task-3,task-4|"
+            result = client._get_task_ids_for_tags(["urgent", "work"], "or", include_completed=False)
+            assert result == {"task-1", "task-2", "task-3", "task-4"}
+
+    def test_tag_not_found_returns_none(self, client):
+        """If a tag is not found, return None to signal fallback."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "TAG_NOT_FOUND|"
+            result = client._get_task_ids_for_tags(["nonexistent"], "and", include_completed=False)
+            assert result is None
+
+    def test_empty_result_returns_empty_set(self, client):
+        """If tag exists but has no tasks, return empty set."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "|"
+            result = client._get_task_ids_for_tags(["empty-tag"], "and", include_completed=False)
+            assert result == set()
+
+    def test_include_completed_affects_script(self, client):
+        """include_completed=True should not filter by completed status."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-1|"
+            client._get_task_ids_for_tags(["urgent"], "and", include_completed=True)
+            script = mock_run.call_args[0][0]
+            assert "completed is false" not in script
+
+    def test_include_completed_false_filters(self, client):
+        """include_completed=False should filter tasks by completed status."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-1|"
+            client._get_task_ids_for_tags(["urgent"], "and", include_completed=False)
+            script = mock_run.call_args[0][0]
+            assert "completed is false" in script
+
+    def test_escapes_tag_names(self, client):
+        """Tag names with special characters should be escaped."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-1|"
+            client._get_task_ids_for_tags(['tag"with"quotes'], "and", include_completed=False)
+            script = mock_run.call_args[0][0]
+            assert 'tag\\"with\\"quotes' in script
 
 
 class TestIdEscapingInMethods:
