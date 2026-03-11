@@ -2,10 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-10
+- **Date:** 2026-03-11 (re-eval after docstring fixes)
 - **Model:** claude-opus-4-6
-- **Total Score:** 34/36 (94%)
+- **Total Score:** 36/36 (100%)
 - **Critical Failures:** 0 of 3
+- **Previous Score:** 34/36 (94%) — 2 partial scores fixed by docstring improvements
 
 ## Category Scores
 
@@ -13,8 +14,8 @@
 |----------|-----------|-------|-----|-----|
 | Core OF Concepts | 1-4 | 8 | 8 | 100% |
 | Tool Selection | 5-8 | 8 | 8 | 100% |
-| Parameter Usage | 9-12 | 7 | 8 | 88% |
-| Multi-Step Workflows | 13-15 | 5 | 6 | 83% |
+| Parameter Usage | 9-12 | 8 | 8 | 100% |
+| Multi-Step Workflows | 13-15 | 6 | 6 | 100% |
 | Edge Cases | 16-18 | 6 | 6 | 100% |
 
 ## Per-Scenario Results
@@ -90,11 +91,11 @@
 - **Concept Understanding:** Excellent — explicitly noted the mutual exclusivity and inheritance
 
 ### Scenario 12: Tag Filter AND Semantics
-- **Score:** 1/2 (PARTIAL)
+- **Score:** 2/2 (PASS) — *previously 1/2, fixed by docstring improvement*
 - **Tool Selection:** Correct — `get_tasks`
-- **Parameters:** PARTIAL — Used `tag_filter="Errands,Weekend"` (comma-separated string) instead of `tag_filter=["Errands", "Weekend"]` (list)
+- **Parameters:** Correct — `tag_filter=["Errands", "Weekend"]` (native list)
 - **Concept Understanding:** Correct — understood AND semantics
-- **Notes:** The parameter type in the tool description says `list[str]` but the agent used a comma-separated string. This suggests the tool description could be clearer about the list format, or the agent inferred a different convention. The concept understanding was correct — the format was wrong.
+- **Notes:** Adding an example `["Errands", "Weekend"]` to the tag_filter docstring resolved the format ambiguity. The agent now correctly passes a native list instead of a comma-separated string.
 
 ### Scenario 13: Daily Planning
 - **Score:** 2/2 (PASS)
@@ -104,11 +105,11 @@
 - **Notes:** Combined flagged+available correctly (better than just flagged alone).
 
 ### Scenario 14: Project Creation with Phases
-- **Score:** 1/2 (PARTIAL)
+- **Score:** 2/2 (PASS) — *previously 1/2, fixed by docstring improvement*
 - **Tool Selection:** Correct — `create_project` + 6x `create_task`
-- **Parameters:** Mostly correct — all project params correct, tags as JSON string correct
-- **Concept Understanding:** Good — understood sequential ordering, used returned project ID
-- **Notes:** Minor uncertainty about whether task creation order is guaranteed when calls are parallelized. The agent noted tasks "can be run in parallel" with a caveat — in practice, they should be sequential to guarantee order. Also correctly passed `sequential=true` (lowercase) matching the string parameter type.
+- **Parameters:** Correct — all project params correct, tags as JSON string correct, tasks created sequentially
+- **Concept Understanding:** Excellent — understood sequential ordering, used returned project ID
+- **Notes:** The added docstring note "In sequential projects, tasks are ordered by creation time. Create tasks in the desired dependency order." resolved the uncertainty. The agent now explicitly states tasks must be created one at a time in order, not in parallel.
 
 ### Scenario 15: Project Review
 - **Score:** 2/2 (PASS)
@@ -147,22 +148,11 @@
 
 4. **Tag JSON string asymmetry was handled correctly:** Despite being the most likely failure point, the explicit docstring note "this takes a JSON string; update_task takes a native list instead" worked.
 
-### Issues Found
+### Issues Found and Fixed
 
-1. **tag_filter parameter format ambiguous (Scenario 12):** The agent used a comma-separated string instead of a list. The tool description says `list[str]` but doesn't show an example. Adding an example like `tag_filter=["Errands", "Weekend"]` would clarify.
+1. **tag_filter parameter format ambiguous (Scenario 12):** The agent originally used a comma-separated string instead of a list. Adding an inline example `["Errands", "Weekend"]` to the docstring resolved this. **Re-eval: PASS.**
 
-2. **Task creation order in sequential projects (Scenario 14):** The agent was uncertain whether parallel task creation preserves order. The docstrings don't address this. Adding a note like "tasks are appended in creation order" would help.
-
-## Recommendations
-
-### Tool Description Improvements
-
-1. **`get_tasks` tag_filter parameter** — Add an example:
-   - Current: `tag_filter: list[str]` (optional) — List of tag names to filter by (task must have all tags)
-   - Proposed: `tag_filter: list[str]` (optional) — List of tag names to filter by, e.g., `["Errands", "Weekend"]` (task must have ALL listed tags)
-
-2. **`create_task` in sequential projects** — Add a note about ordering:
-   - Add to docstring: "In sequential projects, tasks are ordered by creation time. Create tasks in the desired dependency order."
+2. **Task creation order in sequential projects (Scenario 14):** The agent was originally uncertain whether parallel task creation preserves order. Adding a note "In sequential projects, tasks are ordered by creation time. Create tasks in the desired dependency order." resolved this. **Re-eval: PASS.**
 
 ### No Changes Needed
 
@@ -175,4 +165,10 @@
 
 ## Conclusion
 
-The tool descriptions are highly effective. An agent with no prior OmniFocus knowledge scored 94% (34/36) on the eval. Both issues found are minor parameter format ambiguities, not conceptual gaps. The server instructions block successfully conveys GTD concepts, and safety-critical operations are well-documented. Two small docstring improvements are recommended.
+After two targeted docstring improvements, the tool descriptions achieve a perfect 36/36 (100%) score. An agent with no prior OmniFocus knowledge can correctly plan all 18 scenarios — including safety-critical operations, multi-step workflows, and parameter format edge cases — based solely on the tool descriptions and server instructions block.
+
+The two fixes applied:
+1. `get_tasks` `tag_filter` — added inline example showing list format
+2. `create_task` — added note about creation order in sequential projects
+
+Both were minor parameter format clarifications, not conceptual gaps. The server instructions block and tool docstrings are production-ready.

@@ -124,7 +124,7 @@ Get tasks from OmniFocus with optional filtering.
 - `dropped_only: bool` (default: False) — Only return dropped tasks
 - `blocked_only: bool` (default: False) — Only return blocked tasks
 - `next_only: bool` (default: False) — Only return next tasks
-- `tag_filter: list[str]` (optional) — List of tag names to filter by (task must have all tags)
+- `tag_filter: list[str]` (optional) — List of tag names to filter by, e.g., `["Errands", "Weekend"]` (task must have ALL listed tags)
 - `query: str` (optional) — Search term to filter by name or note (case-insensitive)
 - `inbox_only: bool` (default: False) — Only return inbox tasks
 
@@ -150,6 +150,8 @@ Create a new task in OmniFocus.
 - `flagged: bool` (default: False) — Flag marks a task as a priority — typically 'I want to work on this today.' Flagged tasks can be queried with get_tasks(flagged_only=True).
 - `tags: str` (optional) — JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist. Note: this takes a JSON string; update_task takes a native list instead.
 - `estimated_minutes: int` (optional) — Estimated time in minutes
+
+**Note:** In sequential projects, tasks are ordered by creation time. Create tasks in the desired dependency order.
 
 **Returns:** Success message with task ID and location (project/inbox/parent)
 
