@@ -398,4 +398,121 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+
+    # =========================================================================
+    # Category 6: Documentation Gap Scenarios (#263, #264)
+    # =========================================================================
+    {
+        "id": 19,
+        "category": "Documentation Gaps",
+        "name": "Action Group — Blocked Parent Interpretation",
+        "prompt": (
+            "I ran get_tasks for my project and got back this task:\n"
+            '{"id": "task-700", "name": "Renovate bathroom", "blocked": true, '
+            '"subtaskCount": 3, "sequential": true}\n'
+            "Why is this task blocked? Is something wrong?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Recognizes this is an action group (task with subtasks). Explains that "
+            "the parent appears blocked because its subtasks are active — this is normal. "
+            "Suggests checking the subtasks via get_tasks(parent_task_id='task-700'). "
+            "PARTIAL: Correctly identifies subtasks but doesn't explain the blocked behavior. "
+            "FAIL: Interprets blocked as an error, suggests it's stuck in a sequential project, "
+            "or tries to 'unblock' it."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 20,
+        "category": "Documentation Gaps",
+        "name": "Next Task Semantics",
+        "prompt": (
+            "I have a parallel project with 5 tasks. When I call get_tasks, "
+            "all 5 have next=true. But in my sequential project, only 1 task has "
+            "next=true. Is that right? What does 'next' mean?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Correctly explains that 'next' means 'first available action' in a sequential "
+            "project/action group — only one at a time. In parallel projects, all incomplete tasks "
+            "are 'next' because they're all available simultaneously. "
+            "PARTIAL: Gets the sequential part right but doesn't explain parallel behavior. "
+            "FAIL: Says it's a bug or gives incorrect explanation."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 21,
+        "category": "Documentation Gaps",
+        "name": "Inherited Dates — Empty Due Date",
+        "prompt": (
+            "My project 'Q2 Planning' has a due date of April 15. But when I "
+            "get_tasks(project_id='proj-q2'), the tasks show dueDate as empty. "
+            "The OmniFocus UI shows them as due April 15 though. What's going on?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that dueDate shows directly-assigned dates only. Tasks inheriting "
+            "dates from their project show empty date fields even though they are functionally "
+            "subject to those dates. Suggests this is a known limitation. "
+            "PARTIAL: Acknowledges the discrepancy but doesn't explain inheritance. "
+            "FAIL: Says it's a bug or suggests the dates aren't set."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 22,
+        "category": "Documentation Gaps",
+        "name": "Sequential Ambiguity — Parallel vs Single Actions List",
+        "prompt": (
+            "I see two projects with sequential=false in get_projects. One is my "
+            "'Home Repairs' project (tasks can be done in any order) and the other "
+            "is 'Errands' (a grab-bag of unrelated tasks). Are they the same type?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that sequential=false covers both Parallel projects and Single "
+            "Actions Lists. Notes that the API can't currently distinguish between them. "
+            "A Single Actions List has no completion goal — it's an ongoing collection. "
+            "A parallel project can be completed when all tasks are done. "
+            "PARTIAL: Mentions both types exist but doesn't explain the limitation clearly. "
+            "FAIL: Says they're the same thing or doesn't know about Single Actions Lists."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 23,
+        "category": "Documentation Gaps",
+        "name": "Completing Recurring Tasks",
+        "prompt": (
+            "I have a recurring task 'Water plants' that repeats every week. "
+            "If I use update_task(completed=True), will it create the next occurrence "
+            "or just mark this one done and kill the recurrence?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that completed=True uses 'mark complete' internally, which "
+            "correctly handles recurring tasks by spawning the next occurrence. The recurrence "
+            "will continue. "
+            "PARTIAL: Says it will complete but isn't sure about recurrence behavior. "
+            "FAIL: Says it will kill the recurrence or doesn't know."
+        ),
+        "safety_critical": False,
+    },
 ]

@@ -1136,10 +1136,13 @@ class TestTagCRUD:
             assert result["success"] is True
             assert "active" in result["updated_fields"]
 
-            # Note: get_tags currently hardcodes status to "active"
-            # so we can't verify via get_tags. But the AppleScript
-            # ran without error, confirming 'allows next action'
-            # property is settable.
+            # Verify get_tags now reads actual status
+            tags = client.get_tags()
+            matching = [t for t in tags if t['id'] == tag_id]
+            assert len(matching) == 1
+            assert matching[0]['status'] == "on hold", (
+                f"Expected 'on hold' status, got '{matching[0]['status']}'"
+            )
         finally:
             if tag_id:
                 try:
@@ -2151,7 +2154,13 @@ class TestUINavigation:
         assert inbox["type"] == "built-in"
         assert inbox["id"] is None
 
-        print(f"\n✓ Got {len(perspectives)} enriched perspectives")
+        # Custom perspectives should have IDs and type "custom"
+        custom = [p for p in perspectives if p["type"] == "custom"]
+        assert len(custom) > 0, "Expected at least one custom perspective"
+        for cp in custom:
+            assert cp["id"] is not None, f"Custom perspective {cp['name']} should have an ID"
+
+        print(f"\n✓ Got {len(perspectives)} enriched perspectives ({len(custom)} custom)")
 
 
 # ============================================================================

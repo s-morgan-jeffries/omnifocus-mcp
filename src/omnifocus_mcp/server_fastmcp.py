@@ -17,9 +17,11 @@ PROJECT STATES: Active (tasks are actionable), On Hold (paused — tasks hidden)
 
 HIERARCHY: Folders → Projects → Tasks → Subtasks. Folders organize projects. Projects contain tasks. Tasks can have subtasks via parent_task_id.
 
-SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links.
+SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links. The `next` field on a task is true when it is the first available action in a sequential project or action group. In parallel projects, all incomplete tasks have `next: true`.
 
-TAGS: Formerly "contexts." Represent work contexts (location, tools, energy, people, workflow states like Waiting-for or Agenda). Cut across projects. Use for filtering.
+ACTION GROUPS: A task with subtasks is an "action group." It can be parallel or sequential, just like a project. The parent task appears as `blocked: true` while its subtasks are active — this is normal behavior, not an error. Check `subtaskCount > 0` to identify action groups. An action group parent cannot be completed until its subtasks are resolved.
+
+TAGS: Formerly "contexts." Represent work contexts (location, tools, energy, people, workflow states like Waiting-for or Agenda). Cut across projects. Use for filtering. Tags can be Active or On Hold — tasks with On Hold tags are excluded from OmniFocus's native Available perspective.
 
 PLANNING PATTERN: To plan a day, query: (1) overdue tasks, (2) flagged + available tasks, (3) inbox items, (4) next actions. Prioritize overdue+flagged first.
 
@@ -191,7 +193,8 @@ def get_projects(
 
     Returns:
         Each project includes: id, name, folderPath, status, sequential, creationDate,
-        note (truncated unless include_full_notes=True).
+        note (truncated unless include_full_notes=True). Note: `sequential` is true for
+        sequential projects, false for both parallel projects and Single Actions Lists.
         With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status.
         With include_last_activity: lastActivityDate.
     """
@@ -240,9 +243,11 @@ def create_project(
         note: Optional note/description for the project (plain text only - rich text formatting is not supported via automation APIs)
         folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
         sequential: If True, tasks must be completed in order — the first incomplete task is
-            'available' and the rest are 'blocked.' If False, all tasks are available in parallel.
-            OmniFocus represents dependencies via task ordering in sequential projects;
-            there are no explicit task-to-task dependency links. (default: False)
+            'available' and the rest are 'blocked.' If False, creates a parallel project where
+            all tasks are available simultaneously. Note: Single Actions Lists (a third project
+            type) cannot currently be created via this API. OmniFocus represents dependencies
+            via task ordering in sequential projects; there are no explicit task-to-task
+            dependency links. (default: False)
         review_interval_weeks: Optional review interval in weeks for GTD review cycle
 
     Returns:
@@ -479,7 +484,7 @@ def get_tasks(
         project_id: Optional project ID to filter tasks (ignored if inbox_only=True)
         flagged_only: If True, only return flagged tasks
         include_completed: If True, include completed tasks (default: False)
-        available_only: If True, only return available tasks (not blocked or deferred)
+        available_only: If True, only return available tasks (not completed, not dropped, not blocked, not deferred)
         overdue: If True, only return overdue tasks
         dropped_only: If True, only return dropped tasks
         blocked_only: If True, only return blocked tasks
@@ -492,6 +497,10 @@ def get_tasks(
         Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
         flagged, dueDate, deferDate, estimatedMinutes, tags, note (truncated unless
         include_full_notes=True), parentTaskId, subtaskCount, sequential.
+
+    Note: Date fields (dueDate, deferDate) show directly-assigned dates only. Tasks that
+    inherit dates from their project or action group will show empty date fields even though
+    they are functionally subject to those dates in OmniFocus.
     """
     client = get_client()
     try:
@@ -684,7 +693,8 @@ def update_task(
         add_tags: Add these tags incrementally (optional, conflicts with tags)
         remove_tags: Remove these tags (optional, conflicts with tags)
         estimated_minutes: Estimated time in minutes (optional)
-        completed: Mark task complete/incomplete (optional)
+        completed: Mark task complete/incomplete (optional). Uses `mark complete` internally,
+            which correctly handles recurring tasks by spawning the next occurrence.
         status: Task status - "active" or "dropped" (optional)
         name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
 
