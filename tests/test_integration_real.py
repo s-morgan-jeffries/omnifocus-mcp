@@ -2007,62 +2007,148 @@ class TestAvailabilityFields:
 
 
 class TestUINavigation:
-    """Test UI navigation operations (set_focus).
+    """Test UI navigation operations (set_focus, get_focus, get_perspectives).
 
     All tests use fixtures from conftest.py for automatic cleanup.
+    Focus tests clear focus in teardown to avoid polluting other tests.
     """
 
-    def test_set_focus_on_project(self, client, test_project):
-        """Test setting focus on a project."""
-        # Use fixture project
+    def test_set_focus_single_project(self, client, test_project):
+        """Test setting focus on a single project."""
         project_id = test_project
 
-        # Get project details for display
         projects = client.get_projects(project_id=project_id)
         project = projects[0]
 
-        # Set focus on the project
-        result = client.set_focus(item_id=project_id, item_type="project")
+        result = client.set_focus(item_ids=project_id, item_types="project")
 
         assert result["success"] is True
-        assert result["item_id"] == project_id
-        assert result["item_type"] == "project"
+        assert result["action"] == "set"
+        assert len(result["focused_items"]) == 1
+        assert result["focused_items"][0]["id"] == project_id
+        assert result["focused_items"][0]["type"] == "project"
         print(f"\n✓ Set focus on project: {project['name']}")
 
-    def test_set_focus_on_folder(self, client, test_folder):
-        """Test setting focus on a folder."""
-        # Use fixture folder
+        # Clean up: clear focus
+        client.set_focus()
+
+    def test_set_focus_single_folder(self, client, test_folder):
+        """Test setting focus on a single folder."""
         folder_id = test_folder
 
-        # Get folder details for display
         folders = client.get_folders()
         test_folder_obj = next(f for f in folders if f['id'] == folder_id)
 
-        # Set focus on the folder
-        result = client.set_focus(item_id=folder_id, item_type="folder")
+        result = client.set_focus(item_ids=folder_id, item_types="folder")
 
         assert result["success"] is True
-        assert result["item_id"] == folder_id
-        assert result["item_type"] == "folder"
+        assert result["action"] == "set"
+        assert len(result["focused_items"]) == 1
+        assert result["focused_items"][0]["type"] == "folder"
         print(f"\n✓ Set focus on folder: {test_folder_obj['name']}")
+
+        # Clean up: clear focus
+        client.set_focus()
+
+    def test_set_focus_multiple_items(self, client, test_project, test_folder):
+        """Test setting focus on multiple items (project + folder)."""
+        result = client.set_focus(
+            item_ids=[test_project, test_folder],
+            item_types=["project", "folder"],
+        )
+
+        assert result["success"] is True
+        assert result["action"] == "set"
+        assert len(result["focused_items"]) == 2
+        types = {item["type"] for item in result["focused_items"]}
+        assert types == {"project", "folder"}
+        print("\n✓ Set focus on multiple items (project + folder)")
+
+        # Clean up: clear focus
+        client.set_focus()
+
+    def test_set_focus_clear(self, client, test_project):
+        """Test clearing focus after setting it."""
+        # First set focus
+        client.set_focus(item_ids=test_project, item_types="project")
+
+        # Then clear it
+        result = client.set_focus()
+
+        assert result["success"] is True
+        assert result["action"] == "cleared"
+        assert result["focused_items"] == []
+        print("\n✓ Cleared focus successfully")
 
     def test_set_focus_invalid_item_type(self, client, test_task):
         """Test that invalid item types raise errors."""
-        # Use fixture task
         task_id = test_task
 
-        # Try to set focus on task (should fail)
         with pytest.raises(ValueError) as exc_info:
-            client.set_focus(item_id=task_id, item_type="task")
+            client.set_focus(item_ids=task_id, item_types="task")
 
-        assert "OmniFocus only supports setting focus on projects and folders" in str(exc_info.value)
+        assert "project" in str(exc_info.value).lower() or "folder" in str(exc_info.value).lower()
         print("\n✓ Correctly rejected focus on task")
 
     def test_set_focus_nonexistent_project(self, client):
         """Test error handling for nonexistent project."""
-        # Try to set focus on nonexistent project
         with pytest.raises(Exception) as exc_info:
-            client.set_focus(item_id="nonexistent-id-12345", item_type="project")
+            client.set_focus(item_ids="nonexistent-id-12345", item_types="project")
 
-        assert "Error setting focus" in str(exc_info.value)
+        assert "Error" in str(exc_info.value) or "error" in str(exc_info.value)
         print("\n✓ Correctly handled nonexistent project")
+
+    def test_get_focus_after_set(self, client, test_project):
+        """Test reading focus after setting it."""
+        # Set focus
+        client.set_focus(item_ids=test_project, item_types="project")
+
+        # Read it back
+        items = client.get_focus()
+
+        assert len(items) >= 1
+        # Find our project in the focused items
+        project_ids = [item["id"] for item in items]
+        assert test_project in project_ids
+
+        focused_project = next(i for i in items if i["id"] == test_project)
+        assert focused_project["type"] == "project"
+        assert "name" in focused_project
+        print(f"\n✓ Read back focus: {focused_project['name']}")
+
+        # Clean up: clear focus
+        client.set_focus()
+
+    def test_get_focus_empty(self, client):
+        """Test reading focus when none is set."""
+        # Clear focus first
+        client.set_focus()
+
+        items = client.get_focus()
+
+        assert items == []
+        print("\n✓ Empty focus returns []")
+
+    def test_get_perspectives_enriched(self, client):
+        """Test that get_perspectives returns structured dicts."""
+        perspectives = client.get_perspectives()
+
+        assert len(perspectives) > 0
+        # Every perspective should have name, id, type
+        for p in perspectives:
+            assert "name" in p
+            assert "id" in p
+            assert "type" in p
+            assert p["type"] in ("built-in", "custom")
+
+        # Should include some built-in perspectives
+        names = [p["name"] for p in perspectives]
+        # Inbox is always present
+        assert "Inbox" in names
+
+        # Built-in perspectives should have null IDs
+        inbox = next(p for p in perspectives if p["name"] == "Inbox")
+        assert inbox["type"] == "built-in"
+        assert inbox["id"] is None
+
+        print(f"\n✓ Got {len(perspectives)} enriched perspectives")

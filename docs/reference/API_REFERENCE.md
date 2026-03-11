@@ -28,7 +28,7 @@ This document shows the complete API surface that Claude Desktop sees when conne
 - [Folders](#folders) (2 functions) - `create`, `get`
 - [Tags](#tags) (1 function) - `get`
 - [Perspectives](#perspectives) (2 functions) - `get`, `switch`
-- [UI Navigation](#ui-navigation) (1 function) - `set_focus`
+- [UI Navigation](#ui-navigation) (2 functions) - `set_focus`, `get_focus`
 
 **Deprecated Functions (Removed in v0.6.0):**
 - [Deprecated Functions](#deprecated-functions-removed-in-v060) - 26 functions consolidated into core API
@@ -64,11 +64,12 @@ All "Enhanced proposed signature" sections in this document have been **FULLY IM
 - ✅ `get_tags()` - Returns all available tags
 
 **Perspectives (2):**
-- ✅ `get_perspectives()` - Returns available perspectives
+- ✅ `get_perspectives()` - Returns available perspectives with name, type, and ID
 - ✅ `switch_perspective()` - UI control function
 
 **UI Navigation (1):**
-- ✅ `set_focus()` - Focus OmniFocus window on project or folder
+- ✅ `set_focus()` - Focus OmniFocus window on one or more projects/folders, or clear focus
+- ✅ `get_focus()` - Get currently focused items in OmniFocus window
 
 ### ❌ Removed Functions (26 Deprecated)
 
@@ -913,11 +914,14 @@ Projects are considered due if their next review date is today or in the past.
 
 ### `get_perspectives()`
 
-**Description:** Get all perspective names from OmniFocus.
+**Description:** Get all perspectives from OmniFocus with name, type, and ID.
 
-Perspectives are custom views that filter and organize your tasks and projects.
+Perspectives are custom views that filter and organize your tasks and projects. Returns structured data distinguishing built-in perspectives (Inbox, Projects, etc.) from custom user-created perspectives.
 
-**Returns:** Formatted list of all perspective names (one per line)
+**Returns:** List of dicts with:
+- `name: str` — Perspective name
+- `id: str | None` — Perspective ID (None for built-in perspectives)
+- `type: str` — Either "built-in" or "custom"
 
 **PROPOSED: KEEP** - Core read functionality. Users need to discover available perspectives before they can switch to them.
 
@@ -940,39 +944,60 @@ Perspectives are custom views that filter and organize your tasks and projects.
 
 ### `set_focus()`
 
-**Description:** Set focus on a specific item in the OmniFocus window.
+**Description:** Set focus on one or more items in the OmniFocus window, or clear focus.
 
-OmniFocus only supports setting focus on projects and folders via AppleScript. Attempting to focus on tasks or tags will raise a clear error message.
+OmniFocus supports focusing on projects and folders only. Call with no arguments to clear focus. Supports multi-item focus for ad-hoc filtered views.
 
 **Parameters:**
-- `item_id: str` - The ID of the project or folder to focus on
-- `item_type: str` - Must be either "project" or "folder"
+- `item_ids: str | list[str]` — Single ID or list of IDs. Omit or pass empty to clear focus.
+- `item_types: str | list[str]` — Matching type(s), each must be "project" or "folder".
 
-**Returns:** Success message with item details
+**Returns:** Dict with:
+- `success: bool`
+- `action: str` — "set" or "cleared"
+- `focused_items: list[dict]` — Each with `id` and `type`
 
 **Limitations:**
-- ❌ Cannot focus on tasks (AppleScript limitation)
-- ❌ Cannot focus on tags (AppleScript limitation)
-- ✅ Only projects and folders are supported
-
-**Error Handling:**
-- Attempting to focus on task or tag will raise `ValueError` with explanation
-- Invalid `item_type` raises `ValueError` with valid options
-- Nonexistent item ID raises `Exception` with error details
+- Only projects and folders can be focused (AppleScript limitation)
+- Tasks and tags cannot be focused
 
 **Example:**
 ```python
-# Focus on a project
-set_focus(item_id="abc123", item_type="project")
+# Focus on a single project
+set_focus(item_ids="abc123", item_types="project")
 
-# Focus on a folder
-set_focus(item_id="def456", item_type="folder")
+# Focus on multiple items
+set_focus(item_ids=["abc123", "def456"], item_types=["project", "folder"])
 
-# This will raise an error (not supported)
-set_focus(item_id="task789", item_type="task")  # ValueError: OmniFocus only supports setting focus on projects and folders
+# Clear focus
+set_focus()
 ```
 
-**Use Case:** After querying for items, you can focus the OmniFocus window on a specific project or folder to allow the user to see it in context.
+**Use Case:** Focus narrows the OmniFocus view to specific projects/folders. Combined with `switch_perspective`, this creates ad-hoc filtered views without custom perspective configuration. Focus persists across perspective switches.
+
+---
+
+### `get_focus()`
+
+**Description:** Get the currently focused items in the OmniFocus window.
+
+**Returns:** List of dicts, each with:
+- `id: str` — Item ID
+- `name: str` — Item name
+- `type: str` — "project" or "folder"
+
+Returns empty list when no focus is set.
+
+**Example:**
+```python
+# Check current focus
+items = get_focus()  # [{"id": "abc123", "name": "My Project", "type": "project"}]
+
+# No focus set
+items = get_focus()  # []
+```
+
+**Use Case:** Read back the current focus state to verify what's focused or to restore focus after other operations.
 
 ---
 

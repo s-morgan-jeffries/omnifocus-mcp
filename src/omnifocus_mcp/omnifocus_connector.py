@@ -4242,25 +4242,69 @@ class OmniFocusConnector:
 
 
 
-    def get_perspectives(self) -> list[str]:
-        """Get all perspective names from OmniFocus.
+    def get_perspectives(self) -> list[dict]:
+        """Get all perspectives from OmniFocus with name, id, and type.
 
         Returns:
-            List of perspective names (both built-in and custom)
+            List of dicts with name, id (None for some built-ins), and
+            type ("built-in" or "custom") for each perspective.
         """
         script = '''
         tell application "OmniFocus"
             tell default document
-                get perspective names
+                set perspNames to perspective names
+                set jsonResult to "["
+                set isFirst to true
+
+                repeat with pName in perspNames
+                    if not isFirst then
+                        set jsonResult to jsonResult & ","
+                    end if
+                    set isFirst to false
+
+                    -- Try to look up as custom perspective for id/type
+                    set pId to missing value
+                    set pType to "built-in"
+                    try
+                        set matchingPerspective to first custom perspective whose name is (pName as text)
+                        set pId to id of matchingPerspective
+                        set pType to "custom"
+                    end try
+
+                    -- Escape name for JSON
+                    set nameText to ""
+                    repeat with charIdx from 1 to count of (pName as text)
+                        set charVal to character charIdx of (pName as text)
+                        if charVal is "\\"" then
+                            set nameText to nameText & "\\\\\\""
+                        else if charVal is "\\\\" then
+                            set nameText to nameText & "\\\\\\\\"
+                        else
+                            set nameText to nameText & charVal
+                        end if
+                    end repeat
+
+                    set jsonResult to jsonResult & "{"
+                    set jsonResult to jsonResult & "\\"name\\":\\"" & nameText & "\\""
+
+                    if pId is missing value then
+                        set jsonResult to jsonResult & ",\\"id\\":null"
+                    else
+                        set jsonResult to jsonResult & ",\\"id\\":\\"" & pId & "\\""
+                    end if
+
+                    set jsonResult to jsonResult & ",\\"type\\":\\"" & pType & "\\""
+                    set jsonResult to jsonResult & "}"
+                end repeat
+                set jsonResult to jsonResult & "]"
+                return jsonResult
             end tell
         end tell
         '''
 
         try:
             result = run_applescript(script)
-            # Result is comma-separated list like "Inbox, Projects, Tags, ..."
-            perspectives = [p.strip() for p in result.split(',') if p.strip()]
-            return perspectives
+            return json.loads(result)
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error retrieving perspectives: {e.stderr}")
 
@@ -4296,57 +4340,110 @@ class OmniFocusConnector:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error switching perspective: {e.stderr}")
 
-    def set_focus(self, item_id: str, item_type: str) -> dict:
-        """Set focus on a specific item in the OmniFocus window.
+    def set_focus(
+        self,
+        item_ids: Union[str, list[str]] = None,
+        item_types: Union[str, list[str]] = None,
+    ) -> dict:
+        """Set focus on one or more items, or clear focus.
 
-        OmniFocus only supports setting focus on projects and folders via AppleScript.
-        Attempting to focus on tasks or tags will raise a ValueError.
+        OmniFocus supports focusing on projects and folders only.
+        Call with no arguments (or empty lists) to clear focus.
 
         Args:
-            item_id: ID of the item to focus on
-            item_type: Type of item - must be "project" or "folder"
+            item_ids: Single ID or list of IDs to focus on. None or [] to clear.
+            item_types: Matching type(s) - each must be "project" or "folder".
 
         Returns:
-            dict with success status, item_id, and item_type
+            dict with success, action ("set" or "cleared"), and focused_items
 
         Raises:
-            ValueError: If item_type is not "project" or "folder"
+            ValueError: If types are invalid or lengths don't match
             Exception: If focus operation fails
         """
-        # Validate item_type
+        # Normalize to lists
+        if item_ids is None:
+            ids_list = []
+        elif isinstance(item_ids, str):
+            ids_list = [item_ids]
+        else:
+            ids_list = list(item_ids)
+
+        if item_types is None:
+            types_list = []
+        elif isinstance(item_types, str):
+            types_list = [item_types]
+        else:
+            types_list = list(item_types)
+
+        # Clear focus path
+        if not ids_list and not types_list:
+            script = '''
+            tell application "OmniFocus"
+                tell front document
+                    tell front document window
+                        set focus to {}
+                        return "CLEARED"
+                    end tell
+                end tell
+            end tell
+            '''
+            try:
+                run_applescript(script)
+                return {
+                    "success": True,
+                    "action": "cleared",
+                    "focused_items": [],
+                }
+            except subprocess.CalledProcessError as e:
+                raise Exception(f"Error clearing focus: {e.stderr}")
+
+        # Validate lengths match
+        if len(ids_list) != len(types_list):
+            raise ValueError(
+                f"item_ids and item_types must have the same length. "
+                f"Got {len(ids_list)} IDs and {len(types_list)} types."
+            )
+
+        # Validate each type
         valid_types = ["project", "folder"]
-        if item_type not in valid_types:
-            if item_type in ["task", "tag"]:
-                raise ValueError(
-                    f"OmniFocus only supports setting focus on projects and folders. "
-                    f"Cannot set focus on {item_type}s via AppleScript."
-                )
+        for item_type in types_list:
+            if item_type not in valid_types:
+                if item_type in ["task", "tag"]:
+                    raise ValueError(
+                        f"OmniFocus only supports setting focus on projects and folders. "
+                        f"Cannot set focus on {item_type}s via AppleScript."
+                    )
+                else:
+                    raise ValueError(
+                        f"item_type must be one of {valid_types}, got: {item_type}"
+                    )
+
+        # Build AppleScript to find each item and set focus
+        lookup_lines = []
+        for i, (item_id, item_type) in enumerate(zip(ids_list, types_list)):
+            id_escaped = self._escape_applescript_string(item_id)
+            if item_type == "project":
+                collection = f'flattened projects whose id is "{id_escaped}"'
             else:
-                raise ValueError(
-                    f"item_type must be one of {valid_types}, got: {item_type}"
-                )
+                collection = f'folders whose id is "{id_escaped}"'
+            lookup_lines.append(
+                f'set matchingItems{i} to {collection}\n'
+                f'                if (count of matchingItems{i}) = 0 then\n'
+                f'                    error "{item_type} with id {id_escaped} not found"\n'
+                f'                end if\n'
+                f'                set end of focusList to item 1 of matchingItems{i}'
+            )
 
-        # Escape quotes in item_id
-        item_id_escaped = item_id.replace('"', '\\"')
-
-        # Build AppleScript based on item type
-        # Note: AppleScript doesn't support "first ... whose" syntax reliably
-        # We need to get the list and access item 1
-        if item_type == "project":
-            collection = f'flattened projects whose id is "{item_id_escaped}"'
-        else:  # folder
-            collection = f'folders whose id is "{item_id_escaped}"'
+        lookups = "\n                ".join(lookup_lines)
 
         script = f'''
         tell application "OmniFocus"
             tell front document
-                set matchingItems to {collection}
-                if (count of matchingItems) = 0 then
-                    error "{item_type} with id {item_id_escaped} not found"
-                end if
-                set targetItem to item 1 of matchingItems
+                set focusList to {{}}
+                {lookups}
                 tell front document window
-                    set focus to targetItem
+                    set focus to focusList
                     return "SUCCESS"
                 end tell
             end tell
@@ -4355,10 +4452,79 @@ class OmniFocusConnector:
 
         try:
             run_applescript(script)
+            focused_items = [
+                {"id": item_id, "type": item_type}
+                for item_id, item_type in zip(ids_list, types_list)
+            ]
             return {
                 "success": True,
-                "item_id": item_id,
-                "item_type": item_type
+                "action": "set",
+                "focused_items": focused_items,
             }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error setting focus on {item_type}: {e.stderr}")
+            raise Exception(f"Error setting focus: {e.stderr}")
+
+    def get_focus(self) -> list[dict]:
+        """Get the currently focused items in the OmniFocus window.
+
+        Returns:
+            List of dicts with id, name, and type for each focused item.
+            Empty list when no focus is set.
+        """
+        script = '''
+        tell application "OmniFocus"
+            tell front document
+                tell front document window
+                    set focusItems to every item of focus
+                    set itemCount to count of focusItems
+                    if itemCount = 0 then
+                        return "[]"
+                    end if
+
+                    set jsonResult to "["
+                    set isFirst to true
+                    repeat with fi in focusItems
+                        if not isFirst then
+                            set jsonResult to jsonResult & ","
+                        end if
+                        set isFirst to false
+
+                        if class of fi is project then
+                            set fiType to "project"
+                        else
+                            set fiType to "folder"
+                        end if
+
+                        set fiName to name of fi as text
+                        set nameText to ""
+                        repeat with charIdx from 1 to count of fiName
+                            set charVal to character charIdx of fiName
+                            if charVal is "\\"" then
+                                set nameText to nameText & "\\\\\\""
+                            else if charVal is "\\\\" then
+                                set nameText to nameText & "\\\\\\\\"
+                            else
+                                set nameText to nameText & charVal
+                            end if
+                        end repeat
+
+                        set fiId to id of fi as text
+
+                        set jsonResult to jsonResult & "{"
+                        set jsonResult to jsonResult & "\\"id\\":\\"" & fiId & "\\""
+                        set jsonResult to jsonResult & ",\\"name\\":\\"" & nameText & "\\""
+                        set jsonResult to jsonResult & ",\\"type\\":\\"" & fiType & "\\""
+                        set jsonResult to jsonResult & "}"
+                    end repeat
+                    set jsonResult to jsonResult & "]"
+                    return jsonResult
+                end tell
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            return json.loads(result)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error getting focus: {e.stderr}")
