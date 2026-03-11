@@ -1130,22 +1130,26 @@ class TestGetPerspectives:
         """Create a client instance for testing."""
         return OmniFocusConnector(enable_safety_checks=False)
 
-    def test_get_perspectives_success(self, client):
-        """Test getting perspective names."""
-        perspectives_str = "Inbox, Projects, Tags, Forecast, Daily Worklist"
+    def test_get_perspectives_returns_dicts(self, client):
+        """Test that perspectives return list of dicts with name, id, type."""
+        json_result = '[{"name":"Inbox","id":null,"type":"built-in"},{"name":"Daily Worklist","id":"m3NLQ","type":"custom"}]'
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = perspectives_str
-            perspectives = client.get_perspectives()
-            assert len(perspectives) == 5
-            assert "Inbox" in perspectives
-            assert "Daily Worklist" in perspectives
-
-    def test_get_perspectives_empty(self, client):
-        """Test when no custom perspectives exist."""
-        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "Inbox, Projects"
+            mock_run.return_value = json_result
             perspectives = client.get_perspectives()
             assert len(perspectives) == 2
+            assert perspectives[0]["name"] == "Inbox"
+            assert perspectives[0]["id"] is None
+            assert perspectives[0]["type"] == "built-in"
+            assert perspectives[1]["name"] == "Daily Worklist"
+            assert perspectives[1]["id"] == "m3NLQ"
+            assert perspectives[1]["type"] == "custom"
+
+    def test_get_perspectives_empty(self, client):
+        """Test when no perspectives exist."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "[]"
+            perspectives = client.get_perspectives()
+            assert perspectives == []
 
     def test_get_perspectives_error(self, client):
         """Test handling of errors."""
@@ -1196,69 +1200,143 @@ class TestSetFocus:
         """Create a client instance for testing."""
         return OmniFocusConnector(enable_safety_checks=False)
 
-    def test_set_focus_on_project_success(self, client):
-        """Test successfully setting focus on a project."""
+    def test_set_focus_single_project(self, client):
+        """Test focusing on a single project (string normalizes to list)."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "SUCCESS"
-            result = client.set_focus(item_id="proj-123", item_type="project")
-            assert result == {"success": True, "item_id": "proj-123", "item_type": "project"}
-            mock_run.assert_called_once()
-            # Verify the AppleScript contains the correct ID and uses flattened projects
+            result = client.set_focus(item_ids="proj-123", item_types="project")
+            assert result["success"] is True
+            assert result["action"] == "set"
+            assert result["focused_items"] == [{"id": "proj-123", "type": "project"}]
             call_args = mock_run.call_args[0][0]
             assert 'proj-123' in call_args
             assert 'flattened project' in call_args
             assert 'set focus to' in call_args
 
-    def test_set_focus_on_folder_success(self, client):
-        """Test successfully setting focus on a folder."""
+    def test_set_focus_single_folder(self, client):
+        """Test focusing on a single folder."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "SUCCESS"
-            result = client.set_focus(item_id="folder-456", item_type="folder")
-            assert result == {"success": True, "item_id": "folder-456", "item_type": "folder"}
-            mock_run.assert_called_once()
-            # Verify the AppleScript contains the correct ID and uses folders collection
+            result = client.set_focus(item_ids="folder-456", item_types="folder")
+            assert result["success"] is True
+            assert result["action"] == "set"
+            assert result["focused_items"] == [{"id": "folder-456", "type": "folder"}]
             call_args = mock_run.call_args[0][0]
-            assert 'folder-456' in call_args
-            assert 'folders whose id' in call_args  # Collection pattern (not "folder whose id")
-            assert 'set focus to' in call_args
+            assert 'folders whose id' in call_args
 
-    def test_set_focus_on_task_raises_error(self, client):
-        """Test that setting focus on a task raises a clear error."""
+    def test_set_focus_multiple_items(self, client):
+        """Test focusing on multiple items."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "SUCCESS"
+            result = client.set_focus(
+                item_ids=["proj-1", "folder-2"],
+                item_types=["project", "folder"],
+            )
+            assert result["success"] is True
+            assert result["action"] == "set"
+            assert len(result["focused_items"]) == 2
+            assert result["focused_items"][0] == {"id": "proj-1", "type": "project"}
+            assert result["focused_items"][1] == {"id": "folder-2", "type": "folder"}
+            call_args = mock_run.call_args[0][0]
+            assert 'proj-1' in call_args
+            assert 'folder-2' in call_args
+            assert 'focusList' in call_args
+
+    def test_set_focus_clear_no_args(self, client):
+        """Test clearing focus with no arguments."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "CLEARED"
+            result = client.set_focus()
+            assert result["success"] is True
+            assert result["action"] == "cleared"
+            assert result["focused_items"] == []
+            call_args = mock_run.call_args[0][0]
+            assert 'set focus to {}' in call_args
+
+    def test_set_focus_clear_empty_lists(self, client):
+        """Test clearing focus with empty lists."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "CLEARED"
+            result = client.set_focus(item_ids=[], item_types=[])
+            assert result["action"] == "cleared"
+
+    def test_set_focus_mismatched_lengths(self, client):
+        """Test that mismatched ID/type lengths raise ValueError."""
         with pytest.raises(ValueError) as exc_info:
-            client.set_focus(item_id="task-789", item_type="task")
+            client.set_focus(item_ids=["a", "b"], item_types=["project"])
+        assert "same length" in str(exc_info.value)
+
+    def test_set_focus_invalid_type_task(self, client):
+        """Test that task type raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            client.set_focus(item_ids="task-1", item_types="task")
         assert "OmniFocus only supports setting focus on projects and folders" in str(exc_info.value)
-        assert "task" in str(exc_info.value).lower()
 
-    def test_set_focus_on_tag_raises_error(self, client):
-        """Test that setting focus on a tag raises a clear error."""
+    def test_set_focus_invalid_type_unknown(self, client):
+        """Test that unknown types raise ValueError."""
         with pytest.raises(ValueError) as exc_info:
-            client.set_focus(item_id="tag-999", item_type="tag")
-        assert "OmniFocus only supports setting focus on projects and folders" in str(exc_info.value)
-        assert "tag" in str(exc_info.value).lower()
-
-    def test_set_focus_invalid_item_type(self, client):
-        """Test that invalid item types raise an error."""
-        with pytest.raises(ValueError) as exc_info:
-            client.set_focus(item_id="item-123", item_type="invalid")
+            client.set_focus(item_ids="x", item_types="invalid")
         assert "item_type must be" in str(exc_info.value)
 
     def test_set_focus_applescript_error(self, client):
         """Test handling of AppleScript errors."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="item not found")
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="not found")
             with pytest.raises(Exception) as exc_info:
-                client.set_focus(item_id="proj-nonexistent", item_type="project")
+                client.set_focus(item_ids="proj-bad", item_types="project")
             assert "Error setting focus" in str(exc_info.value)
 
-    def test_set_focus_with_special_characters_in_id(self, client):
+    def test_set_focus_escapes_special_characters(self, client):
         """Test that IDs with special characters are properly escaped."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "SUCCESS"
-            # Test with ID containing characters that might need escaping
-            result = client.set_focus(item_id="proj-test'123", item_type="project")
+            result = client.set_focus(item_ids='proj-"test', item_types="project")
             assert result["success"] is True
-            # Verify the script was called (escaping happens inside the implementation)
-            mock_run.assert_called_once()
+            call_args = mock_run.call_args[0][0]
+            assert '\\"' in call_args
+
+
+class TestGetFocus:
+    """Tests for get_focus method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_get_focus_with_items(self, client):
+        """Test reading focus with items focused."""
+        json_result = '[{"id":"proj-1","name":"My Project","type":"project"}]'
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = json_result
+            result = client.get_focus()
+            assert len(result) == 1
+            assert result[0]["id"] == "proj-1"
+            assert result[0]["name"] == "My Project"
+            assert result[0]["type"] == "project"
+
+    def test_get_focus_multiple_items(self, client):
+        """Test reading focus with multiple items."""
+        json_result = '[{"id":"proj-1","name":"Proj","type":"project"},{"id":"fold-2","name":"Fold","type":"folder"}]'
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = json_result
+            result = client.get_focus()
+            assert len(result) == 2
+
+    def test_get_focus_empty(self, client):
+        """Test reading focus when no focus is set."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "[]"
+            result = client.get_focus()
+            assert result == []
+
+    def test_get_focus_error(self, client):
+        """Test handling of AppleScript errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
+            with pytest.raises(Exception) as exc_info:
+                client.get_focus()
+            assert "Error getting focus" in str(exc_info.value)
 
 
 

@@ -17,6 +17,8 @@ get_folders = server.get_folders
 create_folder = server.create_folder
 get_perspectives = server.get_perspectives
 switch_perspective = server.switch_perspective
+set_focus = server.set_focus
+get_focus = server.get_focus
 delete_tasks = server.delete_tasks
 delete_projects = server.delete_projects
 
@@ -341,8 +343,12 @@ class TestPerspectiveTools:
     """Tests for perspective tools."""
 
     def test_get_perspectives_success(self):
-        """Test get_perspectives with results."""
-        mock_perspectives = ["Inbox", "Projects", "Daily Worklist"]
+        """Test get_perspectives with structured dict results."""
+        mock_perspectives = [
+            {"name": "Inbox", "id": None, "type": "built-in"},
+            {"name": "Projects", "id": None, "type": "built-in"},
+            {"name": "Daily Worklist", "id": "abc123", "type": "custom"},
+        ]
 
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
@@ -353,7 +359,37 @@ class TestPerspectiveTools:
 
             assert "Found 3 perspectives" in result
             assert "Inbox" in result
+            assert "built-in" in result
             assert "Daily Worklist" in result
+            assert "custom" in result
+            assert "abc123" in result
+
+    def test_get_perspectives_builtin_no_id(self):
+        """Test built-in perspectives don't show ID."""
+        mock_perspectives = [
+            {"name": "Inbox", "id": None, "type": "built-in"},
+        ]
+
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_perspectives.return_value = mock_perspectives
+            mock_get_client.return_value = mock_client
+
+            result = get_perspectives()
+
+            assert "Inbox (built-in)" in result
+            assert "ID:" not in result
+
+    def test_get_perspectives_empty(self):
+        """Test get_perspectives with no results."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_perspectives.return_value = []
+            mock_get_client.return_value = mock_client
+
+            result = get_perspectives()
+
+            assert "Found 0 perspectives" in result
 
     def test_switch_perspective_success(self):
         """Test switch_perspective with success."""
@@ -365,6 +401,123 @@ class TestPerspectiveTools:
             result = switch_perspective("Daily Worklist")
 
             assert "Successfully switched to perspective: Daily Worklist" in result
+
+
+class TestFocusTools:
+    """Tests for focus tools."""
+
+    def test_set_focus_single_item(self):
+        """Test setting focus on a single project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_focus.return_value = {
+                "success": True,
+                "action": "set",
+                "focused_items": [{"id": "proj-1", "type": "project"}],
+            }
+            mock_get_client.return_value = mock_client
+
+            result = set_focus(item_ids="proj-1", item_types="project")
+
+            assert "Focus set on 1 item(s)" in result
+            assert "project proj-1" in result
+
+    def test_set_focus_multiple_items(self):
+        """Test setting focus on multiple items."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_focus.return_value = {
+                "success": True,
+                "action": "set",
+                "focused_items": [
+                    {"id": "proj-1", "type": "project"},
+                    {"id": "fold-1", "type": "folder"},
+                ],
+            }
+            mock_get_client.return_value = mock_client
+
+            result = set_focus(
+                item_ids=["proj-1", "fold-1"],
+                item_types=["project", "folder"],
+            )
+
+            assert "Focus set on 2 item(s)" in result
+
+    def test_set_focus_clear(self):
+        """Test clearing focus."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_focus.return_value = {
+                "success": True,
+                "action": "cleared",
+                "focused_items": [],
+            }
+            mock_get_client.return_value = mock_client
+
+            result = set_focus()
+
+            assert "Focus cleared" in result
+
+    def test_set_focus_invalid_type(self):
+        """Test set_focus with invalid type returns error."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_focus.side_effect = ValueError(
+                "Invalid item_type 'task'. Must be 'project' or 'folder'."
+            )
+            mock_get_client.return_value = mock_client
+
+            result = set_focus(item_ids="task-1", item_types="task")
+
+            assert "Invalid input" in result
+
+    def test_set_focus_error(self):
+        """Test set_focus with AppleScript error."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.set_focus.side_effect = Exception("AppleScript error")
+            mock_get_client.return_value = mock_client
+
+            result = set_focus(item_ids="proj-1", item_types="project")
+
+            assert "Error setting focus" in result
+
+    def test_get_focus_with_items(self):
+        """Test get_focus when items are focused."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_focus.return_value = [
+                {"id": "proj-1", "name": "My Project", "type": "project"},
+            ]
+            mock_get_client.return_value = mock_client
+
+            result = get_focus()
+
+            assert "Currently focused on 1 item(s)" in result
+            assert "My Project" in result
+            assert "project" in result
+
+    def test_get_focus_empty(self):
+        """Test get_focus when no focus is set."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_focus.return_value = []
+            mock_get_client.return_value = mock_client
+
+            result = get_focus()
+
+            assert "No focus set" in result
+
+    def test_get_focus_error(self):
+        """Test get_focus with error."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_focus.side_effect = Exception("Window error")
+            mock_get_client.return_value = mock_client
+
+            result = get_focus()
+
+            assert "Error getting focus" in result
 
 
 class TestTagTools:

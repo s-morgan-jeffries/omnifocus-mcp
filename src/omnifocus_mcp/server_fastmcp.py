@@ -1159,10 +1159,10 @@ def reorder_task(task_id: str, before_task_id: Optional[str] = None, after_task_
 
 @mcp.tool()
 def get_perspectives() -> str:
-    """Get all perspective names from OmniFocus.
+    """Get all perspectives from OmniFocus with type and ID information.
 
     Returns:
-        Formatted list of all perspective names (one per line)
+        Formatted list of perspectives with name, type (built-in/custom), and ID
     """
     client = get_client()
     perspectives = client.get_perspectives()
@@ -1171,8 +1171,13 @@ def get_perspectives() -> str:
         return "Found 0 perspectives"
 
     result = f"Found {len(perspectives)} perspectives:\n\n"
-    for perspective in perspectives:
-        result += f"- {perspective}\n"
+    for p in perspectives:
+        parts = [p["name"]]
+        parts.append(p.get("type", "unknown"))
+        pid = p.get("id")
+        if pid:
+            parts.append(f"ID: {pid}")
+        result += f"- {parts[0]} ({', '.join(parts[1:])})\n"
 
     return result
 
@@ -1196,30 +1201,57 @@ def switch_perspective(perspective_name: str) -> str:
 
 
 @mcp.tool()
-def set_focus(item_id: str, item_type: str) -> str:
-    """Set focus on a specific item in the OmniFocus window.
+def set_focus(
+    item_ids: str | list[str] = None,
+    item_types: str | list[str] = None,
+) -> str:
+    """Set focus on one or more items, or clear focus.
 
-    OmniFocus only supports setting focus on projects and folders via AppleScript.
-    Tasks and tags cannot be focused directly.
+    OmniFocus supports focusing on projects and folders only.
+    Call with no arguments (or empty lists) to clear focus.
 
     Args:
-        item_id: ID of the item to focus on
-        item_type: Type of item - must be "project" or "folder"
+        item_ids: Single ID or list of IDs to focus on. Omit or pass empty to clear.
+        item_types: Matching type(s) - each must be "project" or "folder".
 
     Returns:
-        Success message confirming focus change
-
-    Raises:
-        ValueError: If item_type is not "project" or "folder"
+        Success message confirming focus set or cleared
     """
     client = get_client()
     try:
-        client.set_focus(item_id=item_id, item_type=item_type)
-        return f"Successfully set focus on {item_type}: {item_id}"
+        result = client.set_focus(item_ids=item_ids, item_types=item_types)
+        action = result.get("action", "unknown")
+        if action == "cleared":
+            return "Focus cleared."
+        focused = result.get("focused_items", [])
+        items_desc = ", ".join(
+            f"{item['type']} {item['id']}" for item in focused
+        )
+        return f"Focus set on {len(focused)} item(s): {items_desc}"
     except ValueError as e:
-        return f"Invalid item type: {str(e)}"
+        return f"Invalid input: {str(e)}"
     except Exception as e:
         return f"Error setting focus: {str(e)}"
+
+
+@mcp.tool()
+def get_focus() -> str:
+    """Get the currently focused items in OmniFocus.
+
+    Returns:
+        Formatted list of currently focused items, or a message if no focus is set
+    """
+    client = get_client()
+    try:
+        items = client.get_focus()
+        if not items:
+            return "No focus set."
+        result = f"Currently focused on {len(items)} item(s):\n\n"
+        for item in items:
+            result += f"- {item['name']} ({item['type']}, ID: {item['id']})\n"
+        return result
+    except Exception as e:
+        return f"Error getting focus: {str(e)}"
 
 
 # ============================================================================
