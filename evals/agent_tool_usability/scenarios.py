@@ -1,0 +1,401 @@
+"""Blind agent eval scenarios for OmniFocus MCP tool usability.
+
+Each scenario tests whether an agent can correctly plan tool calls
+based ONLY on tool descriptions (no codebase, no external knowledge).
+"""
+
+SCENARIOS = [
+    # =========================================================================
+    # Category 1: Core OmniFocus Concepts
+    # =========================================================================
+    {
+        "id": 1,
+        "category": "Core OF Concepts",
+        "name": "Defer vs Due Date",
+        "prompt": (
+            "I need to call the dentist, but not until next Monday March 16. "
+            "The appointment itself is next Friday March 20."
+        ),
+        "expected": {
+            "tools": ["create_task"],
+            "key_params": {
+                "create_task": {
+                    "task_name": "Call the dentist",
+                    "defer_date": "2026-03-16",
+                    "due_date": "2026-03-20",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: defer_date=Monday (hidden until then), due_date=Friday (deadline). "
+            "FAIL: due_date=Monday (confuses 'not until' with deadline). "
+            "FAIL: Only sets one date."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 2,
+        "category": "Core OF Concepts",
+        "name": "Sequential Project with Dependencies",
+        "prompt": (
+            "Create a project called 'Kitchen Renovation' where tasks must be done in order: "
+            "get quotes, pick contractor, sign contract, demolition, installation."
+        ),
+        "expected": {
+            "tools": ["create_project", "create_task", "create_task", "create_task", "create_task", "create_task"],
+            "key_params": {
+                "create_project": {"name": "Kitchen Renovation", "sequential": True},
+                "create_task": {"project_id": "<returned_id>"},
+            },
+        },
+        "scoring_notes": (
+            "PASS: sequential=True, tasks created in specified order, uses returned project ID. "
+            "PARTIAL: sequential=True but doesn't mention task order matters. "
+            "FAIL: sequential=False or tries to set explicit dependencies."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 3,
+        "category": "Core OF Concepts",
+        "name": "Available Tasks",
+        "prompt": "Show me only the tasks I can actually work on right now.",
+        "expected": {
+            "tools": ["get_tasks"],
+            "key_params": {"get_tasks": {"available_only": True}},
+        },
+        "scoring_notes": (
+            "PASS: get_tasks(available_only=True). "
+            "PARTIAL: Combines multiple filters to approximate 'available'. "
+            "FAIL: No filter or wrong filter."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 4,
+        "category": "Core OF Concepts",
+        "name": "Flagged Semantics",
+        "prompt": (
+            "I want to focus on these 3 tasks today: task-001, task-002, task-003."
+        ),
+        "expected": {
+            "tools": ["update_tasks"],
+            "key_params": {
+                "update_tasks": {
+                    "task_ids": ["task-001", "task-002", "task-003"],
+                    "flagged": True,
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_tasks with flagged=True, correct task IDs as list. "
+            "PARTIAL: Uses update_task 3x instead of batch. "
+            "FAIL: Uses set_focus (focus is for projects/folders, not tasks)."
+        ),
+        "safety_critical": False,
+    },
+
+    # =========================================================================
+    # Category 2: Tool Selection
+    # =========================================================================
+    {
+        "id": 5,
+        "category": "Tool Selection",
+        "name": "Single vs Batch Boundary",
+        "prompt": (
+            "Rename task task-123 to 'Buy groceries' and also flag tasks task-456 and task-789."
+        ),
+        "expected": {
+            "tools": ["update_task", "update_tasks"],
+            "key_params": {
+                "update_task": {"task_id": "task-123", "task_name": "Buy groceries"},
+                "update_tasks": {"task_ids": ["task-456", "task-789"], "flagged": True},
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_task for rename (single), update_tasks for flag (batch). "
+            "PARTIAL: Uses update_task 3x (works but misses batch). "
+            "FAIL: Tries to use update_tasks for rename (it doesn't accept task_name)."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 6,
+        "category": "Tool Selection",
+        "name": "Move Task via update_task",
+        "prompt": "Move task task-100 from my inbox to the 'Home Repairs' project (proj-200).",
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {"task_id": "task-100", "project_id": "proj-200"}
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_task(task_id='task-100', project_id='proj-200'). "
+            "FAIL: Looks for a move_task tool or tries delete+create."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 7,
+        "category": "Tool Selection",
+        "name": "Drop vs Delete (SAFETY)",
+        "prompt": (
+            "I'm not going to do the 'Learn Mandarin' project (proj-888) anymore, "
+            "but I want to keep it in my records."
+        ),
+        "expected": {
+            "tools": ["update_project"],
+            "key_params": {
+                "update_project": {"project_id": "proj-888", "status": "dropped"}
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_project(status='dropped'). "
+            "FAIL: delete_projects (permanent deletion, user wants to keep records). "
+            "FAIL: status='done' (project wasn't completed, it was abandoned)."
+        ),
+        "safety_critical": True,
+    },
+    {
+        "id": 8,
+        "category": "Tool Selection",
+        "name": "Reorder for Dependencies",
+        "prompt": (
+            "In my sequential project, task-B needs to happen before task-A. "
+            "Currently task-A is first."
+        ),
+        "expected": {
+            "tools": ["reorder_task"],
+            "key_params": {
+                "reorder_task": {"task_id": "task-B", "before_task_id": "task-A"}
+            },
+        },
+        "scoring_notes": (
+            "PASS: reorder_task(task_id='task-B', before_task_id='task-A'). "
+            "PARTIAL: Correct tool but swapped parameters. "
+            "FAIL: Tries to set explicit dependencies or uses wrong tool."
+        ),
+        "safety_critical": False,
+    },
+
+    # =========================================================================
+    # Category 3: Parameter Usage
+    # =========================================================================
+    {
+        "id": 9,
+        "category": "Parameter Usage",
+        "name": "Tags JSON String vs Native List",
+        "prompt": (
+            "Create a task 'Review PR' with tags Computer and Work, "
+            "then add the tag 'Urgent' to existing task task-555."
+        ),
+        "expected": {
+            "tools": ["create_task", "update_task"],
+            "key_params": {
+                "create_task": {"task_name": "Review PR", "tags": '["Computer", "Work"]'},
+                "update_task": {"task_id": "task-555", "add_tags": ["Urgent"]},
+            },
+        },
+        "scoring_notes": (
+            "PASS: create_task tags as JSON string, update_task add_tags as native list. "
+            "PARTIAL: Correct tools but wrong tag format (e.g., native list for create_task). "
+            "FAIL: Uses 'tags' instead of 'add_tags' on update (would replace all tags)."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 10,
+        "category": "Parameter Usage",
+        "name": "Clear a Date",
+        "prompt": "Remove the due date from task task-300.",
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {"update_task": {"task_id": "task-300", "due_date": ""}},
+        },
+        "scoring_notes": (
+            "PASS: update_task(due_date=''). Empty string to clear. "
+            "PARTIAL: update_task(due_date=None) — omitting means no change per docs. "
+            "FAIL: Tries to delete/recreate the task or uses a non-existent clear function."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 11,
+        "category": "Parameter Usage",
+        "name": "Mutual Exclusivity",
+        "prompt": (
+            "Create a subtask 'Buy nails' under task task-400 in project proj-500."
+        ),
+        "expected": {
+            "tools": ["create_task"],
+            "key_params": {
+                "create_task": {
+                    "task_name": "Buy nails",
+                    "parent_task_id": "task-400",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: create_task(parent_task_id='task-400') — only parent_task_id, NOT project_id. "
+            "Notes that subtask inherits parent's project. "
+            "FAIL: Passes both project_id and parent_task_id (mutually exclusive)."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 12,
+        "category": "Parameter Usage",
+        "name": "Tag Filter AND Semantics",
+        "prompt": "Show me all tasks tagged with both 'Errands' and 'Weekend'.",
+        "expected": {
+            "tools": ["get_tasks"],
+            "key_params": {
+                "get_tasks": {"tag_filter": ["Errands", "Weekend"]}
+            },
+        },
+        "scoring_notes": (
+            "PASS: get_tasks(tag_filter=['Errands', 'Weekend']). "
+            "PARTIAL: Two separate queries, one per tag. "
+            "FAIL: Wrong parameter or uses query instead of tag_filter."
+        ),
+        "safety_critical": False,
+    },
+
+    # =========================================================================
+    # Category 4: Multi-Step Workflows
+    # =========================================================================
+    {
+        "id": 13,
+        "category": "Multi-Step Workflows",
+        "name": "Daily Planning",
+        "prompt": "Help me plan my day. What should I focus on?",
+        "expected": {
+            "tools": ["get_tasks", "get_tasks", "get_tasks", "get_tasks"],
+            "key_params": {
+                "query_1": {"overdue": True},
+                "query_2": {"flagged_only": True},
+                "query_3": {"inbox_only": True},
+                "query_4": {"next_only": True},
+            },
+        },
+        "scoring_notes": (
+            "PASS: Follows the PLANNING PATTERN from server instructions — 4 queries "
+            "(overdue, flagged+available, inbox, next). "
+            "PARTIAL: Gets 2-3 of the 4 queries. "
+            "FAIL: Single get_tasks() with no filters, or completely wrong approach."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 14,
+        "category": "Multi-Step Workflows",
+        "name": "Project Creation with Phases",
+        "prompt": (
+            "Set up a 'Website Redesign' project under the 'Work' folder. "
+            "It's sequential. Add these tasks in order: wireframes, design mockups, "
+            "frontend build, backend API, QA testing, launch. "
+            "Tag all tasks with 'Web Team'. Set review every 2 weeks."
+        ),
+        "expected": {
+            "tools": ["create_project"] + ["create_task"] * 6,
+            "key_params": {
+                "create_project": {
+                    "name": "Website Redesign",
+                    "folder_path": "Work",
+                    "sequential": True,
+                    "review_interval_weeks": 2,
+                },
+                "create_task": {
+                    "project_id": "<returned_id>",
+                    "tags": '["Web Team"]',
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: create_project with all params, 6x create_task in order with tags as JSON string, "
+            "uses returned project ID. "
+            "PARTIAL: Missing some params (e.g., no review_interval_weeks) or wrong tag format. "
+            "FAIL: Parallel project or wrong task order."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 15,
+        "category": "Multi-Step Workflows",
+        "name": "Project Review",
+        "prompt": "Which of my projects are overdue for review?",
+        "expected": {
+            "tools": ["get_projects"],
+            "key_params": {"get_projects": {}},
+        },
+        "scoring_notes": (
+            "PASS: get_projects() then explains need to check last_reviewed + review_interval_weeks. "
+            "Recognizes there's no direct 'overdue for review' filter. "
+            "PARTIAL: Calls get_projects but doesn't mention review fields. "
+            "FAIL: Looks for a non-existent review-specific tool."
+        ),
+        "safety_critical": False,
+    },
+
+    # =========================================================================
+    # Category 5: Edge Cases
+    # =========================================================================
+    {
+        "id": 16,
+        "category": "Edge Cases",
+        "name": "Done vs Dropped (SAFETY)",
+        "prompt": (
+            "I finished the 'Q1 Report' project (proj-777) — all tasks are done."
+        ),
+        "expected": {
+            "tools": ["update_project"],
+            "key_params": {
+                "update_project": {"project_id": "proj-777", "status": "done"}
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_project(status='done'). "
+            "FAIL: status='dropped' (dropped = abandoned, not completed). "
+            "FAIL: delete_projects (user completed it, didn't want it removed)."
+        ),
+        "safety_critical": True,
+    },
+    {
+        "id": 17,
+        "category": "Edge Cases",
+        "name": "Focus Limitations",
+        "prompt": "Focus on just task task-999 so I only see that one thing.",
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Recognizes set_focus only works on projects and folders, NOT tasks. "
+            "Suggests alternative (e.g., flag the task, or focus on the task's project). "
+            "FAIL: Calls set_focus with a task ID (will error). "
+            "FAIL: Doesn't mention the limitation."
+        ),
+        "safety_critical": True,
+    },
+    {
+        "id": 18,
+        "category": "Edge Cases",
+        "name": "Inbox Completion",
+        "prompt": "Complete all tasks in my inbox.",
+        "expected": {
+            "tools": ["get_tasks", "update_tasks"],
+            "key_params": {
+                "get_tasks": {"inbox_only": True},
+                "update_tasks": {"completed": True},
+            },
+        },
+        "scoring_notes": (
+            "PASS: get_tasks(inbox_only=True) then update_tasks(task_ids=[...], completed=True). "
+            "Bonus: Notes that completing unprocessed inbox items bypasses GTD 'process' step. "
+            "PARTIAL: Correct approach but uses update_task per-task instead of batch. "
+            "FAIL: Wrong tool or tries to delete inbox tasks."
+        ),
+        "safety_critical": False,
+    },
+]
