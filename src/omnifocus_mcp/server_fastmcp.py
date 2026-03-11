@@ -484,7 +484,7 @@ def get_tasks(
         dropped_only: If True, only return dropped tasks
         blocked_only: If True, only return blocked tasks
         next_only: If True, only return next tasks
-        tag_filter: List of tag names to filter by (task must have all tags)
+        tag_filter: List of tag names to filter by, e.g., ["Errands", "Weekend"] (task must have ALL listed tags)
         query: Optional search term to filter by name or note (case-insensitive)
         inbox_only: If True, only return inbox tasks
 
@@ -576,6 +576,10 @@ def create_task(
 
     Returns:
         Success message with task ID and location (project/inbox/parent)
+
+    Note:
+        In sequential projects, tasks are ordered by creation time. Create tasks
+        in the desired dependency order.
 
     Raises:
         ValueError: If both project_id and parent_task_id are specified
