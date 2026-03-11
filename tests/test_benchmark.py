@@ -179,6 +179,20 @@ class TestReadBenchmarks:
         """get_tasks() with next_only filter."""
         _benchmark("get_tasks (next)", lambda: client.get_tasks(next_only=True))
 
+    def test_get_tasks_tag_filter(self, client):
+        """get_tasks() with tag_filter — tag-side pre-filter path (#249)."""
+        _benchmark(
+            "get_tasks (tag_filter='bench-work')",
+            lambda: client.get_tasks(tag_filter=["bench-work"]),
+        )
+
+    def test_get_tasks_tag_filter_and(self, client):
+        """get_tasks() with tag_filter AND mode — intersection of two tags."""
+        _benchmark(
+            "get_tasks (tag_filter AND)",
+            lambda: client.get_tasks(tag_filter=["bench-work", "bench-urgent"]),
+        )
+
     def test_get_projects_all(self, client):
         """get_projects() baseline."""
         _benchmark("get_projects (all)", lambda: client.get_projects())
@@ -512,6 +526,8 @@ class TestParameterVariations:
             ("next_only", {"next_only": True}),
             ("available_only", {"available_only": True}),
             ("query='bench'", {"query": "bench"}),
+            ("tag_filter", {"tag_filter": ["bench-work"]}),
+            ("tag_filter AND", {"tag_filter": ["bench-work", "bench-urgent"]}),
         ]
         print("\n  get_tasks() filter impact:")
         results = {}
