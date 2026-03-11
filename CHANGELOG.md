@@ -5,6 +5,52 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2026-03-11
+
+### Added
+
+- **Full tag CRUD** (#226, #230, #231, #232, #233)
+  - `create_tag` — create tags with optional parent nesting
+  - `update_tag` — rename tags or set active/on-hold status
+  - `delete_tags` — delete one or more tags (batch, with safety warnings)
+
+- **Enhanced focus and perspectives** (#242, #243)
+  - `set_focus` now supports multi-item focus (multiple projects/folders) and clear
+  - `get_focus` — new tool to query currently focused items
+  - `get_perspectives` now returns structured dicts with name, type (built-in/custom), and ID
+
+- **Blind agent eval for tool usability** (#227, #244)
+  - 18 scenarios across 5 categories testing whether agents can use tools from descriptions alone
+  - Scored 36/36 (100%) after two docstring fixes, 0 critical safety failures
+  - Eval framework in `evals/agent_tool_usability/`
+
+- **Dependency and AppleScript safety audits** (#52, #54, #234)
+  - `check_dependencies.sh` — pip-audit vulnerability scanning
+  - `check_applescript_safety.sh` — detects unsafe variable naming patterns in AppleScript
+
+### Changed
+
+- **Enriched tool descriptions and server instructions** (#228, #229)
+  - Added GTD concept documentation to server instructions block
+  - Expanded all 21 tool docstrings with examples, format notes, and safety warnings
+  - Added `tag_filter` example format and `create_task` sequential ordering note
+
+### Documentation
+
+- **Perspective and focus automation docs** (#235, #238, #240, #241)
+  - Documented OmniFocus perspective automation capabilities and limitations
+  - Documented focus automation: multi-item, clear, get_focus patterns
+
+- **Testing requirements codified** (#236, #237)
+  - Four-tier testing policy documented in CLAUDE.md
+  - Added tag CRUD integration tests (6 tests in `TestTagCRUD`)
+
+### Fixed
+
+- **Release workflow** (#225)
+  - Tags now created on main after PR merge (not on release branch before merge)
+  - Prevents orphaned tags from squash/rebase merge SHA changes
+
 ## [0.8.2] - 2026-03-10
 
 ### Fixed

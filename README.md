@@ -6,7 +6,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **17 comprehensive tools** for managing OmniFocus (v0.8.2 API):
+This server provides **21 comprehensive tools** for managing OmniFocus (v0.8.3 API):
 
 ### Project Management (5 tools)
 - **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
@@ -27,17 +27,22 @@ This server provides **17 comprehensive tools** for managing OmniFocus (v0.8.2 A
 - **get_folders** - Get all folders with hierarchy
 - **create_folder** - Create folders with optional parent folder
 
-### Tags (1 tool)
+### Tags (4 tools)
 - **get_tags** - Get all available tags
+- **create_tag** - Create new tags with optional parent nesting
+- **update_tag** - Update tag name or active status
+- **delete_tags** - Delete one or multiple tags
 
 ### Perspectives (2 tools - OmniFocus Pro)
-- **get_perspectives** - List all custom perspectives
+- **get_perspectives** - List all perspectives with type and ID information
 - **switch_perspective** - Switch to a different perspective view
 
-### UI Navigation (1 tool)
-- **set_focus** - Focus on specific projects, folders, or tags in the OmniFocus UI
+### UI Navigation (2 tools)
+- **set_focus** - Focus on one or more projects/folders, or clear focus
+- **get_focus** - Get the currently focused items
 
-**Key Changes in v0.8.2:**
+**Key Changes in v0.8.3:**
+- v0.8.3: Enhanced focus (multi-item, get_focus), enriched perspectives, tag CRUD, blind agent eval (36/36), docstring improvements
 - v0.8.2: AppleScript injection hardening, consistent server error handling, dead code removal, complexity refactoring
 - v0.8.1: 35x get_projects() performance optimization via batch AppleScript reads, tag filtering fix, integration test infrastructure improvements
 - v0.7.3: Performance benchmarks, release workflow automation, scripts audit, project review optimizations (task health, opt-in lastActivityDate, AppleScript query filter)
@@ -70,7 +75,7 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 
 # Checkout latest stable release
-git checkout v0.8.2  # Or latest version from releases
+git checkout v0.8.3  # Or latest version from releases
 
 # Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
