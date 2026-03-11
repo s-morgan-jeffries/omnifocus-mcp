@@ -1222,6 +1222,16 @@ class TestGetPerspectives:
                 client.get_perspectives()
             assert "Error retrieving perspectives" in str(exc_info.value)
 
+    def test_get_perspectives_uses_every_perspective_for_type_detection(self, client):
+        """Type detection should use 'every perspective' lookup, not 'first custom perspective'."""
+        json_result = '[{"name":"Inbox","id":null,"type":"built-in"}]'
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = json_result
+            client.get_perspectives()
+            script = mock_run.call_args[0][0]
+            assert "every perspective" in script
+            assert "first custom perspective" not in script
+
 
 class TestSwitchPerspective:
     """Tests for switch_perspective method."""
@@ -1858,3 +1868,21 @@ class TestIdEscapingInMethods:
             script = mock_run.call_args[0][0]
             assert 't\\"1' in script
             assert 't\\"2' in script
+
+
+class TestGetTags:
+    """Tests for get_tags method."""
+
+    @pytest.fixture
+    def client(self):
+        """Create a client instance for testing."""
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_get_tags_reads_actual_status(self, client):
+        """AppleScript should read 'allows next action' to determine tag status."""
+        json_result = '[{"id":"abc","name":"Work","status":"active"}]'
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = json_result
+            client.get_tags()
+            script = mock_run.call_args[0][0]
+            assert "allows next action" in script

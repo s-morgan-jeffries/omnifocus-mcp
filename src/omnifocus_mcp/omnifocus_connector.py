@@ -3716,7 +3716,12 @@ class OmniFocusConnector:
                     try
                         set tagId to id of t
                         set tagName to name of t
-                        set tagStatus to "active"
+                        set tagAllows to allows next action of t
+                        if tagAllows then
+                            set tagStatus to "active"
+                        else
+                            set tagStatus to "on hold"
+                        end if
 
                         -- Build JSON manually
                         set jsonLine to "{" & ¬
@@ -4352,8 +4357,38 @@ class OmniFocusConnector:
             type ("built-in" or "custom") for each perspective.
         """
         script = '''
+        on escapeJSON(theText)
+            set resultText to ""
+            repeat with i from 1 to count of theText
+                set c to character i of theText
+                if c is "\\"" then
+                    set resultText to resultText & "\\\\\\""
+                else if c is "\\\\" then
+                    set resultText to resultText & "\\\\\\\\"
+                else
+                    set resultText to resultText & c
+                end if
+            end repeat
+            return resultText
+        end escapeJSON
+
         tell application "OmniFocus"
             tell default document
+                -- Build lookup of custom perspective names and IDs
+                -- Built-in perspectives error on name/id access, so we
+                -- catch errors to identify them.
+                set customNames to {}
+                set customIds to {}
+                repeat with p in every perspective
+                    try
+                        set pName to name of p
+                        set pId to id of p
+                        set end of customNames to pName
+                        set end of customIds to pId
+                    end try
+                end repeat
+
+                -- Iterate all perspective names (includes built-in + custom)
                 set perspNames to perspective names
                 set jsonResult to "["
                 set isFirst to true
@@ -4364,27 +4399,18 @@ class OmniFocusConnector:
                     end if
                     set isFirst to false
 
-                    -- Try to look up as custom perspective for id/type
+                    -- Check if this name is in our custom lookup
                     set pId to missing value
                     set pType to "built-in"
-                    try
-                        set matchingPerspective to first custom perspective whose name is (pName as text)
-                        set pId to id of matchingPerspective
-                        set pType to "custom"
-                    end try
-
-                    -- Escape name for JSON
-                    set nameText to ""
-                    repeat with charIdx from 1 to count of (pName as text)
-                        set charVal to character charIdx of (pName as text)
-                        if charVal is "\\"" then
-                            set nameText to nameText & "\\\\\\""
-                        else if charVal is "\\\\" then
-                            set nameText to nameText & "\\\\\\\\"
-                        else
-                            set nameText to nameText & charVal
+                    repeat with idx from 1 to count of customNames
+                        if item idx of customNames is (pName as text) then
+                            set pId to item idx of customIds
+                            set pType to "custom"
+                            exit repeat
                         end if
                     end repeat
+
+                    set nameText to my escapeJSON(pName as text)
 
                     set jsonResult to jsonResult & "{"
                     set jsonResult to jsonResult & "\\"name\\":\\"" & nameText & "\\""

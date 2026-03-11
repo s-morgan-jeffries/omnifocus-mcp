@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-11 (re-eval after docstring fixes)
+- **Date:** 2026-03-11 (re-eval after documentation improvements #263, #264)
 - **Model:** claude-opus-4-6
-- **Total Score:** 36/36 (100%)
+- **Total Score:** 46/46 (100%)
 - **Critical Failures:** 0 of 3
-- **Previous Score:** 34/36 (94%) — 2 partial scores fixed by docstring improvements
+- **Previous Score:** 36/36 (100%) — 5 new scenarios added for documentation gap coverage
 
 ## Category Scores
 
@@ -17,6 +17,7 @@
 | Parameter Usage | 9-12 | 8 | 8 | 100% |
 | Multi-Step Workflows | 13-15 | 6 | 6 | 100% |
 | Edge Cases | 16-18 | 6 | 6 | 100% |
+| Documentation Gaps | 19-23 | 10 | 10 | 100% |
 
 ## Per-Scenario Results
 
@@ -137,6 +138,27 @@
 - **Parameters:** Correct — `inbox_only=True`, then `completed=True` with collected IDs
 - **Concept Understanding:** Excellent — bonus: noted that completing unprocessed inbox items bypasses GTD "process" step
 
+### Scenario 19: Action Group — Blocked Parent Interpretation
+- **Score:** 2/2 (PASS)
+- **Concept Understanding:** Excellent — correctly identified the task as an action group (subtaskCount: 3), explained that blocked=true is normal for a parent with active subtasks, and suggested `get_tasks(parent_task_id='task-700')` to see the actual work.
+- **Notes:** The ACTION GROUPS section in server instructions directly addressed this. Without it, agents previously confused blocked action group parents with stuck sequential tasks.
+
+### Scenario 20: Next Task Semantics
+- **Score:** 2/2 (PASS)
+- **Concept Understanding:** Excellent — correctly explained that 'next' means first available action in sequential context (one at a time) and that all incomplete tasks are 'next' in parallel (all available). Also mentioned action groups follow same rules.
+
+### Scenario 21: Inherited Dates — Empty Due Date
+- **Score:** 2/2 (PASS)
+- **Concept Understanding:** Excellent — quoted the exact documentation note about directly-assigned vs inherited dates. Correctly explained that the project's due date is inherited but not shown in the API. Suggested checking project dates separately as a workaround.
+
+### Scenario 22: Sequential Ambiguity — Parallel vs Single Actions List
+- **Score:** 2/2 (PASS)
+- **Concept Understanding:** Excellent — correctly identified that sequential=false covers both Parallel projects and Single Actions Lists. Explained the conceptual difference (project with completion goal vs ongoing grab-bag). Noted the API limitation that they can't be distinguished.
+
+### Scenario 23: Completing Recurring Tasks
+- **Score:** 2/2 (PASS)
+- **Concept Understanding:** Excellent — correctly explained that completed=True uses `mark complete` internally, which spawns the next occurrence. Even distinguished `mark complete` (command) from `set completed to true` (property) and their different behaviors.
+
 ## Key Findings
 
 ### What Worked Well
@@ -148,27 +170,26 @@
 
 4. **Tag JSON string asymmetry was handled correctly:** Despite being the most likely failure point, the explicit docstring note "this takes a JSON string; update_task takes a native list instead" worked.
 
-### Issues Found and Fixed
+5. **Documentation gap fixes effective (#263, #264):** All 5 new scenarios targeting previously undocumented concepts scored 2/2. The ACTION GROUPS section, next task semantics, inherited dates note, sequential ambiguity note, and mark complete clarification all successfully conveyed their concepts to a blind agent.
 
-1. **tag_filter parameter format ambiguous (Scenario 12):** The agent originally used a comma-separated string instead of a list. Adding an inline example `["Errands", "Weekend"]` to the docstring resolved this. **Re-eval: PASS.**
+### Issues Found and Fixed (Previous Round)
 
-2. **Task creation order in sequential projects (Scenario 14):** The agent was originally uncertain whether parallel task creation preserves order. Adding a note "In sequential projects, tasks are ordered by creation time. Create tasks in the desired dependency order." resolved this. **Re-eval: PASS.**
+1. **tag_filter parameter format ambiguous (Scenario 12):** Adding an inline example resolved this. **Re-eval: PASS.**
 
-### No Changes Needed
+2. **Task creation order in sequential projects (Scenario 14):** Adding a note about creation order resolved this. **Re-eval: PASS.**
 
-- Server instructions block — comprehensive and effective
-- Safety warnings on delete operations — sufficient
-- Tag JSON string vs native list documentation — the explicit callout works
-- Defer date vs due date documentation — clear
-- Mutual exclusivity documentation — clear
-- Date clearing convention ("" to clear) — clear
+### Issues Found and Fixed (Current Round — #263, #264)
+
+3. **Action groups not explained (Scenario 19):** Added ACTION GROUPS section to server instructions. Agents can now correctly interpret blocked parents with subtasks. **Eval: PASS.**
+
+4. **'Next' task semantics undocumented (Scenario 20):** Added explanation to SEQUENTIAL VS PARALLEL section. **Eval: PASS.**
+
+5. **Inherited dates not mentioned (Scenario 21):** Added note to get_tasks return documentation. **Eval: PASS.**
+
+6. **Parallel vs Single Actions List ambiguity (Scenario 22):** Added notes to get_projects return and create_project parameter. **Eval: PASS.**
+
+7. **Recurring task completion behavior unclear (Scenario 23):** Added `mark complete` clarification to update_task completed parameter. **Eval: PASS.**
 
 ## Conclusion
 
-After two targeted docstring improvements, the tool descriptions achieve a perfect 36/36 (100%) score. An agent with no prior OmniFocus knowledge can correctly plan all 18 scenarios — including safety-critical operations, multi-step workflows, and parameter format edge cases — based solely on the tool descriptions and server instructions block.
-
-The two fixes applied:
-1. `get_tasks` `tag_filter` — added inline example showing list format
-2. `create_task` — added note about creation order in sequential projects
-
-Both were minor parameter format clarifications, not conceptual gaps. The server instructions block and tool docstrings are production-ready.
+After documentation improvements from issues #263 and #264, the tool descriptions achieve 46/46 (100%) across 23 scenarios. The 5 new scenarios specifically test concepts that were previously undocumented and would have caused agent confusion — action groups, next task semantics, inherited dates, project type ambiguity, and recurring task completion. All are now correctly handled by a blind agent using only tool descriptions.

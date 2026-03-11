@@ -12,9 +12,11 @@ PROJECT STATES: Active (tasks are actionable), On Hold (paused — tasks hidden)
 
 HIERARCHY: Folders → Projects → Tasks → Subtasks. Folders organize projects. Projects contain tasks. Tasks can have subtasks via parent_task_id.
 
-SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links.
+SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links. The `next` field on a task is true when it is the first available action in a sequential project or action group. In parallel projects, all incomplete tasks have `next: true`.
 
-TAGS: Formerly "contexts." Represent work contexts (location, tools, energy, people, workflow states like Waiting-for or Agenda). Cut across projects. Use for filtering.
+ACTION GROUPS: A task with subtasks is an "action group." It can be parallel or sequential, just like a project. The parent task appears as `blocked: true` while its subtasks are active — this is normal behavior, not an error. Check `subtaskCount > 0` to identify action groups. An action group parent cannot be completed until its subtasks are resolved.
+
+TAGS: Formerly "contexts." Represent work contexts (location, tools, energy, people, workflow states like Waiting-for or Agenda). Cut across projects. Use for filtering. Tags can be Active or On Hold — tasks with On Hold tags are excluded from OmniFocus's native Available perspective.
 
 PLANNING PATTERN: To plan a day, query: (1) overdue tasks, (2) flagged + available tasks, (3) inbox items, (4) next actions. Prioritize overdue+flagged first.
 
@@ -38,7 +40,7 @@ Retrieve ALL active projects with full details and hierarchy, optionally filtere
 - `include_task_health: bool` (default: False) — Include per-project task health counts (remaining, available, overdue, deferred)
 - `include_last_activity: bool` (default: False) — Compute lastActivityDate (most recent task creation/completion)
 
-**Returns:** Each project includes: id, name, folderPath, status, sequential, creationDate, note (truncated unless include_full_notes=True). With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status. With include_last_activity: lastActivityDate.
+**Returns:** Each project includes: id, name, folderPath, status, sequential, creationDate, note (truncated unless include_full_notes=True). Note: `sequential` is true for sequential projects, false for both parallel projects and Single Actions Lists. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status. With include_last_activity: lastActivityDate.
 
 ---
 
@@ -50,7 +52,7 @@ Create a new project in OmniFocus.
 - `name: str` (required) — The name of the project
 - `note: str` (optional) — Note/description (plain text only - rich text not supported via automation APIs)
 - `folder_path: str` (optional) — Folder path (e.g., "Work > Clients") - folder must exist
-- `sequential: bool` (default: False) — If True, tasks must be completed in order — the first incomplete task is 'available' and the rest are 'blocked.' If False, all tasks are available in parallel. OmniFocus represents dependencies via task ordering in sequential projects; there are no explicit task-to-task dependency links.
+- `sequential: bool` (default: False) — If True, tasks must be completed in order — the first incomplete task is 'available' and the rest are 'blocked.' If False, creates a parallel project where all tasks are available simultaneously. Note: Single Actions Lists (a third project type) cannot currently be created via this API. OmniFocus represents dependencies via task ordering in sequential projects; there are no explicit task-to-task dependency links.
 - `review_interval_weeks: int` (optional) — Review interval in weeks for GTD review cycle
 
 **Returns:** Success message with project ID and configuration details
@@ -119,7 +121,7 @@ Get tasks from OmniFocus with optional filtering.
 - `project_id: str` (optional) — Project ID to filter tasks (ignored if inbox_only=True)
 - `flagged_only: bool` (default: False) — Only return flagged tasks
 - `include_completed: bool` (default: False) — Include completed tasks
-- `available_only: bool` (default: False) — Only return available tasks (not blocked or deferred)
+- `available_only: bool` (default: False) — Only return available tasks (not completed, not dropped, not blocked, not deferred)
 - `overdue: bool` (default: False) — Only return overdue tasks
 - `dropped_only: bool` (default: False) — Only return dropped tasks
 - `blocked_only: bool` (default: False) — Only return blocked tasks
@@ -129,6 +131,8 @@ Get tasks from OmniFocus with optional filtering.
 - `inbox_only: bool` (default: False) — Only return inbox tasks
 
 **Returns:** Each task includes: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, estimatedMinutes, tags, note (truncated unless include_full_notes=True), parentTaskId, subtaskCount, sequential.
+
+Note: Date fields (dueDate, deferDate) show directly-assigned dates only. Tasks that inherit dates from their project or action group will show empty date fields even though they are functionally subject to those dates in OmniFocus.
 
 ---
 
@@ -176,7 +180,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `add_tags: list[str]` (optional) — Add these tags incrementally. Conflicts with tags.
 - `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
 - `estimated_minutes: int` (optional) — Estimated time in minutes
-- `completed: bool` (optional) — Mark task complete/incomplete
+- `completed: bool` (optional) — Mark task complete/incomplete. Uses `mark complete` internally, which correctly handles recurring tasks by spawning the next occurrence.
 - `status: str` (optional) — Task status - "active" or "dropped"
 
 **Returns:** Success message with updated fields, or error message
