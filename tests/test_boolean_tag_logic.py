@@ -23,8 +23,10 @@ class TestBooleanTagLogic:
                 {"id": "t3", "name": "Task 3", "completed": false, "tags": "urgent"}
             ]'''
 
-            # Should only return tasks with BOTH work AND urgent
-            tasks = client.get_tasks(tag_filter=["work", "urgent"], tag_filter_mode="and")
+            # Mock pre-filter to None so Python-side filter is exercised
+            with mock.patch.object(client, '_get_task_ids_for_tags', return_value=None):
+                # Should only return tasks with BOTH work AND urgent
+                tasks = client.get_tasks(tag_filter=["work", "urgent"], tag_filter_mode="and")
 
             assert len(tasks) == 1
             assert tasks[0]['id'] == "t1"
@@ -38,8 +40,10 @@ class TestBooleanTagLogic:
                 {"id": "t3", "name": "Task 3", "completed": false, "tags": "home"}
             ]'''
 
-            # Should return tasks with work OR urgent
-            tasks = client.get_tasks(tag_filter=["work", "urgent"], tag_filter_mode="or")
+            # Mock pre-filter to None so Python-side filter is exercised
+            with mock.patch.object(client, '_get_task_ids_for_tags', return_value=None):
+                # Should return tasks with work OR urgent
+                tasks = client.get_tasks(tag_filter=["work", "urgent"], tag_filter_mode="or")
 
             assert len(tasks) == 2
             assert tasks[0]['id'] == "t1"
@@ -68,8 +72,10 @@ class TestBooleanTagLogic:
                 {"id": "t2", "name": "Task 2", "completed": false, "tags": "work"}
             ]'''
 
-            # Without specifying mode, should default to AND
-            tasks = client.get_tasks(tag_filter=["work", "urgent"])
+            # Mock pre-filter to None so Python-side filter is exercised
+            with mock.patch.object(client, '_get_task_ids_for_tags', return_value=None):
+                # Without specifying mode, should default to AND
+                tasks = client.get_tasks(tag_filter=["work", "urgent"])
 
             assert len(tasks) == 1
             assert tasks[0]['id'] == "t1"
