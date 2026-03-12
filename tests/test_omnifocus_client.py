@@ -1958,14 +1958,14 @@ class TestGetOnHoldTagNames:
     def client(self):
         return OmniFocusConnector(enable_safety_checks=False)
 
-    def test_returns_on_hold_tag_names(self, client):
-        """Returns list of tag names where allows next action is false."""
+    def test_returns_on_hold_and_dropped_tag_names(self, client):
+        """Returns tag names where allows next action is false or hidden is true."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = "Waiting, On Hold"
+            mock_run.return_value = "Waiting, On Hold, Archived"
             result = client._get_on_hold_tag_names()
-            assert result == ["Waiting", "On Hold"]
+            assert result == ["Waiting", "On Hold", "Archived"]
             script = mock_run.call_args[0][0]
-            assert "allows next action is false" in script
+            assert "allows next action is false or hidden is true" in script
 
     def test_returns_empty_list_when_no_on_hold_tags(self, client):
         """Returns empty list when no tags are On Hold."""

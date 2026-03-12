@@ -1124,17 +1124,17 @@ class TestTagCRUD:
                 except Exception as e:
                     warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")
 
-    def test_update_tag_active(self, client):
-        """Set a tag to on-hold and verify."""
+    def test_update_tag_status_on_hold(self, client):
+        """Set a tag to on_hold and verify."""
         import uuid
         import warnings
-        tag_name = f"test-active-{uuid.uuid4()}"
+        tag_name = f"test-onhold-{uuid.uuid4()}"
         tag_id = None
         try:
             tag_id = client.create_tag(tag_name)
-            result = client.update_tag(tag_id, active=False)
+            result = client.update_tag(tag_id, status="on_hold")
             assert result["success"] is True
-            assert "active" in result["updated_fields"]
+            assert "status" in result["updated_fields"]
 
             # Verify get_tags now reads actual status
             tags = client.get_tags()
@@ -1142,6 +1142,59 @@ class TestTagCRUD:
             assert len(matching) == 1
             assert matching[0]['status'] == "on hold", (
                 f"Expected 'on hold' status, got '{matching[0]['status']}'"
+            )
+        finally:
+            if tag_id:
+                try:
+                    client.delete_tags(tag_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")
+
+    def test_update_tag_status_dropped(self, client):
+        """Set a tag to dropped and verify."""
+        import uuid
+        import warnings
+        tag_name = f"test-dropped-{uuid.uuid4()}"
+        tag_id = None
+        try:
+            tag_id = client.create_tag(tag_name)
+            result = client.update_tag(tag_id, status="dropped")
+            assert result["success"] is True
+            assert "status" in result["updated_fields"]
+
+            # Verify get_tags returns "dropped" status
+            tags = client.get_tags()
+            matching = [t for t in tags if t['id'] == tag_id]
+            assert len(matching) == 1
+            assert matching[0]['status'] == "dropped", (
+                f"Expected 'dropped' status, got '{matching[0]['status']}'"
+            )
+        finally:
+            if tag_id:
+                try:
+                    client.delete_tags(tag_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up test tag {tag_id}: {e}")
+
+    def test_update_tag_status_active_from_dropped(self, client):
+        """Re-activate a dropped tag and verify."""
+        import uuid
+        import warnings
+        tag_name = f"test-reactivate-{uuid.uuid4()}"
+        tag_id = None
+        try:
+            tag_id = client.create_tag(tag_name)
+            # Drop it first
+            client.update_tag(tag_id, status="dropped")
+            # Re-activate
+            result = client.update_tag(tag_id, status="active")
+            assert result["success"] is True
+
+            tags = client.get_tags()
+            matching = [t for t in tags if t['id'] == tag_id]
+            assert len(matching) == 1
+            assert matching[0]['status'] == "active", (
+                f"Expected 'active' status, got '{matching[0]['status']}'"
             )
         finally:
             if tag_id:

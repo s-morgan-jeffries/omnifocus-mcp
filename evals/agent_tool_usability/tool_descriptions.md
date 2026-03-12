@@ -290,7 +290,7 @@ Tags (formerly 'contexts') represent contexts for doing work — location (Offic
 
 **Parameters:** None
 
-**Returns:** Each tag includes: id, name, status.
+**Returns:** Each tag includes: id, name, status (values: "active", "on hold", "dropped").
 
 ---
 
@@ -312,12 +312,12 @@ Tags can be nested (e.g., create "High" under parent "Energy" to get "Energy : H
 
 Update properties of an existing tag in OmniFocus.
 
-Tags can be renamed or put on hold. Setting active=False puts a tag on hold — tasks with on-hold tags are excluded from available task queries.
+Tags can be renamed or have their status changed. Tags have three states: active (tasks are actionable), on_hold (tasks excluded from available queries), and dropped (tag hidden from most views).
 
 **Parameters:**
 - `tag_id: str` (required) — The ID of the tag to update (from get_tags)
 - `name: str` (optional) — New tag name
-- `active: bool` (optional) — Whether the tag is active. False = on hold (tasks become unavailable). True = active.
+- `status: str` (optional) — Tag status. Values: "active", "on_hold", "dropped". Active = tasks with this tag are actionable. On hold = tasks become unavailable. Dropped = tag is hidden from most views.
 
 **Returns:** Success message with updated fields, or error message
 
