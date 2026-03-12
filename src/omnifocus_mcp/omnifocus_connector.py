@@ -1830,12 +1830,8 @@ class OmniFocusConnector:
             for tag in tags:
                 tag_escaped = self._escape_applescript_string(tag)
                 tag_commands.append(f'''
-                    try
-                        set tagObj to first flattened tag whose name is "{tag_escaped}"
-                        add tagObj to tags of newTask
-                    on error
-                        -- Tag doesn't exist, skip it
-                    end try''')
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of newTask''')
 
         properties_str = ", ".join(properties)
         date_commands_str = "\n                    ".join(date_commands)

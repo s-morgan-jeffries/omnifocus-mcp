@@ -142,6 +142,41 @@ class TestCreateTaskRedesign:
             assert "estimated minutes" in script.lower()
 
     # ========================================================================
+    # Tag Assignment (#267)
+    # ========================================================================
+
+    def test_create_task_tag_assignment_no_silent_swallow(self, client):
+        """Bug #267: Tag assignment must not silently swallow errors.
+
+        create_task previously wrapped tag lookup in try/on error, which
+        silently skipped On Hold tags. The generated AppleScript should
+        match update_task's pattern: no try/on error around tag assignment.
+        """
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-267"
+            client.create_task(
+                task_name="Tag Test",
+                tags=["MyTag"],
+            )
+            script = mock_run.call_args[0][0]
+            # Tag lookup and add should be present
+            assert 'first flattened tag whose name is "MyTag"' in script
+            assert 'add tagObj to tags of newTask' in script
+            # The tag block must NOT contain "on error" (silent error swallowing)
+            # Extract from tag lookup to end of tag section
+            tag_start = script.index('set tagObj to first flattened tag')
+            tag_end = script.index('add tagObj to tags of newTask') + len('add tagObj to tags of newTask')
+            tag_block = script[tag_start:tag_end]
+            # Check there's no try/on error wrapping this block
+            before_tag = script[:tag_start]
+            after_tag = script[tag_end:]
+            # Count try/end try pairs: the tag block should not introduce its own
+            # Simplest check: "on error" between "Add tags" comment and "return id"
+            tags_section = script[script.index('Add tags if provided'):script.index('return id')]
+            assert 'on error' not in tags_section, \
+                "Tag assignment section should not contain on error (bug #267)"
+
+    # ========================================================================
     # Return Format
     # ========================================================================
 
