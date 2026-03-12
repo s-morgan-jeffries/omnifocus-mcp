@@ -742,4 +742,63 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+
+    # =========================================================================
+    # Category 9: Tag Status (#259)
+    # =========================================================================
+    {
+        "id": 33,
+        "category": "Tag Status",
+        "name": "Drop a Tag",
+        "prompt": (
+            "I'm no longer using the 'Low Energy' tag. I don't want to delete it "
+            "(tasks still reference it), but I want it hidden from my tag picker. "
+            "Tag ID is tag-050."
+        ),
+        "expected": {
+            "tools": ["update_tag"],
+            "key_params": {
+                "update_tag": {
+                    "tag_id": "tag-050",
+                    "status": "dropped",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_tag(tag_id='tag-050', status='dropped') — understands "
+            "dropped = hidden but preserved. "
+            "PARTIAL: Uses delete_tags (destructive, contradicts 'don't delete'). "
+            "FAIL: Says tags can't be hidden/dropped, or tries a non-existent tool."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 34,
+        "category": "Tag Status",
+        "name": "Distinguish Tag Statuses",
+        "prompt": (
+            "I ran get_tags and see three tags:\n"
+            '- {"id": "tag-051", "name": "Errands", "status": "active"}\n'
+            '- {"id": "tag-052", "name": "Waiting", "status": "on hold"}\n'
+            '- {"id": "tag-053", "name": "Archive", "status": "dropped"}\n'
+            "I want 'Waiting' to be usable again — tasks with this tag should be "
+            "available. And 'Archive' should stay hidden."
+        ),
+        "expected": {
+            "tools": ["update_tag"],
+            "key_params": {
+                "update_tag": {
+                    "tag_id": "tag-052",
+                    "status": "active",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Only updates Waiting (tag-052) to status='active'. Does NOT touch "
+            "Archive. Understands on_hold = tasks blocked, active = tasks available. "
+            "PARTIAL: Updates Waiting correctly but also unnecessarily touches Archive. "
+            "FAIL: Confuses on_hold with dropped, or sets wrong status."
+        ),
+        "safety_critical": True,
+    },
 ]
