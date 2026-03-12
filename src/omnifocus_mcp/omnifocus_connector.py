@@ -1950,6 +1950,67 @@ class OmniFocusConnector:
         # Format for AppleScript: "October 15, 2025 5:00:00 PM"
         return dt.strftime("%B %d, %Y %I:%M:%S %p")
 
+    @staticmethod
+    def _rrule_to_summary(rrule: str) -> str:
+        """Convert an iCalendar RRULE string to a human-readable summary.
+
+        Handles common OmniFocus recurrence patterns (DAILY, WEEKLY, MONTHLY,
+        YEARLY with INTERVAL and BYDAY). Falls back to the raw RRULE string
+        for anything unparseable.
+
+        Args:
+            rrule: Raw RRULE string (e.g., "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR")
+
+        Returns:
+            Human-readable summary (e.g., "Every 2 weeks on Mon, Wed, Fri")
+        """
+        if not rrule:
+            return ""
+
+        # Parse RRULE parts into dict
+        parts = {}
+        try:
+            for part in rrule.split(";"):
+                if "=" in part:
+                    key, value = part.split("=", 1)
+                    parts[key] = value
+        except (ValueError, AttributeError):
+            return rrule
+
+        freq = parts.get("FREQ")
+        if not freq:
+            return rrule
+
+        freq_map = {
+            "DAILY": ("day", "days"),
+            "WEEKLY": ("week", "weeks"),
+            "MONTHLY": ("month", "months"),
+            "YEARLY": ("year", "years"),
+        }
+
+        if freq not in freq_map:
+            return rrule
+
+        singular, plural = freq_map[freq]
+        interval = int(parts.get("INTERVAL", "1"))
+
+        if interval == 1:
+            summary = f"Every {singular}"
+        else:
+            summary = f"Every {interval} {plural}"
+
+        # Append day names for weekly rules
+        byday = parts.get("BYDAY")
+        if byday and freq == "WEEKLY":
+            day_map = {
+                "MO": "Mon", "TU": "Tue", "WE": "Wed", "TH": "Thu",
+                "FR": "Fri", "SA": "Sat", "SU": "Sun",
+            }
+            day_names = [day_map.get(d, d) for d in byday.split(",")]
+            summary += f" on {', '.join(day_names)}"
+
+        return summary
+
 
 
     def get_tasks(
@@ -3083,6 +3144,13 @@ class OmniFocusConnector:
                     # Normalize recurrence
                     if task.get('recurrence', '') == '':
                         task['recurrence'] = None
+
+                    # Compute repeatSummary from RRULE
+                    rrule = task.get('recurrence')
+                    if rrule:
+                        task['repeatSummary'] = OmniFocusConnector._rrule_to_summary(rrule)
+                    else:
+                        task['repeatSummary'] = None
 
                 # Apply Python-based tag filtering
                 # Skip when tag pre-filter already narrowed the task set via whose ID clause

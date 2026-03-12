@@ -82,6 +82,67 @@ class TestRecurringTaskFields:
         assert task['isRecurring'] is True
         assert task['recurrence'] == 'FREQ=WEEKLY'
         assert task['repetitionMethod'] == 'fixed'
+        assert task['repeatSummary'] == 'Every week'
+
+    def test_get_tasks_repeat_summary_for_non_recurring(self, client):
+        """Non-recurring tasks should have repeatSummary=None."""
+        mock_json = json.dumps([{
+            "id": "task123",
+            "name": "One-off task",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj123",
+            "projectName": "Project",
+            "dueDate": "",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": False,
+            "recurrence": "",
+            "repetitionMethod": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        assert tasks[0]['repeatSummary'] is None
+
+    def test_get_tasks_repeat_summary_complex_rrule(self, client):
+        """Recurring tasks with BYDAY should get a detailed summary."""
+        mock_json = json.dumps([{
+            "id": "task123",
+            "name": "MWF workout",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj123",
+            "projectName": "Project",
+            "dueDate": "",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": True,
+            "recurrence": "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE,FR",
+            "repetitionMethod": "fixed repetition"
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        assert tasks[0]['repeatSummary'] == 'Every week on Mon, Wed, Fri'
 
     def test_get_tasks_handles_start_after_completion_method(self, client):
         """Test conversion of 'start after completion' method."""

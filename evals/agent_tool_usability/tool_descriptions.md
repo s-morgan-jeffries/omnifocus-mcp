@@ -130,9 +130,11 @@ Get tasks from OmniFocus with optional filtering.
 - `query: str` (optional) — Search term to filter by name or note (case-insensitive)
 - `inbox_only: bool` (default: False) — Only return inbox tasks
 
-**Returns:** Each task includes: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless include_full_notes=True), parentTaskId, subtaskCount, sequential.
+**Returns:** Each task includes: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless include_full_notes=True), parentTaskId, subtaskCount, sequential, isRecurring, recurrence, repetitionMethod, repeatSummary.
 
 Note: Date fields (dueDate, deferDate, plannedDate) show directly-assigned dates only. Tasks that inherit dates from their project or action group will show empty date fields even though they are functionally subject to those dates in OmniFocus.
+
+Note: `repeatSummary` is a human-readable version of the recurrence RRULE (e.g., "Every 2 weeks on Mon, Wed, Fri"). Use this for user-facing output instead of parsing the raw `recurrence` string. `repetitionMethod` indicates how the next occurrence is calculated: "fixed" (next occurrence keeps the same day-of-week/month — e.g., always Monday), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Recurrence rules are read-only — there is no way to create, modify, or remove recurrence via this API.
 
 ---
 

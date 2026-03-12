@@ -1620,6 +1620,21 @@ class TestAddTaskParameterVariations:
             client.delete_tasks(task_id)
 
 
+class TestRepeatSummaryIntegration:
+    """Test repeatSummary field is populated correctly."""
+
+    def test_non_recurring_task_has_repeat_summary_none(self, client, test_task):
+        """Non-recurring tasks should have repeatSummary=None."""
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        task = tasks[0]
+        assert 'repeatSummary' in task
+        assert task['repeatSummary'] is None
+        assert task['isRecurring'] is False
+
+        print("\n✓ Non-recurring task has repeatSummary=None")
+
+
 class TestUpdateTaskParameterVariations:
     """Test various parameter combinations for update_task().
 

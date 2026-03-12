@@ -99,6 +99,10 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
         result += f"Planned: {task['plannedDate']}\n"
     if task.get('estimatedMinutes'):
         result += f"Estimated: {task['estimatedMinutes']} minutes\n"
+    if task.get('repeatSummary'):
+        result += f"Repeats: {task['repeatSummary']}\n"
+    elif task.get('isRecurring'):
+        result += f"Repeats: {task.get('recurrence', 'Yes')}\n"
     if task.get('tags'):
         result += f"Tags: {task['tags']}\n"
     if task.get('note'):
