@@ -211,6 +211,71 @@ Key insight: **whose or-chain time is nearly constant (~0.22-0.25s) regardless o
 - Containment scope applies to ALL tasks in a project; use `whose` filters for subsets
 - The `or`-chain approach has unknown upper limits on clause count (tested up to 10)
 
+## Task.RepetitionRule (OmniAutomation)
+
+Added 2026-03-12 (Issue #272). AppleScript property writes on repetition rules don't persist in OmniFocus 4.x — OmniAutomation is the only reliable way to set or modify recurrence.
+
+### Constructor
+
+```javascript
+new Task.RepetitionRule(ruleString, method)
+```
+
+- `ruleString` — iCalendar RRULE string (e.g., `"FREQ=WEEKLY;BYDAY=MO,WE,FR"`)
+- `method` — `Task.RepetitionMethod` enum value
+
+### Task.RepetitionMethod Enum
+
+| Enum Value | Connector Name | AppleScript Reads As | Behavior |
+|-----------|---------------|---------------------|----------|
+| `Task.RepetitionMethod.Fixed` | `"fixed"` | `fixed repetition` | Next occurrence on fixed schedule regardless of completion date |
+| `Task.RepetitionMethod.DueDate` | `"due_after_completion"` | `due after completion` | Next due date calculated from completion date |
+| `Task.RepetitionMethod.DeferUntilDate` | `"start_after_completion"` | `start after completion` | Next defer date calculated from completion date |
+| `Task.RepetitionMethod.None` | — | — | No repetition |
+
+### Reading Existing Rules
+
+```javascript
+var t = Task.byIdentifier('task-id');
+if (t.repetitionRule) {
+    t.repetitionRule.ruleString;  // e.g., "FREQ=DAILY;INTERVAL=1"
+    t.repetitionRule.method;      // Task.RepetitionMethod enum value
+}
+```
+
+### Setting/Replacing a Rule
+
+```javascript
+var t = Task.byIdentifier('task-id');
+t.repetitionRule = new Task.RepetitionRule('FREQ=WEEKLY', Task.RepetitionMethod.Fixed);
+```
+
+### Removing a Rule
+
+Removing works via both AppleScript and OmniAutomation:
+
+```applescript
+-- AppleScript (preferred — simpler, no JS crash risk on test DB)
+set repetition rule of theTask to missing value
+```
+
+```javascript
+// OmniAutomation
+task.repetitionRule = null;
+```
+
+### Changing Method Only (Preserving RRULE)
+
+Read the existing rule string, then create a new rule with the same string and new method:
+
+```javascript
+var t = Task.byIdentifier('task-id');
+if (t.repetitionRule) {
+    var rr = t.repetitionRule.ruleString;
+    t.repetitionRule = new Task.RepetitionRule(rr, Task.RepetitionMethod.DueDate);
+}
+```
+
 ## Future Investigation
 
 - `taskStatus` enum could simplify availability calculations (Available, Blocked, etc.)

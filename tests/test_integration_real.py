@@ -1635,6 +1635,125 @@ class TestRepeatSummaryIntegration:
         print("\n✓ Non-recurring task has repeatSummary=None")
 
 
+class TestRecurrenceWriteIntegration:
+    """Test recurrence write operations against real OmniFocus.
+
+    IMPORTANT: These tests use OmniAutomation (evaluate javascript) which
+    crashes on headless test databases. They must run against the production
+    database with the Claude Code Test Project.
+
+    Run with: OMNIFOCUS_PROD_TEST=true pytest -k TestRecurrenceWriteIntegration -v -s
+    """
+
+    PROD_TEST_PROJECT = "hd2mAwL2NnE"  # Claude Code Test Project
+
+    @pytest.fixture(autouse=True)
+    def skip_unless_prod_test(self):
+        """Skip unless OMNIFOCUS_PROD_TEST=true is set."""
+        if not os.environ.get("OMNIFOCUS_PROD_TEST"):
+            pytest.skip("Set OMNIFOCUS_PROD_TEST=true to run (requires production DB)")
+
+    @pytest.fixture(scope="function")
+    def prod_client(self):
+        """Client without safety checks (production DB)."""
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    @pytest.fixture(scope="function")
+    def prod_task(self, prod_client):
+        """Create a task in the Claude Code Test Project, clean up after."""
+        import uuid
+        task_name = f"test-Recurrence Write {uuid.uuid4()}"
+        task_id = prod_client.create_task(task_name, project_id=self.PROD_TEST_PROJECT)
+        yield task_id
+        try:
+            prod_client.delete_tasks(task_id)
+        except Exception:
+            pass
+
+    def test_add_recurrence_to_non_recurring(self, prod_client, prod_task):
+        """Test adding recurrence to a non-recurring task via OmniAutomation."""
+        result = prod_client.update_task(
+            prod_task,
+            recurrence="FREQ=WEEKLY",
+            repetition_method="fixed"
+        )
+        assert result["success"] is True
+
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        task = tasks[0]
+        assert task["isRecurring"] is True
+        assert "FREQ=WEEKLY" in task["recurrence"]
+        assert task["repetitionMethod"] == "fixed"
+        assert task["repeatSummary"] == "Every week"
+
+        print("\n✓ Added recurrence to non-recurring task")
+
+    def test_modify_existing_recurrence(self, prod_client, prod_task):
+        """Test modifying recurrence on an already-recurring task."""
+        # First add recurrence
+        prod_client.update_task(
+            prod_task, recurrence="FREQ=DAILY", repetition_method="fixed"
+        )
+
+        # Now modify it
+        result = prod_client.update_task(
+            prod_task,
+            recurrence="FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR",
+            repetition_method="start_after_completion"
+        )
+        assert result["success"] is True
+
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        task = tasks[0]
+        assert task["isRecurring"] is True
+        assert "FREQ=WEEKLY" in task["recurrence"]
+        assert "INTERVAL=2" in task["recurrence"]
+        assert task["repetitionMethod"] == "start_after_completion"
+        assert task["repeatSummary"] == "Every 2 weeks on Mon, Wed, Fri"
+
+        print("\n✓ Modified existing recurrence")
+
+    def test_change_repetition_method_only(self, prod_client, prod_task):
+        """Test changing only the repetition method without changing the RRULE."""
+        # First add recurrence
+        prod_client.update_task(
+            prod_task, recurrence="FREQ=DAILY", repetition_method="fixed"
+        )
+
+        # Change method only
+        result = prod_client.update_task(
+            prod_task, repetition_method="due_after_completion"
+        )
+        assert result["success"] is True
+
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        task = tasks[0]
+        assert task["isRecurring"] is True
+        assert task["repetitionMethod"] == "due_after_completion"
+        # RRULE should be preserved
+        assert "FREQ=DAILY" in task["recurrence"]
+
+        print("\n✓ Changed repetition method only")
+
+    def test_remove_recurrence(self, prod_client, prod_task):
+        """Test removing recurrence from a recurring task."""
+        # First add recurrence
+        prod_client.update_task(
+            prod_task, recurrence="FREQ=DAILY", repetition_method="fixed"
+        )
+
+        # Remove it
+        result = prod_client.update_task(prod_task, recurrence="")
+        assert result["success"] is True
+
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        task = tasks[0]
+        assert task["isRecurring"] is False
+        assert task["repeatSummary"] is None
+
+        print("\n✓ Removed recurrence from task")
+
+
 class TestUpdateTaskParameterVariations:
     """Test various parameter combinations for update_task().
 

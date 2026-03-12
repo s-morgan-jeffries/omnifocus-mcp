@@ -673,6 +673,8 @@ def update_task(
     estimated_minutes: Optional[int] = None,
     completed: Optional[bool] = None,
     status: Optional[str] = None,
+    recurrence: Optional[str] = None,
+    repetition_method: Optional[str] = None,
     # Legacy parameters (backward compatibility)
     name: Optional[str] = None
 ) -> str:
@@ -711,6 +713,12 @@ def update_task(
         completed: Mark task complete/incomplete (optional). Uses `mark complete` internally,
             which correctly handles recurring tasks by spawning the next occurrence.
         status: Task status - "active" or "dropped" (optional)
+        recurrence: iCalendar RRULE string (e.g., "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR"),
+            or empty string to remove recurrence. Omitting means no change. (optional)
+        repetition_method: How the next occurrence is calculated (optional). Only meaningful
+            when recurrence is set. Values: "fixed" (same day each period),
+            "start_after_completion" (next defer date = completion date + interval),
+            "due_after_completion" (next due date = completion date + interval).
         name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
 
     Returns:
@@ -722,6 +730,8 @@ def update_task(
         update_task("task-123", project_id="proj-456")  # Move to project
         update_task("task-123", add_tags=["urgent"])  # Add tag
         update_task("task-123", task_name="New Name", flagged=True, due_date="2025-12-31")
+        update_task("task-123", recurrence="FREQ=WEEKLY;BYDAY=MO,WE,FR", repetition_method="fixed")
+        update_task("task-123", recurrence="")  # Remove recurrence
     """
     # Support legacy 'name' parameter for backward compatibility
     if name is not None and task_name is None:
@@ -745,6 +755,8 @@ def update_task(
             estimated_minutes=estimated_minutes,
             completed=completed,
             status=status,
+            recurrence=recurrence,
+            repetition_method=repetition_method,
             name=name  # Pass to client for its own backward compat handling
         )
     except ValueError as e:
