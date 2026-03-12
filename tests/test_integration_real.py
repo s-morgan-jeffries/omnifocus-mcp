@@ -2023,7 +2023,7 @@ class TestAvailableOnlyOnHoldTags:
             client.update_tag(tag_id, active=False)
 
             # Create a task and assign the On Hold tag via update_task
-            # (create_task with On Hold tags silently skips tag assignment)
+            # (create_task On Hold tag bug was fixed in #267)
             task_id = client.create_task(
                 "On Hold Tagged Task",
                 project_id=test_project,
@@ -2041,6 +2041,28 @@ class TestAvailableOnlyOnHoldTags:
             )
             available_names = [t['name'] for t in available_tasks]
             assert "On Hold Tagged Task" not in available_names
+        finally:
+            client.delete_tags(tag_id)
+            client.delete_projects(test_project)
+
+    def test_create_task_assigns_on_hold_tag(self, client, test_project):
+        """Bug #267: create_task should successfully assign On Hold tags."""
+        tag_id = client.create_tag("test-on-hold-267")
+        try:
+            client.update_tag(tag_id, active=False)
+
+            # create_task should assign the On Hold tag directly
+            task_id = client.create_task(
+                "On Hold Tag Create Test",
+                project_id=test_project,
+                tags=["test-on-hold-267"],
+            )
+
+            # Verify the tag was actually assigned
+            all_tasks = client.get_tasks(project_id=test_project)
+            task = next(t for t in all_tasks if t['name'] == "On Hold Tag Create Test")
+            assert "test-on-hold-267" in task['tags'], \
+                f"On Hold tag should be assigned by create_task. Got tags: {task['tags']}"
         finally:
             client.delete_tags(tag_id)
             client.delete_projects(test_project)
