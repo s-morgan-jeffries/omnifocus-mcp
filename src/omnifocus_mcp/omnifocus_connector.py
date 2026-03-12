@@ -1759,6 +1759,7 @@ class OmniFocusConnector:
         note: Optional[str] = None,
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
+        planned_date: Optional[str] = None,
         flagged: bool = False,
         tags: Optional[list[str]] = None,
         estimated_minutes: Optional[int] = None
@@ -1774,6 +1775,7 @@ class OmniFocusConnector:
             note: Optional note/description for the task
             due_date: Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00")
             defer_date: Defer date in ISO 8601 format (when task becomes available)
+            planned_date: Planned date in ISO 8601 format (when you plan to work on the task)
             flagged: Whether to flag the task (default: False)
             tags: List of tag names to assign to the task
             estimated_minutes: Estimated time in minutes
@@ -1823,6 +1825,8 @@ class OmniFocusConnector:
             date_commands.append(f'set due date of newTask to date "{self._iso_to_applescript_date(due_date)}"')
         if defer_date:
             date_commands.append(f'set defer date of newTask to date "{self._iso_to_applescript_date(defer_date)}"')
+        if planned_date:
+            date_commands.append(f'set planned date of newTask to date "{self._iso_to_applescript_date(planned_date)}"')
 
         # Build tag assignment commands
         tag_commands = []
@@ -2594,6 +2598,7 @@ class OmniFocusConnector:
                 set taskSeqs to sequential of ft
                 set dueDates to due date of ft
                 set deferDates to defer date of ft
+                set plannedDates to planned date of ft
                 set creationDates to creation date of ft
                 set modDates to modification date of ft
                 set compDates to completion date of ft
@@ -2633,6 +2638,12 @@ class OmniFocusConnector:
                         set dVal to contents of (item i of deferDates)
                         if dVal is not missing value then
                             set deferDateStr to (dVal as «class isot» as string)
+                        end if
+
+                        set plannedDateStr to ""
+                        set pVal to contents of (item i of plannedDates)
+                        if pVal is not missing value then
+                            set plannedDateStr to (pVal as «class isot» as string)
                         end if
 
                         set creationDateStr to "null"
@@ -2742,6 +2753,7 @@ class OmniFocusConnector:
                             "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
                             "\\"dueDate\\": \\"" & dueDateStr & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDateStr & "\\", " & ¬
+                            "\\"plannedDate\\": \\"" & plannedDateStr & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
                             "\\"completionDate\\": " & completionDateStr & ", " & ¬
@@ -2884,6 +2896,14 @@ class OmniFocusConnector:
                             end if
                         end try
 
+                        set plannedDate to ""
+                        try
+                            set plannedDateObj to planned date of t
+                            if plannedDateObj is not missing value then
+                                set plannedDate to plannedDateObj as «class isot» as string
+                            end if
+                        end try
+
                         -- Get timestamp fields
                         set creationDateStr to "null"
                         try
@@ -3012,6 +3032,7 @@ class OmniFocusConnector:
                             "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
                             "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
+                            "\\"plannedDate\\": \\"" & plannedDate & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
                             "\\"completionDate\\": " & completionDateStr & ", " & ¬
@@ -3119,6 +3140,7 @@ class OmniFocusConnector:
         note: Optional[str] = None,
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
+        planned_date: Optional[str] = None,
         flagged: Optional[bool] = None,
         tags: Optional[list[str]] = None,
         add_tags: Optional[list[str]] = None,
@@ -3218,8 +3240,8 @@ class OmniFocusConnector:
         # Check if at least one field is provided
         all_params = [
             task_name, project_id, parent_task_id, note, due_date, defer_date,
-            flagged, tags, add_tags, remove_tags, estimated_minutes, completed,
-            status, recurrence, repetition_method
+            planned_date, flagged, tags, add_tags, remove_tags, estimated_minutes,
+            completed, status, recurrence, repetition_method
         ]
         if all(v is None for v in all_params):
             raise ValueError("At least one field must be provided to update")
@@ -3262,6 +3284,14 @@ class OmniFocusConnector:
                     as_date = self._iso_to_applescript_date(defer_date)
                     separate_commands.append(f'set defer date of theTask to date "{as_date}"')
                 updated_fields.append("defer_date")
+
+            if planned_date is not None:
+                if planned_date == "":
+                    separate_commands.append("set planned date of theTask to missing value")
+                else:
+                    as_date = self._iso_to_applescript_date(planned_date)
+                    separate_commands.append(f'set planned date of theTask to date "{as_date}"')
+                updated_fields.append("planned_date")
 
             # Handle estimated minutes
             if estimated_minutes is not None:
@@ -3462,6 +3492,7 @@ class OmniFocusConnector:
         remove_tags: Optional[list[str]] = None,
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
+        planned_date: Optional[str] = None,
         estimated_minutes: Optional[int] = None,
         **kwargs  # Catch unexpected arguments
     ) -> dict:
@@ -3540,7 +3571,8 @@ class OmniFocusConnector:
         # Validation: Must provide at least one field to update
         provided_fields = [
             flagged, status, completed, project_id, parent_task_id,
-            tags, add_tags, remove_tags, due_date, defer_date, estimated_minutes
+            tags, add_tags, remove_tags, due_date, defer_date, planned_date,
+            estimated_minutes
         ]
         if all(f is None for f in provided_fields):
             raise ValueError("Must provide at least one field to update")
@@ -3596,6 +3628,18 @@ class OmniFocusConnector:
                 as_date = self._iso_to_applescript_date(defer_date)
                 bulk_commands.append(
                     f'set defer date of ({or_chain_target}) to date "{as_date}"'
+                )
+            has_bulk = True
+
+        if planned_date is not None:
+            if planned_date == "":
+                bulk_commands.append(
+                    f"set planned date of ({or_chain_target}) to missing value"
+                )
+            else:
+                as_date = self._iso_to_applescript_date(planned_date)
+                bulk_commands.append(
+                    f'set planned date of ({or_chain_target}) to date "{as_date}"'
                 )
             has_bulk = True
 

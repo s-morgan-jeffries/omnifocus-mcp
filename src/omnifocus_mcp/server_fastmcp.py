@@ -95,6 +95,8 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
         result += f"Due: {task['dueDate']}\n"
     if task.get('deferDate'):
         result += f"Defer: {task['deferDate']}\n"
+    if task.get('plannedDate'):
+        result += f"Planned: {task['plannedDate']}\n"
     if task.get('estimatedMinutes'):
         result += f"Estimated: {task['estimatedMinutes']} minutes\n"
     if task.get('tags'):
@@ -557,6 +559,7 @@ def create_task(
     note: Optional[str] = None,
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
+    planned_date: Optional[str] = None,
     flagged: bool = False,
     tags: Optional[str] = None,
     estimated_minutes: Optional[int] = None
@@ -577,6 +580,9 @@ def create_task(
         note: Optional note/description for the task (plain text only)
         due_date: Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
         defer_date: Defer date in ISO 8601 format (when task becomes available — hidden until then)
+        planned_date: Planned date in ISO 8601 format — when you plan to work on the task.
+            Unlike defer (controls availability) or due (controls overdue), planned date is
+            purely a scheduling signal with no behavioral constraints.
         flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
             Flagged tasks can be queried with get_tasks(flagged_only=True). (default: False)
         tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must
@@ -613,6 +619,7 @@ def create_task(
             note=note,
             due_date=due_date,
             defer_date=defer_date,
+            planned_date=planned_date,
             flagged=flagged,
             tags=tags_list,
             estimated_minutes=estimated_minutes
@@ -654,6 +661,7 @@ def update_task(
     note: Optional[str] = None,
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
+    planned_date: Optional[str] = None,
     flagged: Optional[bool] = None,
     tags: Optional[list[str]] = None,
     add_tags: Optional[list[str]] = None,
@@ -686,6 +694,9 @@ def update_task(
             Omitting means no change. (optional)
         defer_date: New defer date in ISO 8601 format (when task becomes available), or
             empty string to clear. Omitting means no change. (optional)
+        planned_date: Planned date in ISO 8601 format, or empty string to clear.
+            When you plan to work on the task — purely a scheduling signal, no behavioral
+            constraints (unlike defer/due). Omitting means no change. (optional)
         flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
             Pass True to flag, False to unflag. (optional)
         tags: Full replacement — set exact tag list as a native list (optional, conflicts
@@ -722,6 +733,7 @@ def update_task(
             note=note,
             due_date=due_date,
             defer_date=defer_date,
+            planned_date=planned_date,
             flagged=flagged,
             tags=tags,
             add_tags=add_tags,
@@ -762,6 +774,7 @@ def update_tasks(
     remove_tags: Optional[list[str]] = None,
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
+    planned_date: Optional[str] = None,
     estimated_minutes: Optional[int] = None
 ) -> str:
     """Update multiple tasks with the same field values (batch operation - NEW API).
@@ -791,6 +804,8 @@ def update_tasks(
             Omitting means no change. (optional)
         defer_date: Set defer date for all tasks in ISO 8601 format, or empty string to clear.
             Omitting means no change. (optional)
+        planned_date: Set planned date for all tasks in ISO 8601 format, or empty string to clear.
+            When you plan to work on the tasks — purely a scheduling signal. (optional)
         estimated_minutes: Set estimated time in minutes for all tasks (optional)
 
     Returns:
@@ -815,6 +830,7 @@ def update_tasks(
             remove_tags=remove_tags,
             due_date=due_date,
             defer_date=defer_date,
+            planned_date=planned_date,
             estimated_minutes=estimated_minutes
         )
     except ValueError as e:

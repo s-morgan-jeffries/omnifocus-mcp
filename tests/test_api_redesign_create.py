@@ -142,6 +142,25 @@ class TestCreateTaskRedesign:
             assert "estimated minutes" in script.lower()
 
     # ========================================================================
+    # Planned Date (#252)
+    # ========================================================================
+
+    def test_create_task_with_planned_date(self, client):
+        """#252: create_task() supports planned_date parameter."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-252"
+
+            result = client.create_task(
+                task_name="Planned Task",
+                planned_date="2026-03-15",
+            )
+
+            assert result == "task-252"
+            script = mock_run.call_args[0][0]
+            assert "planned date of newTask" in script
+            assert "March 15, 2026" in script
+
+    # ========================================================================
     # Tag Assignment (#267)
     # ========================================================================
 

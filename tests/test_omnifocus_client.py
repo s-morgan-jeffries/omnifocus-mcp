@@ -1086,6 +1086,26 @@ class TestUpdateTask:
             call_args = mock_run.call_args[0][0]
             assert "missing value" in call_args
 
+    def test_update_task_planned_date(self, client):
+        """#252: update_task supports planned_date parameter."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_task("task-001", planned_date="2026-03-15")
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "planned date" in call_args
+            assert "March 15, 2026" in call_args
+
+    def test_update_task_clear_planned_date(self, client):
+        """#252: update_task clears planned_date with empty string."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_task("task-001", planned_date="")
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "planned date" in call_args
+            assert "missing value" in call_args
+
 
 class TestGetFolders:
     """Tests for get_folders method."""
@@ -1520,6 +1540,16 @@ class TestBatchUpdateTasks:
             client.update_tasks(["t1", "t2"], defer_date="2026-06-01")
             script = mock_run.call_args[0][0]
             assert "defer date" in script
+            assert "repeat with" not in script
+
+    def test_bulk_planned_date_uses_or_chain(self, client):
+        """#252: Batch planned_date uses or-chain (bulk-settable)."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"
+            client.update_tasks(["t1", "t2"], planned_date="2026-03-15")
+            script = mock_run.call_args[0][0]
+            assert "planned date" in script
+            assert "March 15, 2026" in script
             assert "repeat with" not in script
 
     def test_bulk_mark_complete_uses_or_chain(self, client):

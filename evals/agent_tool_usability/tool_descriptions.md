@@ -6,7 +6,7 @@ This file contains exactly what an MCP-connected agent sees: the server instruct
 
 OmniFocus is a GTD (Getting Things Done) task manager. Key concepts:
 
-TASK STATES: Available (can work on now), Blocked (waiting on predecessor in sequential project), Deferred (has future defer date — hidden until then), Flagged (user marked as priority/today), Overdue (past due date), Completed, Dropped.
+TASK STATES: Available (can work on now), Blocked (waiting on predecessor in sequential project), Deferred (has future defer date — hidden until then), Flagged (user marked as priority/today), Overdue (past due date), Completed, Dropped. Tasks also have an optional Planned Date — a scheduling signal for when you plan to work on the task, with no availability or overdue constraints (unlike defer/due dates).
 
 PROJECT STATES: Active (tasks are actionable), On Hold (paused — tasks hidden), Dropped (abandoned), Completed.
 
@@ -130,9 +130,9 @@ Get tasks from OmniFocus with optional filtering.
 - `query: str` (optional) — Search term to filter by name or note (case-insensitive)
 - `inbox_only: bool` (default: False) — Only return inbox tasks
 
-**Returns:** Each task includes: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, estimatedMinutes, tags, note (truncated unless include_full_notes=True), parentTaskId, subtaskCount, sequential.
+**Returns:** Each task includes: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless include_full_notes=True), parentTaskId, subtaskCount, sequential.
 
-Note: Date fields (dueDate, deferDate) show directly-assigned dates only. Tasks that inherit dates from their project or action group will show empty date fields even though they are functionally subject to those dates in OmniFocus.
+Note: Date fields (dueDate, deferDate, plannedDate) show directly-assigned dates only. Tasks that inherit dates from their project or action group will show empty date fields even though they are functionally subject to those dates in OmniFocus.
 
 ---
 
@@ -151,6 +151,7 @@ Create a new task in OmniFocus.
 - `note: str` (optional) — Note/description (plain text only)
 - `due_date: str` (optional) — Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
 - `defer_date: str` (optional) — Defer date in ISO 8601 format (when task becomes available — hidden until then)
+- `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on this task — a scheduling signal with no availability or overdue constraints, unlike defer/due dates)
 - `flagged: bool` (default: False) — Flag marks a task as a priority — typically 'I want to work on this today.' Flagged tasks can be queried with get_tasks(flagged_only=True).
 - `tags: str` (optional) — JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist. Note: this takes a JSON string; update_task takes a native list instead.
 - `estimated_minutes: int` (optional) — Estimated time in minutes
@@ -175,6 +176,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `note: str` (optional) — New note content. WARNING: Removes rich text formatting.
 - `due_date: str` (optional) — New due date in ISO 8601 format, or empty string to clear. Omitting means no change.
 - `defer_date: str` (optional) — New defer date in ISO 8601 format (when task becomes available), or empty string to clear. Omitting means no change.
+- `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on this task), or empty string to clear. A scheduling signal with no availability or overdue constraints.
 - `flagged: bool` (optional) — Flag marks a task as a priority — typically 'I want to work on this today.' Pass True to flag, False to unflag.
 - `tags: list[str]` (optional) — Full replacement — set exact tag list as a native list. Conflicts with add_tags/remove_tags. Note: unlike create_task, this takes a list not a JSON string.
 - `add_tags: list[str]` (optional) — Add these tags incrementally. Conflicts with tags.
@@ -215,6 +217,7 @@ Key differences from update_task():
 - `remove_tags: list[str]` (optional) — Remove these tags from all tasks.
 - `due_date: str` (optional) — Set due date for all, or empty string to clear.
 - `defer_date: str` (optional) — Set defer date for all, or empty string to clear.
+- `planned_date: str` (optional) — Set planned date for all, or empty string to clear.
 - `estimated_minutes: int` (optional) — Set estimated time for all tasks.
 
 **Returns:** Summary with counts of successful/failed updates

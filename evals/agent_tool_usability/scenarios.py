@@ -515,4 +515,83 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+
+    # =========================================================================
+    # Category 7: Planned Date Scenarios (#252)
+    # =========================================================================
+    {
+        "id": 24,
+        "category": "Planned Date",
+        "name": "Planned Date vs Defer Date",
+        "prompt": (
+            "I want to schedule 'Write blog post' for next Wednesday March 18, "
+            "but I could start it earlier if I have free time. It's due Friday March 20."
+        ),
+        "expected": {
+            "tools": ["create_task"],
+            "key_params": {
+                "create_task": {
+                    "task_name": "Write blog post",
+                    "planned_date": "2026-03-18",
+                    "due_date": "2026-03-20",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: planned_date=Wednesday (scheduling intent, no hard constraint), "
+            "due_date=Friday (deadline). Does NOT set defer_date (user said they could start earlier). "
+            "PARTIAL: Uses defer_date instead of planned_date (wrong — defer hides the task until that date). "
+            "FAIL: Only sets due_date, or confuses planned with defer."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 25,
+        "category": "Planned Date",
+        "name": "Three Dates Scenario",
+        "prompt": (
+            "Create a task 'Prepare presentation'. I can't start until Monday March 16 "
+            "(I need materials from a colleague). I'm planning to work on it Wednesday March 18. "
+            "It's due for the meeting on Friday March 20."
+        ),
+        "expected": {
+            "tools": ["create_task"],
+            "key_params": {
+                "create_task": {
+                    "task_name": "Prepare presentation",
+                    "defer_date": "2026-03-16",
+                    "planned_date": "2026-03-18",
+                    "due_date": "2026-03-20",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: All three dates correct — defer=Monday (can't start before), "
+            "planned=Wednesday (intend to work on it), due=Friday (deadline). "
+            "PARTIAL: Gets 2 of 3 dates right. "
+            "FAIL: Only uses 2 date types, or confuses which date serves which purpose."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 26,
+        "category": "Planned Date",
+        "name": "Clear Planned Date",
+        "prompt": (
+            "I had task-600 planned for Wednesday but my schedule changed. "
+            "Remove the planned date — I'll figure out when to do it later."
+        ),
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {"task_id": "task-600", "planned_date": ""}
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_task(task_id='task-600', planned_date='') — empty string to clear. "
+            "FAIL: Uses None/null (omitting means no change per docs). "
+            "FAIL: Tries to delete the task or uses a non-existent clear function."
+        ),
+        "safety_critical": False,
+    },
 ]
