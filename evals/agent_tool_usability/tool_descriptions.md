@@ -134,7 +134,7 @@ Get tasks from OmniFocus with optional filtering.
 
 Note: Date fields (dueDate, deferDate, plannedDate) show directly-assigned dates only. Tasks that inherit dates from their project or action group will show empty date fields even though they are functionally subject to those dates in OmniFocus.
 
-Note: `repeatSummary` is a human-readable version of the recurrence RRULE (e.g., "Every 2 weeks on Mon, Wed, Fri"). Use this for user-facing output instead of parsing the raw `recurrence` string. `repetitionMethod` indicates how the next occurrence is calculated: "fixed" (next occurrence keeps the same day-of-week/month — e.g., always Monday), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Recurrence rules are read-only — there is no way to create, modify, or remove recurrence via this API.
+Note: `repeatSummary` is a human-readable version of the recurrence RRULE (e.g., "Every 2 weeks on Mon, Wed, Fri"). Use this for user-facing output instead of parsing the raw `recurrence` string. `repetitionMethod` indicates how the next occurrence is calculated: "fixed" (next occurrence keeps the same day-of-week/month — e.g., always Monday), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Recurrence rules can be set, modified, or removed via `update_task(recurrence=..., repetition_method=...)`. Use standard iCalendar RRULE format (e.g., `FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR`). Pass `recurrence=""` to remove recurrence.
 
 ---
 
@@ -186,6 +186,8 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `estimated_minutes: int` (optional) — Estimated time in minutes
 - `completed: bool` (optional) — Mark task complete/incomplete. Uses `mark complete` internally, which correctly handles recurring tasks by spawning the next occurrence.
 - `status: str` (optional) — Task status - "active" or "dropped"
+- `recurrence: str` (optional) — iCalendar RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR"), or empty string to remove recurrence. Omitting means no change.
+- `repetition_method: str` (optional) — How the next occurrence is calculated. Values: "fixed" (same day each period), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Only meaningful when recurrence is set.
 
 **Returns:** Success message with updated fields, or error message
 
@@ -194,6 +196,8 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `update_task("task-123", status="dropped")` — Drop task
 - `update_task("task-123", project_id="proj-456")` — Move to project
 - `update_task("task-123", add_tags=["urgent"])` — Add tag
+- `update_task("task-123", recurrence="FREQ=WEEKLY;BYDAY=MO,WE,FR", repetition_method="fixed")` — Set weekly recurrence
+- `update_task("task-123", recurrence="")` — Remove recurrence
 
 ---
 

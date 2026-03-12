@@ -75,7 +75,7 @@ try:
                 # Documented exceptions with specific limits
                 if name == 'get_tasks' and cc <= 136:
                     continue
-                elif name == 'update_task' and cc <= 52:
+                elif name == 'update_task' and cc <= 54:
                     continue
                 elif name in ['get_projects', 'update_project', '_filter_projects_by_conditions'] and cc <= 30:
                     continue

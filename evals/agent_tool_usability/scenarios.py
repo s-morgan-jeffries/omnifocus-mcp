@@ -625,22 +625,27 @@ SCENARIOS = [
     {
         "id": 28,
         "category": "Recurrence",
-        "name": "Modify Recurrence (Limitation)",
+        "name": "Modify Recurrence",
         "prompt": (
-            "I have a task that repeats every week. Can you change it to repeat "
+            "I have a task (task-810) that repeats every week. Can you change it to repeat "
             "every 2 weeks instead?"
         ),
         "expected": {
-            "tools": [],
-            "key_params": {},
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {
+                    "task_id": "task-810",
+                    "recurrence": "FREQ=WEEKLY;INTERVAL=2",
+                }
+            },
         },
         "scoring_notes": (
-            "PASS: Explains that recurrence rules are read-only — there is no way to "
-            "modify recurrence via this API. Suggests editing directly in OmniFocus. "
-            "FAIL: Attempts to call update_task with a recurrence parameter. "
-            "FAIL: Says it can change the recurrence."
+            "PASS: update_task(task_id='task-810', recurrence='FREQ=WEEKLY;INTERVAL=2'). "
+            "Uses RRULE format with INTERVAL=2 for biweekly. "
+            "PARTIAL: Correct tool but wrong RRULE syntax (e.g., 'FREQ=BIWEEKLY'). "
+            "FAIL: Says recurrence can't be modified, or uses wrong tool."
         ),
-        "safety_critical": True,
+        "safety_critical": False,
     },
     {
         "id": 29,
@@ -668,19 +673,73 @@ SCENARIOS = [
     {
         "id": 30,
         "category": "Recurrence",
-        "name": "Stop Recurrence (Limitation)",
+        "name": "Remove Recurrence",
         "prompt": "I want to stop task task-900 from repeating. How do I remove the recurrence?",
         "expected": {
-            "tools": [],
-            "key_params": {},
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {
+                    "task_id": "task-900",
+                    "recurrence": "",
+                }
+            },
         },
         "scoring_notes": (
-            "PASS: Explains there is no way to remove recurrence via this API. "
-            "Suggests alternatives: edit directly in OmniFocus, or drop the task "
-            "(update_task with status='dropped') if it's no longer needed. "
-            "FAIL: Tries to clear recurrence with update_task. "
-            "FAIL: Says it can remove the recurrence."
+            "PASS: update_task(task_id='task-900', recurrence='') — empty string to remove. "
+            "PARTIAL: Correct tool but uses None instead of empty string. "
+            "FAIL: Says recurrence can't be removed, or suggests deleting the task."
         ),
-        "safety_critical": True,
+        "safety_critical": False,
+    },
+    {
+        "id": 31,
+        "category": "Recurrence",
+        "name": "Set Recurrence with Method",
+        "prompt": (
+            "Make task task-820 repeat daily, but I want the next occurrence to be based "
+            "on when I actually complete it, not on a fixed schedule."
+        ),
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {
+                    "task_id": "task-820",
+                    "recurrence": "FREQ=DAILY",
+                    "repetition_method": "due_after_completion",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_task with recurrence='FREQ=DAILY' and "
+            "repetition_method='due_after_completion'. "
+            "PARTIAL: Correct recurrence but wrong or missing method (defaults to 'fixed'). "
+            "FAIL: Says recurrence can't be set, or uses wrong tool."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 32,
+        "category": "Recurrence",
+        "name": "Add Recurrence to Non-Recurring Task",
+        "prompt": (
+            "Task task-830 'Take vitamins' doesn't repeat yet. Make it repeat every day "
+            "on a fixed schedule."
+        ),
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {
+                    "task_id": "task-830",
+                    "recurrence": "FREQ=DAILY",
+                    "repetition_method": "fixed",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_task with recurrence='FREQ=DAILY' and repetition_method='fixed'. "
+            "Also acceptable: omitting repetition_method since 'fixed' is the default. "
+            "FAIL: Says recurrence can't be added to existing tasks, or creates a new task."
+        ),
+        "safety_critical": False,
     },
 ]

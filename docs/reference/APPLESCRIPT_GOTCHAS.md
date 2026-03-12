@@ -231,6 +231,54 @@ set completed of theTask to true  -- Doesn't create next instance!
 
 ---
 
+## Repetition Rule Property Writes Don't Persist (OF4)
+
+- ❌ **`set recurrence of existingRule` runs without error but changes don't persist**
+- ❌ **`set repetition method of existingRule` also doesn't persist**
+- ✅ **`set repetition rule of theTask to missing value` works** (removing a rule)
+- ✅ **OmniAutomation `new Task.RepetitionRule(ruleString, method)` works** (creating/replacing a rule)
+
+### Empirical Investigation (2026-03-12, Issue #272)
+
+Tested against OmniFocus 4.x on production. Both UI-created and programmatically-created repetition rules exhibit the same behavior.
+
+**What doesn't work (AppleScript property mutations):**
+```applescript
+-- These run without error but the changes DON'T PERSIST:
+set theRule to repetition rule of theTask
+set recurrence of theRule to "FREQ=WEEKLY"       -- Silent no-op
+set repetition method of theRule to fixed repetition  -- Silent no-op
+```
+
+Verified by reading back the rule in a separate AppleScript call — original values unchanged. This applies to ALL repetition rules in OmniFocus 4.x, regardless of how they were created (UI or API).
+
+**What works (remove via AppleScript):**
+```applescript
+set repetition rule of theTask to missing value  -- Persists correctly
+```
+
+**What works (create/replace via OmniAutomation):**
+```applescript
+tell application "OmniFocus"
+    evaluate javascript "
+        var t = Task.byIdentifier('task-id');
+        t.repetitionRule = new Task.RepetitionRule('FREQ=WEEKLY', Task.RepetitionMethod.Fixed);
+    "
+end tell
+```
+
+### Connector Implementation
+
+The connector uses a two-call pattern for recurrence writes:
+1. **Main AppleScript call** — handles all standard property updates (name, note, dates, tags, etc.)
+2. **Separate OmniAutomation call** — handles recurrence set/modify via `evaluate javascript`
+
+Remove operations use a single AppleScript call with `set repetition rule to missing value`.
+
+⚠️ **Testing constraint:** `evaluate javascript` crashes on headless test databases. Integration tests for recurrence write run against production with `OMNIFOCUS_PROD_TEST=true`.
+
+---
+
 ## Performance Characteristics
 
 **Context:** OmniFocus operations via AppleScript can be slow for large databases.

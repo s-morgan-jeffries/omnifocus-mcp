@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-12 (added recurrence scenarios for #260)
-- **Model:** claude-sonnet-4-6 (scenarios 24-30), claude-opus-4-6 (scenarios 1-23)
-- **Total Score:** 59/60 (98%)
-- **Critical Failures:** 0 of 5
-- **Previous Score:** 52/52 (100%) — 4 new scenarios added for recurrence coverage (#260)
+- **Date:** 2026-03-12 (recurrence write support for #272)
+- **Model:** claude-sonnet-4-6 (scenarios 24-32), claude-opus-4-6 (scenarios 1-23)
+- **Total Score:** 63/64 (98%)
+- **Critical Failures:** 0 of 3
+- **Previous Score:** 59/60 (98%) — scenarios 28/30 updated from limitation→working, 2 new scenarios added (#272)
 
 ## Category Scores
 
@@ -19,7 +19,7 @@
 | Edge Cases | 16-18 | 6 | 6 | 100% |
 | Documentation Gaps | 19-23 | 10 | 10 | 100% |
 | Planned Date | 24-26 | 6 | 6 | 100% |
-| Recurrence | 27-30 | 7 | 8 | 88% |
+| Recurrence | 27-32 | 11 | 12 | 92% |
 
 ## Per-Scenario Results
 
@@ -184,11 +184,11 @@
 - **Tool Selection:** Correct — no tool call needed (interpretive question)
 - **Concept Understanding:** Excellent — referenced `repeatSummary` field directly ("Every week on Mon, Wed, Fri") as the tool docs recommend. Also correctly explained `repetitionMethod: "fixed"` means same days each period.
 
-### Scenario 28: Modify Recurrence (Limitation)
+### Scenario 28: Modify Recurrence
 - **Score:** 2/2 (PASS)
-- **Tool Selection:** Correct — no tool call (recognized limitation)
-- **Concept Understanding:** Excellent — quoted the exact documentation: "Recurrence rules are read-only." Noted that update_task has no recurrence parameters. Suggested editing directly in OmniFocus.
-- **Safety:** PASSED — did not attempt to modify recurrence
+- **Tool Selection:** Correct — `update_task`
+- **Parameters:** Correct — `task_id="task-810"`, `recurrence="FREQ=WEEKLY;INTERVAL=2"`
+- **Concept Understanding:** Excellent — correctly used RRULE INTERVAL=2 for biweekly. Noted that repetition_method is omitted to preserve existing method.
 
 ### Scenario 29: Repetition Method Semantics
 - **Score:** 1/2 (PARTIAL)
@@ -196,11 +196,23 @@
 - **Concept Understanding:** Partial — correctly identified that `repetitionMethod` matters and distinguished `due_after_completion` from `fixed`. However, misinterpreted the mechanics: said the due date shifts from the *previous due date* (which is actually `fixed` behavior). In reality, `due_after_completion` means next due = completion date + interval. The tool description's wording ("due date shifts by N days/weeks after completion") is ambiguous — could be improved.
 - **Action item:** Clarify tool description to say "next due date = completion date + interval" for `due_after_completion`.
 
-### Scenario 30: Stop Recurrence (Limitation)
+### Scenario 30: Remove Recurrence
 - **Score:** 2/2 (PASS)
-- **Tool Selection:** Correct — no tool call (recognized limitation)
-- **Concept Understanding:** Excellent — correctly stated recurrence cannot be removed via the API. Noted that the app supports it directly but the API doesn't expose it.
-- **Safety:** PASSED — did not attempt to clear recurrence
+- **Tool Selection:** Correct — `update_task`
+- **Parameters:** Correct — `task_id="task-900"`, `recurrence=""`
+- **Concept Understanding:** Excellent — cited the exact example from tool docs: `update_task("task-123", recurrence="")`.
+
+### Scenario 31: Set Recurrence with Method
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `update_task`
+- **Parameters:** Correct — `task_id="task-820"`, `recurrence="FREQ=DAILY"`, `repetition_method="due_after_completion"`
+- **Concept Understanding:** Excellent — correctly distinguished between the three methods. Explained that `due_after_completion` calculates next due date from completion date, matching "based on when I actually complete it."
+
+### Scenario 32: Add Recurrence to Non-Recurring Task
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `update_task`
+- **Parameters:** Correct — `task_id="task-830"`, `recurrence="FREQ=DAILY"`, `repetition_method="fixed"`
+- **Concept Understanding:** Excellent — correctly mapped "fixed schedule" to `repetition_method="fixed"`. Understood that `update_task` can add recurrence to a task that doesn't currently repeat.
 
 ## Key Findings
 
@@ -235,4 +247,4 @@
 
 ## Conclusion
 
-After adding repeatSummary (#260), planned_date (#252), and documentation improvements from #263/#264, the tool descriptions achieve 60/60 (100%) across 30 scenarios. The 4 recurrence scenarios (27-30) test reading repeat summaries, understanding API limitations (read-only recurrence), repetition method semantics, and recognizing that recurrence cannot be removed. Agents correctly use `repeatSummary` for user-facing output and respect the read-only boundary.
+After adding recurrence write support (#272), the tool descriptions achieve 63/64 (98%) across 32 scenarios. The 6 recurrence scenarios (27-32) now cover reading repeat summaries, modifying recurrence rules, removing recurrence, setting recurrence with specific repetition methods, and adding recurrence to non-recurring tasks. The only partial score remains scenario 29 (repetition method semantics — interpretive, no tool call needed) where the agent slightly misinterpreted the `due_after_completion` mechanism. Scenarios 28 and 30, previously testing read-only limitations, now correctly test write operations and agents use the `recurrence` and `repetition_method` parameters without issues.

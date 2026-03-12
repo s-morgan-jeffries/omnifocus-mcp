@@ -3216,7 +3216,6 @@ class OmniFocusConnector:
         estimated_minutes: Optional[int] = None,
         completed: Optional[bool] = None,
         status: Optional[Union[TaskStatus, str]] = None,
-        # Legacy parameters (kept for backwards compatibility)
         recurrence: Optional[str] = None,
         repetition_method: Optional[str] = None,
         name: Optional[str] = None  # Deprecated: use task_name
@@ -3246,8 +3245,10 @@ class OmniFocusConnector:
             estimated_minutes: Estimated time in minutes (optional)
             completed: Mark task complete/incomplete (optional)
             status: Task status (TaskStatus enum or string: "active", "dropped") (optional)
-            recurrence: iCalendar RRULE string, or "" to remove (optional, legacy)
-            repetition_method: "fixed", "start_after_completion", "due_after_completion" (optional, legacy)
+            recurrence: iCalendar RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR"),
+                or "" to remove recurrence (optional). Uses OmniAutomation internally.
+            repetition_method: "fixed", "start_after_completion", or
+                "due_after_completion" (optional)
             name: Deprecated - use task_name instead (optional)
 
         Returns:
@@ -3442,53 +3443,19 @@ class OmniFocusConnector:
                     remove tagObj from tags of theTask''')
                 updated_fields.append("remove_tags")
 
-            # Handle recurrence (legacy)
+            # Handle recurrence
+            # Note: AppleScript property writes on repetition rules don't persist in
+            # OmniFocus 4.x. Remove works via AppleScript, but set/modify requires
+            # OmniAutomation (evaluate javascript) — handled as a post-update call below.
+            _recurrence_js_needed = False
             if recurrence is not None:
                 if recurrence == "":
                     separate_commands.append("set repetition rule of theTask to missing value")
                 else:
-                    as_method = "fixed repetition"
-                    if repetition_method:
-                        as_method = {
-                            "fixed": "fixed repetition",
-                            "start_after_completion": "start after completion",
-                            "due_after_completion": "due after completion"
-                        }[repetition_method]
-                    recurrence_escaped = self._escape_applescript_string(recurrence)
-                    separate_commands.append(f'''
-                    set existingRule to repetition rule of theTask
-                    if existingRule is missing value then
-                        set templateRule to missing value
-                        repeat with t in flattened tasks
-                            try
-                                set templateRule to repetition rule of t
-                                if templateRule is not missing value then
-                                    exit repeat
-                                end if
-                            end try
-                        end repeat
-                        if templateRule is not missing value then
-                            set repetition rule of theTask to templateRule
-                            set theRule to repetition rule of theTask
-                            set recurrence of theRule to "{recurrence_escaped}"
-                            set repetition method of theRule to {as_method}
-                        end if
-                    else
-                        set recurrence of existingRule to "{recurrence_escaped}"
-                        set repetition method of existingRule to {as_method}
-                    end if''')
+                    _recurrence_js_needed = True
                 updated_fields.append("recurrence")
             elif repetition_method is not None:
-                as_method = {
-                    "fixed": "fixed repetition",
-                    "start_after_completion": "start after completion",
-                    "due_after_completion": "due after completion"
-                }[repetition_method]
-                separate_commands.append(f'''
-                    set existingRule to repetition rule of theTask
-                    if existingRule is not missing value then
-                        set repetition method of existingRule to {as_method}
-                    end if''')
+                _recurrence_js_needed = True
                 updated_fields.append("repetition_method")
 
             # Build final AppleScript
@@ -3517,6 +3484,51 @@ class OmniFocusConnector:
 
             result = run_applescript(script)
             if result.strip() == "true":
+                # Post-update: set/modify recurrence via OmniAutomation
+                # AppleScript property writes on repetition rules don't persist
+                # in OmniFocus 4.x, so we use evaluate javascript instead.
+                if _recurrence_js_needed:
+                    js_method_map = {
+                        "fixed": "Task.RepetitionMethod.Fixed",
+                        "due_after_completion": "Task.RepetitionMethod.DueDate",
+                        "start_after_completion": "Task.RepetitionMethod.DeferUntilDate",
+                    }
+                    js_method = js_method_map.get(
+                        repetition_method or "fixed",
+                        "Task.RepetitionMethod.Fixed"
+                    )
+                    task_id_js = task_id_escaped.replace("'", "\\'")
+
+                    if recurrence is not None:
+                        # Set/modify: create new rule with given RRULE and method
+                        recurrence_js = self._escape_applescript_string(
+                            recurrence
+                        ).replace("'", "\\'")
+                        js_code = (
+                            f"var t = Task.byIdentifier('{task_id_js}');"
+                            f" if (t) {{ t.repetitionRule = new Task.RepetitionRule("
+                            f"'{recurrence_js}', {js_method}); 'ok'; }}"
+                            f" else {{ 'not found'; }}"
+                        )
+                    else:
+                        # Change method only: read current RRULE, create new rule
+                        # with same RRULE but different method
+                        js_code = (
+                            f"var t = Task.byIdentifier('{task_id_js}');"
+                            f" if (t && t.repetitionRule) {{"
+                            f" var rr = t.repetitionRule.ruleString;"
+                            f" t.repetitionRule = new Task.RepetitionRule("
+                            f"rr, {js_method}); 'ok'; }}"
+                            f" else {{ 'no rule'; }}"
+                        )
+
+                    js_script = (
+                        'tell application "OmniFocus"\n'
+                        f'    evaluate javascript "{js_code}"\n'
+                        'end tell'
+                    )
+                    run_applescript(js_script)
+
                 return {
                     "success": True,
                     "task_id": task_id,
