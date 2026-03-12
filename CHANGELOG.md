@@ -5,6 +5,33 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.4] - 2026-03-11
+
+### Fixed
+
+- **create_task silently fails to assign On Hold tags** (#267, #269)
+  - Removed `try/on error` wrapper from tag assignment AppleScript that silently swallowed errors
+  - Now matches `update_task`'s proven pattern; non-existent tags raise errors instead of being silently skipped
+
+- **available_only excludes tasks with On Hold tags** (#261, #268)
+  - `get_tasks(available_only=True)` now pre-fetches On Hold tag names and excludes matching tasks
+  - Matches OmniFocus's native Available perspective behavior
+
+- **Perspectives type detection** (#248, #263, #266)
+  - `get_perspectives` now correctly detects built-in vs custom perspective types
+  - Fixed tag status reporting — `get_tags` now reads `allows next action` property instead of hardcoding "active"
+
+### Changed
+
+- **Tag filter performance** (#249, #250)
+  - Tag-side pre-filter for `tag_filter` queries reduces unnecessary task iteration
+
+### Documentation
+
+- **Gap analysis and eval scenarios** (#264, #266)
+  - Added `docs/omnifocus-mcp-gap-analysis.md` documenting API coverage gaps
+  - Added 6 new blind agent eval scenarios for tag management and perspectives
+
 ## [0.8.3] - 2026-03-11
 
 ### Added
