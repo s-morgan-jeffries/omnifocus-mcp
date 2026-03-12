@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-11 (re-eval after documentation improvements #263, #264)
-- **Model:** claude-opus-4-6
-- **Total Score:** 46/46 (100%)
+- **Date:** 2026-03-12 (added planned_date scenarios for #252)
+- **Model:** claude-sonnet-4-6 (scenarios 24-26), claude-opus-4-6 (scenarios 1-23)
+- **Total Score:** 52/52 (100%)
 - **Critical Failures:** 0 of 3
-- **Previous Score:** 36/36 (100%) — 5 new scenarios added for documentation gap coverage
+- **Previous Score:** 46/46 (100%) — 3 new scenarios added for planned_date coverage (#252)
 
 ## Category Scores
 
@@ -18,6 +18,7 @@
 | Multi-Step Workflows | 13-15 | 6 | 6 | 100% |
 | Edge Cases | 16-18 | 6 | 6 | 100% |
 | Documentation Gaps | 19-23 | 10 | 10 | 100% |
+| Planned Date | 24-26 | 6 | 6 | 100% |
 
 ## Per-Scenario Results
 
@@ -159,6 +160,24 @@
 - **Score:** 2/2 (PASS)
 - **Concept Understanding:** Excellent — correctly explained that completed=True uses `mark complete` internally, which spawns the next occurrence. Even distinguished `mark complete` (command) from `set completed to true` (property) and their different behaviors.
 
+### Scenario 24: Planned Date vs Defer Date
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `create_task`
+- **Parameters:** Correct — `planned_date="2026-03-18"`, `due_date="2026-03-20"`, no defer_date
+- **Concept Understanding:** Excellent — correctly distinguished planned (scheduling signal, no constraint) from defer (hidden until then). Explicitly noted that defer would prevent early start, contradicting user intent.
+
+### Scenario 25: Three Dates Scenario
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `create_task`
+- **Parameters:** Correct — `defer_date="2026-03-16"`, `planned_date="2026-03-18"`, `due_date="2026-03-20"`
+- **Concept Understanding:** Excellent — correctly mapped all three date types: defer = can't start before (hard constraint), planned = intend to work on (scheduling signal), due = deadline. All three dates set in a single call.
+
+### Scenario 26: Clear Planned Date
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `update_task`
+- **Parameters:** Correct — `task_id="task-600"`, `planned_date=""`
+- **Concept Understanding:** Excellent — correctly used empty string to clear (not None/omit, which means no change). Quoted the exact docstring semantics.
+
 ## Key Findings
 
 ### What Worked Well
@@ -192,4 +211,4 @@
 
 ## Conclusion
 
-After documentation improvements from issues #263 and #264, the tool descriptions achieve 46/46 (100%) across 23 scenarios. The 5 new scenarios specifically test concepts that were previously undocumented and would have caused agent confusion — action groups, next task semantics, inherited dates, project type ambiguity, and recurring task completion. All are now correctly handled by a blind agent using only tool descriptions.
+After adding planned_date support (#252) and documentation improvements from #263/#264, the tool descriptions achieve 52/52 (100%) across 26 scenarios. The 3 new planned_date scenarios (24-26) test the three-way date distinction (defer vs planned vs due), all-three-dates-at-once usage, and clear semantics. The tool descriptions successfully convey that planned_date is a scheduling signal with no availability or overdue constraints, clearly differentiating it from defer_date (hard availability gate) and due_date (deadline).

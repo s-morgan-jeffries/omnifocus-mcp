@@ -1551,6 +1551,31 @@ class TestAddTaskParameterVariations:
             # Guaranteed cleanup
             client.delete_tasks(task_id)
 
+    def test_add_task_with_planned_date(self, client, test_project):
+        """Test create_task with planned_date (OmniFocus 4.7+)."""
+        from datetime import datetime, timedelta
+
+        planned_date = (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d")
+
+        task_id = client.create_task(
+            "Task with Planned Date",
+            project_id=test_project,
+            planned_date=planned_date
+        )
+
+        try:
+            assert task_id is not None
+
+            # Verify task was created with planned date
+            tasks = client.get_tasks(task_id=task_id)
+            assert len(tasks) > 0
+            assert tasks[0].get('plannedDate') is not None
+
+            print("\n✓ Created task with planned date")
+        finally:
+            # Guaranteed cleanup
+            client.delete_tasks(task_id)
+
     def test_add_task_with_estimated_minutes(self, client, test_project):
         """Test create_task with estimated time."""
         task_id = client.create_task(
@@ -1623,6 +1648,30 @@ class TestUpdateTaskParameterVariations:
         assert task.get('deferDate') is not None
 
         print("\n✓ Updated task dates")
+
+    def test_update_task_planned_date(self, client, test_task):
+        """Test setting and clearing planned_date on a task (OmniFocus 4.7+)."""
+        from datetime import datetime, timedelta
+
+        planned_date = (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d")
+
+        # Set planned date
+        result = client.update_task(test_task, planned_date=planned_date)
+        assert result["success"] is True
+
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        assert tasks[0].get('plannedDate') is not None
+
+        # Clear planned date
+        result = client.update_task(test_task, planned_date="")
+        assert result["success"] is True
+
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        assert tasks[0].get('plannedDate', '') == ''
+
+        print("\n✓ Set and cleared planned date")
 
     def test_update_task_clear_properties(self, client, test_task):
         """Test clearing properties by setting to None."""

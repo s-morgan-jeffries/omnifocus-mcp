@@ -165,6 +165,29 @@ class TestGetTasksEnhancements:
             # Should execute without error
             assert mock_run.called
 
+    # ========================================================================
+    # Planned Date (#252)
+    # ========================================================================
+
+    def test_get_tasks_includes_planned_date_in_batch_extraction(self, client):
+        """#252: get_tasks AppleScript should batch-read planned date property."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '[]'
+            client.get_tasks()
+            script = mock_run.call_args[0][0]
+            # Batch extraction should include planned date
+            assert 'planned date of ft' in script, \
+                "get_tasks should batch-read planned date property"
+
+    def test_get_tasks_includes_planned_date_in_json_output(self, client):
+        """#252: get_tasks JSON output should include plannedDate field."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '[]'
+            client.get_tasks()
+            script = mock_run.call_args[0][0]
+            assert 'plannedDate' in script, \
+                "get_tasks JSON output should include plannedDate field"
+
     def test_get_tasks_backward_compatible_no_new_params(self, client):
         """NEW API: Existing usage without new params still works (backward compatible)."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:

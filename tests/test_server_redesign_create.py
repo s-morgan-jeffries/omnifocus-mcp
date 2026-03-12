@@ -46,6 +46,7 @@ class TestCreateTaskServerRedesign:
                 note=None,
                 due_date=None,
                 defer_date=None,
+                planned_date=None,
                 flagged=False,
                 tags=None,
                 estimated_minutes=None
@@ -134,6 +135,7 @@ class TestCreateTaskServerRedesign:
                 note="Task note",
                 due_date="2025-12-31",
                 defer_date="2025-12-01",
+                planned_date=None,
                 flagged=True,
                 tags=["urgent", "work"],  # Parsed to list by server
                 estimated_minutes=60
