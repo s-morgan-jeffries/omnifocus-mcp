@@ -1980,3 +1980,50 @@ class TestGetOnHoldTagNames:
             mock_run.side_effect = Exception("AppleScript error")
             result = client._get_on_hold_tag_names()
             assert result == []
+
+
+class TestRruleToSummary:
+    """Tests for _rrule_to_summary() RRULE parser."""
+
+    def test_daily(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=DAILY") == "Every day"
+
+    def test_daily_interval(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=DAILY;INTERVAL=3") == "Every 3 days"
+
+    def test_weekly(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=WEEKLY") == "Every week"
+
+    def test_weekly_with_day(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=WEEKLY;INTERVAL=1;BYDAY=MO") == "Every week on Mon"
+
+    def test_weekly_interval_with_days(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR") == "Every 2 weeks on Mon, Wed, Fri"
+
+    def test_monthly(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=MONTHLY") == "Every month"
+
+    def test_monthly_interval(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=MONTHLY;INTERVAL=3") == "Every 3 months"
+
+    def test_yearly(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=YEARLY") == "Every year"
+
+    def test_yearly_interval(self):
+        assert OmniFocusConnector._rrule_to_summary("FREQ=YEARLY;INTERVAL=2") == "Every 2 years"
+
+    def test_fallback_unparseable(self):
+        """Unparseable strings return the raw input."""
+        assert OmniFocusConnector._rrule_to_summary("SOMETHING_WEIRD") == "SOMETHING_WEIRD"
+
+    def test_fallback_empty(self):
+        """Empty string returns empty string."""
+        assert OmniFocusConnector._rrule_to_summary("") == ""
+
+    def test_interval_1_omitted(self):
+        """INTERVAL=1 should not produce 'Every 1 weeks', just 'Every week'."""
+        assert OmniFocusConnector._rrule_to_summary("FREQ=WEEKLY;INTERVAL=1") == "Every week"
+
+    def test_daily_interval_1(self):
+        """INTERVAL=1 for daily should say 'Every day' not 'Every 1 days'."""
+        assert OmniFocusConnector._rrule_to_summary("FREQ=DAILY;INTERVAL=1") == "Every day"

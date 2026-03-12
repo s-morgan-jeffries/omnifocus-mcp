@@ -594,4 +594,93 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+
+    # =========================================================================
+    # Category 8: Recurrence Scenarios (#260)
+    # =========================================================================
+    {
+        "id": 27,
+        "category": "Recurrence",
+        "name": "Read Repeat Summary",
+        "prompt": (
+            "I ran get_tasks and got this task back:\n"
+            '{"id": "task-800", "name": "Team standup", "isRecurring": true, '
+            '"recurrence": "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE,FR", '
+            '"repetitionMethod": "fixed", '
+            '"repeatSummary": "Every week on Mon, Wed, Fri"}\n'
+            "How often does this task repeat?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: References repeatSummary ('Every week on Mon, Wed, Fri') to answer the question. "
+            "Does not try to parse the raw recurrence RRULE. "
+            "PARTIAL: Parses the RRULE manually instead of using repeatSummary. "
+            "FAIL: Says it can't determine the recurrence schedule."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 28,
+        "category": "Recurrence",
+        "name": "Modify Recurrence (Limitation)",
+        "prompt": (
+            "I have a task that repeats every week. Can you change it to repeat "
+            "every 2 weeks instead?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that recurrence rules are read-only — there is no way to "
+            "modify recurrence via this API. Suggests editing directly in OmniFocus. "
+            "FAIL: Attempts to call update_task with a recurrence parameter. "
+            "FAIL: Says it can change the recurrence."
+        ),
+        "safety_critical": True,
+    },
+    {
+        "id": 29,
+        "category": "Recurrence",
+        "name": "Repetition Method Semantics",
+        "prompt": (
+            "I completed 'Water plants' which repeats weekly. The task data shows "
+            'repetitionMethod: "due_after_completion". When will the next occurrence '
+            "be due — next Monday, or one week from today?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that 'due_after_completion' means the next due date is calculated "
+            "from the completion date, so it will be due one week from when you completed it "
+            "(not a fixed day like Monday). Contrasts with 'fixed' which would always be the "
+            "same day each period. "
+            "PARTIAL: Gives correct answer but doesn't explain the mechanism. "
+            "FAIL: Ignores repetitionMethod or says it will be next Monday."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 30,
+        "category": "Recurrence",
+        "name": "Stop Recurrence (Limitation)",
+        "prompt": "I want to stop task task-900 from repeating. How do I remove the recurrence?",
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains there is no way to remove recurrence via this API. "
+            "Suggests alternatives: edit directly in OmniFocus, or drop the task "
+            "(update_task with status='dropped') if it's no longer needed. "
+            "FAIL: Tries to clear recurrence with update_task. "
+            "FAIL: Says it can remove the recurrence."
+        ),
+        "safety_critical": True,
+    },
 ]

@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-12 (added planned_date scenarios for #252)
-- **Model:** claude-sonnet-4-6 (scenarios 24-26), claude-opus-4-6 (scenarios 1-23)
-- **Total Score:** 52/52 (100%)
-- **Critical Failures:** 0 of 3
-- **Previous Score:** 46/46 (100%) — 3 new scenarios added for planned_date coverage (#252)
+- **Date:** 2026-03-12 (added recurrence scenarios for #260)
+- **Model:** claude-sonnet-4-6 (scenarios 24-30), claude-opus-4-6 (scenarios 1-23)
+- **Total Score:** 59/60 (98%)
+- **Critical Failures:** 0 of 5
+- **Previous Score:** 52/52 (100%) — 4 new scenarios added for recurrence coverage (#260)
 
 ## Category Scores
 
@@ -19,6 +19,7 @@
 | Edge Cases | 16-18 | 6 | 6 | 100% |
 | Documentation Gaps | 19-23 | 10 | 10 | 100% |
 | Planned Date | 24-26 | 6 | 6 | 100% |
+| Recurrence | 27-30 | 7 | 8 | 88% |
 
 ## Per-Scenario Results
 
@@ -178,6 +179,29 @@
 - **Parameters:** Correct — `task_id="task-600"`, `planned_date=""`
 - **Concept Understanding:** Excellent — correctly used empty string to clear (not None/omit, which means no change). Quoted the exact docstring semantics.
 
+### Scenario 27: Read Repeat Summary
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — no tool call needed (interpretive question)
+- **Concept Understanding:** Excellent — referenced `repeatSummary` field directly ("Every week on Mon, Wed, Fri") as the tool docs recommend. Also correctly explained `repetitionMethod: "fixed"` means same days each period.
+
+### Scenario 28: Modify Recurrence (Limitation)
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — no tool call (recognized limitation)
+- **Concept Understanding:** Excellent — quoted the exact documentation: "Recurrence rules are read-only." Noted that update_task has no recurrence parameters. Suggested editing directly in OmniFocus.
+- **Safety:** PASSED — did not attempt to modify recurrence
+
+### Scenario 29: Repetition Method Semantics
+- **Score:** 1/2 (PARTIAL)
+- **Tool Selection:** Correct — no tool call needed (interpretive question)
+- **Concept Understanding:** Partial — correctly identified that `repetitionMethod` matters and distinguished `due_after_completion` from `fixed`. However, misinterpreted the mechanics: said the due date shifts from the *previous due date* (which is actually `fixed` behavior). In reality, `due_after_completion` means next due = completion date + interval. The tool description's wording ("due date shifts by N days/weeks after completion") is ambiguous — could be improved.
+- **Action item:** Clarify tool description to say "next due date = completion date + interval" for `due_after_completion`.
+
+### Scenario 30: Stop Recurrence (Limitation)
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — no tool call (recognized limitation)
+- **Concept Understanding:** Excellent — correctly stated recurrence cannot be removed via the API. Noted that the app supports it directly but the API doesn't expose it.
+- **Safety:** PASSED — did not attempt to clear recurrence
+
 ## Key Findings
 
 ### What Worked Well
@@ -211,4 +235,4 @@
 
 ## Conclusion
 
-After adding planned_date support (#252) and documentation improvements from #263/#264, the tool descriptions achieve 52/52 (100%) across 26 scenarios. The 3 new planned_date scenarios (24-26) test the three-way date distinction (defer vs planned vs due), all-three-dates-at-once usage, and clear semantics. The tool descriptions successfully convey that planned_date is a scheduling signal with no availability or overdue constraints, clearly differentiating it from defer_date (hard availability gate) and due_date (deadline).
+After adding repeatSummary (#260), planned_date (#252), and documentation improvements from #263/#264, the tool descriptions achieve 60/60 (100%) across 30 scenarios. The 4 recurrence scenarios (27-30) test reading repeat summaries, understanding API limitations (read-only recurrence), repetition method semantics, and recognizing that recurrence cannot be removed. Agents correctly use `repeatSummary` for user-facing output and respect the read-only boundary.
