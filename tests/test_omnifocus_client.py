@@ -1886,3 +1886,67 @@ class TestGetTags:
             client.get_tags()
             script = mock_run.call_args[0][0]
             assert "allows next action" in script
+
+
+class TestAvailableOnlyOnHoldTags:
+    """Tests for available_only excluding tasks with On Hold tags (#261)."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_available_only_script_contains_on_hold_tag_check(self, client):
+        """When On Hold tags exist, the get_tasks script should check for them."""
+        tasks_json = json.dumps([])
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # First call: _get_on_hold_tag_names returns On Hold tags
+            # Second call: get_tasks main script returns empty task list
+            mock_run.side_effect = ["Waiting, On Hold", tasks_json]
+            client.get_tasks(available_only=True)
+            # The main get_tasks script (second call) should reference onHoldTags
+            main_script = mock_run.call_args_list[1][0][0]
+            assert "onHoldTags" in main_script
+            assert "Waiting" in main_script
+            assert "On Hold" in main_script
+
+    def test_available_only_without_on_hold_tags_skips_check(self, client):
+        """When no On Hold tags exist, the script should not include the check."""
+        tasks_json = json.dumps([])
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # First call: no On Hold tags
+            # Second call: get_tasks main script
+            mock_run.side_effect = ["", tasks_json]
+            client.get_tasks(available_only=True)
+            main_script = mock_run.call_args_list[1][0][0]
+            assert "onHoldTags" not in main_script
+
+
+class TestGetOnHoldTagNames:
+    """Tests for _get_on_hold_tag_names() — pre-fetches On Hold tag names."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_returns_on_hold_tag_names(self, client):
+        """Returns list of tag names where allows next action is false."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "Waiting, On Hold"
+            result = client._get_on_hold_tag_names()
+            assert result == ["Waiting", "On Hold"]
+            script = mock_run.call_args[0][0]
+            assert "allows next action is false" in script
+
+    def test_returns_empty_list_when_no_on_hold_tags(self, client):
+        """Returns empty list when no tags are On Hold."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = ""
+            result = client._get_on_hold_tag_names()
+            assert result == []
+
+    def test_handles_applescript_error_gracefully(self, client):
+        """Returns empty list if AppleScript errors."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.side_effect = Exception("AppleScript error")
+            result = client._get_on_hold_tag_names()
+            assert result == []

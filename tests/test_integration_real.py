@@ -2009,6 +2009,53 @@ class TestAvailabilityFields:
             client.delete_projects(project_id)
 
 
+class TestAvailableOnlyOnHoldTags:
+    """Test that available_only=True excludes tasks with On Hold tags (#261).
+
+    Validates parity with OmniFocus's native Available perspective.
+    """
+
+    def test_on_hold_tag_task_excluded_from_available(self, client, test_project):
+        """Task with an On Hold tag should NOT appear in available_only results."""
+        # Create an On Hold tag
+        tag_id = client.create_tag("test-on-hold-261")
+        try:
+            client.update_tag(tag_id, active=False)
+
+            # Create a task and assign the On Hold tag via update_task
+            # (create_task with On Hold tags silently skips tag assignment)
+            task_id = client.create_task(
+                "On Hold Tagged Task",
+                project_id=test_project,
+            )
+            client.update_task(task_id, add_tags=["test-on-hold-261"])
+
+            # Verify the task exists in unfiltered results with the tag
+            all_tasks = client.get_tasks(project_id=test_project)
+            task = next(t for t in all_tasks if t['name'] == "On Hold Tagged Task")
+            assert "test-on-hold-261" in task['tags']
+
+            # Verify the task is excluded from available_only
+            available_tasks = client.get_tasks(
+                project_id=test_project, available_only=True
+            )
+            available_names = [t['name'] for t in available_tasks]
+            assert "On Hold Tagged Task" not in available_names
+        finally:
+            client.delete_tags(tag_id)
+            client.delete_projects(test_project)
+
+    def test_get_on_hold_tag_names_returns_on_hold_tags(self, client):
+        """_get_on_hold_tag_names() returns names of tags set to On Hold."""
+        tag_id = client.create_tag("test-on-hold-261-lookup")
+        try:
+            client.update_tag(tag_id, active=False)
+            on_hold = client._get_on_hold_tag_names()
+            assert "test-on-hold-261-lookup" in on_hold
+        finally:
+            client.delete_tags(tag_id)
+
+
 class TestUINavigation:
     """Test UI navigation operations (set_focus, get_focus, get_perspectives).
 
