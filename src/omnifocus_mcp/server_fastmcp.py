@@ -946,25 +946,27 @@ def create_tag(
 def update_tag(
     tag_id: str,
     name: Optional[str] = None,
-    active: Optional[bool] = None
+    status: Optional[str] = None
 ) -> str:
     """Update properties of an existing tag in OmniFocus.
 
-    Tags can be renamed or put on hold. Setting active=False puts a tag on hold —
-    tasks with on-hold tags are excluded from available task queries.
+    Tags can be renamed or have their status changed. Tags have three states:
+    active (tasks are actionable), on_hold (tasks excluded from available queries),
+    and dropped (tag hidden from most views).
 
     Args:
         tag_id: The ID of the tag to update (from get_tags)
         name: New tag name (optional)
-        active: Whether the tag is active (optional). False = on hold (tasks with
-            this tag become unavailable). True = active.
+        status: Tag status (optional). Values: "active", "on_hold", "dropped".
+            Active = tasks with this tag are actionable. On hold = tasks become
+            unavailable. Dropped = tag is hidden from most views.
 
     Returns:
         Success message with updated fields, or error message
     """
     client = get_client()
     try:
-        result = client.update_tag(tag_id=tag_id, name=name, active=active)
+        result = client.update_tag(tag_id=tag_id, name=name, status=status)
 
         fields = ", ".join(result["updated_fields"])
         return f"Successfully updated tag {tag_id}\nUpdated fields: {fields}"

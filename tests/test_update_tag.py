@@ -30,27 +30,27 @@ class TestUpdateTagServer:
             result = update_tag(tag_id="tag-001", name="Renamed")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-001", name="Renamed", active=None
+                tag_id="tag-001", name="Renamed", status=None
             )
             assert "tag-001" in result
             assert "Successfully" in result
 
-    def test_update_tag_active_status(self):
-        """Server updates tag active status."""
+    def test_update_tag_on_hold_status(self):
+        """Server updates tag to on_hold status."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
             mock_client.update_tag.return_value = {
                 "success": True,
                 "tag_id": "tag-002",
-                "updated_fields": ["active"],
+                "updated_fields": ["status"],
                 "error": None,
             }
             mock_get_client.return_value = mock_client
 
-            result = update_tag(tag_id="tag-002", active=False)
+            result = update_tag(tag_id="tag-002", status="on_hold")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-002", name=None, active=False
+                tag_id="tag-002", name=None, status="on_hold"
             )
             assert "tag-002" in result
             assert "Successfully" in result
@@ -62,12 +62,12 @@ class TestUpdateTagServer:
             mock_client.update_tag.return_value = {
                 "success": True,
                 "tag_id": "tag-003",
-                "updated_fields": ["name", "active"],
+                "updated_fields": ["name", "status"],
                 "error": None,
             }
             mock_get_client.return_value = mock_client
 
-            result = update_tag(tag_id="tag-003", name="New Name", active=True)
+            result = update_tag(tag_id="tag-003", name="New Name", status="active")
 
             assert "tag-003" in result
             assert "Successfully" in result
@@ -99,6 +99,50 @@ class TestUpdateTagServer:
             assert "Error" in result
 
 
+class TestGetTagsDroppedStatus:
+    """Tests for get_tags() returning dropped status."""
+
+    def test_get_tags_returns_dropped_status(self):
+        """get_tags should return status='dropped' for hidden tags."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # Simulate a tag with hidden=true (dropped in OmniFocus UI)
+            mock_run.return_value = '[{"id": "tag-001", "name": "Archived", "status": "dropped"}]'
+
+            client = OmniFocusConnector()
+            tags = client.get_tags()
+
+            assert len(tags) == 1
+            assert tags[0]["status"] == "dropped"
+
+    def test_get_tags_three_states(self):
+        """get_tags should distinguish active, on hold, and dropped."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = (
+                '[{"id": "tag-1", "name": "Active Tag", "status": "active"}, '
+                '{"id": "tag-2", "name": "Paused Tag", "status": "on hold"}, '
+                '{"id": "tag-3", "name": "Dropped Tag", "status": "dropped"}]'
+            )
+
+            client = OmniFocusConnector()
+            tags = client.get_tags()
+
+            statuses = {t["name"]: t["status"] for t in tags}
+            assert statuses["Active Tag"] == "active"
+            assert statuses["Paused Tag"] == "on hold"
+            assert statuses["Dropped Tag"] == "dropped"
+
+    def test_get_tags_applescript_reads_hidden_property(self):
+        """get_tags AppleScript should read 'hidden' to determine dropped status."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '[]'
+
+            client = OmniFocusConnector()
+            client.get_tags()
+
+            call_args = mock_run.call_args[0][0]
+            assert "hidden" in call_args
+
+
 class TestUpdateTagConnector:
     """Tests for update_tag() connector method (AppleScript layer)."""
 
@@ -116,13 +160,13 @@ class TestUpdateTagConnector:
             assert "Renamed" in call_args
             assert "tag-001" in call_args
 
-    def test_update_tag_active_calls_applescript(self):
-        """Connector builds correct AppleScript for active status change."""
+    def test_update_tag_status_calls_applescript(self):
+        """Connector builds correct AppleScript for status change."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = '{"success": true, "updated_fields": ["active"]}'
+            mock_run.return_value = '{"success": true, "updated_fields": ["status"]}'
 
             client = OmniFocusConnector()
-            result = client.update_tag("tag-002", active=False)
+            result = client.update_tag("tag-002", status="on_hold")
 
             assert result["success"] is True
             call_args = mock_run.call_args[0][0]
@@ -160,3 +204,70 @@ class TestUpdateTagConnector:
 
             call_args = mock_run.call_args[0][0]
             assert '\\"' in call_args or 'quoted' in call_args
+
+
+class TestUpdateTagStatus:
+    """Tests for update_tag() with new status parameter."""
+
+    def test_update_tag_status_dropped(self):
+        """Connector sets hidden=true for status='dropped'."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '{"success": true, "updated_fields": ["status"]}'
+
+            client = OmniFocusConnector()
+            result = client.update_tag("tag-001", status="dropped")
+
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "hidden of theTag to true" in call_args
+
+    def test_update_tag_status_active(self):
+        """Connector sets hidden=false and allows next action=true for status='active'."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '{"success": true, "updated_fields": ["status"]}'
+
+            client = OmniFocusConnector()
+            result = client.update_tag("tag-001", status="active")
+
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "hidden of theTag to false" in call_args
+            assert "allows next action of theTag to true" in call_args
+
+    def test_update_tag_status_on_hold(self):
+        """Connector sets hidden=false and allows next action=false for status='on_hold'."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '{"success": true, "updated_fields": ["status"]}'
+
+            client = OmniFocusConnector()
+            result = client.update_tag("tag-001", status="on_hold")
+
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "hidden of theTag to false" in call_args
+            assert "allows next action of theTag to false" in call_args
+
+    def test_update_tag_status_invalid(self):
+        """Connector raises ValueError for invalid status."""
+        client = OmniFocusConnector()
+        with pytest.raises(ValueError, match="Invalid status"):
+            client.update_tag("tag-001", status="invalid")
+
+    def test_update_tag_server_status_param(self):
+        """Server passes status parameter to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tag.return_value = {
+                "success": True,
+                "tag_id": "tag-001",
+                "updated_fields": ["status"],
+                "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tag(tag_id="tag-001", status="dropped")
+
+            mock_client.update_tag.assert_called_once_with(
+                tag_id="tag-001", name=None, status="dropped"
+            )
+            assert "Successfully" in result

@@ -481,20 +481,21 @@ class OmniFocusConnector:
         return filtered_tasks
 
     def _get_on_hold_tag_names(self) -> list[str]:
-        """Pre-fetch names of all On Hold tags.
+        """Pre-fetch names of all On Hold or Dropped tags.
 
         Used by get_tasks(available_only=True) to exclude tasks with On Hold
-        tags, matching OmniFocus's native Available perspective behavior.
+        or Dropped tags, matching OmniFocus's native Available perspective
+        behavior.
 
         Returns:
-            List of tag names where allows next action is false.
-            Empty list if no On Hold tags exist or on error.
+            List of tag names where allows next action is false or hidden
+            is true. Empty list if no such tags exist or on error.
         """
         script = '''
         tell application "OmniFocus"
             tell front document
                 try
-                    return name of (flattened tags whose allows next action is false)
+                    return name of (flattened tags whose allows next action is false or hidden is true)
                 on error
                     return {}
                 end try
@@ -3894,8 +3895,11 @@ class OmniFocusConnector:
                     try
                         set tagId to id of t
                         set tagName to name of t
+                        set tagHidden to hidden of t
                         set tagAllows to allows next action of t
-                        if tagAllows then
+                        if tagHidden then
+                            set tagStatus to "dropped"
+                        else if tagAllows then
                             set tagStatus to "active"
                         else
                             set tagStatus to "on hold"
@@ -4011,16 +4015,17 @@ class OmniFocusConnector:
         self,
         tag_id: str,
         name: Optional[str] = None,
-        active: Optional[bool] = None
+        status: Optional[str] = None
     ) -> dict:
         """Update properties of an existing tag.
 
         Args:
             tag_id: The ID of the tag to update
             name: New tag name (optional)
-            active: Whether the tag is active (optional). False puts the tag
-                on hold — tasks with on-hold tags are excluded from available
-                task queries.
+            status: Tag status (optional). Values: "active", "on_hold",
+                "dropped". Active tags allow next actions. On-hold tags
+                exclude tasks from available queries. Dropped tags are
+                hidden from most views.
 
         Returns:
             dict: {
@@ -4031,7 +4036,8 @@ class OmniFocusConnector:
             }
 
         Raises:
-            ValueError: If tag_id is empty or no fields provided
+            ValueError: If tag_id is empty, no fields provided, or
+                invalid status
             Exception: If tag not found or update fails
         """
         self._verify_database_safety('update_tag')
@@ -4039,7 +4045,14 @@ class OmniFocusConnector:
         if not tag_id:
             raise ValueError("tag_id is required")
 
-        all_fields = {"name": name, "active": active}
+        valid_statuses = {"active", "on_hold", "dropped"}
+        if status is not None and status not in valid_statuses:
+            raise ValueError(
+                f"Invalid status '{status}'. "
+                f"Must be one of: {', '.join(sorted(valid_statuses))}"
+            )
+
+        all_fields = {"name": name, "status": status}
         if all(v is None for v in all_fields.values()):
             raise ValueError("At least one field must be provided to update")
 
@@ -4052,10 +4065,16 @@ class OmniFocusConnector:
             set_lines.append(f'set name of theTag to "{name_escaped}"')
             updated_fields.append("name")
 
-        if active is not None:
-            active_str = "true" if active else "false"
-            set_lines.append(f'set allows next action of theTag to {active_str}')
-            updated_fields.append("active")
+        if status is not None:
+            if status == "active":
+                set_lines.append('set hidden of theTag to false')
+                set_lines.append('set allows next action of theTag to true')
+            elif status == "on_hold":
+                set_lines.append('set hidden of theTag to false')
+                set_lines.append('set allows next action of theTag to false')
+            elif status == "dropped":
+                set_lines.append('set hidden of theTag to true')
+            updated_fields.append("status")
 
         set_block = "\n                        ".join(set_lines)
         fields_json = ", ".join(f'\\"{f}\\"' for f in updated_fields)
