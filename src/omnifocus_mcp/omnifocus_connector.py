@@ -480,6 +480,35 @@ class OmniFocusConnector:
 
         return filtered_tasks
 
+    def _get_on_hold_tag_names(self) -> list[str]:
+        """Pre-fetch names of all On Hold tags.
+
+        Used by get_tasks(available_only=True) to exclude tasks with On Hold
+        tags, matching OmniFocus's native Available perspective behavior.
+
+        Returns:
+            List of tag names where allows next action is false.
+            Empty list if no On Hold tags exist or on error.
+        """
+        script = '''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    return name of (flattened tags whose allows next action is false)
+                on error
+                    return {}
+                end try
+            end tell
+        end tell
+        '''
+        try:
+            result = run_applescript(script)
+            if not result or not result.strip():
+                return []
+            return [name.strip() for name in result.split(", ") if name.strip()]
+        except Exception:
+            return []
+
     def _get_task_ids_for_tags(
         self,
         tag_names: list[str],
@@ -2071,6 +2100,32 @@ class OmniFocusConnector:
             if tag_prefiltered_ids is not None and len(tag_prefiltered_ids) == 0:
                 return []  # No tasks match — early return
 
+        # Pre-fetch On Hold tag names for available_only filtering.
+        # OmniFocus's Available perspective excludes tasks with On Hold tags.
+        on_hold_tag_names: list[str] = []
+        on_hold_tags_decl = ""
+        on_hold_available_check = ""
+        on_hold_available_check_batch = ""
+        if available_only:
+            on_hold_tag_names = self._get_on_hold_tag_names()
+            if on_hold_tag_names:
+                escaped = [f'"{self._escape_applescript_string(n)}"' for n in on_hold_tag_names]
+                on_hold_tags_decl = f"set onHoldTags to {{{', '.join(escaped)}}}"
+                # Per-task check (filter-first / extract-then-filter)
+                on_hold_available_check = """
+                        -- Skip tasks with On Hold tags
+                        set taskTagNms to name of (tags of t)
+                        repeat with tn in taskTagNms
+                            if tn is in onHoldTags then error "skip unavailable task"
+                        end repeat"""
+                # Batch check (uses already batch-read tagNameLists)
+                on_hold_available_check_batch = """
+                        -- Skip tasks with On Hold tags (batch data)
+                        set taskTagNms to contents of (item i of tagNameLists)
+                        repeat with tn in taskTagNms
+                            if tn is in onHoldTags then error "skip unavailable"
+                        end repeat"""
+
         # Build task source with native 'whose' pre-filtering where possible.
         # OmniFocus evaluates 'whose' clauses natively (~20-30x faster than
         # manual iteration with per-task property checks). See PERFORMANCE_PROFILING.md.
@@ -2169,8 +2224,8 @@ class OmniFocusConnector:
                             error "skip non-next task"
                         end if"""
 
-        # Build available filter (not dropped, not blocked, not deferred)
-        available_check = "" if not available_only else """
+        # Build available filter (not dropped, not blocked, not deferred, not On Hold tagged)
+        available_check = "" if not available_only else f"""
                         -- Skip unavailable tasks
                         if dropped of t then
                             error "skip unavailable task"
@@ -2186,7 +2241,7 @@ class OmniFocusConnector:
                                     error "skip unavailable task"
                                 end if
                             end if
-                        end try"""
+                        end try{on_hold_available_check}"""
 
         # Overdue filter — skip if whose already filters by due date
         overdue_check = ""
@@ -2394,14 +2449,14 @@ class OmniFocusConnector:
         # Build batch-mode filter checks (use indexed batch data instead of per-task reads)
         available_check_batch = ""
         if available_only:
-            available_check_batch = """
+            available_check_batch = f"""
                         -- Skip unavailable tasks (using batch-read data)
                         if item i of taskDrops then error "skip unavailable"
                         if item i of taskBlocks then error "skip unavailable"
                         set dVal to contents of (item i of deferDates)
                         if dVal is not missing value then
                             if dVal > (current date) then error "skip unavailable"
-                        end if"""
+                        end if{on_hold_available_check_batch}"""
 
         due_relative_check_batch = ""
         if due_relative:
@@ -2559,6 +2614,7 @@ class OmniFocusConnector:
                 set tagNameLists to name of (tags of ft)
 
                 set taskCount to count of ids
+                {on_hold_tags_decl}
 
                 -- Build JSON from parallel lists (local loop, minimal IPC)
                 repeat with i from 1 to taskCount
@@ -2727,6 +2783,7 @@ class OmniFocusConnector:
 
         set output to ""
         set taskIndex to 0
+        {on_hold_tags_decl}
 
         tell application "OmniFocus"
             tell front document
@@ -2766,6 +2823,7 @@ class OmniFocusConnector:
 
         set output to ""
         set taskIndex to 0
+        {on_hold_tags_decl}
 
         tell application "OmniFocus"
             tell front document
