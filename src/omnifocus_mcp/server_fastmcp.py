@@ -198,9 +198,10 @@ def get_projects(
         include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
 
     Returns:
-        Each project includes: id, name, folderPath, status, sequential, creationDate,
-        note (truncated unless include_full_notes=True). Note: `sequential` is true for
-        sequential projects, false for both parallel projects and Single Actions Lists.
+        Each project includes: id, name, folderPath, status, projectType, sequential, creationDate,
+        note (truncated unless include_full_notes=True). `projectType` is "sequential", "parallel",
+        or "single_actions" (Single Actions List — a grab-bag list with no completion goal).
+        `sequential` (boolean) is retained for backwards compatibility.
         With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status.
         With include_last_activity: lastActivityDate.
     """
@@ -240,6 +241,7 @@ def create_project(
     note: Optional[str] = None,
     folder_path: Optional[str] = None,
     sequential: bool = False,
+    project_type: Optional[str] = None,
     review_interval_weeks: Optional[int] = None
 ) -> str:
     """Create a new project in OmniFocus.
@@ -248,12 +250,12 @@ def create_project(
         name: The name of the project
         note: Optional note/description for the project (plain text only - rich text formatting is not supported via automation APIs)
         folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
-        sequential: If True, tasks must be completed in order — the first incomplete task is
-            'available' and the rest are 'blocked.' If False, creates a parallel project where
-            all tasks are available simultaneously. Note: Single Actions Lists (a third project
-            type) cannot currently be created via this API. OmniFocus represents dependencies
-            via task ordering in sequential projects; there are no explicit task-to-task
-            dependency links. (default: False)
+        project_type: Project type — "parallel" (default, all tasks available simultaneously),
+            "sequential" (tasks completed in order, only first available), or "single_actions"
+            (grab-bag list with no completion goal, cannot auto-complete). Overrides sequential
+            when provided.
+        sequential: DEPRECATED — use project_type instead. If True, creates a sequential project.
+            Ignored when project_type is provided. (default: False)
         review_interval_weeks: Optional review interval in weeks for GTD review cycle
 
     Returns:
@@ -266,19 +268,23 @@ def create_project(
             note=note,
             folder_path=folder_path,
             sequential=sequential,
+            project_type=project_type,
             review_interval_weeks=review_interval_weeks
         )
     except ValueError as e:
         return f"Error: {str(e)}"
 
+    effective_type = project_type or ("sequential" if sequential else "parallel")
+    type_labels = {
+        "sequential": "Sequential (tasks completed in order)",
+        "parallel": "Parallel (tasks can be done in any order)",
+        "single_actions": "Single Actions List (grab-bag, no completion goal)",
+    }
     result = f"Successfully created project '{name}'"
     result += f"\nProject ID: {project_id}"
     if folder_path:
         result += f"\nFolder: {folder_path}"
-    if sequential:
-        result += "\nType: Sequential (tasks completed in order)"
-    else:
-        result += "\nType: Parallel (tasks can be done in any order)"
+    result += f"\nType: {type_labels.get(effective_type, effective_type)}"
     if review_interval_weeks:
         result += f"\nReview Interval: Every {review_interval_weeks} week(s)"
     if note:
@@ -294,27 +300,20 @@ def update_project(
     folder_path: Optional[str] = None,
     note: Optional[str] = None,
     sequential: Optional[str] = None,
+    project_type: Optional[str] = None,
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
     last_reviewed: Optional[str] = None
 ) -> str:
-    """Update an existing project in OmniFocus (NEW API - Phase 2).
-
-    NEW API changes:
-    - Renamed 'name' to 'project_name' for consistency
-    - Added status parameter (active, on_hold, done, dropped)
-    - Added review_interval_weeks parameter
-    - Added last_reviewed parameter
-    - Added folder_path parameter
-    - Returns structured response with updated fields
-    - Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_project_reviewed()
+    """Update an existing project in OmniFocus.
 
     Args:
         project_id: The ID of the project to update
         project_name: New project name (optional)
         folder_path: Folder path to move project to (e.g., "Work : Projects")
         note: New note content (optional). WARNING: Removes rich text formatting.
-        sequential: Sequential setting (optional) - "true" or "false"
+        project_type: Change project type — "parallel", "sequential", or "single_actions" (optional)
+        sequential: DEPRECATED — use project_type instead. Sequential setting - "true" or "false"
         status: Project status - "active", "on_hold", "done", or "dropped"
         review_interval_weeks: Review interval in weeks (0 to clear)
         last_reviewed: Last reviewed date in ISO format or "now"
@@ -326,10 +325,8 @@ def update_project(
     sequential_bool: Optional[bool] = None
     if sequential is not None:
         if isinstance(sequential, bool):
-            # Direct boolean (from tests or Python calls)
             sequential_bool = sequential
         elif isinstance(sequential, str):
-            # String from MCP (Claude passes strings)
             if sequential.lower() == "true":
                 sequential_bool = True
             elif sequential.lower() == "false":
@@ -345,6 +342,7 @@ def update_project(
             folder_path=folder_path,
             note=note,
             sequential=sequential_bool,
+            project_type=project_type,
             status=status,
             review_interval_weeks=review_interval_weeks,
             last_reviewed=last_reviewed

@@ -914,6 +914,7 @@ class OmniFocusConnector:
                 set notes to note of fp
                 set statuses to status of fp
                 set seqs to sequential of fp
+                set singletons to singleton action holder of fp
                 set createDates to creation date of fp
                 set modDates to modification date of fp
                 set compDates to completion date of fp
@@ -1009,6 +1010,7 @@ class OmniFocusConnector:
                             "\\"note\\": \\"" & my escapeJSON(item i of notes) & "\\", " & ¬
                             "\\"status\\": \\"" & projStatus & "\\", " & ¬
                             "\\"sequential\\": " & ((item i of seqs) as text) & ", " & ¬
+                            "\\"singletonActionHolder\\": " & ((item i of singletons) as text) & ", " & ¬
                             "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modDateStr & ", " & ¬
@@ -1044,6 +1046,15 @@ class OmniFocusConnector:
             result = run_applescript(script, timeout=timeout)
             if result:
                 projects = json.loads(result)
+
+                # Compute projectType from singleton and sequential flags
+                for p in projects:
+                    if p.get("singletonActionHolder"):
+                        p["projectType"] = "single_actions"
+                    elif p.get("sequential"):
+                        p["projectType"] = "sequential"
+                    else:
+                        p["projectType"] = "parallel"
 
                 # Apply date range filtering
                 if modified_after or modified_before:
@@ -1095,6 +1106,7 @@ class OmniFocusConnector:
         note: Optional[str] = None,
         folder_path: Optional[str] = None,
         sequential: bool = False,
+        project_type: Optional[str] = None,
         review_interval_weeks: Optional[int] = None
     ) -> str:
         """Create a new project in OmniFocus.
@@ -1103,7 +1115,10 @@ class OmniFocusConnector:
             name: The name of the project
             note: Optional note/description for the project
             folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist
-            sequential: If True, tasks must be completed in order (default: False, parallel)
+            sequential: If True, tasks must be completed in order (default: False, parallel).
+                Ignored when project_type is provided.
+            project_type: Project type: "parallel", "sequential", or "single_actions".
+                Overrides sequential when provided.
             review_interval_weeks: Optional review interval in weeks for GTD review cycle
 
         Returns:
@@ -1119,11 +1134,22 @@ class OmniFocusConnector:
         name_escaped = self._escape_applescript_string(name)
         note_escaped = self._escape_applescript_string(note or "")
 
+        # Resolve effective type from project_type (takes precedence) or sequential flag
+        if project_type is not None:
+            effective_type = project_type
+        elif sequential:
+            effective_type = "sequential"
+        else:
+            effective_type = "parallel"
+
         # Build properties
         properties = [f'name:"{name_escaped}"']
         if note:
             properties.append(f'note:"{note_escaped}"')
-        if sequential:
+        if effective_type == "single_actions":
+            properties.append('singleton action holder:true')
+            properties.append('sequential:false')
+        elif effective_type == "sequential":
             properties.append('sequential:true')
         else:
             properties.append('sequential:false')
@@ -1224,6 +1250,7 @@ class OmniFocusConnector:
         folder_path: Optional[str] = None,
         note: Optional[str] = None,
         sequential: Optional[bool] = None,
+        project_type: Optional[str] = None,
         status: Optional[Union[ProjectStatus, str]] = None,
         review_interval_weeks: Optional[int] = None,
         last_reviewed: Optional[str] = None,
@@ -1274,6 +1301,7 @@ class OmniFocusConnector:
             "folder_path": folder_path,
             "note": note,
             "sequential": sequential,
+            "project_type": project_type,
             "status": status,
             "review_interval_weeks": review_interval_weeks,
             "last_reviewed": last_reviewed,
@@ -1318,6 +1346,21 @@ class OmniFocusConnector:
         if sequential is not None:
             properties.append(f'sequential:{str(sequential).lower()}')
             updated_fields.append("sequential")
+
+        if project_type is not None:
+            valid_types = ["parallel", "sequential", "single_actions"]
+            if project_type not in valid_types:
+                raise ValueError(f"Invalid project_type: {project_type}. Must be one of: {', '.join(valid_types)}")
+            if project_type == "single_actions":
+                properties.append('singleton action holder:true')
+                properties.append('sequential:false')
+            elif project_type == "sequential":
+                properties.append('singleton action holder:false')
+                properties.append('sequential:true')
+            else:  # parallel
+                properties.append('singleton action holder:false')
+                properties.append('sequential:false')
+            updated_fields.append("project_type")
 
         # Build status command (separate from properties)
         status_command = ""

@@ -484,12 +484,13 @@ SCENARIOS = [
             "key_params": {},
         },
         "scoring_notes": (
-            "PASS: Explains that sequential=false covers both Parallel projects and Single "
-            "Actions Lists. Notes that the API can't currently distinguish between them. "
-            "A Single Actions List has no completion goal — it's an ongoing collection. "
-            "A parallel project can be completed when all tasks are done. "
-            "PARTIAL: Mentions both types exist but doesn't explain the limitation clearly. "
-            "FAIL: Says they're the same thing or doesn't know about Single Actions Lists."
+            "PASS: Explains that sequential=false is now deprecated/ambiguous, but the "
+            "projectType field distinguishes them clearly. 'Home Repairs' is likely "
+            "'parallel' (has a completion goal), 'Errands' is likely 'single_actions' "
+            "(grab-bag, no completion goal, cannot auto-complete). Recommends checking "
+            "projectType in get_projects output to confirm. "
+            "PARTIAL: Knows the three types exist but doesn't mention projectType field. "
+            "FAIL: Says they're the same type, or doesn't know about Single Actions Lists."
         ),
         "safety_critical": False,
     },
@@ -800,5 +801,31 @@ SCENARIOS = [
             "FAIL: Confuses on_hold with dropped, or sets wrong status."
         ),
         "safety_critical": True,
+    },
+    {
+        "id": 35,
+        "category": "Project Type",
+        "name": "Create Single Actions List",
+        "prompt": (
+            "I want to create a new 'Someday/Maybe' list in OmniFocus — a grab-bag "
+            "of ideas that has no completion goal and shouldn't auto-complete when I "
+            "tick off items. How do I create it?"
+        ),
+        "expected": {
+            "tools": ["create_project"],
+            "key_params": {
+                "create_project": {"project_type": "single_actions"},
+            },
+        },
+        "scoring_notes": (
+            "PASS: create_project(name='Someday/Maybe', project_type='single_actions'). "
+            "Understands that single_actions = no completion goal, cannot auto-complete. "
+            "PARTIAL: Creates with sequential=False (parallel) instead — works but doesn't "
+            "capture the SAL semantics. Or creates correctly but doesn't explain why "
+            "single_actions is the right choice. "
+            "FAIL: Uses project_type='parallel', says SALs can't be created via the API, "
+            "or tries a non-existent parameter."
+        ),
+        "safety_critical": False,
     },
 ]

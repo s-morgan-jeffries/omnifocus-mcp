@@ -39,6 +39,7 @@ class TestUpdateProjectServerRedesign:
                 folder_path=None,
                 note=None,
                 sequential=None,
+                project_type=None,
                 status="active",
                 review_interval_weeks=None,
                 last_reviewed=None
