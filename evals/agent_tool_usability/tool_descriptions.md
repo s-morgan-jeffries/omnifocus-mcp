@@ -39,8 +39,9 @@ Retrieve ALL active projects with full details and hierarchy, optionally filtere
 - `query: str` (optional) — Search term to filter by name, note, or folder path (case-insensitive)
 - `include_task_health: bool` (default: False) — Include per-project task health counts (remaining, available, overdue, deferred)
 - `include_last_activity: bool` (default: False) — Compute lastActivityDate (most recent task creation/completion)
+- `stalled_only: bool` (default: False) — Only return active projects with no available actions (implies include_task_health=True)
 
-**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, creationDate, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status. With include_last_activity: lastActivityDate.
+**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, creationDate, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
 
 ---
 
