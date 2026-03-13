@@ -659,6 +659,22 @@ class TestProjectCRUD:
         # TODO: Fix get_projects() to parse review interval correctly
         # assert projects[0]['reviewInterval'] == "2 weeks"
 
+    def test_update_project_next_review_date_integration(self, client, test_project):
+        """Integration: update_project() can set next_review_date explicitly."""
+        next_review = "2026-06-01"
+        result = client.update_project(test_project, next_review_date=next_review)
+        assert result["success"] is True
+        assert "next_review_date" in result["updated_fields"]
+
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        project = projects[0]
+        next_review_returned = project.get('nextReviewDate') or ""
+        assert next_review_returned.startswith(next_review), (
+            f"Expected nextReviewDate to start with {next_review!r}, got {next_review_returned!r}"
+        )
+        print(f"\n✓ Set next_review_date: {next_review_returned}")
+
     def test_update_project_mark_reviewed_integration(self, client, test_project):
         """Integration: update_project() can mark project as reviewed."""
         # Mark as reviewed now
@@ -1805,6 +1821,24 @@ class TestRepeatSummaryIntegration:
         assert task['isRecurring'] is False
 
         print("\n✓ Non-recurring task has repeatSummary=None")
+
+    def test_recurring_task_has_populated_repeat_summary(self, client, test_project):
+        """Recurring task should return a non-empty repeatSummary string."""
+        task_id = client.create_task("test-repeat-summary-task", project_id=test_project)
+        try:
+            # Set recurrence via update_task (AppleScript — safe on test DB)
+            client.update_task(task_id, recurrence="FREQ=DAILY;INTERVAL=1")
+
+            tasks = client.get_tasks(task_id=task_id)
+            assert len(tasks) == 1
+            task = tasks[0]
+            assert task.get('isRecurring') is True
+            assert task.get('repeatSummary') is not None
+            assert isinstance(task['repeatSummary'], str)
+            assert len(task['repeatSummary']) > 0
+            print(f"\n✓ Recurring task repeatSummary: {task['repeatSummary']!r}")
+        finally:
+            client.delete_tasks(task_id)
 
 
 class TestRecurrenceWriteIntegration:
