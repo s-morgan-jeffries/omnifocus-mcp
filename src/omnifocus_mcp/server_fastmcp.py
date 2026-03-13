@@ -163,6 +163,8 @@ def _format_project(proj: dict, truncate_notes: bool = True) -> str:
             result += "Health: No Remaining Tasks\n"
         else:
             result += "Health: Stuck\n"
+        if proj.get('stalled'):
+            result += "Stalled: Yes\n"
 
     # Last activity (when include_last_activity=True)
     if proj.get('lastActivityDate'):
@@ -182,7 +184,8 @@ def get_projects(
     on_hold_only: bool = False,
     query: Optional[str] = None,
     include_task_health: bool = False,
-    include_last_activity: bool = False
+    include_last_activity: bool = False,
+    stalled_only: bool = False
 ) -> str:
     """Retrieve ALL active projects with full details and hierarchy, optionally filtered by search query.
 
@@ -196,6 +199,7 @@ def get_projects(
         query: Optional search term to filter by name, note, or folder path (case-insensitive)
         include_task_health: If True, include per-project task health counts (remaining, available, overdue, deferred)
         include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
+        stalled_only: If True, only return active projects with no available actions — projects that need attention (implies include_task_health=True)
 
     Returns:
         Each project includes: id, name, folderPath, status, projectType, sequential,
@@ -204,7 +208,8 @@ def get_projects(
         a grab-bag list with no completion goal). `sequential` (boolean) is retained for
         backwards compatibility. `completedByChildren` (boolean) indicates whether the project
         auto-completes when its last remaining action is completed.
-        With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status.
+        With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status.
+        `stalled` (boolean) — true when availableCount=0 and not all tasks are deferred (project needs attention).
         With include_last_activity: lastActivityDate.
     """
     client = get_client()
@@ -216,6 +221,7 @@ def get_projects(
             query=query,
             include_task_health=include_task_health,
             include_last_activity=include_last_activity,
+            stalled_only=stalled_only,
         )
     except ValueError as e:
         return f"Error: {str(e)}"

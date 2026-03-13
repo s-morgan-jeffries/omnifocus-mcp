@@ -896,4 +896,27 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 39,
+        "category": "Stalled Projects",
+        "name": "Find Projects With No Available Actions",
+        "prompt": (
+            "Which of my projects have no available actions right now? "
+            "I want to review anything that might be stuck or needs new tasks added."
+        ),
+        "expected": {
+            "tools": ["get_projects"],
+            "key_params": {
+                "get_projects": {"stalled_only": True},
+            },
+        },
+        "scoring_notes": (
+            "PASS: get_projects(stalled_only=True). "
+            "PARTIAL: Uses get_projects(include_task_health=True) and filters manually, "
+            "or mentions stalled concept but uses wrong param name. "
+            "FAIL: Loops through all projects manually, uses get_tasks instead, "
+            "or says it can't be done."
+        ),
+        "safety_critical": False,
+    },
 ]

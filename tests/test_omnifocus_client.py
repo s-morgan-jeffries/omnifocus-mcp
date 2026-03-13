@@ -2309,3 +2309,110 @@ class TestCompletedByChildren:
             assert "completed_by_children" in result["updated_fields"]
             script = mock_run.call_args[0][0]
             assert "completed by children" in script
+
+
+class TestStalledProjects:
+    """Tests for stalled project detection (availableCount==0 and not hasDeferredOnly)."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def _make_health_json(self, status="active status", available=0, remaining=0, deferred_only=False):
+        return json.dumps([{
+            "id": "proj-001", "name": "Test Project", "note": "",
+            "status": status, "sequential": False,
+            "singletonActionHolder": False, "completedByChildren": False,
+            "folderPath": "", "creationDate": None, "modificationDate": None,
+            "completionDate": None, "droppedDate": None,
+            "lastActivityDate": None, "lastReviewDate": None,
+            "nextReviewDate": None,
+            "remainingCount": remaining, "availableCount": available,
+            "overdueCount": 0, "deferredCount": 0 if not deferred_only else remaining,
+            "hasDeferredOnly": deferred_only,
+        }])
+
+    # --- stalled field ---
+
+    def test_get_projects_stalled_true_when_no_available_tasks(self, client):
+        """Active project with availableCount=0 and hasDeferredOnly=False → stalled=True."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_health_json(available=0, remaining=2, deferred_only=False)
+            projects = client.get_projects(include_task_health=True)
+            assert projects[0]["stalled"] is True
+
+    def test_get_projects_stalled_false_when_available_tasks(self, client):
+        """Project with availableCount>0 → stalled=False."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_health_json(available=2, remaining=2)
+            projects = client.get_projects(include_task_health=True)
+            assert projects[0]["stalled"] is False
+
+    def test_get_projects_stalled_false_when_deferred_only(self, client):
+        """Project with hasDeferredOnly=True → stalled=False (appropriately scheduled)."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_health_json(available=0, remaining=2, deferred_only=True)
+            projects = client.get_projects(include_task_health=True)
+            assert projects[0]["stalled"] is False
+
+    def test_get_projects_stalled_true_when_no_remaining_tasks(self, client):
+        """Active project with remainingCount=0 → stalled=True."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_health_json(available=0, remaining=0, deferred_only=False)
+            projects = client.get_projects(include_task_health=True)
+            assert projects[0]["stalled"] is True
+
+    def test_get_projects_stalled_absent_without_task_health(self, client):
+        """Without include_task_health, stalled field is not present."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = json.dumps([{
+                "id": "proj-001", "name": "Test Project", "note": "",
+                "status": "active status", "sequential": False,
+                "singletonActionHolder": False, "completedByChildren": False,
+                "folderPath": "", "creationDate": None, "modificationDate": None,
+                "completionDate": None, "droppedDate": None,
+                "lastActivityDate": None, "lastReviewDate": None, "nextReviewDate": None,
+            }])
+            projects = client.get_projects()
+            assert "stalled" not in projects[0]
+
+    # --- stalled_only filter ---
+
+    def test_get_projects_stalled_only_returns_stalled_projects(self, client):
+        """stalled_only=True returns only stalled projects."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = json.dumps([
+                {
+                    "id": "proj-001", "name": "Stalled", "note": "",
+                    "status": "active status", "sequential": False,
+                    "singletonActionHolder": False, "completedByChildren": False,
+                    "folderPath": "", "creationDate": None, "modificationDate": None,
+                    "completionDate": None, "droppedDate": None,
+                    "lastActivityDate": None, "lastReviewDate": None, "nextReviewDate": None,
+                    "remainingCount": 0, "availableCount": 0, "overdueCount": 0,
+                    "deferredCount": 0, "hasDeferredOnly": False,
+                },
+                {
+                    "id": "proj-002", "name": "Active", "note": "",
+                    "status": "active status", "sequential": False,
+                    "singletonActionHolder": False, "completedByChildren": False,
+                    "folderPath": "", "creationDate": None, "modificationDate": None,
+                    "completionDate": None, "droppedDate": None,
+                    "lastActivityDate": None, "lastReviewDate": None, "nextReviewDate": None,
+                    "remainingCount": 2, "availableCount": 2, "overdueCount": 0,
+                    "deferredCount": 0, "hasDeferredOnly": False,
+                },
+            ])
+            projects = client.get_projects(stalled_only=True)
+            assert len(projects) == 1
+            assert projects[0]["id"] == "proj-001"
+            assert projects[0]["stalled"] is True
+
+    def test_get_projects_stalled_only_implies_task_health(self, client):
+        """stalled_only=True forces include_task_health=True in the AppleScript call."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = json.dumps([])
+            client.get_projects(stalled_only=True)
+            script = mock_run.call_args[0][0]
+            # Task health AppleScript contains these counter lists
+            assert "availableCounts" in script

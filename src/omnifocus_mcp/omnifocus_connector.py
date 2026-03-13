@@ -799,6 +799,7 @@ class OmniFocusConnector:
         query: Optional[str] = None,
         include_task_health: bool = False,
         include_last_activity: bool = False,
+        stalled_only: bool = False,
         timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
@@ -858,6 +859,10 @@ class OmniFocusConnector:
             project_source = f'(flattened projects whose id is "{project_id_escaped}")'
         else:
             project_source = 'flattened projects'
+
+        # stalled_only requires task health data
+        if stalled_only:
+            include_task_health = True
 
         # Build task ops AppleScript blocks via helper
         task_ops_preamble, task_ops_block, health_init, task_health_json_fields = \
@@ -1086,6 +1091,19 @@ class OmniFocusConnector:
                         or query_lower in p.get('note', '').lower()
                         or query_lower in p.get('folderPath', '').lower()
                     ]
+
+                # Compute stalled field when task health is available
+                if include_task_health:
+                    for p in projects:
+                        p["stalled"] = (
+                            p.get("status") == "active status"
+                            and p.get("availableCount", 1) == 0
+                            and not p.get("hasDeferredOnly", False)
+                        )
+
+                # Filter to stalled projects only
+                if stalled_only:
+                    projects = [p for p in projects if p.get("stalled", False)]
 
                 # Apply sorting if requested
                 if sort_by:

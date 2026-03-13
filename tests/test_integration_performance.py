@@ -96,6 +96,25 @@ class TestIncludeTaskHealthIntegration:
             assert 'remainingCount' in proj
             assert 'availableCount' in proj
 
+    def test_stalled_field_present_with_task_health(self, client, project_with_tasks):
+        """include_task_health=True adds stalled boolean field to each project."""
+        project_id, _ = project_with_tasks
+        projects = client.get_projects(project_id=project_id, include_task_health=True)
+        assert len(projects) == 1
+        assert 'stalled' in projects[0]
+        assert isinstance(projects[0]['stalled'], bool)
+        # project_with_tasks has active tasks, so should not be stalled
+        assert projects[0]['stalled'] is False
+        print(f"\n✓ stalled field present: {projects[0]['stalled']}")
+
+    def test_stalled_only_returns_only_stalled_projects(self, client):
+        """stalled_only=True returns only projects with no available actions."""
+        projects = client.get_projects(stalled_only=True)
+        for proj in projects:
+            assert proj.get('stalled') is True
+            assert proj.get('availableCount', 0) == 0
+        print(f"\n✓ stalled_only returned {len(projects)} stalled projects (all verified)")
+
 
 class TestIncludeLastActivityIntegration:
     """Test include_last_activity against real OmniFocus."""

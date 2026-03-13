@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-13 (completedByChildren for #254)
+- **Date:** 2026-03-13 (stalled projects for #256)
 - **Model:** claude-sonnet-4-6
-- **Total Score:** 76/76 (100%)
+- **Total Score:** 78/78 (100%)
 - **Critical Failures:** 0 of 4
-- **Previous Score:** 74/74 (100%) — added scenario 37 (#257)
+- **Previous Score:** 76/76 (100%) — added scenario 38 (#254)
 
 ## Category Scores
 
@@ -284,6 +284,10 @@
 
 8. **`completed_by_children` not documented (Scenario 38):** Added `completed_by_children` param to `create_project` and `update_project`, `completedByChildren` field to `get_projects` returns. **Eval: PASS.**
 
+### Issues Found and Fixed (Current Round — #256)
+
+9. **`stalled_only` not documented (Scenario 39):** Added `stalled_only` param to `get_projects`, `stalled` field to task health returns. **Eval: PASS.**
+
 ## Conclusion
 
-After adding `completedByChildren` support (#254), the tool descriptions achieve 76/76 (100%) across 38 scenarios. The new `completed_by_children` parameter in `update_project`/`create_project` allows agents to enable auto-completion of projects when their last action is checked off. The agent also correctly noted the constraint that `single_actions` projects cannot auto-complete.
+After adding stalled project detection (#256), the tool descriptions achieve 78/78 (100%) across 39 scenarios. The new `stalled_only` parameter in `get_projects` returns active projects with no available actions, and the `stalled` boolean field (available with `include_task_health=True`) allows agents to identify projects needing attention. Projects where all tasks are deferred are correctly excluded from stalled results.
