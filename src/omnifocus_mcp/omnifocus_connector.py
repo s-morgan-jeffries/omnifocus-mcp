@@ -915,6 +915,7 @@ class OmniFocusConnector:
                 set statuses to status of fp
                 set seqs to sequential of fp
                 set singletons to singleton action holder of fp
+                set completionsByChildren to completed by children of fp
                 set createDates to creation date of fp
                 set modDates to modification date of fp
                 set compDates to completion date of fp
@@ -1011,6 +1012,7 @@ class OmniFocusConnector:
                             "\\"status\\": \\"" & projStatus & "\\", " & ¬
                             "\\"sequential\\": " & ((item i of seqs) as text) & ", " & ¬
                             "\\"singletonActionHolder\\": " & ((item i of singletons) as text) & ", " & ¬
+                            "\\"completedByChildren\\": " & ((item i of completionsByChildren) as text) & ", " & ¬
                             "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modDateStr & ", " & ¬
@@ -1107,7 +1109,8 @@ class OmniFocusConnector:
         folder_path: Optional[str] = None,
         sequential: bool = False,
         project_type: Optional[str] = None,
-        review_interval_weeks: Optional[int] = None
+        review_interval_weeks: Optional[int] = None,
+        completed_by_children: Optional[bool] = None
     ) -> str:
         """Create a new project in OmniFocus.
 
@@ -1157,6 +1160,8 @@ class OmniFocusConnector:
             # Convert weeks to days for OmniFocus review interval
             review_days = review_interval_weeks * 7
             properties.append(f'review interval:{review_days}')
+        if completed_by_children is not None:
+            properties.append(f'completed by children:{str(completed_by_children).lower()}')
 
         properties_str = ", ".join(properties)
 
@@ -1254,7 +1259,8 @@ class OmniFocusConnector:
         status: Optional[Union[ProjectStatus, str]] = None,
         review_interval_weeks: Optional[int] = None,
         last_reviewed: Optional[str] = None,
-        next_review_date: Optional[str] = None
+        next_review_date: Optional[str] = None,
+        completed_by_children: Optional[bool] = None
     ) -> dict:
         """Update properties of an existing project (NEW API - Phase 2).
 
@@ -1305,7 +1311,8 @@ class OmniFocusConnector:
             "status": status,
             "review_interval_weeks": review_interval_weeks,
             "last_reviewed": last_reviewed,
-            "next_review_date": next_review_date
+            "next_review_date": next_review_date,
+            "completed_by_children": completed_by_children
         }
 
         # Check if at least one field is provided
@@ -1403,6 +1410,12 @@ class OmniFocusConnector:
             next_review_command = f'set next review date of theProject to date "{next_review_date}"'
             updated_fields.append("next_review_date")
 
+        # Build completed by children command
+        completed_by_children_command = ""
+        if completed_by_children is not None:
+            completed_by_children_command = f'set completed by children of theProject to {str(completed_by_children).lower()}'
+            updated_fields.append("completed_by_children")
+
         # Build folder path command
         folder_command = ""
         if folder_path is not None:
@@ -1481,6 +1494,7 @@ class OmniFocusConnector:
                     {review_command}
                     {reviewed_command}
                     {next_review_command}
+                    {completed_by_children_command}
                     {folder_command}
 
                     return "true"

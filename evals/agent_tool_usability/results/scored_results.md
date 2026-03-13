@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-13 (next review date for #257)
+- **Date:** 2026-03-13 (completedByChildren for #254)
 - **Model:** claude-sonnet-4-6
-- **Total Score:** 74/74 (100%)
+- **Total Score:** 76/76 (100%)
 - **Critical Failures:** 0 of 4
-- **Previous Score:** 72/72 (100%) — added scenario 37 (#257)
+- **Previous Score:** 74/74 (100%) — added scenario 37 (#257)
 
 ## Category Scores
 
@@ -280,6 +280,10 @@
 
 7. **Recurring task completion behavior unclear (Scenario 23):** Added `mark complete` clarification to update_task completed parameter. **Eval: PASS.**
 
+### Issues Found and Fixed (Current Round — #254)
+
+8. **`completed_by_children` not documented (Scenario 38):** Added `completed_by_children` param to `create_project` and `update_project`, `completedByChildren` field to `get_projects` returns. **Eval: PASS.**
+
 ## Conclusion
 
-After adding next review date support (#257), the tool descriptions achieve 74/74 (100%) across 37 scenarios. The new `next_review_date` parameter in `update_project`/`update_projects` allows agents to force a specific review date that overrides the OmniFocus-calculated date from last_reviewed + review_interval. The `get_projects` return documentation now includes `lastReviewDate`, `nextReviewDate`, and `reviewIntervalWeeks` fields.
+After adding `completedByChildren` support (#254), the tool descriptions achieve 76/76 (100%) across 38 scenarios. The new `completed_by_children` parameter in `update_project`/`create_project` allows agents to enable auto-completion of projects when their last action is checked off. The agent also correctly noted the constraint that `single_actions` projects cannot auto-complete.
