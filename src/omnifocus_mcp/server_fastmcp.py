@@ -522,9 +522,10 @@ def get_tasks(
         flagged, dueDate, deferDate, estimatedMinutes, tags, note (truncated unless
         include_full_notes=True), parentTaskId, subtaskCount, sequential.
 
-    Note: Date fields (dueDate, deferDate) show directly-assigned dates only. Tasks that
-    inherit dates from their project or action group will show empty date fields even though
-    they are functionally subject to those dates in OmniFocus.
+    Note: Date fields (dueDate, deferDate, plannedDate) reflect effective dates — including
+    dates inherited from the containing project or action group. A task with no direct due
+    date will show its project's due date in dueDate. Write operations (update_task) still
+    set the task's own date directly.
     """
     client = get_client()
     try:

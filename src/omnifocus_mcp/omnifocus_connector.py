@@ -284,7 +284,7 @@ class OmniFocusConnector:
                         repeat with t in flattened tasks of proj
                             if not (completed of t) then
                                 set taskId to id of t
-                                set taskDue to my formatDate(due date of t)
+                                set taskDue to my formatDate(effective due date of t)
                                 set taskJson to "{\\"id\\":\\"" & taskId & "\\",\\"projectId\\":\\"" & projId & "\\",\\"dueDate\\":\\"" & taskDue & "\\"}"
                                 set end of projectTasks to taskJson
                             end if
@@ -649,8 +649,8 @@ class OmniFocusConnector:
                 "set allCompleted to completed of ft",
                 "set allDropped to dropped of ft",
                 "set allBlocked to blocked of ft",
-                "set allDeferDates to defer date of ft",
-                "set allDueDates to due date of ft",
+                "set allDeferDates to effective defer date of ft",
+                "set allDueDates to effective due date of ft",
             ]
         if include_last_activity:
             batch_reads += [
@@ -2293,7 +2293,7 @@ class OmniFocusConnector:
             if blocked_only:
                 whose_conditions.append("blocked is true")
             if overdue:
-                whose_conditions.append("due date < (current date)")
+                whose_conditions.append("effective due date < (current date)")
             if query:
                 query_escaped = self._escape_applescript_string(query)
                 whose_conditions.append(f'(name contains "{query_escaped}" or note contains "{query_escaped}")')
@@ -2372,7 +2372,7 @@ class OmniFocusConnector:
                         end if
                         -- Check if deferred
                         try
-                            set taskDeferDate to defer date of t
+                            set taskDeferDate to effective defer date of t
                             if taskDeferDate is not missing value then
                                 if taskDeferDate > (current date) then
                                     error "skip unavailable task"
@@ -2386,7 +2386,7 @@ class OmniFocusConnector:
             overdue_check = """
                         -- Skip non-overdue tasks
                         try
-                            set taskDueDate to due date of t
+                            set taskDueDate to effective due date of t
                             if taskDueDate is missing value then
                                 error "skip non-overdue task"
                             else if taskDueDate >= (current date) then
@@ -2402,7 +2402,7 @@ class OmniFocusConnector:
             if due_relative == "today":
                 due_relative_check = """
                         -- Skip tasks not due today
-                        set taskDue to due date of t
+                        set taskDue to effective due date of t
                         if taskDue is missing value then
                             error "skip task"
                         end if
@@ -2415,7 +2415,7 @@ class OmniFocusConnector:
             elif due_relative == "tomorrow":
                 due_relative_check = """
                         -- Skip tasks not due tomorrow
-                        set taskDue to due date of t
+                        set taskDue to effective due date of t
                         if taskDue is missing value then
                             error "skip task"
                         end if
@@ -2428,7 +2428,7 @@ class OmniFocusConnector:
             elif due_relative == "this_week":
                 due_relative_check = """
                         -- Skip tasks not due this week
-                        set taskDue to due date of t
+                        set taskDue to effective due date of t
                         if taskDue is missing value then
                             error "skip task"
                         end if
@@ -2439,7 +2439,7 @@ class OmniFocusConnector:
             elif due_relative == "next_week":
                 due_relative_check = """
                         -- Skip tasks not due next week
-                        set taskDue to due date of t
+                        set taskDue to effective due date of t
                         if taskDue is missing value then
                             error "skip task"
                         end if
@@ -2451,7 +2451,7 @@ class OmniFocusConnector:
             elif due_relative == "overdue":
                 due_relative_check = """
                         -- Skip non-overdue tasks
-                        set taskDue to due date of t
+                        set taskDue to effective due date of t
                         if taskDue is missing value then
                             error "skip task"
                         end if
@@ -2465,7 +2465,7 @@ class OmniFocusConnector:
             if defer_relative == "today":
                 defer_relative_check = """
                         -- Skip tasks not deferred until today
-                        set taskDefer to defer date of t
+                        set taskDefer to effective defer date of t
                         if taskDefer is missing value then
                             error "skip task"
                         end if
@@ -2478,7 +2478,7 @@ class OmniFocusConnector:
             elif defer_relative == "tomorrow":
                 defer_relative_check = """
                         -- Skip tasks not deferred until tomorrow
-                        set taskDefer to defer date of t
+                        set taskDefer to effective defer date of t
                         if taskDefer is missing value then
                             error "skip task"
                         end if
@@ -2491,7 +2491,7 @@ class OmniFocusConnector:
             elif defer_relative == "this_week":
                 defer_relative_check = """
                         -- Skip tasks not deferred until this week
-                        set taskDefer to defer date of t
+                        set taskDefer to effective defer date of t
                         if taskDefer is missing value then
                             error "skip task"
                         end if
@@ -2502,7 +2502,7 @@ class OmniFocusConnector:
             elif defer_relative == "next_week":
                 defer_relative_check = """
                         -- Skip tasks not deferred until next week
-                        set taskDefer to defer date of t
+                        set taskDefer to effective defer date of t
                         if taskDefer is missing value then
                             error "skip task"
                         end if
@@ -2733,9 +2733,9 @@ class OmniFocusConnector:
                 set taskBlocks to blocked of ft
                 set taskNexts to next of ft
                 set taskSeqs to sequential of ft
-                set dueDates to due date of ft
-                set deferDates to defer date of ft
-                set plannedDates to planned date of ft
+                set dueDates to effective due date of ft
+                set deferDates to effective defer date of ft
+                set plannedDates to effective planned date of ft
                 set creationDates to creation date of ft
                 set modDates to modification date of ft
                 set compDates to completion date of ft
@@ -3019,7 +3019,7 @@ class OmniFocusConnector:
                         -- Get dates
                         set dueDate to ""
                         try
-                            set dueDateObj to due date of t
+                            set dueDateObj to effective due date of t
                             if dueDateObj is not missing value then
                                 set dueDate to dueDateObj as «class isot» as string
                             end if
@@ -3027,7 +3027,7 @@ class OmniFocusConnector:
 
                         set deferDate to ""
                         try
-                            set deferDateObj to defer date of t
+                            set deferDateObj to effective defer date of t
                             if deferDateObj is not missing value then
                                 set deferDate to deferDateObj as «class isot» as string
                             end if
@@ -3035,7 +3035,7 @@ class OmniFocusConnector:
 
                         set plannedDate to ""
                         try
-                            set plannedDateObj to planned date of t
+                            set plannedDateObj to effective planned date of t
                             if plannedDateObj is not missing value then
                                 set plannedDate to plannedDateObj as «class isot» as string
                             end if
@@ -3146,7 +3146,7 @@ class OmniFocusConnector:
                         end try
 
                         -- Compute available status
-                        set deferDateObj to defer date of t
+                        set deferDateObj to effective defer date of t
                         set isDeferred to false
                         if deferDateObj is not missing value then
                             set isDeferred to (deferDateObj > (current date))

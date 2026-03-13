@@ -2675,3 +2675,84 @@ class TestTagSidePreFilter:
                     client.delete_tasks(task_id)
                 except Exception as e:
                     warnings.warn(f"Failed to clean up task {task_id}: {e}")
+
+
+class TestEffectiveDates:
+    """Test that get_tasks returns effective (inherited) dates from the containing project."""
+
+    def test_task_inherits_due_date_from_project(self, client):
+        """Task with no direct due date shows project's due date in dueDate field."""
+        from datetime import datetime, timedelta
+
+        due_date = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
+        project_id = None
+        task_id = None
+        try:
+            project_id = client.create_project(
+                "test-effective-due-project",
+                due_date=due_date,
+            )
+            task_id = client.create_task(
+                "test-effective-due-task",
+                project_id=project_id,
+                # No due_date — should inherit from project
+            )
+
+            tasks = client.get_tasks(project_id=project_id, query="test-effective-due-task")
+            assert len(tasks) == 1
+            task = tasks[0]
+            assert task.get('dueDate'), (
+                f"Expected task to inherit due date from project, got dueDate={task.get('dueDate')!r}"
+            )
+            # The effective due date should match the project's due date (date portion)
+            assert task['dueDate'].startswith(due_date), (
+                f"Expected dueDate to start with {due_date!r}, got {task['dueDate']!r}"
+            )
+            print(f"\n✓ Task inherited due date from project: {task['dueDate']}")
+        finally:
+            if task_id:
+                try:
+                    client.delete_tasks(task_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up task {task_id}: {e}")
+            if project_id:
+                try:
+                    client.delete_projects(project_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up project {project_id}: {e}")
+
+    def test_overdue_filter_includes_tasks_with_inherited_due_date(self, client):
+        """get_tasks(overdue=True) returns tasks that are overdue via project inheritance."""
+        from datetime import datetime, timedelta
+
+        past_due = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
+        project_id = None
+        task_id = None
+        try:
+            project_id = client.create_project(
+                "test-effective-overdue-project",
+                due_date=past_due,
+            )
+            task_id = client.create_task(
+                "test-effective-overdue-task",
+                project_id=project_id,
+                # No direct due date — inherits overdue date from project
+            )
+
+            overdue_tasks = client.get_tasks(overdue=True)
+            overdue_ids = [t['id'] for t in overdue_tasks]
+            assert task_id in overdue_ids, (
+                f"Task {task_id} should appear in overdue results via inherited project due date"
+            )
+            print(f"\n✓ Overdue filter found task with inherited due date (project due: {past_due})")
+        finally:
+            if task_id:
+                try:
+                    client.delete_tasks(task_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up task {task_id}: {e}")
+            if project_id:
+                try:
+                    client.delete_projects(project_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up project {project_id}: {e}")

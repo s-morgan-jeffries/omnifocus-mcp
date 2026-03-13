@@ -693,14 +693,14 @@ class TestWhoseClauseOptimization:
             assert "flagged is true" in script
 
     def test_overdue_uses_whose_clause(self, client, sample_tasks_json):
-        """overdue should use 'whose' with due date comparison."""
+        """overdue should use 'whose' with effective due date comparison."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = sample_tasks_json
             client.get_tasks(overdue=True)
             script = mock_run.call_args[0][0]
-            # Should use whose for due date filtering
+            # Should use whose for effective due date filtering (includes inherited)
             assert "whose" in script.lower()
-            assert "due date" in script
+            assert "effective due date" in script
 
 
     def test_tag_filter_uses_tag_side_prefilter(self, client, sample_tasks_json):
@@ -2416,3 +2416,48 @@ class TestStalledProjects:
             script = mock_run.call_args[0][0]
             # Task health AppleScript contains these counter lists
             assert "availableCounts" in script
+
+
+class TestEffectiveDates:
+    """Tests that get_tasks reads effective (inherited) dates, not just direct dates."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    @pytest.fixture
+    def sample_tasks_json(self):
+        return json.dumps([{
+            "id": "task-001", "name": "Test Task", "note": "",
+            "completed": False, "flagged": False, "dropped": False,
+            "projectId": "proj-001", "projectName": "Test Project",
+            "dueDate": "2025-10-15T17:00:00", "deferDate": "",
+            "completionDate": "", "tags": "",
+        }])
+
+    def test_get_tasks_reads_effective_due_date(self, client, sample_tasks_json):
+        """get_tasks should read effective due date (includes inherited) not direct due date."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks()
+            script = mock_run.call_args[0][0]
+            assert "effective due date" in script
+
+    def test_get_tasks_reads_effective_defer_date(self, client, sample_tasks_json):
+        """get_tasks should read effective defer date (includes inherited) not direct defer date."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks()
+            script = mock_run.call_args[0][0]
+            assert "effective defer date" in script
+
+    def test_get_tasks_overdue_whose_uses_effective_due_date(self, client, sample_tasks_json):
+        """overdue=True should filter on effective due date, not direct due date."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_tasks_json
+            client.get_tasks(overdue=True)
+            script = mock_run.call_args[0][0]
+            assert "effective due date" in script
+            # Must NOT use bare "due date <" without "effective" prefix
+            import re
+            assert not re.search(r'(?<!effective )due date <', script)
