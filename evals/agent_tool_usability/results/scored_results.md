@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-13 (single actions list project type for #255)
+- **Date:** 2026-03-13 (folder status for #258)
 - **Model:** claude-sonnet-4-6
-- **Total Score:** 70/70 (100%)
+- **Total Score:** 72/72 (100%)
 - **Critical Failures:** 0 of 4
-- **Previous Score:** 68/68 (100%) — added scenario 35, updated scenario 22 scoring (#255)
+- **Previous Score:** 70/70 (100%) — added scenario 36 (#258)
 
 ## Category Scores
 
@@ -22,6 +22,7 @@
 | Recurrence | 27-32 | 12 | 12 | 100% |
 | Tag Status | 33-34 | 4 | 4 | 100% |
 | Project Type | 35 | 2 | 2 | 100% |
+| Folder Status | 36 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -235,6 +236,12 @@
 - **Parameters:** Correct — `project_type="single_actions"`
 - **Concept Understanding:** Excellent — immediately matched "no completion goal, grab-bag" to `single_actions`. Explained why not parallel (can auto-complete when emptied) or sequential (gated, wrong semantics). Also offered optional `folder_path` suggestion.
 
+### Scenario 36: Drop Folder (Archive Without Deleting)
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `update_folder`
+- **Parameters:** Correct — `folder_id="folder-999"`, `status="dropped"`
+- **Concept Understanding:** Excellent — immediately identified that "archive without deleting" = drop. Explained dropped = hidden but preserved. Also noted that `status='active'` would restore it.
+
 ## Key Findings
 
 ### What Worked Well
@@ -268,4 +275,4 @@
 
 ## Conclusion
 
-After adding Single Actions List support (#255), the tool descriptions achieve 70/70 (100%) across 35 scenarios. The new `projectType` field ("parallel", "sequential", "single_actions") replaces the ambiguous `sequential` boolean. Agents correctly use `project_type="single_actions"` when creating grab-bag lists and distinguish all three project types from the `projectType` field in get_projects output. Scenario 22 scoring notes updated to reflect that the old "API can't distinguish" limitation is now resolved.
+After adding folder status support (#258), the tool descriptions achieve 72/72 (100%) across 36 scenarios. The new `projectType` field ("parallel", "sequential", "single_actions") replaces the ambiguous `sequential` boolean. Agents correctly use `project_type="single_actions"` when creating grab-bag lists and distinguish all three project types from the `projectType` field in get_projects output. Scenario 22 scoring notes updated to reflect that the old "API can't distinguish" limitation is now resolved.
