@@ -40,7 +40,7 @@ Retrieve ALL active projects with full details and hierarchy, optionally filtere
 - `include_task_health: bool` (default: False) — Include per-project task health counts (remaining, available, overdue, deferred)
 - `include_last_activity: bool` (default: False) — Compute lastActivityDate (most recent task creation/completion)
 
-**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, creationDate, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status. With include_last_activity: lastActivityDate.
+**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, creationDate, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status. With include_last_activity: lastActivityDate.
 
 ---
 
@@ -55,6 +55,7 @@ Create a new project in OmniFocus.
 - `project_type: str` (optional) — Project type: "parallel" (default, all tasks available simultaneously), "sequential" (tasks completed in order, only first available), or "single_actions" (grab-bag list with no completion goal, cannot auto-complete). Overrides `sequential` when provided.
 - `sequential: bool` (default: False, DEPRECATED) — Use project_type instead. If True, creates a sequential project.
 - `review_interval_weeks: int` (optional) — Review interval in weeks for GTD review cycle
+- `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
 
 **Returns:** Success message with project ID and configuration details
 
@@ -77,6 +78,7 @@ Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_
 - `review_interval_weeks: int` (optional) — Review interval in weeks (0 to clear)
 - `last_reviewed: str` (optional) — Last reviewed date in ISO format or "now"
 - `next_review_date: str` (optional) — Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval
+- `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
 
 **Returns:** Success message with project ID and updated fields, or error message
 

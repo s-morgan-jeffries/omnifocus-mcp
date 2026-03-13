@@ -2217,3 +2217,95 @@ class TestProjectType:
             mock_run.return_value = "true"
             result = client.update_project("proj-001", project_type="single_actions")
             assert "project_type" in result["updated_fields"]
+
+
+class TestCompletedByChildren:
+    """Tests for completed_by_children (completed by children) property."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def _make_projects_json(self, completed_by_children: bool = False):
+        return json.dumps([{
+            "id": "proj-001", "name": "Test Project", "note": "",
+            "status": "active", "sequential": False,
+            "singletonActionHolder": False,
+            "completedByChildren": completed_by_children,
+            "folderPath": "", "creationDate": None, "modificationDate": None,
+            "completionDate": None, "droppedDate": None,
+            "lastActivityDate": None, "lastReviewDate": None,
+            "nextReviewDate": None,
+        }])
+
+    # --- get_projects ---
+
+    def test_get_projects_batch_reads_completed_by_children(self, client):
+        """get_projects AppleScript must batch-read 'completed by children'."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_projects_json()
+            client.get_projects()
+            script = mock_run.call_args[0][0]
+            assert "completed by children of fp" in script
+
+    def test_get_projects_returns_completed_by_children_true(self, client):
+        """completedByChildren=true in JSON → True in returned project dict."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_projects_json(completed_by_children=True)
+            projects = client.get_projects()
+            assert projects[0]["completedByChildren"] is True
+
+    def test_get_projects_returns_completed_by_children_false(self, client):
+        """completedByChildren=false in JSON → False in returned project dict."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_projects_json(completed_by_children=False)
+            projects = client.get_projects()
+            assert projects[0]["completedByChildren"] is False
+
+    # --- create_project ---
+
+    def test_create_project_completed_by_children_true(self, client):
+        """create_project(completed_by_children=True) sets the property in AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            client.create_project("My Project", completed_by_children=True)
+            script = mock_run.call_args[0][0]
+            assert "completed by children:true" in script
+
+    def test_create_project_completed_by_children_false(self, client):
+        """create_project(completed_by_children=False) sets the property to false."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            client.create_project("My Project", completed_by_children=False)
+            script = mock_run.call_args[0][0]
+            assert "completed by children:false" in script
+
+    def test_create_project_completed_by_children_none_not_set(self, client):
+        """Default None does not set completed by children in AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            client.create_project("My Project")
+            script = mock_run.call_args[0][0]
+            assert "completed by children" not in script
+
+    # --- update_project ---
+
+    def test_update_project_completed_by_children_true(self, client):
+        """update_project(completed_by_children=True) → updated_fields contains the key."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_project("proj-001", completed_by_children=True)
+            assert result["success"] is True
+            assert "completed_by_children" in result["updated_fields"]
+            script = mock_run.call_args[0][0]
+            assert "completed by children" in script
+
+    def test_update_project_completed_by_children_false(self, client):
+        """update_project(completed_by_children=False) sets property to false."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_project("proj-001", completed_by_children=False)
+            assert result["success"] is True
+            assert "completed_by_children" in result["updated_fields"]
+            script = mock_run.call_args[0][0]
+            assert "completed by children" in script

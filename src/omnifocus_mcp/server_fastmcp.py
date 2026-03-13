@@ -198,10 +198,12 @@ def get_projects(
         include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
 
     Returns:
-        Each project includes: id, name, folderPath, status, projectType, sequential, creationDate,
-        note (truncated unless include_full_notes=True). `projectType` is "sequential", "parallel",
-        or "single_actions" (Single Actions List — a grab-bag list with no completion goal).
-        `sequential` (boolean) is retained for backwards compatibility.
+        Each project includes: id, name, folderPath, status, projectType, sequential,
+        completedByChildren, creationDate, note (truncated unless include_full_notes=True).
+        `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List —
+        a grab-bag list with no completion goal). `sequential` (boolean) is retained for
+        backwards compatibility. `completedByChildren` (boolean) indicates whether the project
+        auto-completes when its last remaining action is completed.
         With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status.
         With include_last_activity: lastActivityDate.
     """
@@ -242,7 +244,8 @@ def create_project(
     folder_path: Optional[str] = None,
     sequential: bool = False,
     project_type: Optional[str] = None,
-    review_interval_weeks: Optional[int] = None
+    review_interval_weeks: Optional[int] = None,
+    completed_by_children: Optional[bool] = None
 ) -> str:
     """Create a new project in OmniFocus.
 
@@ -257,6 +260,7 @@ def create_project(
         sequential: DEPRECATED — use project_type instead. If True, creates a sequential project.
             Ignored when project_type is provided. (default: False)
         review_interval_weeks: Optional review interval in weeks for GTD review cycle
+        completed_by_children: Auto-complete the project when its last remaining action is completed. (optional)
 
     Returns:
         Success message with project ID and configuration details
@@ -269,7 +273,8 @@ def create_project(
             folder_path=folder_path,
             sequential=sequential,
             project_type=project_type,
-            review_interval_weeks=review_interval_weeks
+            review_interval_weeks=review_interval_weeks,
+            completed_by_children=completed_by_children
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -304,7 +309,8 @@ def update_project(
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
     last_reviewed: Optional[str] = None,
-    next_review_date: Optional[str] = None
+    next_review_date: Optional[str] = None,
+    completed_by_children: Optional[bool] = None
 ) -> str:
     """Update an existing project in OmniFocus.
 
@@ -319,6 +325,7 @@ def update_project(
         review_interval_weeks: Review interval in weeks (0 to clear)
         last_reviewed: Last reviewed date in ISO format or "now"
         next_review_date: Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval. (optional)
+        completed_by_children: Auto-complete the project when its last remaining action is completed. (optional)
 
     Returns:
         Success message with project ID and updated fields, or error message
@@ -348,7 +355,8 @@ def update_project(
             status=status,
             review_interval_weeks=review_interval_weeks,
             last_reviewed=last_reviewed,
-            next_review_date=next_review_date
+            next_review_date=next_review_date,
+            completed_by_children=completed_by_children
         )
     except ValueError as e:
         return f"Error: {str(e)}"

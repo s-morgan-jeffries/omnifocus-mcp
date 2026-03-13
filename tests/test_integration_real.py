@@ -546,6 +546,40 @@ class TestProjectCRUD:
         assert projects[0]["singletonActionHolder"] is False
         print(f"\n✓ Converted SAL back to parallel")
 
+    def test_get_projects_returns_completed_by_children_field(self, client, test_project):
+        """get_projects includes completedByChildren field."""
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        assert "completedByChildren" in projects[0]
+        assert isinstance(projects[0]["completedByChildren"], bool)
+        print(f"\n✓ completedByChildren field present: {projects[0]['completedByChildren']}")
+
+    def test_create_and_update_project_completed_by_children(self, client):
+        """Create a project with completedByChildren=True, verify, update to False, verify."""
+        project_id = None
+        try:
+            project_id = client.create_project(
+                "test-completed-by-children",
+                completed_by_children=True
+            )
+            assert project_id is not None
+
+            projects = client.get_projects(project_id=project_id)
+            assert len(projects) == 1
+            assert projects[0]["completedByChildren"] is True
+            print(f"\n✓ Created project with completedByChildren=True")
+
+            result = client.update_project(project_id, completed_by_children=False)
+            assert result["success"] is True
+            assert "completed_by_children" in result["updated_fields"]
+
+            projects = client.get_projects(project_id=project_id)
+            assert projects[0]["completedByChildren"] is False
+            print(f"\n✓ Updated completedByChildren to False")
+        finally:
+            if project_id:
+                client.delete_projects([project_id])
+
     def test_update_project_multiple_fields(self, client, test_project_with_note):
         """Test updating multiple project fields at once."""
         # Update multiple fields on fixture project

@@ -43,7 +43,8 @@ class TestUpdateProjectServerRedesign:
                 status="active",
                 review_interval_weeks=None,
                 last_reviewed=None,
-                next_review_date=None
+                next_review_date=None,
+                completed_by_children=None
             )
 
             assert isinstance(result, str)
@@ -277,4 +278,25 @@ class TestUpdateProjectNextReviewDate:
 
             call_kwargs = mock_client.update_project.call_args[1]
             assert call_kwargs["next_review_date"] == "2026-04-01"
+            assert "updated" in result.lower() or "success" in result.lower()
+
+
+class TestUpdateProjectCompletedByChildren:
+    """Tests for completed_by_children parameter in update_project server tool."""
+
+    def test_update_project_completed_by_children_passed_to_connector(self):
+        """completed_by_children=True is passed through to the connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-001",
+                "updated_fields": ["completed_by_children"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-001", completed_by_children=True)
+
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["completed_by_children"] is True
             assert "updated" in result.lower() or "success" in result.lower()

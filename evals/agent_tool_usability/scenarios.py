@@ -874,4 +874,26 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 38,
+        "category": "Complete With Last Action",
+        "name": "Enable Auto-Complete When Last Task Done",
+        "prompt": (
+            "I have a project with ID proj-xyz. I want it to automatically mark itself "
+            "as complete when I check off its last remaining task. How do I enable that?"
+        ),
+        "expected": {
+            "tools": ["update_project"],
+            "key_params": {
+                "update_project": {"project_id": "proj-xyz", "completed_by_children": True},
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_project(project_id='proj-xyz', completed_by_children=True). "
+            "Correctly uses completed_by_children to enable auto-completion. "
+            "PARTIAL: Mentions the right concept but uses wrong parameter name or tool. "
+            "FAIL: Says it can't be done, uses status='done', or doesn't mention completed_by_children."
+        ),
+        "safety_critical": False,
+    },
 ]
