@@ -491,6 +491,61 @@ class TestProjectCRUD:
         assert len(projects) == 1
         assert projects[0]['sequential'] is True
 
+    def test_create_project_single_actions_list(self, client):
+        """Test creating a Single Actions List project type."""
+        import uuid
+        project_name = f"test-SAL-{uuid.uuid4().hex[:8]}"
+        project_id = None
+        try:
+            project_id = client.create_project(project_name, project_type="single_actions")
+            assert project_id is not None
+
+            projects = client.get_projects(project_id=project_id)
+            assert len(projects) == 1
+            project = projects[0]
+            assert project["projectType"] == "single_actions"
+            assert project["singletonActionHolder"] is True
+            assert project["sequential"] is False
+            print(f"\n✓ Created SAL project: {project['name']} — projectType={project['projectType']}")
+        finally:
+            if project_id:
+                client.delete_projects(project_id)
+
+    def test_get_projects_returns_project_type_field(self, client, test_project):
+        """Test that get_projects returns projectType for parallel, sequential projects."""
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        project = projects[0]
+        assert "projectType" in project
+        # Default test project is parallel
+        assert project["projectType"] == "parallel"
+        print(f"\n✓ get_projects returns projectType: {project['projectType']}")
+
+    def test_update_project_type_to_single_actions(self, client, test_project):
+        """Test converting a parallel project to Single Actions List via project_type."""
+        result = client.update_project(test_project, project_type="single_actions")
+        assert result["success"] is True
+        assert "project_type" in result["updated_fields"]
+
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        assert projects[0]["projectType"] == "single_actions"
+        assert projects[0]["singletonActionHolder"] is True
+        print(f"\n✓ Converted project to single_actions via project_type")
+
+    def test_update_project_type_back_to_parallel(self, client, test_project):
+        """Test converting a SAL back to parallel."""
+        # First make it a SAL
+        client.update_project(test_project, project_type="single_actions")
+        # Then convert back
+        result = client.update_project(test_project, project_type="parallel")
+        assert result["success"] is True
+
+        projects = client.get_projects(project_id=test_project)
+        assert projects[0]["projectType"] == "parallel"
+        assert projects[0]["singletonActionHolder"] is False
+        print(f"\n✓ Converted SAL back to parallel")
+
     def test_update_project_multiple_fields(self, client, test_project_with_note):
         """Test updating multiple project fields at once."""
         # Update multiple fields on fixture project

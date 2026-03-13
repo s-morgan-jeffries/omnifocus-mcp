@@ -12,7 +12,7 @@ PROJECT STATES: Active (tasks are actionable), On Hold (paused — tasks hidden)
 
 HIERARCHY: Folders → Projects → Tasks → Subtasks. Folders organize projects. Projects contain tasks. Tasks can have subtasks via parent_task_id.
 
-SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links. The `next` field on a task is true when it is the first available action in a sequential project or action group. In parallel projects, all incomplete tasks have `next: true`.
+PROJECT TYPES: Three types — "sequential" (tasks completed in order, first incomplete = available, rest = blocked), "parallel" (all tasks available simultaneously), "single_actions" (grab-bag list with no completion goal — cannot auto-complete, used for loose collections like "Someday/Maybe" or catch-all inboxes). Use `projectType` field (not `sequential`) to distinguish all three. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links. The `next` field on a task is true when it is the first available action in a sequential project or action group. In parallel projects, all incomplete tasks have `next: true`.
 
 ACTION GROUPS: A task with subtasks is an "action group." It can be parallel or sequential, just like a project. The parent task appears as `blocked: true` while its subtasks are active — this is normal behavior, not an error. Check `subtaskCount > 0` to identify action groups. An action group parent cannot be completed until its subtasks are resolved.
 
@@ -40,7 +40,7 @@ Retrieve ALL active projects with full details and hierarchy, optionally filtere
 - `include_task_health: bool` (default: False) — Include per-project task health counts (remaining, available, overdue, deferred)
 - `include_last_activity: bool` (default: False) — Compute lastActivityDate (most recent task creation/completion)
 
-**Returns:** Each project includes: id, name, folderPath, status, sequential, creationDate, note (truncated unless include_full_notes=True). Note: `sequential` is true for sequential projects, false for both parallel projects and Single Actions Lists. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status. With include_last_activity: lastActivityDate.
+**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, creationDate, note (truncated unless include_full_notes=True). `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, health status. With include_last_activity: lastActivityDate.
 
 ---
 
@@ -52,7 +52,8 @@ Create a new project in OmniFocus.
 - `name: str` (required) — The name of the project
 - `note: str` (optional) — Note/description (plain text only - rich text not supported via automation APIs)
 - `folder_path: str` (optional) — Folder path (e.g., "Work > Clients") - folder must exist
-- `sequential: bool` (default: False) — If True, tasks must be completed in order — the first incomplete task is 'available' and the rest are 'blocked.' If False, creates a parallel project where all tasks are available simultaneously. Note: Single Actions Lists (a third project type) cannot currently be created via this API. OmniFocus represents dependencies via task ordering in sequential projects; there are no explicit task-to-task dependency links.
+- `project_type: str` (optional) — Project type: "parallel" (default, all tasks available simultaneously), "sequential" (tasks completed in order, only first available), or "single_actions" (grab-bag list with no completion goal, cannot auto-complete). Overrides `sequential` when provided.
+- `sequential: bool` (default: False, DEPRECATED) — Use project_type instead. If True, creates a sequential project.
 - `review_interval_weeks: int` (optional) — Review interval in weeks for GTD review cycle
 
 **Returns:** Success message with project ID and configuration details
@@ -70,7 +71,8 @@ Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_
 - `project_name: str` (optional) — New project name
 - `folder_path: str` (optional) — Folder path to move project to (e.g., "Work : Projects")
 - `note: str` (optional) — New note content. WARNING: Removes rich text formatting.
-- `sequential: str` (optional) — Sequential setting - "true" or "false"
+- `project_type: str` (optional) — Change project type: "parallel", "sequential", or "single_actions"
+- `sequential: str` (optional, DEPRECATED) — Use project_type instead. Sequential setting - "true" or "false"
 - `status: str` (optional) — Project status - "active", "on_hold", "done", or "dropped"
 - `review_interval_weeks: int` (optional) — Review interval in weeks (0 to clear)
 - `last_reviewed: str` (optional) — Last reviewed date in ISO format or "now"

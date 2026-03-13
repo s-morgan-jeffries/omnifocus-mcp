@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-12 (repetition_method docstring fix for #277)
-- **Model:** claude-sonnet-4-6 (scenarios 24-34), claude-opus-4-6 (scenarios 1-23)
-- **Total Score:** 68/68 (100%)
+- **Date:** 2026-03-13 (single actions list project type for #255)
+- **Model:** claude-sonnet-4-6
+- **Total Score:** 70/70 (100%)
 - **Critical Failures:** 0 of 4
-- **Previous Score:** 67/68 (99%) — scenario 29 fixed from 1/2 to 2/2 (#277)
+- **Previous Score:** 68/68 (100%) — added scenario 35, updated scenario 22 scoring (#255)
 
 ## Category Scores
 
@@ -21,6 +21,7 @@
 | Planned Date | 24-26 | 6 | 6 | 100% |
 | Recurrence | 27-32 | 12 | 12 | 100% |
 | Tag Status | 33-34 | 4 | 4 | 100% |
+| Project Type | 35 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -155,8 +156,8 @@
 - **Concept Understanding:** Excellent — quoted the exact documentation note about directly-assigned vs inherited dates. Correctly explained that the project's due date is inherited but not shown in the API. Suggested checking project dates separately as a workaround.
 
 ### Scenario 22: Sequential Ambiguity — Parallel vs Single Actions List
-- **Score:** 2/2 (PASS)
-- **Concept Understanding:** Excellent — correctly identified that sequential=false covers both Parallel projects and Single Actions Lists. Explained the conceptual difference (project with completion goal vs ongoing grab-bag). Noted the API limitation that they can't be distinguished.
+- **Score:** 2/2 (PASS) — *scoring updated for #255: old "can't distinguish" limitation now resolved*
+- **Concept Understanding:** Excellent — correctly identified that sequential=false is ambiguous/deprecated, but projectType distinguishes all three. Explained that 'Home Repairs' is likely parallel (completion goal), 'Errands' likely single_actions (grab-bag). Recommended checking projectType field to confirm.
 
 ### Scenario 23: Completing Recurring Tasks
 - **Score:** 2/2 (PASS)
@@ -228,6 +229,12 @@
 - **Concept Understanding:** Excellent — correctly identified that only Waiting needs changing (on_hold → active). Did NOT touch Archive (already dropped = hidden as desired). Understood on_hold = tasks excluded from available, active = tasks actionable.
 - **Safety:** PASSED — did not modify Archive tag, correctly scoped the change.
 
+### Scenario 35: Create Single Actions List
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `create_project`
+- **Parameters:** Correct — `project_type="single_actions"`
+- **Concept Understanding:** Excellent — immediately matched "no completion goal, grab-bag" to `single_actions`. Explained why not parallel (can auto-complete when emptied) or sequential (gated, wrong semantics). Also offered optional `folder_path` suggestion.
+
 ## Key Findings
 
 ### What Worked Well
@@ -261,4 +268,4 @@
 
 ## Conclusion
 
-After clarifying the repetition_method docstring (#277), the tool descriptions achieve 68/68 (100%) across 34 scenarios. The key fix was adding explicit contrast examples to `fixed` vs `due_after_completion` — "regardless of when completed" for fixed, and concrete day-of-week examples for after_completion methods. Scenario 29 now scores 2/2, with agents correctly distinguishing fixed-schedule from completion-anchored recurrence.
+After adding Single Actions List support (#255), the tool descriptions achieve 70/70 (100%) across 35 scenarios. The new `projectType` field ("parallel", "sequential", "single_actions") replaces the ambiguous `sequential` boolean. Agents correctly use `project_type="single_actions"` when creating grab-bag lists and distinguish all three project types from the `projectType` field in get_projects output. Scenario 22 scoring notes updated to reflect that the old "API can't distinguish" limitation is now resolved.

@@ -2027,3 +2027,116 @@ class TestRruleToSummary:
     def test_daily_interval_1(self):
         """INTERVAL=1 for daily should say 'Every day' not 'Every 1 days'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=DAILY;INTERVAL=1") == "Every day"
+
+
+class TestProjectType:
+    """Tests for projectType field (parallel / sequential / single_actions)."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def _make_projects_json(self, singleton: bool = False, sequential: bool = False):
+        return json.dumps([{
+            "id": "proj-001", "name": "Test Project", "note": "",
+            "status": "active", "sequential": sequential,
+            "singletonActionHolder": singleton,
+            "folderPath": "", "creationDate": None, "modificationDate": None,
+            "completionDate": None, "droppedDate": None,
+            "lastActivityDate": None, "lastReviewDate": None,
+            "nextReviewDate": None,
+        }])
+
+    # --- get_projects ---
+
+    def test_get_projects_batch_reads_singleton_action_holder(self, client):
+        """get_projects AppleScript must batch-read singleton action holder."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_projects_json()
+            client.get_projects()
+            script = mock_run.call_args[0][0]
+            assert "singleton action holder of fp" in script
+
+    def test_get_projects_returns_project_type_parallel(self, client):
+        """Parallel project (singleton=false, sequential=false) → projectType 'parallel'."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_projects_json(singleton=False, sequential=False)
+            projects = client.get_projects()
+            assert projects[0]["projectType"] == "parallel"
+
+    def test_get_projects_returns_project_type_sequential(self, client):
+        """Sequential project (singleton=false, sequential=true) → projectType 'sequential'."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_projects_json(singleton=False, sequential=True)
+            projects = client.get_projects()
+            assert projects[0]["projectType"] == "sequential"
+
+    def test_get_projects_returns_project_type_single_actions(self, client):
+        """Single Actions List (singleton=true) → projectType 'single_actions'."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_projects_json(singleton=True, sequential=False)
+            projects = client.get_projects()
+            assert projects[0]["projectType"] == "single_actions"
+
+    # --- create_project ---
+
+    def test_create_project_single_actions_sets_singleton(self, client):
+        """project_type='single_actions' must set singleton action holder:true in AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            client.create_project("My SAL", project_type="single_actions")
+            script = mock_run.call_args[0][0]
+            assert "singleton action holder:true" in script
+
+    def test_create_project_parallel_does_not_set_singleton(self, client):
+        """project_type='parallel' must not set singleton action holder:true."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            client.create_project("My Parallel", project_type="parallel")
+            script = mock_run.call_args[0][0]
+            assert "singleton action holder:true" not in script
+
+    def test_create_project_sequential_via_project_type(self, client):
+        """project_type='sequential' sets sequential:true."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            client.create_project("My Sequential", project_type="sequential")
+            script = mock_run.call_args[0][0]
+            assert "sequential:true" in script
+
+    def test_create_project_default_is_parallel(self, client):
+        """Default (no project_type, no sequential) creates a parallel project."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-new-001"
+            client.create_project("Default")
+            script = mock_run.call_args[0][0]
+            assert "singleton action holder:true" not in script
+            assert "sequential:false" in script
+
+    # --- update_project ---
+
+    def test_update_project_type_single_actions(self, client):
+        """update_project(project_type='single_actions') sets singleton action holder."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_project("proj-001", project_type="single_actions")
+            assert result["success"] is True
+            script = mock_run.call_args[0][0]
+            assert "singleton action holder" in script
+            assert "true" in script
+
+    def test_update_project_type_parallel(self, client):
+        """update_project(project_type='parallel') clears singleton action holder."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_project("proj-001", project_type="parallel")
+            assert result["success"] is True
+            script = mock_run.call_args[0][0]
+            assert "singleton action holder" in script
+
+    def test_update_project_type_in_updated_fields(self, client):
+        """project_type change is reflected in updated_fields."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_project("proj-001", project_type="single_actions")
+            assert "project_type" in result["updated_fields"]
