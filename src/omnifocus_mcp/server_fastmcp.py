@@ -716,9 +716,10 @@ def update_task(
         recurrence: iCalendar RRULE string (e.g., "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR"),
             or empty string to remove recurrence. Omitting means no change. (optional)
         repetition_method: How the next occurrence is calculated (optional). Only meaningful
-            when recurrence is set. Values: "fixed" (same day each period),
-            "start_after_completion" (next defer date = completion date + interval),
-            "due_after_completion" (next due date = completion date + interval).
+            when recurrence is set. Values: "fixed" (next occurrence on the original schedule
+            regardless of when completed), "start_after_completion" (next defer date =
+            completion date + interval), "due_after_completion" (next due date = completion
+            date + interval).
         name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
 
     Returns:

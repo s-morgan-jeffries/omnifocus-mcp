@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-12 (tag dropped status for #259)
+- **Date:** 2026-03-12 (repetition_method docstring fix for #277)
 - **Model:** claude-sonnet-4-6 (scenarios 24-34), claude-opus-4-6 (scenarios 1-23)
-- **Total Score:** 67/68 (99%)
+- **Total Score:** 68/68 (100%)
 - **Critical Failures:** 0 of 4
-- **Previous Score:** 63/64 (98%) — 2 new tag status scenarios added (#259)
+- **Previous Score:** 67/68 (99%) — scenario 29 fixed from 1/2 to 2/2 (#277)
 
 ## Category Scores
 
@@ -19,7 +19,7 @@
 | Edge Cases | 16-18 | 6 | 6 | 100% |
 | Documentation Gaps | 19-23 | 10 | 10 | 100% |
 | Planned Date | 24-26 | 6 | 6 | 100% |
-| Recurrence | 27-32 | 11 | 12 | 92% |
+| Recurrence | 27-32 | 12 | 12 | 100% |
 | Tag Status | 33-34 | 4 | 4 | 100% |
 
 ## Per-Scenario Results
@@ -192,10 +192,9 @@
 - **Concept Understanding:** Excellent — correctly used RRULE INTERVAL=2 for biweekly. Noted that repetition_method is omitted to preserve existing method.
 
 ### Scenario 29: Repetition Method Semantics
-- **Score:** 1/2 (PARTIAL)
+- **Score:** 2/2 (PASS) — *previously 1/2, fixed by docstring clarification (#277)*
 - **Tool Selection:** Correct — no tool call needed (interpretive question)
-- **Concept Understanding:** Partial — correctly identified that `repetitionMethod` matters and distinguished `due_after_completion` from `fixed`. However, misinterpreted the mechanics: said the due date shifts from the *previous due date* (which is actually `fixed` behavior). In reality, `due_after_completion` means next due = completion date + interval. The tool description's wording ("due date shifts by N days/weeks after completion") is ambiguous — could be improved.
-- **Action item:** Clarify tool description to say "next due date = completion date + interval" for `due_after_completion`.
+- **Concept Understanding:** Excellent — correctly explained that `due_after_completion` means next due = completion date + interval (one week from today). Explicitly contrasted with `fixed` (next Monday regardless of completion date). Even provided a comparison table.
 
 ### Scenario 30: Remove Recurrence
 - **Score:** 2/2 (PASS)
@@ -262,4 +261,4 @@
 
 ## Conclusion
 
-After adding tag dropped status (#259), the tool descriptions achieve 67/68 (99%) across 34 scenarios. The 2 new tag status scenarios (33-34) test dropping a tag (hidden but preserved) and distinguishing all three tag states (active, on_hold, dropped). Both scored 2/2 — agents correctly use the `status` parameter on `update_tag` and understand the semantic differences between states. The only partial score remains scenario 29 (repetition method semantics — interpretive, no tool call needed) where the agent slightly misinterpreted the `due_after_completion` mechanism.
+After clarifying the repetition_method docstring (#277), the tool descriptions achieve 68/68 (100%) across 34 scenarios. The key fix was adding explicit contrast examples to `fixed` vs `due_after_completion` — "regardless of when completed" for fixed, and concrete day-of-week examples for after_completion methods. Scenario 29 now scores 2/2, with agents correctly distinguishing fixed-schedule from completion-anchored recurrence.
