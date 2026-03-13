@@ -1119,7 +1119,9 @@ def get_folders() -> str:
     """Get all folders from OmniFocus with their hierarchy.
 
     Returns:
-        Formatted hierarchical list of all folders with indentation showing nesting
+        Each folder includes: id, name, path (hierarchical, e.g. "Work > Clients"),
+        status ("active" or "dropped"). Dropped folders and their contents are hidden
+        from most OmniFocus views.
     """
     client = get_client()
     folders = client.get_folders()
@@ -1133,6 +1135,7 @@ def get_folders() -> str:
         result += f"ID: {folder['id']}\n"
         result += f"Name: {folder['name']}\n"
         result += f"Path: {folder['path']}\n"
+        result += f"Status: {folder.get('status', 'active')}\n"
         result += "---\n"
 
     return result
@@ -1158,6 +1161,39 @@ def create_folder(name: str, parent_path: Optional[str] = None) -> str:
             return f"Successfully created folder '{name}' at root level (ID: {folder_id})"
     except Exception as e:
         return f"Error creating folder: {str(e)}"
+
+
+@mcp.tool()
+def update_folder(
+    folder_id: str,
+    name: Optional[str] = None,
+    status: Optional[str] = None,
+) -> str:
+    """Update an existing folder in OmniFocus.
+
+    Args:
+        folder_id: The ID of the folder to update
+        name: New folder name (optional)
+        status: Folder status — "active" or "dropped". Dropping a folder hides it
+            and drops all contained projects. (optional)
+
+    Returns:
+        Success message with updated fields, or error message
+    """
+    client = get_client()
+    try:
+        result = client.update_folder(folder_id=folder_id, name=name, status=status)
+    except ValueError as e:
+        return f"Error: {str(e)}"
+
+    if result["success"]:
+        updated_fields = result["updated_fields"]
+        if len(updated_fields) == 1:
+            return f"Successfully updated folder {folder_id}: {updated_fields[0]}"
+        return f"Successfully updated folder {folder_id}: {len(updated_fields)} fields ({', '.join(updated_fields)})"
+    else:
+        error_msg = result.get("error", "Unknown error")
+        return f"Error updating folder {folder_id}: {error_msg}"
 
 
 # ============================================================================

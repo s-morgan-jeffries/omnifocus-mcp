@@ -4420,7 +4420,8 @@ class OmniFocusConnector:
             tell application "OmniFocus"
                 repeat with f in foldersToProcess
                     set folderPath to my getFolderPath(f)
-                    set folderInfo to "{" & quote & "id" & quote & ":" & quote & (id of f) & quote & "," & quote & "name" & quote & ":" & quote & (name of f) & quote & "," & quote & "path" & quote & ":" & quote & folderPath & quote & "}"
+                    set folderHidden to hidden of f
+                    set folderInfo to "{" & quote & "id" & quote & ":" & quote & (id of f) & quote & "," & quote & "name" & quote & ":" & quote & (name of f) & quote & "," & quote & "path" & quote & ":" & quote & folderPath & quote & "," & quote & "hidden" & quote & ":" & (folderHidden as text) & "}"
                     set end of folderResults to folderInfo
                     my processFolders(folders of f, folderResults)
                 end repeat
@@ -4440,7 +4441,10 @@ class OmniFocusConnector:
 
         try:
             result = run_applescript(script)
-            return json.loads(result)
+            folders = json.loads(result)
+            for folder in folders:
+                folder["status"] = "dropped" if folder.get("hidden") else "active"
+            return folders
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error retrieving folders: {e.stderr}")
         except json.JSONDecodeError as e:
@@ -4528,6 +4532,78 @@ class OmniFocusConnector:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error creating folder: {e.stderr}")
 
+
+    def update_folder(
+        self,
+        folder_id: str,
+        name: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> dict:
+        """Update properties of an existing folder.
+
+        Args:
+            folder_id: The ID of the folder to update
+            name: New folder name (optional)
+            status: Folder status — "active" or "dropped" (optional).
+                Dropping a folder hides it and drops all contained projects.
+
+        Returns:
+            dict: {"success": bool, "folder_id": str, "updated_fields": list[str]}
+
+        Raises:
+            ValueError: If no fields provided or invalid status
+        """
+        self._verify_database_safety('update_folder')
+
+        if not folder_id:
+            raise ValueError("folder_id is required")
+
+        if name is None and status is None:
+            raise ValueError("At least one field must be provided to update")
+
+        valid_statuses = ["active", "dropped"]
+        if status is not None and status not in valid_statuses:
+            raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join(valid_statuses)}")
+
+        folder_id_escaped = self._escape_applescript_string(folder_id)
+        set_lines = []
+        updated_fields = []
+
+        if name is not None:
+            name_escaped = self._escape_applescript_string(name)
+            set_lines.append(f'set name of theFolder to "{name_escaped}"')
+            updated_fields.append("name")
+
+        if status is not None:
+            if status == "active":
+                set_lines.append('set hidden of theFolder to false')
+            else:  # dropped
+                set_lines.append('set hidden of theFolder to true')
+            updated_fields.append("status")
+
+        set_block = "\n                ".join(set_lines)
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theFolder to first flattened folder whose id is "{folder_id_escaped}"
+                    {set_block}
+                    return "true"
+                on error errMsg
+                    return "ERROR: " & errMsg
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.startswith("ERROR:"):
+                return {"success": False, "folder_id": folder_id, "updated_fields": [], "error": result}
+            return {"success": True, "folder_id": folder_id, "updated_fields": updated_fields}
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error updating folder: {e.stderr}")
 
     def reorder_task(self, task_id: str, before_task_id: Optional[str] = None, after_task_id: Optional[str] = None) -> bool:
         """Reorder a task by moving it before or after another task.

@@ -1205,6 +1205,83 @@ class TestCreateFolder:
             assert "Error creating folder" in str(exc_info.value)
 
 
+class TestFolderStatus:
+    """Tests for folder status (active/dropped) in get_folders and update_folder."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def _make_folders_json(self, hidden: bool = False):
+        return json.dumps([{
+            "id": "folder-001", "name": "Work", "path": "Work",
+            "hidden": hidden,
+        }])
+
+    # --- get_folders ---
+
+    def test_get_folders_returns_status_active(self, client):
+        """get_folders returns status='active' for non-hidden folders."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_folders_json(hidden=False)
+            folders = client.get_folders()
+            assert folders[0]["status"] == "active"
+
+    def test_get_folders_returns_status_dropped(self, client):
+        """get_folders returns status='dropped' for hidden folders."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_folders_json(hidden=True)
+            folders = client.get_folders()
+            assert folders[0]["status"] == "dropped"
+
+    def test_get_folders_applescript_reads_hidden(self, client):
+        """get_folders AppleScript must read the hidden property per folder."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = self._make_folders_json()
+            client.get_folders()
+            script = mock_run.call_args[0][0]
+            assert "hidden of f" in script
+
+    # --- update_folder ---
+
+    def test_update_folder_drop_sets_hidden_true(self, client):
+        """update_folder(status='dropped') sets hidden to true in AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_folder("folder-001", status="dropped")
+            assert result["success"] is True
+            script = mock_run.call_args[0][0]
+            assert "hidden" in script
+            assert "true" in script
+
+    def test_update_folder_activate_sets_hidden_false(self, client):
+        """update_folder(status='active') sets hidden to false in AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_folder("folder-001", status="active")
+            assert result["success"] is True
+            script = mock_run.call_args[0][0]
+            assert "hidden" in script
+            assert "false" in script
+
+    def test_update_folder_status_in_updated_fields(self, client):
+        """status change is reflected in updated_fields."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_folder("folder-001", status="dropped")
+            assert "status" in result["updated_fields"]
+
+    def test_update_folder_invalid_status_raises(self, client):
+        """Invalid status raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid status"):
+            client.update_folder("folder-001", status="invalid")
+
+    def test_update_folder_no_fields_raises(self, client):
+        """No fields provided raises ValueError."""
+        with pytest.raises(ValueError):
+            client.update_folder("folder-001")
+
+
 class TestGetPerspectives:
     """Tests for get_perspectives method."""
 

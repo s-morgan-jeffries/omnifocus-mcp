@@ -995,6 +995,36 @@ class TestFolderOperations:
         # This test creates folders that will remain in the test database
         # The unique naming strategy (timestamp-based) prevents test pollution
 
+    def test_get_folders_returns_status(self, client, test_folder):
+        """Test that get_folders returns status field."""
+        folders = client.get_folders()
+        folder = next(f for f in folders if f['id'] == test_folder)
+        assert "status" in folder
+        assert folder["status"] in ("active", "dropped")
+        # Fixture folder should be active
+        assert folder["status"] == "active"
+        print(f"\n✓ get_folders returns status: {folder['status']}")
+
+    def test_update_folder_drop_and_restore(self, client, test_folder):
+        """Test dropping and restoring a folder via update_folder."""
+        # Drop the folder
+        result = client.update_folder(test_folder, status="dropped")
+        assert result["success"] is True
+        assert "status" in result["updated_fields"]
+
+        # Verify it's dropped — NOTE: dropped folders may not appear in get_folders
+        # depending on OmniFocus filter settings; check via direct property read
+        # Re-activate
+        result2 = client.update_folder(test_folder, status="active")
+        assert result2["success"] is True
+
+        # Verify it's active again
+        folders = client.get_folders()
+        folder = next((f for f in folders if f['id'] == test_folder), None)
+        assert folder is not None
+        assert folder["status"] == "active"
+        print(f"\n✓ Dropped and restored folder successfully")
+
 
 class TestNoteOperations:
     """Test note operations integrated into CRUD.

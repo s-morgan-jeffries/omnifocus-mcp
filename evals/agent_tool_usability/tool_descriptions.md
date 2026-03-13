@@ -268,7 +268,7 @@ Get all folders from OmniFocus with their hierarchy.
 
 **Parameters:** None
 
-**Returns:** Formatted hierarchical list of all folders with indentation showing nesting
+**Returns:** Each folder includes: id, name, path (hierarchical, e.g. "Work > Clients"), status ("active" or "dropped"). Dropped folders and their contents are hidden from most OmniFocus views.
 
 ---
 
@@ -281,6 +281,19 @@ Create a new folder in OmniFocus.
 - `parent_path: str` (optional) — Parent folder path (e.g., "Work" or "Work > Clients")
 
 **Returns:** Success message with folder ID and full path
+
+---
+
+### update_folder
+
+Update an existing folder in OmniFocus.
+
+**Parameters:**
+- `folder_id: str` (required) — The ID of the folder to update
+- `name: str` (optional) — New folder name
+- `status: str` (optional) — Folder status: "active" or "dropped". Dropping a folder hides it and drops all contained projects.
+
+**Returns:** Success message with updated fields, or error message
 
 ---
 

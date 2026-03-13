@@ -828,4 +828,27 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 36,
+        "category": "Folder Status",
+        "name": "Drop Folder (Archive Without Deleting)",
+        "prompt": (
+            "I have a folder called 'Old Work' (folder ID: folder-999) that I want "
+            "to archive — hide it from view without deleting it. How do I do that?"
+        ),
+        "expected": {
+            "tools": ["update_folder"],
+            "key_params": {
+                "update_folder": {"folder_id": "folder-999", "status": "dropped"},
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_folder(folder_id='folder-999', status='dropped'). "
+            "Understands dropped = hidden but preserved. Optionally notes that "
+            "status='active' would restore it. "
+            "PARTIAL: Uses correct tool but explains semantics incorrectly. "
+            "FAIL: Tries delete_projects, says folders can't be hidden, or uses wrong tool."
+        ),
+        "safety_critical": False,
+    },
 ]
