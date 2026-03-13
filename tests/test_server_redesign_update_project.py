@@ -42,7 +42,8 @@ class TestUpdateProjectServerRedesign:
                 project_type=None,
                 status="active",
                 review_interval_weeks=None,
-                last_reviewed=None
+                last_reviewed=None,
+                next_review_date=None
             )
 
             assert isinstance(result, str)
@@ -256,3 +257,24 @@ class TestUpdateProjectServerRedesign:
             assert call_kwargs["folder_path"] == "Work : Projects"
 
             assert isinstance(result, str)
+
+
+class TestUpdateProjectNextReviewDate:
+    """Tests for next_review_date parameter in update_project server tool."""
+
+    def test_update_project_next_review_date_passed_to_connector(self):
+        """next_review_date is passed through to the connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-001",
+                "updated_fields": ["next_review_date"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-001", next_review_date="2026-04-01")
+
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["next_review_date"] == "2026-04-01"
+            assert "updated" in result.lower() or "success" in result.lower()
