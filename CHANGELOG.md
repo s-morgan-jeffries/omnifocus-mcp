@@ -5,6 +5,60 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-03-13
+
+### Added
+
+- **Planned date support** (#252, #271)
+  - `create_task` and `update_task` now accept `planned_date` for intention-based scheduling
+  - `get_tasks` returns `plannedDate` field
+
+- **Recurrence write support** (#272, #275)
+  - `update_task` now accepts `recurrence` (iCal RRULE string) and `repetition_method` (`fixed`, `start_after_completion`, `due_after_completion`)
+  - Allows creating and modifying recurring tasks via the MCP API
+
+- **Human-readable repeat summary** (#260, #273)
+  - `get_tasks` returns `repeatSummary` (e.g. "Every day") and `isRecurring` fields
+  - Agents can describe recurrence patterns without parsing RRULE strings
+
+- **Tag dropped status** (#259, #276)
+  - `update_tag` now accepts `status: "dropped"` or `"active"` to archive/restore tags
+  - `get_tags` returns `status` field
+
+- **Folder dropped status + `update_folder`** (#258, #280)
+  - New `update_folder` tool — update folder name or drop/restore folders
+  - `get_folders` returns `status` field
+
+- **Single Actions List project type** (#255, #279)
+  - `get_projects` returns `projectType` as `"single_actions"` for SAL projects
+  - `create_project` and `update_project` accept `project_type: "single_actions"`
+
+- **`next_review_date` write** (#257, #281)
+  - `update_project` and `update_projects` now accept `next_review_date` to explicitly set the next review date
+
+- **`completedByChildren` project property** (#254, #285)
+  - `get_projects` returns `completedByChildren` boolean
+  - `create_project` and `update_project` accept `completed_by_children` to control auto-completion when last action is checked off
+
+- **Stalled project detection** (#256, #287)
+  - `get_projects` returns `stalled` boolean with `include_task_health=True`
+  - New `stalled_only` parameter returns only active projects with no available actions
+  - Projects with all tasks deferred are correctly excluded (they're scheduled, not stuck)
+
+- **Effective dates (inherited from container)** (#253, #289)
+  - `get_tasks` now reads `effective due date`, `effective defer date`, and `effective planned date` from OmniFocus
+  - Tasks that inherit dates from their project now surface those dates in `dueDate`/`deferDate`/`plannedDate`
+  - `get_tasks(overdue=True)` now catches tasks overdue via project inheritance
+
+### Fixed
+
+- **`repetition_method` docstring** (#277, #278)
+  - Clarified that `due_after_completion` sets the next due date relative to completion, not the defer date
+
+### Tests
+
+- Added integration test coverage for `repeatSummary` positive case and `next_review_date` write path (#288, #291)
+
 ## [0.8.4] - 2026-03-11
 
 ### Fixed
