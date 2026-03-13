@@ -303,7 +303,8 @@ def update_project(
     project_type: Optional[str] = None,
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
-    last_reviewed: Optional[str] = None
+    last_reviewed: Optional[str] = None,
+    next_review_date: Optional[str] = None
 ) -> str:
     """Update an existing project in OmniFocus.
 
@@ -317,6 +318,7 @@ def update_project(
         status: Project status - "active", "on_hold", "done", or "dropped"
         review_interval_weeks: Review interval in weeks (0 to clear)
         last_reviewed: Last reviewed date in ISO format or "now"
+        next_review_date: Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval. (optional)
 
     Returns:
         Success message with project ID and updated fields, or error message
@@ -345,7 +347,8 @@ def update_project(
             project_type=project_type,
             status=status,
             review_interval_weeks=review_interval_weeks,
-            last_reviewed=last_reviewed
+            last_reviewed=last_reviewed,
+            next_review_date=next_review_date
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -373,7 +376,8 @@ def update_projects(
     sequential: Optional[str] = None,
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
-    last_reviewed: Optional[str] = None
+    last_reviewed: Optional[str] = None,
+    next_review_date: Optional[str] = None
 ) -> str:
     """Update multiple projects with the same properties (NEW API - Phase 2, Batch Function).
 
@@ -391,6 +395,7 @@ def update_projects(
         status: Project status - one of: "active", "on_hold", "done", "dropped"
         review_interval_weeks: Review interval in weeks
         last_reviewed: Last review date ("now" or ISO format like "2025-01-15")
+        next_review_date: Explicit next review date in ISO format — overrides OmniFocus-calculated date (optional)
 
     Returns:
         Success message with updated and failed counts, or error message
@@ -425,7 +430,8 @@ def update_projects(
             sequential=sequential_bool,
             status=status,
             review_interval_weeks=review_interval_weeks,
-            last_reviewed=last_reviewed
+            last_reviewed=last_reviewed,
+            next_review_date=next_review_date
         )
 
         # Handle dict return from client

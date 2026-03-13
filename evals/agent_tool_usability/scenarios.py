@@ -851,4 +851,27 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 37,
+        "category": "Next Review Date",
+        "name": "Force Project Review Date",
+        "prompt": (
+            "I have a project with ID proj-abc. I want to force it to come up for review "
+            "on April 15th, 2026, regardless of when it was last reviewed or what the "
+            "review interval is set to. How do I do that?"
+        ),
+        "expected": {
+            "tools": ["update_project"],
+            "key_params": {
+                "update_project": {"project_id": "proj-abc", "next_review_date": "2026-04-15"},
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_project(project_id='proj-abc', next_review_date='2026-04-15'). "
+            "Correctly uses next_review_date to override the calculated date. "
+            "PARTIAL: Uses last_reviewed instead of next_review_date, or uses both. "
+            "FAIL: Says it can't be done, uses review_interval_weeks only, or uses wrong tool."
+        ),
+        "safety_critical": False,
+    },
 ]
