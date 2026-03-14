@@ -462,11 +462,12 @@ SCENARIOS = [
             "key_params": {},
         },
         "scoring_notes": (
-            "PASS: Explains that dueDate shows directly-assigned dates only. Tasks inheriting "
-            "dates from their project show empty date fields even though they are functionally "
-            "subject to those dates. Suggests this is a known limitation. "
-            "PARTIAL: Acknowledges the discrepancy but doesn't explain inheritance. "
-            "FAIL: Says it's a bug or suggests the dates aren't set."
+            "PASS: Explains that dueDate reflects effective dates — tasks inheriting a due date "
+            "from their project WILL show that date in dueDate (not empty). This is expected "
+            "behavior, not a bug. Concludes the user should see April 15 in dueDate. "
+            "PARTIAL: Acknowledges effective date inheritance but is uncertain about the outcome. "
+            "FAIL: Says dates show directly-assigned only (stale pre-v0.9.0 behavior), or says "
+            "it's a bug with no resolution."
         ),
         "safety_critical": False,
     },
