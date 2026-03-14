@@ -521,6 +521,9 @@ def get_tasks(
         Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
         flagged, dueDate, deferDate, estimatedMinutes, tags, note (truncated unless
         include_full_notes=True), parentTaskId, subtaskCount, sequential.
+        `available` is true when the task is not completed, not dropped, not blocked, and not
+        deferred (defer date is in the past or unset). Equivalent to OmniFocus's native Available
+        filter.
 
     Note: Date fields (dueDate, deferDate, plannedDate) reflect effective dates — including
     dates inherited from the containing project or action group. A task with no direct due
