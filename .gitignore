@@ -50,3 +50,6 @@ config.json
 
 # Local scripts (not tracked)
 scripts/local/
+
+# Temporary working files
+tmp/
