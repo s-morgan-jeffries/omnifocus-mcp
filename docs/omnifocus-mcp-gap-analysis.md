@@ -1,6 +1,6 @@
 # OmniFocus MCP Connector — Gap Analysis
 
-*Produced March 11, 2026. Compared against OmniFocus 4.8.4 Reference Manual, MCP connector v0.8.3, and omnifocus-analysis.md.*
+*Produced March 11, 2026. Updated March 13, 2026 post-v0.9.0. Compared against OmniFocus 4.8.4 Reference Manual, MCP connector v0.9.0, and OmniFocus SDEF.*
 
 ---
 
@@ -10,72 +10,46 @@ Ranked by likely utility for a power user with Claude integration.
 
 ### Tier 1: High Utility — Would Improve Daily Workflows
 
-**1.1. Planned Date (new in OF 4.7)**
-- OF added `planned date` as a first-class date property alongside defer and due. It represents *when you plan to work on something* with no availability or overdue constraints.
-- AppleScript exposes `planned date` (read/write), `effective planned date`, and `next planned date`.
-- The connector does not read, write, or return `planned date` anywhere.
-- **Impact:** Morgan's daily planning workflow (flag cleanup, contextual surfacing) would benefit from planned dates as a scheduling signal distinct from due dates. The `/plan-my-day` plugin could assign planned dates to tasks surfaced during morning planning.
-- **Effort:** Medium — add to `create_task`, `update_task`, `get_tasks` return schema, and batch property extraction.
+**1.1. Planned Date (new in OF 4.7)** ✅ IMPLEMENTED in v0.9.0 (#254)
+- Added `planned_date` to `create_task`, `update_task`, and `get_tasks` return schema.
+- `effective planned date` read path also implemented in v0.9.0 (#253).
 
-**1.2. Effective Dates (inherited values)**
-- OF distinguishes between directly-assigned dates and inherited dates (from project/action group). The Inspector shows "Deferred with container", "Due with container", etc.
-- AppleScript exposes `effective due date`, `effective defer date`, `effective planned date`, `effective completed date`.
-- The connector reads `due date` and `defer date` directly, which returns `missing value` for tasks that inherit their dates from their project. These tasks appear to have no dates even though they functionally do.
-- **Impact:** A task in a project with due date 2026-03-20 currently appears in `get_tasks()` with `dueDate: ""` unless the task has its own due date. This means overdue/due-soon queries may miss tasks that are effectively overdue via inheritance.
-- **Effort:** Low — read `effective due date` and `effective defer date` alongside direct dates, or add an `include_effective_dates` flag.
+**1.2. Effective Dates (inherited values)** ✅ IMPLEMENTED in v0.9.0 (#253)
+- Connector now reads `effective due date`, `effective defer date`, `effective planned date` throughout — both in `whose` clauses and batch/per-task property reads.
+- Tasks inheriting dates from their project now correctly surface those dates.
 
-**1.3. "Complete with last action" (project property)**
-- OF projects can be set to auto-complete when their last action is resolved. This is a meaningful property for project status tracking — a project with this enabled and one remaining task is essentially "almost done."
-- AppleScript: `completed by children` (boolean, read/write).
-- The connector doesn't expose this. `create_project` and `update_project` don't accept it; `get_projects` doesn't return it.
-- **Impact:** Affects how project completion should be interpreted. The SKILL.md should at minimum document this behavior.
-- **Effort:** Low — add to project create/update/return.
+**1.3. "Complete with last action" (project property)** ✅ IMPLEMENTED in v0.9.0 (#256)
+- `completed_by_children` added to `create_project`, `update_project`, `get_projects`.
 
-**1.4. Single Actions List (project type)**
-- OF has three project types: Parallel, Sequential, and Single Actions List. The connector only exposes `sequential` (boolean), conflating Parallel and Single Actions List.
-- A Single Actions List is fundamentally different: it has no completion goal, cannot auto-complete, and represents a grab-bag of loosely related tasks (exactly the "to-dos" catch-all pattern in Morgan's database).
-- AppleScript: single actions lists have `sequential = false` and are distinguished by other properties (no `completed by children` option, different class behavior). The exact AppleScript representation should be verified.
-- **Impact:** The 11+ "to-dos" catch-all projects in Morgan's database are likely Single Actions Lists. Understanding and correctly creating them matters for project structure.
-- **Effort:** Medium — need to verify AppleScript detection pattern, add to create/update/get.
+**1.4. Single Actions List (project type)** ✅ IMPLEMENTED in v0.9.0 (#255)
+- `project_type` field added, with values `"parallel"`, `"sequential"`, `"single_actions"`.
+- Create and update support all three types.
 
-**1.5. Stalled Projects (derived state)**
-- A "stalled" project is an active project with no remaining actions. This is a key review signal — it means the project needs attention (add tasks or complete/drop it).
-- OF's custom perspective engine can filter for this. AppleScript doesn't expose it directly but it's computable: active project where `number of available tasks = 0` and `number of remaining tasks = 0`.
-- The connector doesn't surface this. `get_projects(include_task_health=True)` returns `remainingCount` which could be used client-side, but there's no `stalled_only` filter.
-- **Impact:** The `/project-review` plugin would benefit from surfacing stalled projects automatically.
-- **Effort:** Low — add a computed `stalled` field to project returns when `include_task_health=True`, or add a `stalled_only` filter.
+**1.5. Stalled Projects (derived state)** ✅ IMPLEMENTED in v0.9.0 (#287)
+- `stalled_only` filter added to `get_projects`.
+- `stalled` boolean field returned for all projects when `include_task_health=True`.
 
 ### Tier 2: Medium Utility — Would Improve Specific Workflows
 
 **2.1. Action Groups (documentation gap + behavior)**
-- An "action group" is a task with subtasks. It can be Parallel or Sequential, and the parent task appears as "blocked" while its subtasks are active.
-- The connector returns `subtaskCount` and `sequential` on tasks, so the data is there, but the concept isn't documented in the tool descriptions. An agent seeing a task with `blocked: true` and `subtaskCount: 3` has no way to know this is normal action group behavior.
-- **Impact:** This confused Claude in past conversations (per the analysis doc). Documentation fix, not code.
+- Still a documentation gap. `subtaskCount` and `sequential` are returned on tasks, but the action group concept isn't explained in tool descriptions.
+- **Impact:** An agent seeing `blocked: true` with `subtaskCount: 3` has no context that this is normal action group behavior.
 - **Effort:** Very low — add to server instructions block.
 
 **2.2. Repeat Rule Details**
-- The connector returns `isRecurring`, `recurrence` (raw RRULE string), and `repetitionMethod`. But it doesn't parse the RRULE or expose it in a human-readable form.
-- OF4 added new repeat features: "Based On" (defer/planned/due), "Catch up automatically", "End after N completions", and "Only On" specific days. These may or may not be represented in the RRULE string.
-- **Impact:** An agent cannot currently tell Claude "this task repeats every Monday" — it would need to parse `FREQ=WEEKLY;INTERVAL=1;BYDAY=MO` itself.
-- **Effort:** Medium — add a parsed repeat summary to task returns (e.g., `repeatSummary: "Every Monday"`). Alternatively, this is SKILL.md documentation territory.
+- Connector returns `isRecurring`, `recurrence` (raw RRULE string), `repetitionMethod`, and `repeatSummary` (human-readable OF-generated string, added in #260).
+- The `repeatSummary` field now provides the human-readable form (e.g., "Every day").
+- Remaining gap: `catch up automatically` from the repetition rule record is not exposed (see §4.2 below).
+- **Status:** Partially addressed. `repeatSummary` closes the human-readability gap. `catch up automatically` remains open.
 
-**2.3. Folder Status (Active vs Dropped)**
-- Folders can be Active or Dropped. Dropping a folder drops all contained projects.
-- `get_folders()` doesn't return folder status. There's no `update_folder` to change status.
-- **Impact:** Low day-to-day, but relevant for database cleanup workflows.
-- **Effort:** Low.
+**2.3. Folder Status (Active vs Dropped)** ✅ IMPLEMENTED in v0.9.0 (#258)
+- `status` field (active/dropped) added to `get_folders`. `update_folder` supports status changes.
 
-**2.4. Tag Status: Dropped**
-- Tags can be Active, On Hold, or Dropped. The connector's `update_tag` supports `active` (boolean for active/on-hold toggle) but doesn't support setting a tag to Dropped.
-- **Impact:** Marginal — dropping tags is rare.
-- **Effort:** Very low.
+**2.4. Tag Status: Dropped** ✅ IMPLEMENTED in v0.9.0 (#259)
+- `update_tag(status="dropped")` now supported.
 
-**2.5. Review: Next Review Date (read/write)**
-- The connector exposes `review_interval_weeks` and `last_reviewed` on projects. But `next_review_date` is not returned or writable.
-- OF calculates it as `last_reviewed + review_interval`, but it can be manually overridden to force an early review.
-- AppleScript: `next review date` (read/write).
-- **Impact:** Would simplify the `/project-review` plugin — currently must compute next review date client-side.
-- **Effort:** Very low — add to project returns and `update_project`.
+**2.5. Review: Next Review Date (read/write)** ✅ IMPLEMENTED in v0.9.0 (#257)
+- `next_review_date` added to `update_project` and `get_projects` return schema.
 
 ### Tier 3: Low Utility — Niche or Not Automatable
 
@@ -87,8 +61,9 @@ Ranked by likely utility for a power user with Claude integration.
 
 **3.2. Tag Locations / Nearby**
 - Tags can have GPS locations. The Nearby perspective shows items by proximity.
-- AppleScript does NOT expose tag locations. Not automatable.
-- **Impact:** None — cannot be implemented.
+- **Correction from original doc:** The OmniFocus SDEF *does* expose a `location` property on tags (`latitude`, `longitude`, `altitude`, `radius`, `trigger`). Prior assessment that AppleScript doesn't expose this was incorrect.
+- **Revised assessment:** Reading/writing tag locations via AppleScript is technically feasible. However, the use case for MCP (Claude assigning GPS-based contexts to tags) is niche enough to remain Tier 3.
+- **Effort:** Low — but no clear workflow benefit identified.
 
 **3.3. Custom Perspective Creation/Configuration**
 - Cannot create or configure custom perspective rules via AppleScript. Can only create blank perspectives.
@@ -103,13 +78,13 @@ Ranked by likely utility for a power user with Claude integration.
 
 **3.5. Time Zone (Floating vs Fixed)**
 - Per-item setting affecting date interpretation. `should use floating time zone` is readable via AppleScript.
-- **Impact:** Edge case. Morgan operates in one time zone.
-- **Effort:** Very low to read, but adds complexity.
+- See §4.3 for updated assessment.
 
 **3.6. Mutually Exclusive Tag Groups (new in OF 4.7)**
-- Tag groups can be marked so only one child tag can be assigned per item.
-- AppleScript access uncertain — likely not exposed.
-- **Impact:** Niche.
+- Tag groups can be marked so only one child tag from the group can be assigned per item.
+- **SDEF research finding:** The `mutually exclusive` *configuration* is NOT in the OmniFocus SDEF — it's UI-only and cannot be created or read via AppleScript.
+- **Open question:** Assigning any existing tag to a task via AppleScript should work normally (it's just `add tag X to task Y`). What's unknown is whether OmniFocus *enforces* the mutual exclusivity constraint at the data model level when a tag is assigned via AppleScript (automatically removing conflicting sibling tags, as the UI does) or only at the UI layer (potentially leaving a task in a technically invalid state). This is worth verifying against real OmniFocus.
+- **Impact:** Niche. Most users won't hit this. Worth noting in AppleScript gotchas doc if exclusivity is *not* enforced at the model level.
 
 ---
 
@@ -129,26 +104,25 @@ Add to the SEQUENTIAL VS PARALLEL section:
 The server instructions say "Blocked (waiting on predecessor in sequential project)" but don't mention that action group parents are also blocked. Add:
 > A task with active subtasks (action group parent) also appears as `blocked: true` — this indicates the task itself can't be completed until its subtasks are resolved.
 
-**Current gap: Single Actions Lists not mentioned.**
-Add:
-> SINGLE ACTIONS LISTS: A third project type (alongside Parallel and Sequential). Contains loosely related tasks with no completion goal — the project never auto-completes. Useful for ongoing collections like "Errands" or domain-specific catch-all lists.
+**Current gap: Single Actions Lists not mentioned.** ✅ IMPLEMENTED in v0.9.0 (#255)
+Added to server instructions as part of project type support.
 
 ### 2.2. Tool Descriptions
 
 **`get_tasks` return schema — missing `available` field documentation.**
 The return description lists `available` but doesn't explain the derivation: available = not completed AND not dropped AND not blocked AND not deferred. Add this.
 
-**`get_projects` return schema — `sequential` ambiguity.**
-Currently `sequential: true/false` but doesn't distinguish Parallel from Single Actions List (both are `false`). At minimum, document this limitation.
+**`get_projects` return schema — `sequential` ambiguity.** ✅ RESOLVED in v0.9.0 (#255)
+`project_type` field now returns `"parallel"`, `"sequential"`, or `"single_actions"` explicitly.
 
-**`create_project` — `sequential` parameter.**
-Currently: "If True, tasks must be completed in order." Should note: "If False, creates a parallel project. Single Actions Lists cannot currently be created via this API."
+**`create_project` — `sequential` parameter.** ✅ RESOLVED in v0.9.0 (#255)
+Replaced by `project_type` parameter.
 
 **`update_task` — `completed` parameter.**
 Currently: "Mark task complete/incomplete." Should clarify: "Uses `mark complete` internally, which correctly handles recurring tasks by spawning the next occurrence. Setting `completed=False` uncompletes the task."
 
-**`get_tasks` — inherited dates not mentioned.**
-Add a note: "Date fields (dueDate, deferDate) show directly-assigned dates only. Tasks that inherit dates from their project/action group will show empty date fields even though they are functionally subject to those dates."
+**`get_tasks` — inherited dates.** ✅ RESOLVED in v0.9.0 (#253)
+Now returns effective dates, including inherited ones. Docstring updated.
 
 ### 2.3. CLAUDE.md / Architecture Docs
 
@@ -167,12 +141,8 @@ All perspectives reported as "built-in." Custom perspectives (Daily Worklist, In
 ### 3.2. FIXED: `get_tasks(tag_filter=...)` timeout (#249)
 Was timing out at 120s+ due to full table scan. Fixed by tag-side pre-filter in #249. Now ~0.7s.
 
-### 3.3. SUSPECTED: Inherited dates not returned
-Tasks inheriting due/defer dates from their project show empty date fields in `get_tasks()` results. This means:
-- `get_tasks(overdue=True)` may miss tasks that are effectively overdue via project inheritance
-- A task displayed as "due March 20" in the OF UI appears as `dueDate: ""` in MCP results
-
-This should be verified against real OmniFocus to confirm whether `whose due date < (current date)` catches inherited dates or only direct ones. If `whose` respects effective dates but the property read doesn't, the filter results are correct but the returned data is misleading.
+### 3.3. FIXED: Inherited dates not returned (#253) ✅ RESOLVED in v0.9.0
+Connector now reads `effective due date`, `effective defer date`, `effective planned date`. Tasks inheriting dates from their project/action group now surface those dates correctly.
 
 ### 3.4. SUSPECTED: `get_tasks(available_only=True)` may not account for On Hold tags
 OF considers a task unavailable if it has an On Hold tag. The connector's availability check computes: `not completed AND not dropped AND not blocked AND not deferred`. It's unclear whether On Hold tag status is factored in.
@@ -184,22 +154,66 @@ Per APPLESCRIPT_GOTCHAS.md, `set completed of collection to false` fails with er
 
 ---
 
-## Summary: Priority Recommendations
+## 4. New Gaps Found via SDEF Research (March 13, 2026)
 
-| Priority | Item | Type | Effort |
-|----------|------|------|--------|
-| **P1** | Planned date support | Gap | Medium |
-| **P1** | Effective dates (inherited) | Gap + Bug | Low-Medium |
-| **P1** | Action group documentation | Doc | Very Low |
-| **P1** | "Next" task semantics | Doc | Very Low |
-| **P1** | Blocked semantics (action groups) | Doc | Very Low |
-| **P2** | Single Actions List project type | Gap | Medium |
-| **P2** | Complete with last action | Gap | Low |
-| **P2** | Stalled projects | Gap | Low |
-| **P2** | Next review date | Gap | Very Low |
-| **P2** | Inherited dates audit | Bug | Low |
-| **P2** | Available + On Hold tags audit | Bug | Low |
-| **P3** | Folder status | Gap | Low |
-| **P3** | Repeat rule parsing | Gap | Medium |
-| **P3** | Tag dropped status | Gap | Very Low |
-| **P3** | Uncomplete batch audit | Bug | Low |
+These items were not in the original gap analysis. Discovered by reading the OmniFocus SDEF directly.
+
+### 4.1. Next Occurrence Dates on Recurring Tasks
+
+The SDEF exposes three read-only properties on tasks:
+- `next defer date` — defer date of the next occurrence (recurring tasks)
+- `next due date` — due date of the next occurrence
+- `next planned date` — planned date of the next occurrence
+
+These return `missing value` for non-recurring tasks. For recurring tasks, they allow an agent to reason about *when the next instance will become relevant* without completing the current one.
+
+- **Current state:** None of these are returned by `get_tasks`.
+- **Impact:** Useful for recurring task planning (e.g., "this task recurs weekly, next due Friday"). The `/plan-my-day` plugin could use these to surface recurring commitments.
+- **Effort:** Low — add to batch property extraction and return schema.
+- **Filed:** Issue TBD (v0.9.1)
+
+### 4.2. `catch up automatically` in Repetition Rule
+
+The `repetition rule` record in the SDEF includes a `catch up automatically` boolean property. When `true`, if a task with recurrence is missed, only one catch-up occurrence is scheduled (not one per missed interval). When `false`, each missed occurrence is scheduled individually.
+
+- **Current state:** `recurrence` (RRULE string) is exposed, but `catch up automatically` is not extracted from the `repetition rule` record and not returned.
+- **Impact:** An agent scheduling tasks around recurring items needs to know whether a missed recurrence will flood the inbox. Currently this is opaque.
+- **Effort:** Low — extract `catch up automatically` from the repetition rule and include in `get_tasks` return schema alongside `isRecurring`/`recurrence`.
+- **Filed:** Issue TBD (v0.9.1)
+
+### 4.3. `should use floating time zone`
+
+Tasks and projects have a `should use floating time zone` boolean property. When `true`, due dates are interpreted in "local time" regardless of time zone — useful for travelers who want "9am wherever I am" rather than "9am UTC-5."
+
+- **Current state:** Not read or returned anywhere.
+- **Impact:** Edge case for Morgan's current workflows (single time zone), but could cause confusing behavior if tasks were created with floating time zone in another app.
+- **Effort:** Very low — add to get_tasks/get_projects return schema as read-only.
+- **Priority:** Low. Could be Tier 3 / won't-fix.
+- **Filed:** No issue needed unless prioritized.
+
+---
+
+## Summary: Priority Recommendations (updated March 13, 2026)
+
+| Priority | Item | Type | Effort | Status |
+|----------|------|------|--------|--------|
+| **P1** | Planned date support | Gap | Medium | ✅ v0.9.0 |
+| **P1** | Effective dates (inherited) | Gap + Bug | Low-Medium | ✅ v0.9.0 |
+| **P1** | Action group documentation | Doc | Very Low | Open |
+| **P1** | "Next" task semantics | Doc | Very Low | Open |
+| **P1** | Blocked semantics (action groups) | Doc | Very Low | Open |
+| **P2** | Single Actions List project type | Gap | Medium | ✅ v0.9.0 |
+| **P2** | Complete with last action | Gap | Low | ✅ v0.9.0 |
+| **P2** | Stalled projects | Gap | Low | ✅ v0.9.0 |
+| **P2** | Next review date | Gap | Very Low | ✅ v0.9.0 |
+| **P2** | Inherited dates audit | Bug | Low | ✅ v0.9.0 |
+| **P2** | Available + On Hold tags audit | Bug | Low | Open |
+| **P2** | Next occurrence dates (new) | Gap | Low | Open (v0.9.1) |
+| **P2** | `catch up automatically` (new) | Gap | Low | Open (v0.9.1) |
+| **P3** | Folder status | Gap | Low | ✅ v0.9.0 |
+| **P3** | Repeat rule parsing | Gap | Medium | Partially done (repeatSummary) |
+| **P3** | Tag dropped status | Gap | Very Low | ✅ v0.9.0 |
+| **P3** | Uncomplete batch audit | Bug | Low | Open |
+| **P3** | Tag locations | Gap | Low | Open (reassessed — feasible but low-value) |
+| **P3** | `should use floating time zone` (new) | Gap | Very Low | Open (low priority) |
+| **P3** | Mutually exclusive tag enforcement | Unknown | Low | Open question — needs verification |
