@@ -279,6 +279,52 @@ Remove operations use a single AppleScript call with `set repetition rule to mis
 
 ---
 
+## Mutually Exclusive Tag Groups
+
+- ✅ **Exclusivity is enforced at the data model level** — adding tag B from an exclusive group silently removes tag A, even via AppleScript
+- ❌ **AppleScript/SDEF cannot read or write the exclusivity configuration** — `mutually exclusive` is not an SDEF property
+- ✅ **OmniAutomation can read and write it** via `Tag.childrenAreMutuallyExclusive`
+
+### Empirical Investigation (2026-03-14, Issue #302)
+
+Tested with a parent tag "Mutual Exclusion Test" configured as exclusive in the UI, with child tags "Option 1", "Option 2", "Option 3".
+
+**Enforcement test (AppleScript):**
+```applescript
+-- Add Option 1 to a task
+set tagObj1 to first flattened tag whose name is "Option 1"
+add tagObj1 to tags of tempTask
+-- tags of tempTask → {"Option 1"}
+
+-- Add Option 2 (same exclusive group)
+set tagObj2 to first flattened tag whose name is "Option 2"
+add tagObj2 to tags of tempTask
+-- tags of tempTask → {"Option 2"} — Option 1 was silently removed!
+```
+
+Adding all three sequentially results in only the last one surviving: `{Option 3}`.
+
+**OmniAutomation access:**
+```applescript
+tell application "OmniFocus"
+    evaluate javascript "
+        var tag = flattenedTags.byName('Mutual Exclusion Test');
+        tag.childrenAreMutuallyExclusive;  // → true (readable)
+        tag.childrenAreMutuallyExclusive = false;  // writable
+    "
+end tell
+```
+
+⚠️ **Testing constraint:** Like all OmniAutomation features, `evaluate javascript` crashes on headless test databases. Testing must be done against the production DB.
+
+### Implications for the Connector
+
+- `update_task(add_tags=["Option 2"])` on a task with "Option 1" will silently remove "Option 1" — this is OmniFocus behavior, not a connector bug
+- The connector currently cannot detect or warn about this because it doesn't read `childrenAreMutuallyExclusive`
+- Future enhancement: expose `childrenAreMutuallyExclusive` in `get_tags` so agents can understand tag group behavior
+
+---
+
 ## Performance Characteristics
 
 **Context:** OmniFocus operations via AppleScript can be slow for large databases.

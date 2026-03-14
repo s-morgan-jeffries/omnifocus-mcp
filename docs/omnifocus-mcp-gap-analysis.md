@@ -82,9 +82,10 @@ Ranked by likely utility for a power user with Claude integration.
 
 **3.6. Mutually Exclusive Tag Groups (new in OF 4.7)**
 - Tag groups can be marked so only one child tag from the group can be assigned per item.
-- **SDEF research finding:** The `mutually exclusive` *configuration* is NOT in the OmniFocus SDEF — it's UI-only and cannot be created or read via AppleScript.
-- **Open question:** Assigning any existing tag to a task via AppleScript should work normally (it's just `add tag X to task Y`). What's unknown is whether OmniFocus *enforces* the mutual exclusivity constraint at the data model level when a tag is assigned via AppleScript (automatically removing conflicting sibling tags, as the UI does) or only at the UI layer (potentially leaving a task in a technically invalid state). This is worth verifying against real OmniFocus.
-- **Impact:** Niche. Most users won't hit this. Worth noting in AppleScript gotchas doc if exclusivity is *not* enforced at the model level.
+- **SDEF research finding:** The `mutually exclusive` *configuration* is NOT in the OmniFocus SDEF — it cannot be created or read via AppleScript.
+- **OmniAutomation finding (2026-03-14):** The property `Tag.childrenAreMutuallyExclusive` IS readable and writable via `evaluate javascript`. This means the connector can detect and configure exclusivity through OmniAutomation, even though AppleScript/SDEF cannot.
+- **Enforcement finding (2026-03-14):** OmniFocus enforces exclusivity at the **data model level**, not just the UI. Adding a second tag from an exclusive group via AppleScript silently removes the first — only the last-assigned tag survives. This is OmniFocus behavior, not controllable by the connector.
+- **Impact:** The connector currently cannot warn about silent tag removal because it doesn't read `childrenAreMutuallyExclusive`. Future enhancement: expose this property in `get_tags` and optionally in `create_tag`/`update_tag`.
 
 ---
 
@@ -216,4 +217,4 @@ Tasks and projects have a `should use floating time zone` boolean property. When
 | **P3** | Uncomplete batch audit | Bug | Low | Open |
 | **P3** | Tag locations | Gap | Low | Open (reassessed — feasible but low-value) |
 | **P3** | `should use floating time zone` (new) | Gap | Very Low | Open (low priority) |
-| **P3** | Mutually exclusive tag enforcement | Unknown | Low | Open question — needs verification |
+| **P3** | Mutually exclusive tag enforcement | Verified | Low | Enforced at data model level; `childrenAreMutuallyExclusive` accessible via OmniAutomation (#302) |
