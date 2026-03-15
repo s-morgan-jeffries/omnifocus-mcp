@@ -899,6 +899,29 @@ SCENARIOS = [
     },
     {
         "id": 39,
+        "category": "Next Occurrence Dates",
+        "name": "Read Next Occurrence Date",
+        "prompt": (
+            "I have a recurring task 'Weekly team standup' that repeats every Monday. "
+            "When is the next occurrence due? I don't want to complete the current one "
+            "just to find out."
+        ),
+        "expected": {
+            "tools": ["get_tasks"],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Suggests using get_tasks to fetch the task and reading the nextDueDate "
+            "field (or nextDeferDate/nextPlannedDate). Understands these fields show the "
+            "next occurrence without needing to complete the current one. "
+            "PARTIAL: Suggests get_tasks but doesn't mention the nextDueDate field. "
+            "FAIL: Says you have to complete the task to see the next occurrence, "
+            "or tries to calculate manually from the recurrence rule."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 40,
         "category": "Stalled Projects",
         "name": "Find Projects With No Available Actions",
         "prompt": (

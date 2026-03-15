@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-15 (sequential flag on action groups #307)
-- **Model:** claude-sonnet-4-6
-- **Total Score:** 76/78 (97%)
+- **Date:** 2026-03-15 (next occurrence dates on recurring tasks #294)
+- **Model:** claude-opus-4-6
+- **Total Score:** 78/80 (98%)
 - **Critical Failures:** 0 of 4
-- **Previous Score:** 78/78 (100%) — available field derivation + effective dates #298
+- **Previous Score:** 76/78 (97%) — sequential flag on action groups #307
 
 ## Category Scores
 
@@ -25,7 +25,8 @@
 | Folder Status | 36 | 2 | 2 | 100% |
 | Next Review Date | 37 | 2 | 2 | 100% |
 | Complete with Last Action | 38 | 2 | 2 | 100% |
-| Stalled Projects | 39 | 2 | 2 | 100% |
+| Next Occurrence Dates | 39 | 2 | 2 | 100% |
+| Stalled Projects | 40 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -207,30 +208,33 @@
 - **Score:** 2/2 (PASS)
 - **Parameters:** Correct — `completed_by_children=True`
 
-### Scenario 39: Find Projects With No Available Actions
+### Scenario 39: Read Next Occurrence Date
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `get_tasks`
+- **Concept Understanding:** Excellent — identified `nextDueDate` field, explained it shows the next occurrence without completing the current task. Also mentioned `nextDeferDate` and `nextPlannedDate`.
+
+### Scenario 40: Find Projects With No Available Actions
 - **Score:** 2/2 (PASS)
 - **Parameters:** Correct — `stalled_only=True`
 
 ## Key Findings
 
-### Changes Validated in This Run (#307)
+### Changes Validated in This Run (#294)
 
-1. **`sequential` parameter added to `create_task`** — No regressions. Scenario 2 (sequential project) continues to pass. The new parameter does not confuse the agent.
+1. **`nextDueDate`, `nextDeferDate`, `nextPlannedDate` added to get_tasks Returns** — The blind agent correctly identified and used the `nextDueDate` field when asked about the next occurrence of a recurring task. The documentation clearly communicates that these fields are populated only for recurring tasks and empty for non-recurring ones.
 
-2. **`sequential` parameter added to `update_task`** — No regressions. No scenario specifically tests setting sequential on an existing task, but the parameter addition didn't cause confusion in any existing scenarios.
-
-3. **`sequential` parameter added to `update_tasks`** — No regressions. Batch operations continue to work correctly.
+2. **No regressions** — All existing scenarios maintain their scores. The 2-point gap from max (78/80) is from the same stochastic scenarios (21, 31, 33) that oscillated in the previous run.
 
 ### Score Delta
 
-76/78 vs 78/78 previous. The 2-point drop is from stochastic variance on scenarios 21, 31, and 33 — all known to oscillate between runs. None are caused by the #307 changes.
+78/80 vs 76/78 previous. Apparent improvement is from adding 1 new scenario (39) at 2/2. Existing scenario scores unchanged — stochastic variance on scenarios 21, 31, 33 persists.
 
 ### Issues Found (Stochastic, Not Actionable)
 
-- **Scenario 21** (Inherited Dates): Quoted correct docs but drew wrong conclusion. Previous run: PASS.
-- **Scenario 31** (Set Recurrence): Chose start_after_completion vs due_after_completion. Previous run: PASS.
+- **Scenario 21** (Inherited Dates): Quoted correct docs but drew wrong conclusion. Previous run: PARTIAL.
+- **Scenario 31** (Set Recurrence): Chose start_after_completion vs due_after_completion. Previous run: PARTIAL.
 - **Scenario 33** (Drop a Tag): Chose on_hold vs dropped. Known oscillation across runs.
 
 ## Conclusion
 
-Adding `sequential` to create_task, update_task, and update_tasks tool descriptions caused no regressions. The 2-point score decrease (78→76) is attributable to stochastic model variance on three previously-identified scenarios. All 4 safety-critical scenarios continue to pass. The new parameter is cleanly integrated into the existing tool schema.
+Adding `nextDueDate`, `nextDeferDate`, `nextPlannedDate` to the get_tasks return schema is well-documented and correctly discoverable by blind agents. The new scenario (39) passes at 2/2. All 4 safety-critical scenarios continue to pass. No regressions from the schema change.
