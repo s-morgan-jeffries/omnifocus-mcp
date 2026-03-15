@@ -11,6 +11,7 @@ An MCP server bridging Claude and OmniFocus via AppleScript on macOS.
 make test                  # Unit tests (~2min, mocked AppleScript)
 make test-integration      # Real OmniFocus tests (~30s, requires test DB)
 make test-e2e              # End-to-end MCP tool tests (requires test DB)
+make test-prod             # Production DB tests (OmniAutomation, sandbox folder)
 ./scripts/check_complexity.sh       # Cyclomatic complexity check
 ./scripts/check_client_server_parity.sh  # Verify all client functions are exposed in server
 ./scripts/check_version_sync.sh     # Version consistency across files
@@ -87,6 +88,7 @@ Destructive operations require `OMNIFOCUS_TEST_MODE=true` and `OMNIFOCUS_TEST_DA
 |------|--------------|-----|
 | Unit tests | Every code change | `make test` (pre-push hook) |
 | Integration tests | New/modified AppleScript operations | `make test-integration` (requires test DB) |
+| Prod integration tests | OmniAutomation / `evaluate javascript` changes | `make test-prod` (sandbox folder in prod DB) |
 | Performance benchmarks | Changes to fetch/filter paths | `tests/benchmarks/` |
 | Blind agent evals | Before release if tool descriptions changed | Issue #227 |
 

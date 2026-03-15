@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration test-e2e test-verbose install clean complexity audit help
+.PHONY: test test-unit test-integration test-e2e test-prod test-verbose install clean complexity audit help
 
 help:
 	@echo "Available targets:"
@@ -7,6 +7,7 @@ help:
 	@echo "  make test-unit        - Run unit tests only"
 	@echo "  make test-integration - Run integration tests (client layer with real OmniFocus)"
 	@echo "  make test-e2e         - Run end-to-end tests (full MCP stack with real OmniFocus)"
+	@echo "  make test-prod        - Run production DB tests (OmniAutomation, sandbox folder)"
 	@echo "  make test-verbose     - Run tests with verbose output"
 	@echo "  make complexity       - Check code complexity with radon"
 	@echo "  make clean            - Remove cache and build artifacts"
@@ -28,6 +29,10 @@ test-integration:
 test-e2e:
 	OMNIFOCUS_TEST_MODE=true OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus" \
 	./venv/bin/pytest tests/test_e2e_real.py -v
+
+test-prod:
+	OMNIFOCUS_PROD_TEST=true \
+	./venv/bin/pytest tests/test_prod_integration.py -v
 
 test-verbose:
 	./venv/bin/pytest tests/ -v --tb=long
