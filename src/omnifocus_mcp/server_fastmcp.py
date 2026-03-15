@@ -536,8 +536,10 @@ def get_tasks(
 
     Note: Date fields (dueDate, deferDate, plannedDate) reflect effective dates — including
     dates inherited from the containing project or action group. A task with no direct due
-    date will show its project's due date in dueDate. Write operations (update_task) still
-    set the task's own date directly. Next occurrence fields (nextDueDate, nextDeferDate,
+    date will show its project's due date in dueDate. Example: if project "Q2 Report" has
+    dueDate=April 15, a task with no direct due date returns dueDate="2026-04-15T17:00:00"
+    (inherited, not empty). Write operations (update_task) still set the task's own date
+    directly. Next occurrence fields (nextDueDate, nextDeferDate,
     nextPlannedDate) are populated only for recurring tasks and show the dates of the next
     recurrence — empty for non-recurring tasks. `catchUpAutomatically` (boolean, null for
     non-recurring) controls missed-recurrence behavior: when true, only one catch-up
@@ -759,7 +761,9 @@ def update_task(
             when recurrence is set. Values: "fixed" (next occurrence on the original schedule
             regardless of when completed), "start_after_completion" (next defer date =
             completion date + interval), "due_after_completion" (next due date = completion
-            date + interval).
+            date + interval). Use due_after_completion when you want the deadline to shift
+            based on completion; use start_after_completion when you want the availability
+            window (defer date) to shift instead.
         sequential: If True, subtasks of this task (action group) must be completed in order.
             If False, subtasks are parallel (all available). Omitting means no change. (optional)
         name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
@@ -1016,8 +1020,10 @@ def update_tag(
         tag_id: The ID of the tag to update (from get_tags)
         name: New tag name (optional)
         status: Tag status (optional). Values: "active", "on_hold", "dropped".
-            Active = tasks with this tag are actionable. On hold = tasks become
-            unavailable. Dropped = tag is hidden from most views.
+            Active = tasks with this tag are actionable. On hold = tag is paused,
+            tasks with this tag become unavailable (excluded from Available perspective)
+            — use for temporary pauses. Dropped = tag is retired/archived, tasks remain
+            available but the tag is hidden from most views — use for permanent retirement.
         children_are_mutually_exclusive: If True, child tags of this tag will be
             mutually exclusive — assigning one child tag to a task silently removes
             any other child from the same group. Set via OmniAutomation. (optional)
