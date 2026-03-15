@@ -314,7 +314,7 @@ Tags (formerly 'contexts') represent contexts for doing work — location (Offic
 
 **Parameters:** None
 
-**Returns:** Each tag includes: id, name, status (values: "active", "on hold", "dropped").
+**Returns:** Each tag includes: id, name, status (values: "active", "on hold", "dropped"), childrenAreMutuallyExclusive (boolean — when true, child tags are mutually exclusive: assigning one child tag to a task silently removes any other child from the same group).
 
 ---
 
@@ -327,6 +327,7 @@ Tags can be nested (e.g., create "High" under parent "Energy" to get "Energy : H
 **Parameters:**
 - `name: str` (required) — The name of the tag to create
 - `parent_tag: str` (optional) — Parent tag name for nesting. Parent tag must already exist.
+- `children_are_mutually_exclusive: bool` (default: False) — If True, child tags of this tag will be mutually exclusive — assigning one child tag to a task silently removes any other child from the same group.
 
 **Returns:** Success message with tag ID and name
 
@@ -342,6 +343,7 @@ Tags can be renamed or have their status changed. Tags have three states: active
 - `tag_id: str` (required) — The ID of the tag to update (from get_tags)
 - `name: str` (optional) — New tag name
 - `status: str` (optional) — Tag status. Values: "active", "on_hold", "dropped". Active = tasks with this tag are actionable. On hold = tasks become unavailable. Dropped = tag is hidden from most views.
+- `children_are_mutually_exclusive: bool` (optional) — If True, child tags of this tag will be mutually exclusive. If False, children are independent (default behavior).
 
 **Returns:** Success message with updated fields, or error message
 

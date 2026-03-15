@@ -317,3 +317,72 @@ class TestCatchUpAutomatically:
         tasks = prod_client.get_tasks(task_id=prod_task)
         task = tasks[0]
         assert task["catchUpAutomatically"] is None
+
+
+# ============================================================================
+# Tag Exclusivity Tests (#303)
+# ============================================================================
+
+class TestTagExclusivity:
+    """Test childrenAreMutuallyExclusive via OmniAutomation (production DB only).
+
+    Uses create_tag + delete_tags for cleanup since tags can be deleted.
+    """
+
+    def test_get_tags_includes_exclusivity_field(self, prod_client):
+        """get_tags should include childrenAreMutuallyExclusive for all tags."""
+        tags = prod_client.get_tags()
+        assert len(tags) > 0
+        for tag in tags:
+            assert 'childrenAreMutuallyExclusive' in tag
+            assert isinstance(tag['childrenAreMutuallyExclusive'], bool)
+
+    def test_set_exclusivity_via_update_tag(self, prod_client):
+        """Create a tag, set exclusivity via update_tag, verify in get_tags."""
+        tag_name = f"test-Exclusive {uuid.uuid4()}"
+        tag_id = prod_client.create_tag(tag_name)
+        try:
+            # Default should be False
+            tags = prod_client.get_tags()
+            tag = next(t for t in tags if t['id'] == tag_id)
+            assert tag['childrenAreMutuallyExclusive'] is False
+
+            # Set to True
+            result = prod_client.update_tag(
+                tag_id, children_are_mutually_exclusive=True
+            )
+            assert result["success"] is True
+
+            # Verify change
+            tags = prod_client.get_tags()
+            tag = next(t for t in tags if t['id'] == tag_id)
+            assert tag['childrenAreMutuallyExclusive'] is True
+
+            # Set back to False
+            prod_client.update_tag(
+                tag_id, children_are_mutually_exclusive=False
+            )
+            tags = prod_client.get_tags()
+            tag = next(t for t in tags if t['id'] == tag_id)
+            assert tag['childrenAreMutuallyExclusive'] is False
+        finally:
+            try:
+                prod_client.delete_tags(tag_id)
+            except Exception as e:
+                warnings.warn(f"Cleanup failed for tag {tag_id}: {e}")
+
+    def test_create_tag_with_exclusivity(self, prod_client):
+        """Create a tag with children_are_mutually_exclusive=True."""
+        tag_name = f"test-ExclCreate {uuid.uuid4()}"
+        tag_id = prod_client.create_tag(
+            tag_name, children_are_mutually_exclusive=True
+        )
+        try:
+            tags = prod_client.get_tags()
+            tag = next(t for t in tags if t['id'] == tag_id)
+            assert tag['childrenAreMutuallyExclusive'] is True
+        finally:
+            try:
+                prod_client.delete_tags(tag_id)
+            except Exception as e:
+                warnings.warn(f"Cleanup failed for tag {tag_id}: {e}")

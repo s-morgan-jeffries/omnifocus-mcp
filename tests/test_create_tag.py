@@ -25,7 +25,8 @@ class TestCreateTagServer:
             result = create_tag(name="Automation")
 
             mock_client.create_tag.assert_called_once_with(
-                name="Automation", parent_tag=None
+                name="Automation", parent_tag=None,
+                children_are_mutually_exclusive=False
             )
             assert "tag-new-001" in result
             assert "Automation" in result
@@ -41,7 +42,8 @@ class TestCreateTagServer:
             result = create_tag(name="High", parent_tag="Energy")
 
             mock_client.create_tag.assert_called_once_with(
-                name="High", parent_tag="Energy"
+                name="High", parent_tag="Energy",
+                children_are_mutually_exclusive=False
             )
             assert "tag-new-002" in result
             assert "High" in result

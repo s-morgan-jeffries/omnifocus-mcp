@@ -2006,10 +2006,11 @@ class TestGetTags:
     def test_get_tags_reads_actual_status(self, client):
         """AppleScript should read 'allows next action' to determine tag status."""
         json_result = '[{"id":"abc","name":"Work","status":"active"}]'
+        exclusivity_json = '{"abc": false}'
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = json_result
+            mock_run.side_effect = [json_result, exclusivity_json]
             client.get_tags()
-            script = mock_run.call_args[0][0]
+            script = mock_run.call_args_list[0][0][0]
             assert "allows next action" in script
 
 

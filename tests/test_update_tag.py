@@ -30,7 +30,8 @@ class TestUpdateTagServer:
             result = update_tag(tag_id="tag-001", name="Renamed")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-001", name="Renamed", status=None
+                tag_id="tag-001", name="Renamed", status=None,
+                children_are_mutually_exclusive=None
             )
             assert "tag-001" in result
             assert "Successfully" in result
@@ -50,7 +51,8 @@ class TestUpdateTagServer:
             result = update_tag(tag_id="tag-002", status="on_hold")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-002", name=None, status="on_hold"
+                tag_id="tag-002", name=None, status="on_hold",
+                children_are_mutually_exclusive=None
             )
             assert "tag-002" in result
             assert "Successfully" in result
@@ -134,12 +136,12 @@ class TestGetTagsDroppedStatus:
     def test_get_tags_applescript_reads_hidden_property(self):
         """get_tags AppleScript should read 'hidden' to determine dropped status."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
-            mock_run.return_value = '[]'
+            mock_run.side_effect = ['[]', '{}']
 
             client = OmniFocusConnector()
             client.get_tags()
 
-            call_args = mock_run.call_args[0][0]
+            call_args = mock_run.call_args_list[0][0][0]
             assert "hidden" in call_args
 
 
@@ -268,6 +270,87 @@ class TestUpdateTagStatus:
             result = update_tag(tag_id="tag-001", status="dropped")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-001", name=None, status="dropped"
+                tag_id="tag-001", name=None, status="dropped",
+                children_are_mutually_exclusive=None
             )
             assert "Successfully" in result
+
+
+class TestTagExclusivity:
+    """Tests for childrenAreMutuallyExclusive via OmniAutomation."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_get_tags_includes_exclusivity_field(self, client):
+        """get_tags should include childrenAreMutuallyExclusive from OmniAutomation."""
+        tags_json = '[{"id": "tag-1", "name": "Priority", "status": "active"}]'
+        exclusivity_json = '{"tag-1": true}'
+
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # First call: AppleScript get_tags, Second call: OmniAutomation exclusivity
+            mock_run.side_effect = [tags_json, exclusivity_json]
+            tags = client.get_tags()
+
+        assert len(tags) == 1
+        assert tags[0]['childrenAreMutuallyExclusive'] is True
+
+    def test_get_tags_exclusivity_fallback_on_error(self, client):
+        """get_tags should default to False when OmniAutomation fails."""
+        tags_json = '[{"id": "tag-1", "name": "Work", "status": "active"}]'
+
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # First call succeeds, second call (OmniAutomation) fails
+            mock_run.side_effect = [tags_json, Exception("evaluate javascript crashed")]
+            tags = client.get_tags()
+
+        assert len(tags) == 1
+        assert tags[0]['childrenAreMutuallyExclusive'] is False
+
+    def test_update_tag_exclusivity_calls_omniautomation(self, client):
+        """update_tag with children_are_mutually_exclusive should call evaluate javascript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # Only exclusivity — no AppleScript call, just OmniAutomation
+            mock_run.return_value = 'ok'
+            result = client.update_tag("tag-001", children_are_mutually_exclusive=True)
+
+        assert result["success"] is True
+        assert "children_are_mutually_exclusive" in result["updated_fields"]
+        assert mock_run.call_count == 1
+        js_call = mock_run.call_args[0][0]
+        assert "evaluate javascript" in js_call
+        assert "childrenAreMutuallyExclusive" in js_call
+        assert "true" in js_call
+
+    def test_update_tag_exclusivity_false(self, client):
+        """update_tag with children_are_mutually_exclusive=False should set to false."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = 'ok'
+            result = client.update_tag("tag-001", children_are_mutually_exclusive=False)
+
+        assert result["success"] is True
+        js_call = mock_run.call_args[0][0]
+        assert "false" in js_call
+
+    def test_create_tag_exclusivity_calls_omniautomation(self, client):
+        """create_tag with children_are_mutually_exclusive=True should call OmniAutomation."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            # First call: AppleScript create tag, Second call: OmniAutomation
+            mock_run.side_effect = ['tag-new-123', 'ok']
+            result = client.create_tag("Exclusive Group", children_are_mutually_exclusive=True)
+
+        assert result == 'tag-new-123'
+        assert mock_run.call_count == 2
+        js_call = mock_run.call_args_list[1][0][0]
+        assert "evaluate javascript" in js_call
+        assert "childrenAreMutuallyExclusive" in js_call
+
+    def test_create_tag_no_exclusivity_no_omniautomation(self, client):
+        """create_tag without exclusivity should not call OmniAutomation."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = 'tag-new-456'
+            result = client.create_tag("Regular Tag")
+
+        assert result == 'tag-new-456'
+        assert mock_run.call_count == 1  # Only AppleScript, no OmniAutomation

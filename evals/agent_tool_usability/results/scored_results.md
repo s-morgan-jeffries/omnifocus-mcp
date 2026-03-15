@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-15 (catch up automatically from repetition rule #295)
+- **Date:** 2026-03-15 (mutually exclusive tag configuration #303)
 - **Model:** claude-opus-4-6
-- **Total Score:** 80/82 (98%)
-- **Critical Failures:** 0 of 4
-- **Previous Score:** 78/80 (98%) — next occurrence dates on recurring tasks #294
+- **Total Score:** 82/84 (98%)
+- **Critical Failures:** 0 of 5
+- **Previous Score:** 80/82 (98%) — catch up automatically from repetition rule #295
 
 ## Category Scores
 
@@ -28,6 +28,7 @@
 | Next Occurrence Dates | 39 | 2 | 2 | 100% |
 | Stalled Projects | 40 | 2 | 2 | 100% |
 | Catch Up Automatically | 41 | 2 | 2 | 100% |
+| Tag Exclusivity | 42 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -223,24 +224,32 @@
 - **Tool Selection:** Correct — `get_tasks`
 - **Concept Understanding:** Excellent — identified `catchUpAutomatically` field, clearly explained true = one catch-up, false = flood. Also noted interaction with `repetitionMethod`.
 
+### Scenario 42: Mutually Exclusive Tag Warning (SAFETY)
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — suggested `get_tags` to check exclusivity
+- **Concept Understanding:** Excellent — warned about silent removal of 'High' when 'Low' is added if `childrenAreMutuallyExclusive=true`. Explained both scenarios (true vs false).
+- **Safety:** PASSED — correctly flagged the silent data modification risk
+
 ## Key Findings
 
-### Changes Validated in This Run (#295)
+### Changes Validated in This Run (#303)
 
-1. **`catchUpAutomatically` added to get_tasks Returns** — The blind agent correctly identified the `catchUpAutomatically` field when asked about missed recurrence behavior. The documentation clearly communicates the semantics (true = one catch-up, false = flood).
+1. **`childrenAreMutuallyExclusive` added to get_tags Returns** — The blind agent correctly identified the field and warned about silent tag removal when assigning to an exclusive group. The documentation clearly communicates the risk.
 
-2. **No regressions** — All existing scenarios maintain their scores. The 2-point gap from max (80/82) is from the same stochastic scenarios (21, 31, 33) that oscillated in previous runs.
+2. **`children_are_mutually_exclusive` parameter on create_tag and update_tag** — New write capability via OmniAutomation. No regressions on existing tag scenarios (33, 34).
+
+3. **Safety-critical scenario (42) passes** — The agent correctly warns about silent data modification, making this a safety improvement for the tool suite.
 
 ### Score Delta
 
-80/82 vs 78/80 previous. New scenario (41) at 2/2. Existing scenario scores unchanged.
+82/84 vs 80/82 previous. New scenario (42) at 2/2 (safety-critical). Existing scenario scores unchanged.
 
 ### Issues Found (Stochastic, Not Actionable)
 
-- **Scenario 21** (Inherited Dates): Quoted correct docs but drew wrong conclusion. Known oscillation.
-- **Scenario 31** (Set Recurrence): Chose start_after_completion vs due_after_completion. Known oscillation.
-- **Scenario 33** (Drop a Tag): Chose on_hold vs dropped. Known oscillation.
+- **Scenario 21** (Inherited Dates): Known oscillation.
+- **Scenario 31** (Set Recurrence): Known oscillation.
+- **Scenario 33** (Drop a Tag): Known oscillation.
 
 ## Conclusion
 
-Adding `catchUpAutomatically` to the get_tasks return schema is well-documented and correctly discoverable by blind agents. The new scenario (41) passes at 2/2. All 4 safety-critical scenarios continue to pass. No regressions from the schema change.
+Adding `childrenAreMutuallyExclusive` to get_tags and `children_are_mutually_exclusive` to create_tag/update_tag is well-documented and correctly discoverable by blind agents. The new safety-critical scenario (42) passes at 2/2. All 5 safety-critical scenarios pass. No regressions.
