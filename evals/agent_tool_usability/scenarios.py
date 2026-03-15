@@ -698,7 +698,7 @@ SCENARIOS = [
         "category": "Recurrence",
         "name": "Set Recurrence with Method",
         "prompt": (
-            "Make task task-820 repeat daily, but I want the next occurrence to be based "
+            "Make task task-820 repeat daily, but I want the next due date to be based "
             "on when I actually complete it, not on a fixed schedule."
         ),
         "expected": {
@@ -755,6 +755,7 @@ SCENARIOS = [
         "prompt": (
             "I'm no longer using the 'Low Energy' tag. I don't want to delete it "
             "(tasks still reference it), but I want it hidden from my tag picker. "
+            "Tasks with this tag should still be available and actionable. "
             "Tag ID is tag-050."
         ),
         "expected": {
