@@ -109,6 +109,8 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
         result += f"Repeats: {task['repeatSummary']}\n"
     elif task.get('isRecurring'):
         result += f"Repeats: {task.get('recurrence', 'Yes')}\n"
+    if task.get('catchUpAutomatically') is not None:
+        result += f"Catch Up Automatically: {task['catchUpAutomatically']}\n"
     if task.get('tags'):
         result += f"Tags: {task['tags']}\n"
     if task.get('note'):
@@ -527,7 +529,7 @@ def get_tasks(
         Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
         flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless
         include_full_notes=True), parentTaskId, subtaskCount, sequential, nextDueDate,
-        nextDeferDate, nextPlannedDate.
+        nextDeferDate, nextPlannedDate, catchUpAutomatically.
         `available` is true when the task is not completed, not dropped, not blocked, and not
         deferred (defer date is in the past or unset). Equivalent to OmniFocus's native Available
         filter.
@@ -537,7 +539,9 @@ def get_tasks(
     date will show its project's due date in dueDate. Write operations (update_task) still
     set the task's own date directly. Next occurrence fields (nextDueDate, nextDeferDate,
     nextPlannedDate) are populated only for recurring tasks and show the dates of the next
-    recurrence — empty for non-recurring tasks.
+    recurrence — empty for non-recurring tasks. `catchUpAutomatically` (boolean, null for
+    non-recurring) controls missed-recurrence behavior: when true, only one catch-up
+    occurrence is created; when false, each missed interval spawns its own occurrence.
     """
     client = get_client()
     try:

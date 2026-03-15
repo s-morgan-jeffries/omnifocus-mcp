@@ -276,3 +276,44 @@ class TestNextOccurrenceDates:
         assert task["nextDueDate"] == ""
         assert task["nextDeferDate"] == ""
         assert task["nextPlannedDate"] == ""
+
+
+# ============================================================================
+# Catch Up Automatically Tests (#295)
+# ============================================================================
+
+class TestCatchUpAutomatically:
+    """Test catchUpAutomatically field on recurring tasks (production DB only).
+
+    This field is read from the repetition rule record and indicates whether
+    missed recurrences flood the inbox or collapse into one catch-up.
+    """
+
+    def test_recurring_task_has_catch_up_field(self, prod_client, prod_project):
+        """A recurring task should have catchUpAutomatically as a boolean."""
+        task_name = f"test-CatchUp {uuid.uuid4()}"
+        task_id = prod_client.create_task(
+            task_name,
+            project_id=prod_project,
+            due_date="2026-04-15T17:00:00",
+        )
+        try:
+            prod_client.update_task(
+                task_id,
+                recurrence="FREQ=WEEKLY",
+                repetition_method="fixed"
+            )
+
+            tasks = prod_client.get_tasks(task_id=task_id)
+            task = tasks[0]
+            assert task["isRecurring"] is True
+            assert isinstance(task["catchUpAutomatically"], bool), \
+                f"Expected bool, got {type(task['catchUpAutomatically'])}: {task['catchUpAutomatically']}"
+        finally:
+            prod_client.delete_tasks(task_id)
+
+    def test_non_recurring_task_catch_up_null(self, prod_client, prod_task):
+        """A non-recurring task should have catchUpAutomatically as None."""
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        task = tasks[0]
+        assert task["catchUpAutomatically"] is None

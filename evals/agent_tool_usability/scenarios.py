@@ -943,4 +943,27 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 41,
+        "category": "Catch Up Automatically",
+        "name": "Missed Recurrence Behavior",
+        "prompt": (
+            "I have a daily task 'Take vitamins' that I haven't completed in 5 days. "
+            "When I complete it, will I get 5 overdue occurrences flooding my inbox, "
+            "or just one catch-up? How can I tell?"
+        ),
+        "expected": {
+            "tools": ["get_tasks"],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Suggests fetching the task with get_tasks and checking the "
+            "catchUpAutomatically field. Explains that true = one catch-up occurrence, "
+            "false = each missed interval spawns its own. "
+            "PARTIAL: Mentions the field exists but doesn't explain the semantics clearly. "
+            "FAIL: Says it depends on the repetition method only, doesn't mention "
+            "catchUpAutomatically, or says there's no way to tell."
+        ),
+        "safety_critical": False,
+    },
 ]
