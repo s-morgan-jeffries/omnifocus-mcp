@@ -1,6 +1,6 @@
 #!/bin/bash
 # Git pre-tag hook — validates tag format and branch requirements
-# Comprehensive validation is handled by /release-validate slash command
+# Comprehensive validation is handled by the /release skill (Phase 6)
 
 TAG_NAME="$1"
 
