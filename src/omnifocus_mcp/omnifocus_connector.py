@@ -4027,6 +4027,53 @@ class OmniFocusConnector:
             raise Exception(f"Error batch updating tasks: {e.stderr}")
 
 
+    def _get_tag_exclusivity_map(self) -> dict[str, bool]:
+        """Read childrenAreMutuallyExclusive for all tags via OmniAutomation.
+
+        Returns:
+            dict: {tag_id: bool} mapping tag IDs to exclusivity status
+
+        Raises:
+            Exception: If OmniAutomation is unavailable (headless test DB)
+        """
+        js_code = (
+            "var result = {};"
+            " flattenedTags.forEach(function(t) {"
+            " result[t.id.primaryKey] = t.childrenAreMutuallyExclusive;"
+            " });"
+            " JSON.stringify(result);"
+        )
+        js_script = (
+            'tell application "OmniFocus"\n'
+            f'    evaluate javascript "{js_code}"\n'
+            'end tell'
+        )
+        result = run_applescript(js_script)
+        return json.loads(result)
+
+    def _set_tag_exclusivity(self, tag_id: str, value: bool) -> None:
+        """Set childrenAreMutuallyExclusive on a tag via OmniAutomation.
+
+        Args:
+            tag_id: The tag ID
+            value: True to make children mutually exclusive, False otherwise
+        """
+        tag_id_js = self._escape_applescript_string(tag_id).replace("'", "\\'")
+        value_js = "true" if value else "false"
+        js_code = (
+            f"var tag = Tag.byIdentifier('{tag_id_js}');"
+            f" if (tag) {{ tag.childrenAreMutuallyExclusive = {value_js}; 'ok'; }}"
+            f" else {{ 'not found'; }}"
+        )
+        js_script = (
+            'tell application "OmniFocus"\n'
+            f'    evaluate javascript "{js_code}"\n'
+            'end tell'
+        )
+        result = run_applescript(js_script)
+        if 'not found' in result:
+            raise Exception(f"Tag not found: {tag_id}")
+
     def get_tags(self) -> list[dict[str, Any]]:
         """Get all tags from OmniFocus.
 
@@ -4079,20 +4126,42 @@ class OmniFocusConnector:
         try:
             result = run_applescript(script)
             if result:
-                return json.loads(result)
+                tags = json.loads(result)
             else:
-                return []
+                tags = []
+
+            # Enrich with OmniAutomation-only property (graceful fallback)
+            try:
+                exclusivity_map = self._get_tag_exclusivity_map()
+                for tag in tags:
+                    tag['childrenAreMutuallyExclusive'] = exclusivity_map.get(
+                        tag['id'], False
+                    )
+            except Exception:
+                # OmniAutomation unavailable (headless test DB) — default to False
+                for tag in tags:
+                    tag['childrenAreMutuallyExclusive'] = False
+
+            return tags
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error querying tags: {e.stderr}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing tags output: {e}")
 
-    def create_tag(self, name: str, parent_tag: Optional[str] = None) -> str:
+    def create_tag(
+        self,
+        name: str,
+        parent_tag: Optional[str] = None,
+        children_are_mutually_exclusive: bool = False
+    ) -> str:
         """Create a new tag in OmniFocus.
 
         Args:
             name: The name of the tag to create
             parent_tag: Optional parent tag name for nesting (e.g., "Energy" to create "Energy : High")
+            children_are_mutually_exclusive: If True, child tags will be
+                mutually exclusive (assigning one removes others). Set via
+                OmniAutomation after creation.
 
         Returns:
             The ID of the created tag
@@ -4159,6 +4228,11 @@ class OmniFocusConnector:
                 raise ValueError(f"Tag '{name}' already exists (ID: {tag_id})")
             if result.startswith("ERROR:"):
                 raise Exception(f"Error creating tag: {result[len('ERROR:'):]}")
+
+            # Post-create: set exclusivity via OmniAutomation (if requested)
+            if children_are_mutually_exclusive:
+                self._set_tag_exclusivity(result, True)
+
             return result
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error creating tag: {e.stderr}")
@@ -4167,7 +4241,8 @@ class OmniFocusConnector:
         self,
         tag_id: str,
         name: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        children_are_mutually_exclusive: Optional[bool] = None
     ) -> dict:
         """Update properties of an existing tag.
 
@@ -4178,6 +4253,9 @@ class OmniFocusConnector:
                 "dropped". Active tags allow next actions. On-hold tags
                 exclude tasks from available queries. Dropped tags are
                 hidden from most views.
+            children_are_mutually_exclusive: If True, child tags of this
+                tag are mutually exclusive (assigning one removes others).
+                Set via OmniAutomation. (optional)
 
         Returns:
             dict: {
@@ -4204,7 +4282,11 @@ class OmniFocusConnector:
                 f"Must be one of: {', '.join(sorted(valid_statuses))}"
             )
 
-        all_fields = {"name": name, "status": status}
+        all_fields = {
+            "name": name,
+            "status": status,
+            "children_are_mutually_exclusive": children_are_mutually_exclusive,
+        }
         if all(v is None for v in all_fields.values()):
             raise ValueError("At least one field must be provided to update")
 
@@ -4228,40 +4310,56 @@ class OmniFocusConnector:
                 set_lines.append('set hidden of theTag to true')
             updated_fields.append("status")
 
-        set_block = "\n                        ".join(set_lines)
-        fields_json = ", ".join(f'\\"{f}\\"' for f in updated_fields)
+        # Run AppleScript for name/status changes (if any)
+        if set_lines:
+            set_block = "\n                        ".join(set_lines)
+            fields_json = ", ".join(f'\\"{f}\\"' for f in updated_fields)
 
-        script = f'''
-        tell application "OmniFocus"
-            tell front document
-                try
-                    set theTag to first flattened tag whose id is "{tag_id_escaped}"
-                on error
-                    return "ERROR: Tag not found"
-                end try
-                try
-                    {set_block}
-                    return "{{\\"success\\": true, \\"updated_fields\\": [{fields_json}]}}"
-                on error errMsg
-                    return "ERROR: " & errMsg
-                end try
+            script = f'''
+            tell application "OmniFocus"
+                tell front document
+                    try
+                        set theTag to first flattened tag whose id is "{tag_id_escaped}"
+                    on error
+                        return "ERROR: Tag not found"
+                    end try
+                    try
+                        {set_block}
+                        return "{{\\"success\\": true, \\"updated_fields\\": [{fields_json}]}}"
+                    on error errMsg
+                        return "ERROR: " & errMsg
+                    end try
+                end tell
             end tell
-        end tell
-        '''
+            '''
 
-        try:
-            result = run_applescript(script)
-            result = result.strip()
-            if result.startswith("ERROR:"):
-                raise Exception(f"Error updating tag: {result[len('ERROR:'):]}")
-            parsed = json.loads(result)
-            parsed["tag_id"] = tag_id
-            parsed["error"] = None
-            return parsed
-        except json.JSONDecodeError:
-            raise Exception(f"Error parsing update tag result: {result}")
-        except subprocess.CalledProcessError as e:
-            raise Exception(f"Error updating tag: {e.stderr}")
+            try:
+                result = run_applescript(script)
+                result = result.strip()
+                if result.startswith("ERROR:"):
+                    raise Exception(
+                        f"Error updating tag: {result[len('ERROR:'):]}"
+                    )
+                parsed = json.loads(result)
+            except json.JSONDecodeError:
+                raise Exception(
+                    f"Error parsing update tag result: {result}"
+                )
+            except subprocess.CalledProcessError as e:
+                raise Exception(f"Error updating tag: {e.stderr}")
+        else:
+            parsed = {"success": True, "updated_fields": []}
+
+        # Post-update: set exclusivity via OmniAutomation (if requested)
+        if children_are_mutually_exclusive is not None:
+            self._set_tag_exclusivity(tag_id, children_are_mutually_exclusive)
+            parsed["updated_fields"].append(
+                "children_are_mutually_exclusive"
+            )
+
+        parsed["tag_id"] = tag_id
+        parsed["error"] = None
+        return parsed
 
     def delete_tags(self, tag_ids: Union[str, list[str]]) -> dict:
         """Delete one or more tags from OmniFocus.

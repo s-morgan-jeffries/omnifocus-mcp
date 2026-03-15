@@ -933,7 +933,10 @@ def get_tags() -> str:
     via get_tasks(tag_filter=[...]).
 
     Returns:
-        Each tag includes: id, name, status.
+        Each tag includes: id, name, status, childrenAreMutuallyExclusive.
+        `childrenAreMutuallyExclusive` (boolean) — when true, child tags are mutually
+        exclusive: assigning one child tag to a task silently removes any other child
+        from the same group. Read via OmniAutomation (defaults to false if unavailable).
     """
     client = get_client()
     tags = client.get_tags()
@@ -946,6 +949,8 @@ def get_tags() -> str:
         result += f"ID: {tag['id']}\n"
         result += f"Name: {tag['name']}\n"
         result += f"Status: {tag['status']}\n"
+        if tag.get('childrenAreMutuallyExclusive'):
+            result += "Children Are Mutually Exclusive: Yes\n"
         result += "\n"
 
     return result
@@ -954,7 +959,8 @@ def get_tags() -> str:
 @mcp.tool()
 def create_tag(
     name: str,
-    parent_tag: Optional[str] = None
+    parent_tag: Optional[str] = None,
+    children_are_mutually_exclusive: bool = False
 ) -> str:
     """Create a new tag in OmniFocus.
 
@@ -966,6 +972,9 @@ def create_tag(
         name: The name of the tag to create
         parent_tag: Optional parent tag name for nesting (e.g., "Energy" to create
             "Energy : High"). Parent tag must already exist.
+        children_are_mutually_exclusive: If True, child tags of this tag will be
+            mutually exclusive — assigning one child tag to a task silently removes
+            any other child from the same group. Set via OmniAutomation.
 
     Returns:
         Success message with tag ID and name
@@ -975,7 +984,11 @@ def create_tag(
     """
     client = get_client()
     try:
-        tag_id = client.create_tag(name=name, parent_tag=parent_tag)
+        tag_id = client.create_tag(
+            name=name,
+            parent_tag=parent_tag,
+            children_are_mutually_exclusive=children_are_mutually_exclusive
+        )
     except ValueError as e:
         return f"Error: {str(e)}"
 
@@ -990,7 +1003,8 @@ def create_tag(
 def update_tag(
     tag_id: str,
     name: Optional[str] = None,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    children_are_mutually_exclusive: Optional[bool] = None
 ) -> str:
     """Update properties of an existing tag in OmniFocus.
 
@@ -1004,13 +1018,21 @@ def update_tag(
         status: Tag status (optional). Values: "active", "on_hold", "dropped".
             Active = tasks with this tag are actionable. On hold = tasks become
             unavailable. Dropped = tag is hidden from most views.
+        children_are_mutually_exclusive: If True, child tags of this tag will be
+            mutually exclusive — assigning one child tag to a task silently removes
+            any other child from the same group. Set via OmniAutomation. (optional)
 
     Returns:
         Success message with updated fields, or error message
     """
     client = get_client()
     try:
-        result = client.update_tag(tag_id=tag_id, name=name, status=status)
+        result = client.update_tag(
+            tag_id=tag_id,
+            name=name,
+            status=status,
+            children_are_mutually_exclusive=children_are_mutually_exclusive
+        )
 
         fields = ", ".join(result["updated_fields"])
         return f"Successfully updated tag {tag_id}\nUpdated fields: {fields}"

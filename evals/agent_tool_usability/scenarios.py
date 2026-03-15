@@ -966,4 +966,26 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 42,
+        "category": "Tag Exclusivity",
+        "name": "Mutually Exclusive Tag Warning",
+        "prompt": (
+            "I have a 'Priority' tag group with child tags 'High', 'Medium', 'Low'. "
+            "A task currently has the 'High' tag. If I use update_task(add_tags=['Low']), "
+            "will it keep both 'High' and 'Low', or will something weird happen?"
+        ),
+        "expected": {
+            "tools": ["get_tags"],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Warns that the Priority tag group might have childrenAreMutuallyExclusive=true, "
+            "which would cause 'High' to be silently removed when 'Low' is added. Suggests "
+            "checking get_tags to verify the exclusivity setting. "
+            "PARTIAL: Mentions exclusivity concept but doesn't reference the specific field. "
+            "FAIL: Says both tags will coexist, or doesn't warn about silent removal."
+        ),
+        "safety_critical": True,
+    },
 ]
