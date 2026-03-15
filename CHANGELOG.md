@@ -5,6 +5,42 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-03-15
+
+### Added
+
+- **Next occurrence dates on recurring tasks** (#294, #311)
+  - `get_tasks` returns `nextDueDate`, `nextDeferDate`, `nextPlannedDate` for recurring tasks
+  - Shows dates of the next recurrence without completing the current one
+
+- **Catch up automatically field** (#295, #312)
+  - `get_tasks` returns `catchUpAutomatically` boolean from the repetition rule
+  - When true, only one catch-up occurrence is created for missed recurrences
+
+- **Mutually exclusive tag configuration** (#303, #313)
+  - `get_tags` returns `childrenAreMutuallyExclusive` boolean (read via OmniAutomation)
+  - `create_tag` and `update_tag` accept `children_are_mutually_exclusive` parameter
+  - Agents can now detect when adding a tag will silently remove another
+
+- **Sequential flag on action groups** (#307, #309)
+  - `create_task` and `update_task` accept `sequential` parameter
+  - Controls whether subtasks of an action group must be completed in order
+
+- **Safe production integration testing** (#274, #308)
+  - New `make test-prod` target for OmniAutomation tests against production DB
+  - Sandbox folder pattern with UUID-named entities and automatic cleanup
+
+### Changed
+
+- **Effective dates documentation** (#298)
+  - Clarified that `dueDate`, `deferDate`, `plannedDate` reflect inherited dates from project/parent
+
+### Documentation
+
+- OmniFocus archive access research findings (#247, #305)
+- Mutually exclusive tag behavior research (#302, #304)
+- Post-v0.9.0 gap analysis update (#293)
+
 ## [0.9.0] - 2026-03-13
 
 ### Added

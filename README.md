@@ -6,7 +6,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-This server provides **21 comprehensive tools** for managing OmniFocus (v0.9.0 API):
+This server provides **21 comprehensive tools** for managing OmniFocus (v0.9.1 API):
 
 ### Project Management (5 tools)
 - **get_projects** - Get all projects with filtering (by ID, query, status) and optional full notes
@@ -41,8 +41,8 @@ This server provides **21 comprehensive tools** for managing OmniFocus (v0.9.0 A
 - **set_focus** - Focus on one or more projects/folders, or clear focus
 - **get_focus** - Get the currently focused items
 
-**Key Changes in v0.9.0:**
-- v0.9.0: Planned date, recurrence write, repeatSummary, tag/folder dropped status, single actions list, stalled projects, completedByChildren, effective dates, next_review_date write, stalled project detection
+**Key Changes in v0.9.1:**
+- v0.9.1: Planned date, recurrence write, repeatSummary, tag/folder dropped status, single actions list, stalled projects, completedByChildren, effective dates, next_review_date write, stalled project detection
 - v0.8.4: Fixed create_task silent On Hold tag failure, perspectives type detection, tag status reporting, documentation gaps
 - v0.8.3: Enhanced focus (multi-item, get_focus), enriched perspectives, tag CRUD, blind agent eval (36/36), docstring improvements
 - v0.8.2: AppleScript injection hardening, consistent server error handling, dead code removal, complexity refactoring
@@ -77,7 +77,7 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 
 # Checkout latest stable release
-git checkout v0.9.0  # Or latest version from releases
+git checkout v0.9.1  # Or latest version from releases
 
 # Option 1: Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
