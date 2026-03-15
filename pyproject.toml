@@ -36,6 +36,7 @@ markers = [
     "asyncio: mark test as an async test",
     "unit: mark test as a unit test",
     "integration: mark test as an integration test",
+    "prod: production database integration tests",
 ]
 
 [tool.pyright]
