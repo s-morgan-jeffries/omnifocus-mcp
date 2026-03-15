@@ -97,6 +97,12 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
         result += f"Defer: {task['deferDate']}\n"
     if task.get('plannedDate'):
         result += f"Planned: {task['plannedDate']}\n"
+    if task.get('nextDueDate'):
+        result += f"Next Due: {task['nextDueDate']}\n"
+    if task.get('nextDeferDate'):
+        result += f"Next Defer: {task['nextDeferDate']}\n"
+    if task.get('nextPlannedDate'):
+        result += f"Next Planned: {task['nextPlannedDate']}\n"
     if task.get('estimatedMinutes'):
         result += f"Estimated: {task['estimatedMinutes']} minutes\n"
     if task.get('repeatSummary'):
@@ -519,8 +525,9 @@ def get_tasks(
 
     Returns:
         Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
-        flagged, dueDate, deferDate, estimatedMinutes, tags, note (truncated unless
-        include_full_notes=True), parentTaskId, subtaskCount, sequential.
+        flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless
+        include_full_notes=True), parentTaskId, subtaskCount, sequential, nextDueDate,
+        nextDeferDate, nextPlannedDate.
         `available` is true when the task is not completed, not dropped, not blocked, and not
         deferred (defer date is in the past or unset). Equivalent to OmniFocus's native Available
         filter.
@@ -528,7 +535,9 @@ def get_tasks(
     Note: Date fields (dueDate, deferDate, plannedDate) reflect effective dates — including
     dates inherited from the containing project or action group. A task with no direct due
     date will show its project's due date in dueDate. Write operations (update_task) still
-    set the task's own date directly.
+    set the task's own date directly. Next occurrence fields (nextDueDate, nextDeferDate,
+    nextPlannedDate) are populated only for recurring tasks and show the dates of the next
+    recurrence — empty for non-recurring tasks.
     """
     client = get_client()
     try:

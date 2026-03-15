@@ -2745,6 +2745,9 @@ class OmniFocusConnector:
                 set dropDates to dropped date of ft
                 set estMins to estimated minutes of ft
                 set repRules to repetition rule of ft
+                set nextDueDates to next due date of ft
+                set nextDeferDates to next defer date of ft
+                set nextPlannedDates to next planned date of ft
                 set availCounts to number of available tasks of ft
                 set subtaskCounts to number of tasks of ft
 
@@ -2784,6 +2787,24 @@ class OmniFocusConnector:
                         set pVal to contents of (item i of plannedDates)
                         if pVal is not missing value then
                             set plannedDateStr to (pVal as «class isot» as string)
+                        end if
+
+                        set nextDueDateStr to ""
+                        set dVal to contents of (item i of nextDueDates)
+                        if dVal is not missing value then
+                            set nextDueDateStr to (dVal as «class isot» as string)
+                        end if
+
+                        set nextDeferDateStr to ""
+                        set dVal to contents of (item i of nextDeferDates)
+                        if dVal is not missing value then
+                            set nextDeferDateStr to (dVal as «class isot» as string)
+                        end if
+
+                        set nextPlannedDateStr to ""
+                        set dVal to contents of (item i of nextPlannedDates)
+                        if dVal is not missing value then
+                            set nextPlannedDateStr to (dVal as «class isot» as string)
                         end if
 
                         set creationDateStr to "null"
@@ -2894,6 +2915,9 @@ class OmniFocusConnector:
                             "\\"dueDate\\": \\"" & dueDateStr & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDateStr & "\\", " & ¬
                             "\\"plannedDate\\": \\"" & plannedDateStr & "\\", " & ¬
+                            "\\"nextDueDate\\": \\"" & nextDueDateStr & "\\", " & ¬
+                            "\\"nextDeferDate\\": \\"" & nextDeferDateStr & "\\", " & ¬
+                            "\\"nextPlannedDate\\": \\"" & nextPlannedDateStr & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
                             "\\"completionDate\\": " & completionDateStr & ", " & ¬
@@ -3044,6 +3068,31 @@ class OmniFocusConnector:
                             end if
                         end try
 
+                        -- Get next occurrence dates (recurring tasks only)
+                        set nextDueDate to ""
+                        try
+                            set nextDueDateObj to next due date of t
+                            if nextDueDateObj is not missing value then
+                                set nextDueDate to nextDueDateObj as «class isot» as string
+                            end if
+                        end try
+
+                        set nextDeferDate to ""
+                        try
+                            set nextDeferDateObj to next defer date of t
+                            if nextDeferDateObj is not missing value then
+                                set nextDeferDate to nextDeferDateObj as «class isot» as string
+                            end if
+                        end try
+
+                        set nextPlannedDate to ""
+                        try
+                            set nextPlannedDateObj to next planned date of t
+                            if nextPlannedDateObj is not missing value then
+                                set nextPlannedDate to nextPlannedDateObj as «class isot» as string
+                            end if
+                        end try
+
                         -- Get timestamp fields
                         set creationDateStr to "null"
                         try
@@ -3173,6 +3222,9 @@ class OmniFocusConnector:
                             "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
                             "\\"plannedDate\\": \\"" & plannedDate & "\\", " & ¬
+                            "\\"nextDueDate\\": \\"" & nextDueDate & "\\", " & ¬
+                            "\\"nextDeferDate\\": \\"" & nextDeferDate & "\\", " & ¬
+                            "\\"nextPlannedDate\\": \\"" & nextPlannedDate & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
                             "\\"completionDate\\": " & completionDateStr & ", " & ¬

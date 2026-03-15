@@ -382,3 +382,188 @@ class TestRecurringOnlyFilter:
             tasks = client.get_tasks(recurring_only=None)
 
         assert len(tasks) == 2
+
+
+class TestNextOccurrenceDates:
+    """Test that next occurrence date fields are included in task responses."""
+
+    def test_recurring_task_has_next_dates(self, client):
+        """Recurring tasks should include populated next occurrence dates."""
+        mock_json = json.dumps([{
+            "id": "task-recurring",
+            "name": "Weekly standup",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj123",
+            "projectName": "Work",
+            "dueDate": "2026-03-15T09:00:00",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": True,
+            "recurrence": "FREQ=WEEKLY",
+            "repetitionMethod": "fixed repetition",
+            "nextDueDate": "2026-03-22T09:00:00",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        task = tasks[0]
+        assert task['nextDueDate'] == "2026-03-22T09:00:00"
+        assert task['nextDeferDate'] == ""
+        assert task['nextPlannedDate'] == ""
+
+    def test_non_recurring_task_has_empty_next_dates(self, client):
+        """Non-recurring tasks should have empty next occurrence dates."""
+        mock_json = json.dumps([{
+            "id": "task-regular",
+            "name": "One-off task",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj123",
+            "projectName": "Work",
+            "dueDate": "2026-03-15T17:00:00",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": False,
+            "recurrence": "",
+            "repetitionMethod": "",
+            "nextDueDate": "",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        task = tasks[0]
+        assert task['nextDueDate'] == ""
+        assert task['nextDeferDate'] == ""
+        assert task['nextPlannedDate'] == ""
+
+    def test_recurring_task_with_all_next_dates(self, client):
+        """Recurring task with defer and planned dates should populate all next dates."""
+        mock_json = json.dumps([{
+            "id": "task-full-recurring",
+            "name": "Monthly review",
+            "note": "",
+            "completed": False,
+            "flagged": True,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj456",
+            "projectName": "Reviews",
+            "dueDate": "2026-03-31T17:00:00",
+            "deferDate": "2026-03-25T09:00:00",
+            "plannedDate": "2026-03-28T09:00:00",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": 60,
+            "isRecurring": True,
+            "recurrence": "FREQ=MONTHLY",
+            "repetitionMethod": "fixed repetition",
+            "nextDueDate": "2026-04-30T17:00:00",
+            "nextDeferDate": "2026-04-25T09:00:00",
+            "nextPlannedDate": "2026-04-28T09:00:00"
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        task = tasks[0]
+        assert task['nextDueDate'] == "2026-04-30T17:00:00"
+        assert task['nextDeferDate'] == "2026-04-25T09:00:00"
+        assert task['nextPlannedDate'] == "2026-04-28T09:00:00"
+
+    def test_next_dates_in_applescript_batch_mode(self, client):
+        """Verify batch mode AppleScript includes next date property reads."""
+        mock_json = json.dumps([{
+            "id": "task1",
+            "name": "Flagged recurring",
+            "note": "",
+            "completed": False,
+            "flagged": True,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "",
+            "projectName": "",
+            "dueDate": "2026-03-15T09:00:00",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": True,
+            "recurrence": "FREQ=WEEKLY",
+            "repetitionMethod": "fixed repetition",
+            "nextDueDate": "2026-03-22T09:00:00",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            # flagged_only triggers batch mode (whose clause)
+            client.get_tasks(flagged_only=True)
+
+        script = mock_run.call_args[0][0]
+        assert "next due date" in script
+        assert "next defer date" in script
+        assert "next planned date" in script
+
+    def test_next_dates_in_applescript_per_task_mode(self, client):
+        """Verify per-task mode AppleScript includes next date property reads."""
+        mock_json = json.dumps([{
+            "id": "task1",
+            "name": "Some task",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "",
+            "projectName": "",
+            "dueDate": "",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": False,
+            "recurrence": "",
+            "repetitionMethod": "",
+            "nextDueDate": "",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            # No filters = per-task mode (no whose clause)
+            client.get_tasks()
+
+        script = mock_run.call_args[0][0]
+        assert "next due date" in script
+        assert "next defer date" in script
+        assert "next planned date" in script
