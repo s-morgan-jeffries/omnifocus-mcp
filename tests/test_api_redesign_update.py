@@ -425,6 +425,18 @@ class TestUpdateTasksRedesign:
             assert result["updated_count"] == 2
             assert result["failed_count"] == 0
 
+    def test_update_tasks_with_sequential(self, client):
+        """#307: update_tasks() can set sequential on multiple tasks."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "2"  # batch returns count
+
+            result = client.update_tasks(["task-001", "task-002"], sequential=True)
+
+            assert result["updated_count"] == 2
+            script = mock_run.call_args[0][0]
+            assert "sequential" in script
+            assert "true" in script
+
     def test_update_tasks_with_completed(self, client):
         """NEW API: update_tasks() can mark multiple tasks complete."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:

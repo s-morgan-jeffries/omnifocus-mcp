@@ -210,6 +210,36 @@ class TestCreateTaskRedesign:
             assert result == "task-new-id"
 
     # ========================================================================
+    # Sequential Flag (#307)
+    # ========================================================================
+
+    def test_create_task_sequential(self, client):
+        """#307: create_task() supports sequential parameter for action groups."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-307"
+            result = client.create_task(
+                task_name="Sequential Action Group",
+                project_id="proj-123",
+                sequential=True
+            )
+            assert result == "task-307"
+            script = mock_run.call_args[0][0]
+            assert "sequential:true" in script
+
+    def test_create_task_parallel_default(self, client):
+        """#307: create_task() defaults to parallel (sequential=False)."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-307b"
+            result = client.create_task(
+                task_name="Parallel Task",
+                project_id="proj-123"
+            )
+            assert result == "task-307b"
+            script = mock_run.call_args[0][0]
+            # Default should not include sequential:true
+            assert "sequential:true" not in script
+
+    # ========================================================================
     # Required Parameters
     # ========================================================================
 

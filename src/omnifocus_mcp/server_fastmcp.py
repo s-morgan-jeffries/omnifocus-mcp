@@ -588,7 +588,8 @@ def create_task(
     planned_date: Optional[str] = None,
     flagged: bool = False,
     tags: Optional[str] = None,
-    estimated_minutes: Optional[int] = None
+    estimated_minutes: Optional[int] = None,
+    sequential: bool = False
 ) -> str:
     """Create a new task in OmniFocus (NEW API - consolidates add_task and create_inbox_task).
 
@@ -614,6 +615,8 @@ def create_task(
         tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must
             already exist. Note: this takes a JSON string; update_task takes a native list instead.
         estimated_minutes: Estimated time in minutes to complete the task
+        sequential: If True, subtasks of this task (action group) must be completed in order —
+            only the first available subtask is actionable. (default: False = parallel)
 
     Returns:
         Success message with task ID and location (project/inbox/parent)
@@ -648,7 +651,8 @@ def create_task(
             planned_date=planned_date,
             flagged=flagged,
             tags=tags_list,
-            estimated_minutes=estimated_minutes
+            estimated_minutes=estimated_minutes,
+            sequential=sequential
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -697,6 +701,7 @@ def update_task(
     status: Optional[str] = None,
     recurrence: Optional[str] = None,
     repetition_method: Optional[str] = None,
+    sequential: Optional[bool] = None,
     # Legacy parameters (backward compatibility)
     name: Optional[str] = None
 ) -> str:
@@ -742,6 +747,8 @@ def update_task(
             regardless of when completed), "start_after_completion" (next defer date =
             completion date + interval), "due_after_completion" (next due date = completion
             date + interval).
+        sequential: If True, subtasks of this task (action group) must be completed in order.
+            If False, subtasks are parallel (all available). Omitting means no change. (optional)
         name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
 
     Returns:
@@ -780,6 +787,7 @@ def update_task(
             status=status,
             recurrence=recurrence,
             repetition_method=repetition_method,
+            sequential=sequential,
             name=name  # Pass to client for its own backward compat handling
         )
     except ValueError as e:

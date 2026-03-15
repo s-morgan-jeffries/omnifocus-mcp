@@ -1838,7 +1838,8 @@ class OmniFocusConnector:
         planned_date: Optional[str] = None,
         flagged: bool = False,
         tags: Optional[list[str]] = None,
-        estimated_minutes: Optional[int] = None
+        estimated_minutes: Optional[int] = None,
+        sequential: bool = False
     ) -> str:
         """Create a new task in OmniFocus (NEW API - consolidates add_task and create_inbox_task).
 
@@ -1892,6 +1893,8 @@ class OmniFocusConnector:
             properties.append(f'note:"{note_escaped}"')
         if flagged:
             properties.append('flagged:true')
+        if sequential:
+            properties.append('sequential:true')
         if estimated_minutes is not None:
             properties.append(f'estimated minutes:{estimated_minutes}')
 
@@ -3286,6 +3289,7 @@ class OmniFocusConnector:
         defer_date: Optional[str] = None,
         planned_date: Optional[str] = None,
         flagged: Optional[bool] = None,
+        sequential: Optional[bool] = None,
         tags: Optional[list[str]] = None,
         add_tags: Optional[list[str]] = None,
         remove_tags: Optional[list[str]] = None,
@@ -3385,8 +3389,8 @@ class OmniFocusConnector:
         # Check if at least one field is provided
         all_params = [
             task_name, project_id, parent_task_id, note, due_date, defer_date,
-            planned_date, flagged, tags, add_tags, remove_tags, estimated_minutes,
-            completed, status, recurrence, repetition_method
+            planned_date, flagged, sequential, tags, add_tags, remove_tags,
+            estimated_minutes, completed, status, recurrence, repetition_method
         ]
         if all(v is None for v in all_params):
             raise ValueError("At least one field must be provided to update")
@@ -3409,6 +3413,10 @@ class OmniFocusConnector:
             if flagged is not None:
                 properties.append(f'flagged:{str(flagged).lower()}')
                 updated_fields.append("flagged")
+
+            if sequential is not None:
+                properties.append(f'sequential:{str(sequential).lower()}')
+                updated_fields.append("sequential")
 
             # Build separate commands (can't use set properties for these)
             separate_commands = []
@@ -3639,6 +3647,7 @@ class OmniFocusConnector:
         self,
         task_ids: Union[str, list[str]],
         flagged: Optional[bool] = None,
+        sequential: Optional[bool] = None,
         status: Optional[Union[TaskStatus, str]] = None,
         completed: Optional[bool] = None,
         project_id: Optional[str] = None,
@@ -3726,7 +3735,7 @@ class OmniFocusConnector:
 
         # Validation: Must provide at least one field to update
         provided_fields = [
-            flagged, status, completed, project_id, parent_task_id,
+            flagged, sequential, status, completed, project_id, parent_task_id,
             tags, add_tags, remove_tags, due_date, defer_date, planned_date,
             estimated_minutes
         ]
@@ -3754,6 +3763,12 @@ class OmniFocusConnector:
         if flagged is not None:
             bulk_commands.append(
                 f"set flagged of ({or_chain_target}) to {str(flagged).lower()}"
+            )
+            has_bulk = True
+
+        if sequential is not None:
+            bulk_commands.append(
+                f"set sequential of ({or_chain_target}) to {str(sequential).lower()}"
             )
             has_bulk = True
 
