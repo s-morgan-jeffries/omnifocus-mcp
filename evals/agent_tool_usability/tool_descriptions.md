@@ -165,6 +165,7 @@ Create a new task in OmniFocus.
 - `flagged: bool` (default: False) — Flag marks a task as a priority — typically 'I want to work on this today.' Flagged tasks can be queried with get_tasks(flagged_only=True).
 - `tags: str` (optional) — JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist. Note: this takes a JSON string; update_task takes a native list instead.
 - `estimated_minutes: int` (optional) — Estimated time in minutes
+- `sequential: bool` (default: False) — If True, subtasks of this task (action group) must be completed in order — only the first available subtask is actionable.
 
 **Note:** In sequential projects, tasks are ordered by creation time. Create tasks in the desired dependency order.
 
@@ -196,6 +197,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `status: str` (optional) — Task status - "active" or "dropped"
 - `recurrence: str` (optional) — iCalendar RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR"), or empty string to remove recurrence. Omitting means no change.
 - `repetition_method: str` (optional) — How the next occurrence is calculated. Values: "fixed" (next occurrence on the original schedule regardless of when completed), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Only meaningful when recurrence is set.
+- `sequential: bool` (optional) — If True, subtasks of this task (action group) must be completed in order. If False, subtasks are parallel (all available). Omitting means no change.
 
 **Returns:** Success message with updated fields, or error message
 
@@ -233,6 +235,7 @@ Key differences from update_task():
 - `defer_date: str` (optional) — Set defer date for all, or empty string to clear.
 - `planned_date: str` (optional) — Set planned date for all, or empty string to clear.
 - `estimated_minutes: int` (optional) — Set estimated time for all tasks.
+- `sequential: bool` (optional) — If True, subtasks of these tasks (action groups) must be completed in order. If False, subtasks are parallel.
 
 **Returns:** Summary with counts of successful/failed updates
 

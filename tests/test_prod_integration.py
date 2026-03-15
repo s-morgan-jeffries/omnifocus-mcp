@@ -188,3 +188,48 @@ class TestRecurrenceWriteIntegration:
         task = tasks[0]
         assert task["isRecurring"] is False
         assert task["repeatSummary"] is None
+
+
+# ============================================================================
+# Sequential Flag Tests (#307)
+# ============================================================================
+
+class TestSequentialFlag:
+    """Test sequential flag on action groups (production DB only).
+
+    These tests verify that the sequential property can be set on tasks
+    (action groups) via both create_task and update_task.
+    """
+
+    def test_create_task_sequential(self, prod_client, prod_project):
+        """Test creating a task with sequential=True."""
+        task_name = f"test-Sequential {uuid.uuid4()}"
+        task_id = prod_client.create_task(
+            task_name, project_id=prod_project, sequential=True
+        )
+        try:
+            tasks = prod_client.get_tasks(task_id=task_id)
+            task = tasks[0]
+            assert task["sequential"] is True
+        finally:
+            prod_client.delete_tasks(task_id)
+
+    def test_update_task_sequential(self, prod_client, prod_task):
+        """Test toggling sequential via update_task."""
+        # Default should be parallel (False)
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        assert tasks[0]["sequential"] is False
+
+        # Set to sequential
+        result = prod_client.update_task(prod_task, sequential=True)
+        assert result["success"] is True
+
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        assert tasks[0]["sequential"] is True
+
+        # Set back to parallel
+        result = prod_client.update_task(prod_task, sequential=False)
+        assert result["success"] is True
+
+        tasks = prod_client.get_tasks(task_id=prod_task)
+        assert tasks[0]["sequential"] is False

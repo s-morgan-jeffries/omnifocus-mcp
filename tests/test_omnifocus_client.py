@@ -1025,6 +1025,24 @@ class TestUpdateTask:
             call_args = mock_run.call_args[0][0]
             assert "flagged" in call_args
 
+    def test_update_task_sequential_true(self, client):
+        """#307: update_task() sets sequential flag on action groups."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_task("task-001", sequential=True)
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "sequential:true" in call_args
+
+    def test_update_task_sequential_false(self, client):
+        """#307: update_task() can set sequential to false."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_task("task-001", sequential=False)
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "sequential:false" in call_args
+
     def test_update_task_multiple_fields(self, client):
         """Test updating multiple task fields at once (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
