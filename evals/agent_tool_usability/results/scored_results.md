@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-15 (next occurrence dates on recurring tasks #294)
+- **Date:** 2026-03-15 (catch up automatically from repetition rule #295)
 - **Model:** claude-opus-4-6
-- **Total Score:** 78/80 (98%)
+- **Total Score:** 80/82 (98%)
 - **Critical Failures:** 0 of 4
-- **Previous Score:** 76/78 (97%) — sequential flag on action groups #307
+- **Previous Score:** 78/80 (98%) — next occurrence dates on recurring tasks #294
 
 ## Category Scores
 
@@ -27,6 +27,7 @@
 | Complete with Last Action | 38 | 2 | 2 | 100% |
 | Next Occurrence Dates | 39 | 2 | 2 | 100% |
 | Stalled Projects | 40 | 2 | 2 | 100% |
+| Catch Up Automatically | 41 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -217,24 +218,29 @@
 - **Score:** 2/2 (PASS)
 - **Parameters:** Correct — `stalled_only=True`
 
+### Scenario 41: Missed Recurrence Behavior
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `get_tasks`
+- **Concept Understanding:** Excellent — identified `catchUpAutomatically` field, clearly explained true = one catch-up, false = flood. Also noted interaction with `repetitionMethod`.
+
 ## Key Findings
 
-### Changes Validated in This Run (#294)
+### Changes Validated in This Run (#295)
 
-1. **`nextDueDate`, `nextDeferDate`, `nextPlannedDate` added to get_tasks Returns** — The blind agent correctly identified and used the `nextDueDate` field when asked about the next occurrence of a recurring task. The documentation clearly communicates that these fields are populated only for recurring tasks and empty for non-recurring ones.
+1. **`catchUpAutomatically` added to get_tasks Returns** — The blind agent correctly identified the `catchUpAutomatically` field when asked about missed recurrence behavior. The documentation clearly communicates the semantics (true = one catch-up, false = flood).
 
-2. **No regressions** — All existing scenarios maintain their scores. The 2-point gap from max (78/80) is from the same stochastic scenarios (21, 31, 33) that oscillated in the previous run.
+2. **No regressions** — All existing scenarios maintain their scores. The 2-point gap from max (80/82) is from the same stochastic scenarios (21, 31, 33) that oscillated in previous runs.
 
 ### Score Delta
 
-78/80 vs 76/78 previous. Apparent improvement is from adding 1 new scenario (39) at 2/2. Existing scenario scores unchanged — stochastic variance on scenarios 21, 31, 33 persists.
+80/82 vs 78/80 previous. New scenario (41) at 2/2. Existing scenario scores unchanged.
 
 ### Issues Found (Stochastic, Not Actionable)
 
-- **Scenario 21** (Inherited Dates): Quoted correct docs but drew wrong conclusion. Previous run: PARTIAL.
-- **Scenario 31** (Set Recurrence): Chose start_after_completion vs due_after_completion. Previous run: PARTIAL.
-- **Scenario 33** (Drop a Tag): Chose on_hold vs dropped. Known oscillation across runs.
+- **Scenario 21** (Inherited Dates): Quoted correct docs but drew wrong conclusion. Known oscillation.
+- **Scenario 31** (Set Recurrence): Chose start_after_completion vs due_after_completion. Known oscillation.
+- **Scenario 33** (Drop a Tag): Chose on_hold vs dropped. Known oscillation.
 
 ## Conclusion
 
-Adding `nextDueDate`, `nextDeferDate`, `nextPlannedDate` to the get_tasks return schema is well-documented and correctly discoverable by blind agents. The new scenario (39) passes at 2/2. All 4 safety-critical scenarios continue to pass. No regressions from the schema change.
+Adding `catchUpAutomatically` to the get_tasks return schema is well-documented and correctly discoverable by blind agents. The new scenario (41) passes at 2/2. All 4 safety-critical scenarios continue to pass. No regressions from the schema change.

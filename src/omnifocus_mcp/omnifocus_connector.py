@@ -2873,6 +2873,7 @@ class OmniFocusConnector:
                         set isRecurring to "false"
                         set recurrenceStr to ""
                         set repetitionMethodStr to ""
+                        set catchUpAutoStr to "null"
                         set repRuleVal to contents of (item i of repRules)
                         if repRuleVal is not missing value then
                             set isRecurring to "true"
@@ -2881,6 +2882,9 @@ class OmniFocusConnector:
                             end try
                             try
                                 set repetitionMethodStr to (repetition method of repRuleVal) as text
+                            end try
+                            try
+                                set catchUpAutoStr to (catch up automatically of repRuleVal) as text
                             end try
                         end if
 
@@ -2927,6 +2931,7 @@ class OmniFocusConnector:
                             "\\"isRecurring\\": " & isRecurring & ", " & ¬
                             "\\"recurrence\\": \\"" & my escapeJSON(recurrenceStr) & "\\", " & ¬
                             "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethodStr) & "\\", " & ¬
+                            "\\"catchUpAutomatically\\": " & catchUpAutoStr & ", " & ¬
                             "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
                             "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
                             "\\"sequential\\": " & (item i of taskSeqs as text) & ", " & ¬
@@ -3155,6 +3160,7 @@ class OmniFocusConnector:
                         set isRecurring to "false"
                         set recurrenceStr to ""
                         set repetitionMethodStr to ""
+                        set catchUpAutoStr to "null"
                         try
                             set repRule to repetition rule of t
                             if repRule is not missing value then
@@ -3164,6 +3170,9 @@ class OmniFocusConnector:
                                 end try
                                 try
                                     set repetitionMethodStr to (repetition method of repRule) as text
+                                end try
+                                try
+                                    set catchUpAutoStr to (catch up automatically of repRule) as text
                                 end try
                             end if
                         end try
@@ -3234,6 +3243,7 @@ class OmniFocusConnector:
                             "\\"isRecurring\\": " & isRecurring & ", " & ¬
                             "\\"recurrence\\": \\"" & my escapeJSON(recurrenceStr) & "\\", " & ¬
                             "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethodStr) & "\\", " & ¬
+                            "\\"catchUpAutomatically\\": " & catchUpAutoStr & ", " & ¬
                             "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
                             "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
                             "\\"sequential\\": " & (taskSequential as text) & ", " & ¬

@@ -567,3 +567,177 @@ class TestNextOccurrenceDates:
         assert "next due date" in script
         assert "next defer date" in script
         assert "next planned date" in script
+
+
+class TestCatchUpAutomatically:
+    """Test that catchUpAutomatically field is included in task responses."""
+
+    def test_recurring_task_catch_up_true(self, client):
+        """Recurring task with catch-up enabled should return True."""
+        mock_json = json.dumps([{
+            "id": "task-catchup",
+            "name": "Weekly review",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj123",
+            "projectName": "Work",
+            "dueDate": "2026-03-15T09:00:00",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": True,
+            "recurrence": "FREQ=WEEKLY",
+            "repetitionMethod": "fixed repetition",
+            "catchUpAutomatically": True,
+            "nextDueDate": "2026-03-22T09:00:00",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        assert tasks[0]['catchUpAutomatically'] is True
+
+    def test_recurring_task_catch_up_false(self, client):
+        """Recurring task with catch-up disabled should return False."""
+        mock_json = json.dumps([{
+            "id": "task-nocatchup",
+            "name": "Daily standup",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj123",
+            "projectName": "Work",
+            "dueDate": "2026-03-15T09:00:00",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": True,
+            "recurrence": "FREQ=DAILY",
+            "repetitionMethod": "fixed repetition",
+            "catchUpAutomatically": False,
+            "nextDueDate": "2026-03-16T09:00:00",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        assert tasks[0]['catchUpAutomatically'] is False
+
+    def test_non_recurring_task_catch_up_null(self, client):
+        """Non-recurring task should have catchUpAutomatically as None."""
+        mock_json = json.dumps([{
+            "id": "task-regular",
+            "name": "One-off task",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "proj123",
+            "projectName": "Work",
+            "dueDate": "",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": False,
+            "recurrence": "",
+            "repetitionMethod": "",
+            "catchUpAutomatically": None,
+            "nextDueDate": "",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            tasks = client.get_tasks()
+
+        assert len(tasks) == 1
+        assert tasks[0]['catchUpAutomatically'] is None
+
+    def test_catch_up_in_applescript_batch_mode(self, client):
+        """Verify batch mode AppleScript extracts catch up automatically."""
+        mock_json = json.dumps([{
+            "id": "task1",
+            "name": "Flagged recurring",
+            "note": "",
+            "completed": False,
+            "flagged": True,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "",
+            "projectName": "",
+            "dueDate": "",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": True,
+            "recurrence": "FREQ=WEEKLY",
+            "repetitionMethod": "fixed repetition",
+            "catchUpAutomatically": True,
+            "nextDueDate": "",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            client.get_tasks(flagged_only=True)
+
+        script = mock_run.call_args[0][0]
+        assert "catch up automatically" in script
+
+    def test_catch_up_in_applescript_per_task_mode(self, client):
+        """Verify per-task mode AppleScript extracts catch up automatically."""
+        mock_json = json.dumps([{
+            "id": "task1",
+            "name": "Some task",
+            "note": "",
+            "completed": False,
+            "flagged": False,
+            "dropped": False,
+            "blocked": False,
+            "next": False,
+            "projectId": "",
+            "projectName": "",
+            "dueDate": "",
+            "deferDate": "",
+            "completionDate": "",
+            "tags": "",
+            "estimatedMinutes": None,
+            "isRecurring": False,
+            "recurrence": "",
+            "repetitionMethod": "",
+            "catchUpAutomatically": None,
+            "nextDueDate": "",
+            "nextDeferDate": "",
+            "nextPlannedDate": ""
+        }])
+
+        with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = mock_json
+            client.get_tasks()
+
+        script = mock_run.call_args[0][0]
+        assert "catch up automatically" in script
