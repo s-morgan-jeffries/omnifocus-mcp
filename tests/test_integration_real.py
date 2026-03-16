@@ -659,7 +659,6 @@ class TestProjectCRUD:
         # TODO: Fix get_projects() to parse review interval correctly
         # assert projects[0]['reviewInterval'] == "2 weeks"
 
-    @pytest.mark.skip(reason="Blocked by #330: next_review_date passes raw ISO to AppleScript")
     def test_update_project_next_review_date_integration(self, client, test_project):
         """Integration: update_project() can set next_review_date explicitly."""
         next_review = "2026-06-01"
