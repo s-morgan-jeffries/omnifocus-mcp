@@ -5,6 +5,26 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-03-16
+
+### Added
+
+- **Project date support** (#329, #336, #337, #338)
+  - `create_project`, `update_project`, `update_projects` now accept `due_date`, `defer_date`, `planned_date`
+  - `get_projects` returns `dueDate`, `deferDate`, `plannedDate` for each project
+  - Tasks inherit effective dates from their containing project
+
+- **Blind eval scenarios for project dates and task movement** (#339, #340, #344)
+  - 5 new scenarios (43-47): project date create/clear/read, subtask movement, text search
+  - Total: 47 scenarios, 100% pass rate
+
+### Changed
+
+- **README rewrite** (#246, #341, #344)
+  - Benefits-first positioning: comprehensive, fast, reliable, agent-friendly
+  - Inline performance table with profiled benchmarks
+  - Informed by landscape scan of 7 competing OmniFocus MCP servers
+
 ## [0.9.2] - 2026-03-16
 
 ### Changed

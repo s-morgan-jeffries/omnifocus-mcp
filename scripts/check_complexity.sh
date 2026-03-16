@@ -66,8 +66,8 @@ echo ""
 #   - _post_process_projects: CC ≤ 23 (22 current - projectType + 6 filter steps)
 #
 # Original functions not yet refactored:
-#   - update_projects: CC ≤ 35 (34 current)
-#   - update_project: CC ≤ 33 (32 current)
+#   - update_projects: CC ≤ 41 (40 current — v0.10.0 added project dates)
+#   - update_project: CC ≤ 37 (36 current — v0.10.0 added project dates)
 #   - _format_task: CC ≤ 26 (25 current)
 #   - get_tasks: CC ≤ 25 (24 current - orchestrator)
 #   - create_task: CC ≤ 23 (22 current)
@@ -96,9 +96,9 @@ try:
                 elif name == '_post_process_projects' and cc <= 23:
                     continue
                 # Original functions
-                elif name == 'update_projects' and cc <= 35:
+                elif name == 'update_projects' and cc <= 41:
                     continue
-                elif name == 'update_project' and cc <= 33:
+                elif name == 'update_project' and cc <= 37:
                     continue
                 elif name == '_format_task' and cc <= 26:
                     continue
