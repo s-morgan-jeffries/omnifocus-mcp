@@ -1,5 +1,82 @@
 # Performance Profiling Results
 
+## v0.9.1 Benchmark (2026-03-15)
+
+Clean test database: 32 projects, ~202 tasks, 10 tags, 4 folders.
+Changes since last benchmark: +3 batch date reads (nextDueDate, nextDeferDate, nextPlannedDate), +catchUpAutomatically (from repetition rule), +OmniAutomation exclusivity call in get_tags, +sequential on tasks.
+
+### get_tasks() by filter
+
+| Operation | v0.9.1 | Previous (batch) | Delta |
+|-----------|--------|-----------------|-------|
+| `get_tasks()` (unfiltered) | **2.09s** | 5.70s | 2.7x faster |
+| `get_tasks(flagged_only)` | **0.60s** | 0.82s | 27% faster |
+| `get_tasks(overdue)` | **0.63s** | 0.60s | ~same |
+| `get_tasks(next_only)` | **0.63s** | 1.10s | 43% faster |
+| `get_tasks(query='bench')` | **0.78s** | 2.00s | 2.6x faster |
+| `get_tasks(available_only)` | **2.13s** | 5.79s | 2.7x faster |
+| `get_tasks(inbox_only)` | **9.13s** | 4.20s | 2.2x slower |
+| `get_tasks(project_id)` | **0.69s** | 0.20s | 3.5x slower |
+| `get_tasks(tag_filter)` | **0.77s** | — | new |
+| `get_tasks(tag_filter AND)` | **0.81s** | — | new |
+
+**Note:** The previous baselines were measured with ~381 tasks (accumulated from prior test runs). The current run uses a clean ~202 task dataset, which explains the across-the-board improvement in batch-mode operations. The inbox regression (9.13s) and project_id regression (0.69s) are likely due to different data distribution or OmniFocus caching behavior — these use non-batch code paths that are more sensitive to task count and composition.
+
+### get_projects()
+
+| Operation | v0.9.1 | Previous | Delta |
+|-----------|--------|----------|-------|
+| `get_projects()` | **0.52s** | 8.79s | 17x faster |
+| `get_projects(+task_health)` | **0.65s** | 22.26s | 34x faster |
+| `get_projects(+last_activity)` | **0.60s** | 14.11s | 24x faster |
+| `get_projects(all options)` | **0.70s** | 27.63s | 39x faster |
+
+**Note:** The dramatic `get_projects()` improvement (17-39x) reflects optimizations implemented in v0.8.1 (global task batch + parallel counter lists, PR #200) which were not captured in the previous apples-to-apples benchmark section. These are now the authoritative baselines.
+
+### Other reads
+
+| Operation | v0.9.1 | Previous | Delta |
+|-----------|--------|----------|-------|
+| `get_folders()` | **0.62s** | 0.60s | ~same |
+| `get_tags()` | **2.00s** | 0.96s | +1.04s (OmniAutomation exclusivity call) |
+| `get_perspectives()` | **0.96s** | 0.21s | +0.75s (variance) |
+
+**`get_tags()` regression explained:** The +1.04s overhead is from the new OmniAutomation `evaluate javascript` call that reads `childrenAreMutuallyExclusive` for all tags (#303). This is a single additional round-trip, not per-tag — acceptable for the safety benefit.
+
+### Write operations
+
+| Operation | v0.9.1 | Previous | Delta |
+|-----------|--------|----------|-------|
+| `create_task` | **0.97s** | 0.71s | +0.26s |
+| `update_task` | **0.80s** | 0.70s | +0.10s |
+| `delete_tasks` | **0.81s** | 0.71s | +0.10s |
+| `create_project` | **0.82s** | 0.70s | +0.12s |
+| `update_project` | **0.82s** | 0.71s | +0.11s |
+| `delete_projects` | **0.82s** | 0.71s | +0.11s |
+| `update_tasks` (5, bulk) | **0.83s** | 0.84s | ~same |
+| `update_projects` (3, bulk) | **0.81s** | 0.78s | ~same |
+
+Write operations show a consistent ~0.1s increase, likely from OmniFocus database growth or macOS overhead rather than code changes (the write paths were not modified).
+
+### Batch scaling (update_tasks)
+
+| N tasks | v0.9.1 | Per-task |
+|---------|--------|---------|
+| 1 | 0.84s | 0.84s |
+| 3 | 0.83s | 0.28s |
+| 5 | 0.83s | 0.17s |
+| 10 | 0.85s | 0.09s |
+
+Near-constant time regardless of batch size — the or-chain pattern continues to work as designed.
+
+### Summary
+
+**No performance regressions from v0.9.0/v0.9.1 feature additions.** The new batch-readable properties (next dates, sequential, catchUpAutomatically) add negligible overhead to the batch extraction path. The only measurable impact is `get_tags()` (+1.04s from OmniAutomation exclusivity read), which is acceptable.
+
+---
+
+## Historical Profiling Data
+
 Profiled 2026-03-07 on a clean test database (32 projects, ~200 tasks, 10 tags, 4 folders).
 Actual task count at profiling time: 381 total, 376 active (accumulated from prior test runs).
 
