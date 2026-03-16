@@ -6,7 +6,7 @@ A comprehensive, fast, reliable, and agent-friendly MCP server for OmniFocus on 
 
 ### Comprehensive
 
-22 tools covering projects, tasks, folders, tags, perspectives, and focus. Full CRUD on projects and tasks with batch operations, 14 filter types on task queries, and date management including recurrence (RRULE read/write). Read, create, update, and delete operations where OmniFocus supports them.
+22 tools covering projects, tasks, folders, tags, perspectives, and focus. Full CRUD on projects and tasks with batch operations, 14 filter types on task queries, and date management including recurrence (RRULE read/write).
 
 ### Fast
 
