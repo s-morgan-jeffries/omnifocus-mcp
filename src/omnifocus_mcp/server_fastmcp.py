@@ -259,7 +259,10 @@ def create_project(
     sequential: bool = False,
     project_type: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
-    completed_by_children: Optional[bool] = None
+    completed_by_children: Optional[bool] = None,
+    due_date: Optional[str] = None,
+    defer_date: Optional[str] = None,
+    planned_date: Optional[str] = None,
 ) -> str:
     """Create a new project in OmniFocus.
 
@@ -275,6 +278,9 @@ def create_project(
             Ignored when project_type is provided. (default: False)
         review_interval_weeks: Optional review interval in weeks for GTD review cycle
         completed_by_children: Auto-complete the project when its last remaining action is completed. (optional)
+        due_date: Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00")
+        defer_date: Defer date in ISO 8601 format (when project becomes available)
+        planned_date: Planned date in ISO 8601 format (when you plan to work on the project)
 
     Returns:
         Success message with project ID and configuration details
@@ -288,7 +294,10 @@ def create_project(
             sequential=sequential,
             project_type=project_type,
             review_interval_weeks=review_interval_weeks,
-            completed_by_children=completed_by_children
+            completed_by_children=completed_by_children,
+            due_date=due_date,
+            defer_date=defer_date,
+            planned_date=planned_date,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -324,7 +333,10 @@ def update_project(
     review_interval_weeks: Optional[int] = None,
     last_reviewed: Optional[str] = None,
     next_review_date: Optional[str] = None,
-    completed_by_children: Optional[bool] = None
+    completed_by_children: Optional[bool] = None,
+    due_date: Optional[str] = None,
+    defer_date: Optional[str] = None,
+    planned_date: Optional[str] = None,
 ) -> str:
     """Update an existing project in OmniFocus.
 
@@ -340,6 +352,9 @@ def update_project(
         last_reviewed: Last reviewed date in ISO format or "now"
         next_review_date: Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval. (optional)
         completed_by_children: Auto-complete the project when its last remaining action is completed. (optional)
+        due_date: Due date in ISO 8601 format, or "" to clear (optional)
+        defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
+        planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
 
     Returns:
         Success message with project ID and updated fields, or error message
@@ -370,7 +385,10 @@ def update_project(
             review_interval_weeks=review_interval_weeks,
             last_reviewed=last_reviewed,
             next_review_date=next_review_date,
-            completed_by_children=completed_by_children
+            completed_by_children=completed_by_children,
+            due_date=due_date,
+            defer_date=defer_date,
+            planned_date=planned_date,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -399,7 +417,10 @@ def update_projects(
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
     last_reviewed: Optional[str] = None,
-    next_review_date: Optional[str] = None
+    next_review_date: Optional[str] = None,
+    due_date: Optional[str] = None,
+    defer_date: Optional[str] = None,
+    planned_date: Optional[str] = None,
 ) -> str:
     """Update multiple projects with the same properties (NEW API - Phase 2, Batch Function).
 
@@ -418,6 +439,9 @@ def update_projects(
         review_interval_weeks: Review interval in weeks
         last_reviewed: Last review date ("now" or ISO format like "2025-01-15")
         next_review_date: Explicit next review date in ISO format — overrides OmniFocus-calculated date (optional)
+        due_date: Due date in ISO 8601 format, or "" to clear (optional)
+        defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
+        planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
 
     Returns:
         Success message with updated and failed counts, or error message
@@ -453,7 +477,10 @@ def update_projects(
             status=status,
             review_interval_weeks=review_interval_weeks,
             last_reviewed=last_reviewed,
-            next_review_date=next_review_date
+            next_review_date=next_review_date,
+            due_date=due_date,
+            defer_date=defer_date,
+            planned_date=planned_date,
         )
 
         # Handle dict return from client

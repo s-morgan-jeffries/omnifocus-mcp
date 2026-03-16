@@ -44,7 +44,10 @@ class TestUpdateProjectServerRedesign:
                 review_interval_weeks=None,
                 last_reviewed=None,
                 next_review_date=None,
-                completed_by_children=None
+                completed_by_children=None,
+                due_date=None,
+                defer_date=None,
+                planned_date=None,
             )
 
             assert isinstance(result, str)

@@ -111,7 +111,7 @@ class TestProjectTools:
             assert "Successfully created project 'New Project'" in result
             assert "Folder: Work" in result
             mock_client.create_project.assert_called_once_with(
-                name="New Project", note=None, folder_path="Work", sequential=False, project_type=None, review_interval_weeks=None, completed_by_children=None
+                name="New Project", note=None, folder_path="Work", sequential=False, project_type=None, review_interval_weeks=None, completed_by_children=None, due_date=None, defer_date=None, planned_date=None
             )
 
 

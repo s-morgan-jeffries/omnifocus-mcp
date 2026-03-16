@@ -2579,7 +2579,6 @@ class TestTagSidePreFilter:
                     warnings.warn(f"Failed to clean up task {task_id}: {e}")
 
 
-@pytest.mark.skip(reason="Blocked by #329: create_project/update_project don't expose due_date yet")
 class TestEffectiveDates:
     """Test that get_tasks returns effective (inherited) dates from the containing project."""
 
