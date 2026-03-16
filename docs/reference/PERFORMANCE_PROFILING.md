@@ -2,6 +2,8 @@
 
 ## v0.9.1 Benchmark (2026-03-15)
 
+> **Note:** These baselines remain representative for v0.10.0. The v0.10.0 changes (project dates in get_projects, complexity refactoring) add 3 batch property reads to get_projects — minimal overhead on an already-fast operation.
+
 Clean test database: 32 projects, ~202 tasks, 10 tags, 4 folders.
 Changes since last benchmark: +3 batch date reads (nextDueDate, nextDeferDate, nextPlannedDate), +catchUpAutomatically (from repetition rule), +OmniAutomation exclusivity call in get_tags, +sequential on tasks.
 

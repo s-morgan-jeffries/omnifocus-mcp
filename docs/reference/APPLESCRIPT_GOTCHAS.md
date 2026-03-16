@@ -47,6 +47,10 @@ set note of t to styledNote  -- Accepted, but no formatting applied
 
 **⚠️ Test database crash:** On the headless test database, `evaluate javascript` crashes OmniFocus silently when accessing OmniFocus objects (e.g., `Task.byIdentifier()`). Simple string expressions work, but any object model access causes a crash with no crash report dialog. OmniFocus restarts with the production database open. This is likely because the test database opens as a headless document without proper window/UI context.
 
+**Mitigation (v0.9.2, #324):** The connector detects test mode (`self._test_mode`) and skips all `evaluate javascript` calls on headless test databases, defaulting to safe fallbacks (e.g., `childrenAreMutuallyExclusive=False`).
+
+**String escaping (v0.9.2, #318):** OmniAutomation JavaScript strings embedded in `evaluate javascript "..."` require dedicated escaping via `_escape_js_string()`, not the AppleScript escaper. The JS runs inside a single-quoted string inside an AppleScript double-quoted string — a double-context escaping problem.
+
 **✅ Production database:** With the production database and full UI context, `evaluate javascript` works correctly for both reads and writes:
 
 ```applescript
