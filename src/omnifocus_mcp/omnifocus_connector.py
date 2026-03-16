@@ -192,6 +192,22 @@ class OmniFocusConnector:
         text = text.replace('"', '\\"')
         return text
 
+    def _escape_js_string(self, text: str) -> str:
+        """Escape a string for use in a JS single-quoted literal inside AppleScript.
+
+        Handles the double-context: JS '...' inside AppleScript "..." via
+        `evaluate javascript "..."`. Order matters — backslashes first.
+        """
+        if not text:
+            return ""
+        text = text.replace("\\", "\\\\")   # \ → \\ (must be first)
+        text = text.replace("'", "\\'")      # ' → \' (JS string delimiter)
+        text = text.replace('"', '\\"')      # " → \" (AppleScript string delimiter)
+        text = text.replace("\n", "\\n")     # newline → \n
+        text = text.replace("\r", "\\r")     # carriage return → \r
+        text = text.replace("\t", "\\t")     # tab → \t
+        return text
+
     def _build_whose_or_chain(self, ids_list: list[str], entity_type: str) -> str:
         """Build a 'whose' or-chain clause for targeting multiple items by ID.
 
@@ -3783,7 +3799,7 @@ class OmniFocusConnector:
 
     def _execute_recurrence_update(
         self,
-        task_id_escaped: str,
+        task_id: str,
         recurrence: Optional[str],
         repetition_method: Optional[str],
     ) -> None:
@@ -3803,12 +3819,10 @@ class OmniFocusConnector:
             repetition_method or "fixed",
             "Task.RepetitionMethod.Fixed"
         )
-        task_id_js = task_id_escaped.replace("'", "\\'")
+        task_id_js = self._escape_js_string(task_id)
 
         if recurrence is not None:
-            recurrence_js = self._escape_applescript_string(
-                recurrence
-            ).replace("'", "\\'")
+            recurrence_js = self._escape_js_string(recurrence)
             js_code = (
                 f"var t = Task.byIdentifier('{task_id_js}');"
                 f" if (t) {{ t.repetitionRule = new Task.RepetitionRule("
@@ -3955,7 +3969,7 @@ class OmniFocusConnector:
             if result.strip() == "true":
                 if _recurrence_js_needed:
                     self._execute_recurrence_update(
-                        task_id_escaped, recurrence, repetition_method
+                        task_id, recurrence, repetition_method
                     )
                 return {
                     "success": True,
@@ -4359,7 +4373,7 @@ class OmniFocusConnector:
             tag_id: The tag ID
             value: True to make children mutually exclusive, False otherwise
         """
-        tag_id_js = self._escape_applescript_string(tag_id).replace("'", "\\'")
+        tag_id_js = self._escape_js_string(tag_id)
         value_js = "true" if value else "false"
         js_code = (
             f"var tag = Tag.byIdentifier('{tag_id_js}');"
