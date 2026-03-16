@@ -1452,8 +1452,8 @@ class OmniFocusConnector:
         # Build next review date command
         next_review_command = ""
         if next_review_date is not None:
-            # Parse ISO date
-            next_review_command = f'set next review date of theProject to date "{next_review_date}"'
+            as_date = self._iso_to_applescript_date(next_review_date)
+            next_review_command = f'set next review date of theProject to date "{as_date}"'
             updated_fields.append("next_review_date")
 
         # Build completed by children command
@@ -1726,8 +1726,9 @@ class OmniFocusConnector:
             has_bulk = True
 
         if next_review_date is not None:
+            as_date = self._iso_to_applescript_date(next_review_date)
             bulk_commands.append(
-                f'set next review date of ({or_chain_target}) to date "{next_review_date}"'
+                f'set next review date of ({or_chain_target}) to date "{as_date}"'
             )
             has_bulk = True
 

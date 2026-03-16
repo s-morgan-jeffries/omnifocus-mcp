@@ -162,7 +162,7 @@ class TestUpdateProjectRedesign:
             # Should set "next review date" for explicit override
             call_args = mock_run.call_args[0][0]
             assert "next review date" in call_args, "Should set 'next review date' property"
-            assert "2025-12-01" in call_args
+            assert "December 01, 2025" in call_args
 
     def test_update_project_both_review_dates(self, client):
         """NEW API: update_project() can set both last reviewed and next review date."""
@@ -179,7 +179,7 @@ class TestUpdateProjectRedesign:
             call_args = mock_run.call_args[0][0]
             assert "last review date" in call_args
             assert "next review date" in call_args
-            assert "2025-12-15" in call_args
+            assert "December 15, 2025" in call_args
 
     # ========================================================================
     # Existing Fields (Regression)
