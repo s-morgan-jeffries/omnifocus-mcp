@@ -4,28 +4,28 @@ A comprehensive, fast, reliable, and agent-friendly MCP server for OmniFocus on 
 
 ## Why This Server
 
-### Full API Coverage
+### Comprehensive
 
-22 tools covering every entity type — projects, tasks, folders, tags, perspectives, focus. Full CRUD with batch operations, comprehensive filtering (14 filter types on tasks alone), and date management across all entity types. Consolidated from 40+ specialized functions into a clean, composable API.
+22 tools covering projects, tasks, folders, tags, perspectives, and focus. Full CRUD on projects and tasks with batch operations, 14 filter types on task queries, and date management including recurrence (RRULE read/write). Read, create, update, and delete operations where OmniFocus supports them.
 
 ### Fast
 
-Sub-second reads on filtered queries, even with hundreds of tasks. Native `whose` clause pre-filtering (20-30x faster than iteration) combined with batch property extraction eliminates the per-task IPC bottleneck that plagues naive AppleScript implementations.
+Sub-second reads on filtered queries, even with hundreds of tasks in the database.
 
-| Operation | Time | Dataset |
-|-----------|------|---------|
-| Flagged tasks | 0.88s | ~200 tasks |
-| Overdue tasks | 0.72s | ~200 tasks |
-| Text search | 1.61s | ~200 tasks |
-| All tasks (unfiltered) | 5.65s | ~200 tasks |
-| All projects | 1.78s | 32 projects |
-| Write operations | 0.6-0.7s | single item |
+| Operation | Time | Database |
+|-----------|------|----------|
+| Get flagged tasks | 0.88s | ~200 tasks |
+| Get overdue tasks | 0.72s | ~200 tasks |
+| Search tasks by keyword | 1.61s | ~200 tasks |
+| Get all tasks (unfiltered) | 5.65s | ~200 tasks |
+| Get all projects | 1.78s | 32 projects |
+| Create or update a task | 0.6-0.7s | — |
 
 Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFILING.md)
 
 ### Reliable
 
-782 unit tests and 138 integration tests against real OmniFocus. Database safety system prevents accidental production data modification during development. AppleScript injection hardening with dedicated string escapers for both AppleScript and OmniAutomation contexts.
+782 unit tests and 138 integration tests run against real OmniFocus. AppleScript injection hardening with dedicated string escapers for both AppleScript and OmniAutomation contexts.
 
 ### Agent-Friendly
 
