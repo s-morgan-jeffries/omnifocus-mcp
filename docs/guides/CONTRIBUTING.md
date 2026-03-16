@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing! This document outlines the development workflow and guidelines.
 
-**Last Updated:** 2025-10-19
+**Last Updated:** 2026-03-16
 
 ---
 
@@ -15,8 +15,7 @@ Thank you for your interest in contributing! This document outlines the developm
 - [ ] **Integration tests pass** - Run `make test-integration` (see `../guides/INTEGRATION_TESTING.md` for setup)
 - [ ] **Complexity checked** - Run `./scripts/check_complexity.sh`
 - [ ] **Decision tree followed** - No new functions without consulting tree (see `../../.claude/CLAUDE.md`)
-- [ ] **Documentation updated** - CHANGELOG.md, ROADMAP.md, or other docs if needed
-  - **If closing issue listed in ROADMAP.md:** Remove from "Upcoming Work" or other active sections
+- [ ] **Documentation updated** - CHANGELOG.md or other docs if needed
 - [ ] **Architecture followed** - Reviewed relevant sections of `../reference/ARCHITECTURE.md`
 
 **If tests are failing:**
@@ -220,7 +219,7 @@ What version are you releasing?
 ├─ Patch (v0.6.x → v0.6.y)
 │  └─ ✅ Automated checks only (7 checks, ~5 minutes)
 │     • Pre-tag hook runs automatically on RC tag
-│     • Must pass: version sync, tests, complexity, coverage, parity, milestone, ROADMAP
+│     • Must pass: version sync, tests, complexity, coverage, parity, milestone
 │     • No interactive checks required
 │
 ├─ Minor (v0.x.0 → v0.y.0)
@@ -340,7 +339,6 @@ git push origin --delete release/v0.6.4
 4. Client-server parity
 5. Milestone status (all issues closed)
 6. Test coverage ≥85% (minimum threshold enforced)
-7. ROADMAP.md sync (closed issues removed from active sections)
 
 **Interactive checks (required for minor/major releases, run manually via slash commands):**
 - `/doc-quality` - Documentation quality assessment
@@ -468,13 +466,13 @@ Before running tests, you'll need to understand the three test types and their s
 1. **Unit Tests** (`make test`) - Fast, always run
    - Mock AppleScript execution
    - No OmniFocus required
-   - 544 tests (406 passing, 138 skipped), ~2 minutes
+   - 782 unit tests, ~2.5 minutes
    - **Skips integration and E2E tests by default** (this is expected behavior)
 
 2. **Integration Tests** (`make test-integration`) - Real OmniFocus required
    - Execute real AppleScript commands
    - Requires test database setup (one-time)
-   - ~92 tests, ~10-15 minutes
+   - 138 tests, ~12 minutes
    - Catch bugs that mocks don't (syntax errors, API mismatches)
 
 3. **E2E Tests** (`make test-e2e`) - Full MCP stack required
@@ -541,8 +539,8 @@ This project follows Test-Driven Development (TDD). **This is non-negotiable.**
 
 This project requires three types of tests for comprehensive validation:
 
-1. **Unit Tests** - Mock AppleScript, fast, run always (544 tests, ~2 minutes)
-2. **Integration Tests** - Real OmniFocus via client, catches AppleScript bugs (~92 tests, ~10-15 minutes)
+1. **Unit Tests** - Mock AppleScript, fast, run always (782 tests, ~2.5 minutes)
+2. **Integration Tests** - Real OmniFocus via client, catches AppleScript bugs (138 tests, ~12 minutes)
 3. **E2E Tests** - Full MCP tool → client → OmniFocus stack, catches parameter conversion bugs
 
 **See [Testing Setup](#testing-setup) section above for how to set up and run each test type.**
@@ -565,7 +563,7 @@ This project requires three types of tests for comprehensive validation:
   - **Document** if complexity is inherent to the problem
   - **Refactor** if complexity is accidental (can be simplified)
 
-See `../reference/CODE_QUALITY.md` for complete metrics and guidelines.
+See `../../.claude/CLAUDE.md` for current complexity thresholds and documented exceptions.
 
 **Code standards:**
 - Python 3.10+ required
@@ -646,12 +644,6 @@ When asking for help, provide:
 - Fix bugs (add to "Fixed" section)
 - Remove/consolidate functions (document in "Changed - BREAKING" with migration path)
 
-**ROADMAP.md** - Update when you:
-- Complete a major milestone (move from "In Progress" to "Completed")
-- Change project phase (update current phase status)
-- Add new planned features (document in appropriate phase section)
-- Make architectural decisions (update "Open Questions" or relevant sections)
-
 **API_REFERENCE.md** - Update when you:
 - Implement new functions (mark as implemented)
 - Change function signatures (document actual vs proposed)
@@ -673,11 +665,10 @@ When asking for help, provide:
 - Update test coverage (refresh statistics tables)
 - Add new edge cases (document what's now tested)
 
-**CODE_QUALITY.md** - Update when you:
-- Add intentionally complex function (document with CC rating and rationale)
-- Refactor complex function (update its CC rating)
-- Change complexity thresholds (update guidelines)
-- Update Radon configuration (document new settings)
+**check_complexity.sh** - Update when you:
+- Add intentionally complex function (add documented exception with CC threshold)
+- Refactor complex function (update its CC threshold)
+- Change complexity thresholds (update comments and enforcement code)
 
 **INTEGRATION_TESTING.md** - Update when you:
 - Add new integration tests (document what they test)
@@ -882,8 +873,8 @@ gh run view <run-id> --log
 ### CI Checks
 
 GitHub Actions runs on every push and PR:
-- Unit tests (~2 min, 544 tests)
-- Integration tests (~10-15 min, ~92 tests)
+- Unit tests (~2.5 min, 782 tests)
+- Integration tests (~12 min, 138 tests)
 - E2E tests (MCP stack)
 - Code quality checks
 - Complexity analysis
@@ -915,26 +906,26 @@ GitHub Actions runs on every push and PR:
 ```
 omnifocus-mcp/
 ├── .claude/
-│   ├── CLAUDE.md                    # Project memory (maintenance mode)
-│   └── CLAUDE-redesign-phase.md     # Historical implementation guidance
+│   └── CLAUDE.md                    # Project instructions and conventions
 ├── docs/
-│   ├── APPLESCRIPT_GOTCHAS.md       # AppleScript limitations reference
-│   ├── ARCHITECTURE.md              # Design decisions and patterns
-│   ├── API_REFERENCE.md             # Complete API documentation
-│   ├── CODE_QUALITY.md              # Complexity guidelines
-│   ├── CONTRIBUTING.md              # This file
-│   ├── INTEGRATION_TESTING.md       # Real OmniFocus testing setup
-│   ├── ROADMAP.md                   # Project phases and status
-│   └── TESTING.md                   # Testing strategy and coverage
+│   ├── guides/
+│   │   ├── CONTRIBUTING.md          # This file
+│   │   └── TESTING.md              # Testing strategy and coverage
+│   ├── TESTING.md                   # Testing strategy and coverage
+│   └── reference/
+│       ├── APPLESCRIPT_GOTCHAS.md    # AppleScript limitations
+│       ├── OMNIFOCUS_AUTOMATION_NOTES.md  # OmniAutomation findings
+│       └── PERFORMANCE_PROFILING.md  # Benchmark data
 ├── src/omnifocus_mcp/
-│   ├── omnifocus_connector.py          # Core OmniFocus client (16 functions)
-│   └── server_fastmcp.py            # FastMCP server (MCP tool wrappers)
+│   ├── omnifocus_connector.py       # Core OmniFocus client (22 tools)
+│   └── server_fastmcp.py           # FastMCP server (MCP tool wrappers)
 ├── tests/
-│   ├── test_omnifocus_connector.py     # Client unit tests
-│   ├── test_server_fastmcp.py       # Server unit tests
-│   ├── test_integration_real.py     # Real OmniFocus integration tests
-│   └── test_e2e_real.py             # End-to-end MCP tests
-└── CHANGELOG.md                     # Version history
+│   ├── test_omnifocus_client.py     # Client unit tests
+│   ├── test_server_fastmcp.py      # Server unit tests
+│   ├── test_integration_real.py    # Real OmniFocus integration tests
+│   ├── test_prod_integration.py    # OmniAutomation tests (production DB)
+│   └── test_get_tasks_helpers.py   # Extracted helper tests
+└── CHANGELOG.md                    # Version history
 ```
 
 ---
@@ -942,11 +933,10 @@ omnifocus-mcp/
 ## Additional Resources
 
 - **Architecture Principles:** `../reference/ARCHITECTURE.md`
-- **API Design Decisions:** `docs/API_REFERENCE.md`
 - **Testing Guide:** `../guides/TESTING.md`
-- **AppleScript Issues:** `docs/APPLESCRIPT_GOTCHAS.md`
-- **Project Status:** `docs/ROADMAP.md`
-- **Daily Workflow:** `../../.claude/CLAUDE.md`
+- **AppleScript Issues:** `../reference/APPLESCRIPT_GOTCHAS.md`
+- **Performance Data:** `../reference/PERFORMANCE_PROFILING.md`
+- **Project Instructions:** `../../.claude/CLAUDE.md`
 
 ---
 
