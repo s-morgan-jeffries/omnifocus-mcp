@@ -1172,7 +1172,10 @@ class OmniFocusConnector:
         sequential: bool = False,
         project_type: Optional[str] = None,
         review_interval_weeks: Optional[int] = None,
-        completed_by_children: Optional[bool] = None
+        completed_by_children: Optional[bool] = None,
+        due_date: Optional[str] = None,
+        defer_date: Optional[str] = None,
+        planned_date: Optional[str] = None,
     ) -> str:
         """Create a new project in OmniFocus.
 
@@ -1185,6 +1188,9 @@ class OmniFocusConnector:
             project_type: Project type: "parallel", "sequential", or "single_actions".
                 Overrides sequential when provided.
             review_interval_weeks: Optional review interval in weeks for GTD review cycle
+            due_date: Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00")
+            defer_date: Defer date in ISO 8601 format (when project becomes available)
+            planned_date: Planned date in ISO 8601 format (when you plan to work on the project)
 
         Returns:
             str: The ID of the created project
@@ -1226,6 +1232,16 @@ class OmniFocusConnector:
             properties.append(f'completed by children:{str(completed_by_children).lower()}')
 
         properties_str = ", ".join(properties)
+
+        # Build date commands (set after creation, like create_task)
+        date_commands = []
+        if due_date:
+            date_commands.append(f'set due date of newProject to date "{self._iso_to_applescript_date(due_date)}"')
+        if defer_date:
+            date_commands.append(f'set defer date of newProject to date "{self._iso_to_applescript_date(defer_date)}"')
+        if planned_date:
+            date_commands.append(f'set planned date of newProject to date "{self._iso_to_applescript_date(planned_date)}"')
+        date_commands_str = "\n                    ".join(date_commands) if date_commands else ""
 
         # Build script with optional folder placement
         if folder_path:
@@ -1286,6 +1302,7 @@ class OmniFocusConnector:
                 tell front document
                     {folder_finder}
                     set newProject to make new project at end of projects of targetFolder with properties {{{properties_str}}}
+                    {date_commands_str}
                     return id of newProject
                 end tell
             end tell
@@ -1296,6 +1313,7 @@ class OmniFocusConnector:
             tell application "OmniFocus"
                 tell front document
                     set newProject to make new project with properties {{{properties_str}}}
+                    {date_commands_str}
                     return id of newProject
                 end tell
             end tell
@@ -1322,18 +1340,12 @@ class OmniFocusConnector:
         review_interval_weeks: Optional[int] = None,
         last_reviewed: Optional[str] = None,
         next_review_date: Optional[str] = None,
-        completed_by_children: Optional[bool] = None
+        completed_by_children: Optional[bool] = None,
+        due_date: Optional[str] = None,
+        defer_date: Optional[str] = None,
+        planned_date: Optional[str] = None,
     ) -> dict:
         """Update properties of an existing project (NEW API - Phase 2).
-
-        NEW API changes:
-        - Renamed 'name' parameter to 'project_name' for consistency
-        - Added status parameter (ProjectStatus enum or string)
-        - Added review_interval_weeks parameter
-        - Added last_reviewed parameter
-        - Added folder_path parameter
-        - Returns dict instead of bool
-        - Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_project_reviewed()
 
         Args:
             project_id: The ID of the project to update
@@ -1345,6 +1357,9 @@ class OmniFocusConnector:
             review_interval_weeks: Review interval in weeks (0 to clear)
             last_reviewed: Last reviewed date in ISO format or "now" - OmniFocus calculates next review automatically (optional)
             next_review_date: Next review date in ISO format - Explicit override of calculated date (optional)
+            due_date: Due date in ISO 8601 format, or "" to clear (optional)
+            defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
+            planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
 
         Returns:
             dict: {
@@ -1374,7 +1389,10 @@ class OmniFocusConnector:
             "review_interval_weeks": review_interval_weeks,
             "last_reviewed": last_reviewed,
             "next_review_date": next_review_date,
-            "completed_by_children": completed_by_children
+            "completed_by_children": completed_by_children,
+            "due_date": due_date,
+            "defer_date": defer_date,
+            "planned_date": planned_date,
         }
 
         # Check if at least one field is provided
@@ -1473,6 +1491,22 @@ class OmniFocusConnector:
             next_review_command = f'set next review date of theProject to date "{as_date}"'
             updated_fields.append("next_review_date")
 
+        # Build date commands (due, defer, planned)
+        date_commands_list = []
+        for field_name, field_val, field_key in [
+            ("due date", due_date, "due_date"),
+            ("defer date", defer_date, "defer_date"),
+            ("planned date", planned_date, "planned_date"),
+        ]:
+            if field_val is not None:
+                if field_val == "":
+                    date_commands_list.append(f"set {field_name} of theProject to missing value")
+                else:
+                    as_date = self._iso_to_applescript_date(field_val)
+                    date_commands_list.append(f'set {field_name} of theProject to date "{as_date}"')
+                updated_fields.append(field_key)
+        date_commands_str = "\n                    ".join(date_commands_list) if date_commands_list else ""
+
         # Build completed by children command
         completed_by_children_command = ""
         if completed_by_children is not None:
@@ -1557,6 +1591,7 @@ class OmniFocusConnector:
                     {review_command}
                     {reviewed_command}
                     {next_review_command}
+                    {date_commands_str}
                     {completed_by_children_command}
                     {folder_command}
 
@@ -1604,6 +1639,9 @@ class OmniFocusConnector:
         review_interval_weeks: Optional[int] = None,
         last_reviewed: Optional[str] = None,
         next_review_date: Optional[str] = None,
+        due_date: Optional[str] = None,
+        defer_date: Optional[str] = None,
+        planned_date: Optional[str] = None,
         **kwargs  # Catch invalid parameters like project_name, note
     ) -> dict:
         """Update properties of multiple projects (NEW API - Phase 2, Batch Function).
@@ -1615,13 +1653,6 @@ class OmniFocusConnector:
         because those require unique values for each project. Use update_project()
         for those fields.
 
-        NEW API changes:
-        - Accepts Union[str, list[str]] for project_ids (single or batch)
-        - EXCLUDES project_name and note (require unique values)
-        - Returns dict with counts instead of success bool
-        - Continues processing even if some projects fail
-        - Consolidates: drop_projects() legacy function
-
         Args:
             project_ids: Single project ID (str) or list of project IDs
             folder_path: Folder path to move projects to (e.g., "Work > Projects")
@@ -1630,6 +1661,9 @@ class OmniFocusConnector:
             review_interval_weeks: Review interval in weeks (0 to clear)
             last_reviewed: Last reviewed date in ISO format or "now" - OmniFocus calculates next review automatically (optional)
             next_review_date: Next review date in ISO format - Explicit override of calculated date (optional)
+            due_date: Due date in ISO 8601 format, or "" to clear (optional)
+            defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
+            planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
 
         Returns:
             dict: {
@@ -1674,7 +1708,8 @@ class OmniFocusConnector:
         # Validate at least one field is provided
         if (folder_path is None and sequential is None and status is None and
                 review_interval_weeks is None and last_reviewed is None and
-                next_review_date is None):
+                next_review_date is None and due_date is None and
+                defer_date is None and planned_date is None):
             raise ValueError("At least one field must be provided to update")
 
         # Normalize project_ids to list
@@ -1749,6 +1784,19 @@ class OmniFocusConnector:
                 f'set next review date of ({or_chain_target}) to date "{as_date}"'
             )
             has_bulk = True
+
+        for field_name, field_val in [("due date", due_date), ("defer date", defer_date), ("planned date", planned_date)]:
+            if field_val is not None:
+                if field_val == "":
+                    bulk_commands.append(
+                        f"set {field_name} of ({or_chain_target}) to missing value"
+                    )
+                else:
+                    as_date = self._iso_to_applescript_date(field_val)
+                    bulk_commands.append(
+                        f'set {field_name} of ({or_chain_target}) to date "{as_date}"'
+                    )
+                has_bulk = True
 
         # --- Per-project fields (need repeat loop) ---
 
