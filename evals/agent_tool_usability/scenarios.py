@@ -989,4 +989,85 @@ SCENARIOS = [
         ),
         "safety_critical": True,
     },
+    # ── Project Dates ──────────────────────────────────────────────────
+    {
+        "id": 43,
+        "category": "Project Dates",
+        "name": "Create Project with Due Date",
+        "prompt": (
+            "Create a project called 'Q3 Report' in the 'Work' folder that must be "
+            "completed by July 15, 2026. It should become available starting June 1, 2026."
+        ),
+        "expected": {
+            "tools": ["create_project"],
+            "key_params": {
+                "create_project": {
+                    "name": "Q3 Report",
+                    "folder_path": "Work",
+                    "due_date": "2026-07-15",
+                    "defer_date": "2026-06-01",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses create_project with due_date for deadline and defer_date for "
+            "availability start. Both in ISO format. "
+            "PARTIAL: Gets one date right but not the other, or uses update_project "
+            "as a second step instead of setting at creation. "
+            "FAIL: Tries to set dates on tasks instead of the project, or doesn't "
+            "use the date parameters at all."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 44,
+        "category": "Project Dates",
+        "name": "Clear Project Due Date",
+        "prompt": (
+            "Project 'proj-abc' currently has a due date. I want to remove the due date "
+            "so it's no longer deadline-driven."
+        ),
+        "expected": {
+            "tools": ["update_project"],
+            "key_params": {
+                "update_project": {
+                    "project_id": "proj-abc",
+                    "due_date": "",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses update_project with due_date=\"\" (empty string to clear). "
+            "PARTIAL: Uses update_project but sets due_date to null/None instead of "
+            "empty string. "
+            "FAIL: Tries to delete and recreate the project, or doesn't know how to "
+            "clear a date."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 45,
+        "category": "Project Dates",
+        "name": "Check Project Dates",
+        "prompt": (
+            "I want to see what dates are set on project 'proj-xyz' — specifically "
+            "its due date, defer date, and planned date."
+        ),
+        "expected": {
+            "tools": ["get_projects"],
+            "key_params": {
+                "get_projects": {
+                    "project_id": "proj-xyz",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses get_projects with project_id filter. Mentions that dueDate, "
+            "deferDate, plannedDate are returned in the project dict. "
+            "PARTIAL: Uses get_projects but doesn't mention the specific date fields "
+            "by name. "
+            "FAIL: Tries to use get_tasks or a non-existent get_project_dates tool."
+        ),
+        "safety_critical": False,
+    },
 ]

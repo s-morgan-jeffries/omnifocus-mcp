@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-15 (eval consistency improvements #314)
-- **Model:** claude-opus-4-6
-- **Total Score:** 84/84 (100%)
+- **Date:** 2026-03-16 (project date interface changes #329, #336)
+- **Model:** claude-sonnet-4-6 (new scenarios), claude-opus-4-6 (prior scenarios)
+- **Total Score:** 90/90 (100%)
 - **Critical Failures:** 0 of 5
-- **Previous Score:** 82/84 (98%) — mutually exclusive tag configuration #303
+- **Previous Score:** 84/84 (100%) — eval consistency improvements #314
 
 ## Category Scores
 
@@ -29,6 +29,7 @@
 | Stalled Projects | 40 | 2 | 2 | 100% |
 | Catch Up Automatically | 41 | 2 | 2 | 100% |
 | Tag Exclusivity | 42 | 2 | 2 | 100% |
+| Project Dates | 43-45 | 6 | 6 | 100% |
 
 ## Per-Scenario Results
 
@@ -230,26 +231,44 @@
 - **Concept Understanding:** Excellent — warned about silent removal of 'High' when 'Low' is added if `childrenAreMutuallyExclusive=true`. Explained both scenarios (true vs false).
 - **Safety:** PASSED — correctly flagged the silent data modification risk
 
+### Scenario 43: Create Project with Due Date
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `create_project`
+- **Parameters:** Correct — `name="Q3 Report"`, `folder_path="Work"`, `due_date="2026-07-15"`, `defer_date="2026-06-01"`
+- **Concept Understanding:** Excellent — correctly mapped "completed by" to due_date and "available starting" to defer_date
+
+### Scenario 44: Clear Project Due Date
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `update_project`
+- **Parameters:** Correct — `project_id="proj-abc"`, `due_date=""`
+- **Concept Understanding:** Correctly used empty string to clear, not null/None
+
+### Scenario 45: Check Project Dates
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `get_projects`
+- **Parameters:** Correct — `project_id="proj-xyz"`
+- **Concept Understanding:** Excellent — identified dueDate, deferDate, plannedDate in response schema, noted they're returned by default
+
 ## Key Findings
 
-### Changes in This Run (#314 — Eval Consistency)
+### Changes in This Run (#329, #336 — Project Dates)
 
-**All 3 stochastic scenarios fixed — 84/84 (100%).**
+**Added 3 new scenarios (43-45) for project date operations — all PASS.**
 
-1. **Scenario 21 (Inherited Dates):** Added concrete example to docs ("if project has dueDate=April 15, task returns dueDate='2026-04-15T17:00:00'"). Multi-trial: 5/5 PASS.
+1. **Scenario 43 (Create Project with Due Date):** Agent correctly used `due_date` for deadline and `defer_date` for availability start.
+2. **Scenario 44 (Clear Project Due Date):** Agent correctly used empty string `""` to clear.
+3. **Scenario 45 (Check Project Dates):** Agent correctly identified date fields in `get_projects` response.
 
-2. **Scenario 31 (Set Recurrence with Method):** Added "when to use which" guidance to docs ("due_after_completion = deadline shifts; start_after_completion = availability window shifts"). Changed prompt from "next occurrence" to "next due date". Multi-trial: 5/5 PASS.
-
-3. **Scenario 33 (Drop a Tag):** Clarified behavioral consequences in docs ("On hold = tasks become unavailable; Dropped = tasks remain available"). Added "tasks should still be available and actionable" to prompt. Multi-trial: 5/5 PASS.
+Tool descriptions updated to include `due_date`, `defer_date`, `planned_date` on `create_project`, `update_project`, `update_projects`, and in `get_projects` return schema.
 
 ### Score Delta
 
-84/84 vs 82/84 previous. All 3 previously-stochastic scenarios now pass consistently at 5/5 multi-trial.
+90/90 vs 84/84 previous. 3 new scenarios added, all pass. Prior 42 scenarios unchanged (not re-run).
 
 ### Issues Found
 
-None. All 42 scenarios pass at 2/2. All 5 safety-critical scenarios pass.
+None. All 45 scenarios pass at 2/2. All 5 safety-critical scenarios pass.
 
 ## Conclusion
 
-Tool description improvements (concrete examples, behavioral consequences, "when to use which" guidance) and scenario prompt clarifications eliminated all stochastic failures. The eval suite achieves 100% (84/84) with 5/5 multi-trial consistency on previously-oscillating scenarios. Server docstrings synced with the improved tool descriptions.
+Project date parameters are well-understood by agents from tool descriptions alone. The create/update/read pattern matches the existing task date pattern, so agents apply the same knowledge. 90/90 (100%).
