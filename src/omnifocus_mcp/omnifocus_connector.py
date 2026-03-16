@@ -1901,8 +1901,9 @@ class OmniFocusConnector:
             script = f'''
         tell application "OmniFocus"
             tell front document
+                set preCount to ({count_expr})
                 {bulk_block}
-                return ({count_expr}) as text
+                return preCount as text
             end tell
         end tell
         '''
@@ -4118,6 +4119,13 @@ class OmniFocusConnector:
         if tags is not None and add_tags is not None:
             raise ValueError("Cannot specify both tags and add_tags (use one or the other)")
 
+        # Validate status string
+        if status is not None and isinstance(status, str):
+            try:
+                TaskStatus(status)
+            except ValueError:
+                raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join([s.value for s in TaskStatus])}")
+
         return ids_list
 
     def _build_bulk_update_commands(
@@ -4364,14 +4372,15 @@ class OmniFocusConnector:
                     end try
                 end repeat'''
 
-        # Count: bulk uses `count of`, per-task uses successCount
+        # Count: bulk uses pre-counted value, per-task uses successCount
         if has_bulk and not has_per_task:
             count_expr = f"count of ({or_chain_target})"
             script = f'''
         tell application "OmniFocus"
             tell front document
+                set preCount to ({count_expr})
                 {bulk_block}
-                return ({count_expr}) as text
+                return preCount as text
             end tell
         end tell
         '''

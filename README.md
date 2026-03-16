@@ -127,7 +127,7 @@ macOS will prompt for:
 
 ## Contributing
 
-Bug reports and feature requests are welcome via [GitHub Issues](https://github.com/s-morgan-jeffries/omnifocus-mcp/issues). See [CONTRIBUTING.md](docs/guides/CONTRIBUTING.md) for development workflow and pull request guidelines.
+Bug reports and feature requests are welcome via [GitHub Issues](https://github.com/s-morgan-jeffries/omnifocus-mcp/issues).
 
 ## License
 
