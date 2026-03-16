@@ -1462,7 +1462,8 @@ class OmniFocusConnector:
                 reviewed_command = 'set last review date of theProject to (current date)'
             else:
                 # Parse ISO date
-                reviewed_command = f'set last review date of theProject to date "{last_reviewed}"'
+                as_date = self._iso_to_applescript_date(last_reviewed)
+                reviewed_command = f'set last review date of theProject to date "{as_date}"'
             updated_fields.append("last_reviewed")
 
         # Build next review date command
@@ -1736,8 +1737,9 @@ class OmniFocusConnector:
                     f"set last review date of ({or_chain_target}) to (current date)"
                 )
             else:
+                as_date = self._iso_to_applescript_date(last_reviewed)
                 bulk_commands.append(
-                    f'set last review date of ({or_chain_target}) to date "{last_reviewed}"'
+                    f'set last review date of ({or_chain_target}) to date "{as_date}"'
                 )
             has_bulk = True
 
