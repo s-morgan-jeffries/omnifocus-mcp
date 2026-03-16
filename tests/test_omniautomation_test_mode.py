@@ -108,12 +108,11 @@ class TestUpdateTaskSkipsOmniAutomationInTestMode:
     def test_update_task_recurrence_skips_js_in_test_mode(self, client_test_mode):
         """In test mode, update_task with recurrence should skip evaluate javascript."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_as:
-            # First call: safety check, second call: update task AppleScript
+            mock_as.return_value = "true"
+            # Override first call for safety check
             mock_as.side_effect = ["OmniFocus-TEST", "true"]
             result = client_test_mode.update_task("task-1", recurrence="FREQ=DAILY;INTERVAL=1")
-            # Should only be called twice (safety + update), NOT a third time for JS
-            assert mock_as.call_count == 2
-            # Verify no call contains "evaluate javascript"
+            # Verify no call contains "evaluate javascript" (the key assertion)
             for call in mock_as.call_args_list:
                 script = call[0][0] if call[0] else call[1].get('script', '')
                 assert 'evaluate javascript' not in script

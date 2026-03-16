@@ -100,7 +100,7 @@ else
     echo "   Mismatches: $MISMATCHES file(s)"
     echo ""
     echo "📝 Action required:"
-    echo "   Follow the 'Making a Release' workflow in docs/guides/CONTRIBUTING.md"
+    echo "   Follow the 'Making a Release' workflow in docs/guides/DEVELOPMENT.md"
     echo ""
     echo "   Quick fix checklist:"
     echo "   1. ✅ pyproject.toml version = \"$VERSION\""
