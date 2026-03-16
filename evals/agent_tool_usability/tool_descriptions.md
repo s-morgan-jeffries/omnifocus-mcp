@@ -41,7 +41,7 @@ Retrieve ALL active projects with full details and hierarchy, optionally filtere
 - `include_last_activity: bool` (default: False) — Compute lastActivityDate (most recent task creation/completion)
 - `stalled_only: bool` (default: False) — Only return active projects with no available actions (implies include_task_health=True)
 
-**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, creationDate, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
+**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, creationDate, dueDate, deferDate, plannedDate, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. `dueDate`, `deferDate`, `plannedDate` — project-level dates in ISO format (empty string if not set). Tasks inherit effective dates from their containing project. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
 
 ---
 
@@ -57,6 +57,9 @@ Create a new project in OmniFocus.
 - `sequential: bool` (default: False, DEPRECATED) — Use project_type instead. If True, creates a sequential project.
 - `review_interval_weeks: int` (optional) — Review interval in weeks for GTD review cycle
 - `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
+- `due_date: str` (optional) — Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00"). Tasks inherit this as their effective due date.
+- `defer_date: str` (optional) — Defer date in ISO 8601 format (when project becomes available)
+- `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on the project)
 
 **Returns:** Success message with project ID and configuration details
 
@@ -80,6 +83,9 @@ Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_
 - `last_reviewed: str` (optional) — Last reviewed date in ISO format or "now"
 - `next_review_date: str` (optional) — Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval
 - `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
+- `due_date: str` (optional) — Due date in ISO 8601 format, or "" to clear
+- `defer_date: str` (optional) — Defer date in ISO 8601 format, or "" to clear
+- `planned_date: str` (optional) — Planned date in ISO 8601 format, or "" to clear
 
 **Returns:** Success message with project ID and updated fields, or error message
 
@@ -99,6 +105,9 @@ IMPORTANT: This function does NOT accept project_name or note parameters because
 - `review_interval_weeks: int` (optional) — Review interval in weeks
 - `last_reviewed: str` (optional) — Last review date ("now" or ISO format)
 - `next_review_date: str` (optional) — Explicit next review date in ISO format
+- `due_date: str` (optional) — Due date in ISO 8601 format, or "" to clear
+- `defer_date: str` (optional) — Defer date in ISO 8601 format, or "" to clear
+- `planned_date: str` (optional) — Planned date in ISO 8601 format, or "" to clear
 
 **Returns:** Success message with updated and failed counts
 
