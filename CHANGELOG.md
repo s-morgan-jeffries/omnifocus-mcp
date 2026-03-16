@@ -5,6 +5,43 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-03-16
+
+### Changed
+
+- **Major complexity reduction across core functions** (#265, #325, #328)
+  - `get_tasks`: CC 135 → 24 (82% reduction, 8 helper methods extracted)
+  - `update_task`: CC 55 → 7 (87% reduction, 3 helpers)
+  - `update_tasks`: CC 46 → 10 (78% reduction, 3 helpers)
+  - `get_projects`: CC 35 → 7 (80% reduction, 2 helpers)
+  - 130 new unit tests for extracted helpers
+
+### Fixed
+
+- **OmniFocus crashes during integration tests** (#324, #326)
+  - OmniAutomation (`evaluate javascript`) calls now skipped on headless test databases
+  - Root cause: `get_tags()` exclusivity enrichment triggered silent OmniFocus crash
+
+- **Review date conversion bugs** (#320, #330, #332, #334)
+  - `update_project` `next_review_date` passed raw ISO to AppleScript (produced year 12169)
+  - `update_project` `last_reviewed` had the same raw ISO bug
+  - Both now use `_iso_to_applescript_date()` like all other date fields
+
+- **JavaScript string escaping for OmniAutomation** (#318, #333)
+  - New `_escape_js_string()` for proper JS escaping in `evaluate javascript` contexts
+  - Replaces fragile `_escape_applescript_string() + .replace("'", "\\'")` pattern
+
+- **6 integration tests with wrong API signatures** (#327, #331)
+  - Fixed `update_tag(active=False)` → `update_tag(status="on_hold")`
+  - Skipped tests blocked by missing project date params (#329) and date bug (#330)
+
+### Maintenance
+
+- Performance benchmarks for v0.9.1 baseline (#282, #323)
+- Fixed stochastic blind eval failures (#314, #317)
+- Split issue templates and updated contributing guide (#283, #316)
+- Removed redundant /release-validate command (#321, #322)
+
 ## [0.9.1] - 2026-03-15
 
 ### Added
