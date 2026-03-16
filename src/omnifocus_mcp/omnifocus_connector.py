@@ -3820,7 +3820,8 @@ class OmniFocusConnector:
                 # Post-update: set/modify recurrence via OmniAutomation
                 # AppleScript property writes on repetition rules don't persist
                 # in OmniFocus 4.x, so we use evaluate javascript instead.
-                if _recurrence_js_needed:
+                # OmniAutomation crashes on headless test databases (#324)
+                if _recurrence_js_needed and not self._test_mode:
                     js_method_map = {
                         "fixed": "Task.RepetitionMethod.Fixed",
                         "due_after_completion": "Task.RepetitionMethod.DueDate",
@@ -4318,16 +4319,20 @@ class OmniFocusConnector:
                 tags = []
 
             # Enrich with OmniAutomation-only property (graceful fallback)
-            try:
-                exclusivity_map = self._get_tag_exclusivity_map()
-                for tag in tags:
-                    tag['childrenAreMutuallyExclusive'] = exclusivity_map.get(
-                        tag['id'], False
-                    )
-            except Exception:
-                # OmniAutomation unavailable (headless test DB) — default to False
+            if self._test_mode:
+                # OmniAutomation crashes on headless test databases (#324)
                 for tag in tags:
                     tag['childrenAreMutuallyExclusive'] = False
+            else:
+                try:
+                    exclusivity_map = self._get_tag_exclusivity_map()
+                    for tag in tags:
+                        tag['childrenAreMutuallyExclusive'] = exclusivity_map.get(
+                            tag['id'], False
+                        )
+                except Exception:
+                    for tag in tags:
+                        tag['childrenAreMutuallyExclusive'] = False
 
             return tags
         except subprocess.CalledProcessError as e:
@@ -4417,7 +4422,8 @@ class OmniFocusConnector:
                 raise Exception(f"Error creating tag: {result[len('ERROR:'):]}")
 
             # Post-create: set exclusivity via OmniAutomation (if requested)
-            if children_are_mutually_exclusive:
+            # OmniAutomation crashes on headless test databases (#324)
+            if children_are_mutually_exclusive and not self._test_mode:
                 self._set_tag_exclusivity(result, True)
 
             return result
@@ -4538,7 +4544,8 @@ class OmniFocusConnector:
             parsed = {"success": True, "updated_fields": []}
 
         # Post-update: set exclusivity via OmniAutomation (if requested)
-        if children_are_mutually_exclusive is not None:
+        # OmniAutomation crashes on headless test databases (#324)
+        if children_are_mutually_exclusive is not None and not self._test_mode:
             self._set_tag_exclusivity(tag_id, children_are_mutually_exclusive)
             parsed["updated_fields"].append(
                 "children_are_mutually_exclusive"

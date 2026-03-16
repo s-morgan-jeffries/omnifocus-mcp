@@ -1822,23 +1822,9 @@ class TestRepeatSummaryIntegration:
 
         print("\n✓ Non-recurring task has repeatSummary=None")
 
-    def test_recurring_task_has_populated_repeat_summary(self, client, test_project):
-        """Recurring task should return a non-empty repeatSummary string."""
-        task_id = client.create_task("test-repeat-summary-task", project_id=test_project)
-        try:
-            # Set recurrence via update_task (AppleScript — safe on test DB)
-            client.update_task(task_id, recurrence="FREQ=DAILY;INTERVAL=1")
-
-            tasks = client.get_tasks(task_id=task_id)
-            assert len(tasks) == 1
-            task = tasks[0]
-            assert task.get('isRecurring') is True
-            assert task.get('repeatSummary') is not None
-            assert isinstance(task['repeatSummary'], str)
-            assert len(task['repeatSummary']) > 0
-            print(f"\n✓ Recurring task repeatSummary: {task['repeatSummary']!r}")
-        finally:
-            client.delete_tasks(task_id)
+    # test_recurring_task_has_populated_repeat_summary moved to
+    # test_prod_integration.py — requires OmniAutomation (evaluate javascript)
+    # which crashes on headless test databases. See #324.
 
 
 
