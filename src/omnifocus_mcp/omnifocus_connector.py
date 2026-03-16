@@ -1015,6 +1015,9 @@ class OmniFocusConnector:
                 set dropDates to dropped date of fp
                 set lastRevDates to last review date of fp
                 set nextRevDates to next review date of fp
+                set projDueDates to due date of fp
+                set projDeferDates to defer date of fp
+                set projPlannedDates to planned date of fp
                 set containerIds to id of (container of fp)
                 set containerClasses to class of (container of fp)
 
@@ -1093,6 +1096,24 @@ class OmniFocusConnector:
                             end if
                         end try
 
+                        set dueDateStr to ""
+                        set dVal to item i of projDueDates
+                        if dVal is not missing value then
+                            set dueDateStr to (dVal as «class isot» as string)
+                        end if
+
+                        set deferDateStr to ""
+                        set dVal to item i of projDeferDates
+                        if dVal is not missing value then
+                            set deferDateStr to (dVal as «class isot» as string)
+                        end if
+
+                        set plannedDateStr to ""
+                        set pVal to item i of projPlannedDates
+                        if pVal is not missing value then
+                            set plannedDateStr to (pVal as «class isot» as string)
+                        end if
+
                         -- Per-project task operations (only when task_health/last_activity requested)
                         {health_init}
                         {task_ops_block}
@@ -1113,6 +1134,9 @@ class OmniFocusConnector:
                             "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
                             "\\"lastActivityDate\\": " & lastActivityStr & ", " & ¬
                             "\\"lastReviewDate\\": " & lastReviewDateStr & ", " & ¬
+                            "\\"dueDate\\": \\"" & dueDateStr & "\\", " & ¬
+                            "\\"deferDate\\": \\"" & deferDateStr & "\\", " & ¬
+                            "\\"plannedDate\\": \\"" & plannedDateStr & "\\", " & ¬
                             "\\"nextReviewDate\\": " & nextReviewDateStr{task_health_json_fields} & ¬
                             "}}"
 
