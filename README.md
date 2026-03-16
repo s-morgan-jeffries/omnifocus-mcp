@@ -1,8 +1,6 @@
 # OmniFocus MCP Server
 
-The most tested, safest, and best-optimized MCP server for OmniFocus on macOS.
-
-> **Note:** This is a personal project. You're welcome to fork, clone, and adapt it for your own use, but I'm not accepting pull requests or feature requests. Issues are used for internal tracking.
+A comprehensive, fast, reliable, and agent-friendly MCP server for OmniFocus on macOS.
 
 ## Why This Server
 
@@ -127,15 +125,9 @@ macOS will prompt for:
 - Accessibility access (to control OmniFocus via AppleScript)
 - Automation permissions for OmniFocus
 
-## Development
+## Contributing
 
-```bash
-make test                  # 782 unit tests (~2 min)
-make test-integration      # 138 tests against real OmniFocus
-make test-prod             # OmniAutomation tests (production DB)
-```
-
-See [CONTRIBUTING.md](docs/guides/CONTRIBUTING.md) for development workflow and TDD requirements.
+Bug reports and feature requests are welcome via [GitHub Issues](https://github.com/s-morgan-jeffries/omnifocus-mcp/issues). See [CONTRIBUTING.md](docs/guides/CONTRIBUTING.md) for development workflow and pull request guidelines.
 
 ## License
 
