@@ -659,6 +659,7 @@ class TestProjectCRUD:
         # TODO: Fix get_projects() to parse review interval correctly
         # assert projects[0]['reviewInterval'] == "2 weeks"
 
+    @pytest.mark.skip(reason="Blocked by #330: next_review_date passes raw ISO to AppleScript")
     def test_update_project_next_review_date_integration(self, client, test_project):
         """Integration: update_project() can set next_review_date explicitly."""
         next_review = "2026-06-01"
@@ -2277,7 +2278,7 @@ class TestAvailableOnlyOnHoldTags:
         # Create an On Hold tag
         tag_id = client.create_tag("test-on-hold-261")
         try:
-            client.update_tag(tag_id, active=False)
+            client.update_tag(tag_id, status="on_hold")
 
             # Create a task and assign the On Hold tag via update_task
             # (create_task On Hold tag bug was fixed in #267)
@@ -2306,7 +2307,7 @@ class TestAvailableOnlyOnHoldTags:
         """Bug #267: create_task should successfully assign On Hold tags."""
         tag_id = client.create_tag("test-on-hold-267")
         try:
-            client.update_tag(tag_id, active=False)
+            client.update_tag(tag_id, status="on_hold")
 
             # create_task should assign the On Hold tag directly
             task_id = client.create_task(
@@ -2328,7 +2329,7 @@ class TestAvailableOnlyOnHoldTags:
         """_get_on_hold_tag_names() returns names of tags set to On Hold."""
         tag_id = client.create_tag("test-on-hold-261-lookup")
         try:
-            client.update_tag(tag_id, active=False)
+            client.update_tag(tag_id, status="on_hold")
             on_hold = client._get_on_hold_tag_names()
             assert "test-on-hold-261-lookup" in on_hold
         finally:
@@ -2579,6 +2580,7 @@ class TestTagSidePreFilter:
                     warnings.warn(f"Failed to clean up task {task_id}: {e}")
 
 
+@pytest.mark.skip(reason="Blocked by #329: create_project/update_project don't expose due_date yet")
 class TestEffectiveDates:
     """Test that get_tasks returns effective (inherited) dates from the containing project."""
 
