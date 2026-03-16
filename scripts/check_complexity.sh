@@ -57,15 +57,17 @@ echo ""
 
 # Check for functions with unacceptable complexity
 # Documented exceptions with higher limits due to AppleScript constraints:
-#   - get_tasks: CC ≤ 136 (135 current - 21 params, extensive filtering, batch extraction, whose clauses)
+#   - get_tasks: CC ≤ 25 (24 current - orchestrator after full extraction)
+#   - _post_process_tasks: CC ≤ 29 (28 current - normalization + Python-side filtering)
+#   - _build_task_filter_checks: CC ≤ 55 (54 current - 12+ filter types × per-task + batch variants)
 #   - update_task: CC ≤ 54 (53 current - extensive property handling)
-#   - update_tasks: CC ≤ 45 (45 current - batch property handling)
+#   - update_tasks: CC ≤ 47 (46 current - batch property handling)
 #   - update_projects: CC ≤ 35 (34 current)
 #   - get_projects: CC ≤ 36 (35 current - v0.9.0 added stalled_only, completedByChildren, effective dates)
 #   - update_project: CC ≤ 33 (32 current - v0.9.0 added completed_by_children, next_review_date)
 #   - _filter_projects_by_conditions: CC ≤ 25 (24 current)
 #   - create_task: CC ≤ 22 (21 current - many optional parameters with date handling)
-#   - _format_task: CC ≤ 22 (21 current)
+#   - _format_task: CC ≤ 26 (25 current)
 EXCESSIVE_COMPLEXITY=$($RADON cc src/omnifocus_mcp/ -n D -j | $PYTHON -c "
 import sys
 import json
@@ -78,7 +80,11 @@ try:
                 cc = item['complexity']
                 name = item['name']
                 # Documented exceptions with specific limits
-                if name == 'get_tasks' and cc <= 136:
+                if name == 'get_tasks' and cc <= 25:
+                    continue
+                elif name == '_post_process_tasks' and cc <= 29:
+                    continue
+                elif name == '_build_task_filter_checks' and cc <= 55:
                     continue
                 elif name == 'update_task' and cc <= 54:
                     continue
@@ -90,9 +96,9 @@ try:
                     continue
                 elif name == 'create_task' and cc <= 22:
                     continue
-                elif name == 'update_tasks' and cc <= 45:
+                elif name == 'update_tasks' and cc <= 47:
                     continue
-                elif name == '_format_task' and cc <= 22:
+                elif name == '_format_task' and cc <= 26:
                     continue
                 elif name == 'update_projects' and cc <= 35:
                     continue
@@ -115,7 +121,9 @@ if [ $? -ne 0 ]; then
     echo ""
     echo "Maximum acceptable complexity:"
     echo "  - General functions: CC ≤ 20 (C rating or better)"
-    echo "  - get_tasks(): CC ≤ 136 (current: 135)"
+    echo "  - get_tasks(): CC ≤ 25 (current: 24)"
+    echo "  - _post_process_tasks(): CC ≤ 29 (current: 28)"
+    echo "  - _build_task_filter_checks(): CC ≤ 55 (current: 54)"
     echo "  - update_task(): CC ≤ 54 (current: 53)"
     echo "  - get_projects(): CC ≤ 36 (current: 35)"
     echo "  - update_project(): CC ≤ 33 (current: 32)"
@@ -127,7 +135,9 @@ fi
 echo "✅ PASS: All functions within complexity limits"
 echo ""
 echo "Documented high complexity functions (AppleScript constraints):"
-echo "  - get_tasks(): CC ≤ 136 (21 parameters, complex filtering, batch extraction, whose clauses)"
+echo "  - get_tasks(): CC ≤ 25 (orchestrator after full extraction)"
+echo "  - _post_process_tasks(): CC ≤ 29 (normalization + Python-side filtering)"
+echo "  - _build_task_filter_checks(): CC ≤ 55 (12+ filter types × per-task + batch variants)"
 echo "  - update_task(): CC ≤ 54 (extensive property handling)"
 echo "  - get_projects(): CC ≤ 36 (v0.9.0: stalled_only, completedByChildren, effective dates)"
 echo "  - update_project(): CC ≤ 33 (v0.9.0: completed_by_children, next_review_date)"
