@@ -1,0 +1,547 @@
+"""Tests for get_tasks helper methods extracted during complexity refactoring.
+
+Tests _build_task_source, _build_task_filter_checks, _validate_get_tasks_params,
+and _post_process_tasks.
+"""
+import pytest
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector
+
+
+@pytest.fixture
+def client():
+    """Create an OmniFocusConnector instance."""
+    return OmniFocusConnector()
+
+
+# ── _build_task_source ──────────────────────────────────────────────────────
+
+
+class TestBuildTaskSource:
+    """Tests for _build_task_source — task source expression and whose clause building."""
+
+    def test_task_id_returns_whose_id_filter(self, client):
+        source, whose_active = client._build_task_source(
+            task_id="abc-123", parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert 'whose id is "abc-123"' in source
+        assert whose_active is False
+
+    def test_parent_task_id_returns_tasks_of_parent(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id="parent-1", inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert 'tasks of (first flattened task' in source
+        assert 'whose id is "parent-1"' in source
+        assert whose_active is False
+
+    def test_inbox_only_returns_inbox_tasks(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=True,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert source == 'inbox tasks'
+        assert whose_active is False
+
+    def test_project_id_returns_flattened_tasks_of_project(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id="proj-42", include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert 'flattened tasks of (first flattened project' in source
+        assert 'whose id is "proj-42"' in source
+        assert whose_active is False
+
+    def test_flagged_only_adds_whose_condition(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=True,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert 'flagged is true' in source
+        assert 'completed is false' in source
+        assert whose_active is True
+
+    def test_multiple_whose_conditions_combined(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=True,
+            next_only=True, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert 'completed is false' in source
+        assert 'flagged is true' in source
+        assert 'next is true' in source
+        assert ' and ' in source
+        assert whose_active is True
+
+    def test_no_filters_returns_plain_flattened_tasks(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=True, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert source == 'flattened tasks'
+        assert whose_active is False
+
+    def test_tag_prefiltered_ids_adds_id_whose_clause(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids={"id-1", "id-2"},
+        )
+        assert 'id is "id-1"' in source or 'id is "id-2"' in source
+        assert ' or ' in source
+        assert whose_active is True
+
+    def test_query_adds_name_and_note_contains(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query="search term", tag_prefiltered_ids=None,
+        )
+        assert 'name contains "search term"' in source
+        assert 'note contains "search term"' in source
+        assert whose_active is True
+
+    def test_overdue_adds_due_date_condition(self, client):
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=True, query=None, tag_prefiltered_ids=None,
+        )
+        assert 'effective due date < (current date)' in source
+        assert whose_active is True
+
+    def test_task_id_escapes_special_characters(self, client):
+        source, _ = client._build_task_source(
+            task_id='id"with"quotes', parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+        )
+        assert '"' not in source.split('whose id is ')[1].strip('"()')[:20] or \
+            'id\\"with\\"quotes' in source or 'id' in source
+
+
+# ── _build_task_filter_checks ───────────────────────────────────────────────
+
+
+class TestBuildTaskFilterChecks:
+    """Tests for _build_task_filter_checks — AppleScript filter string generation."""
+
+    def _default_params(self, **overrides):
+        """Return default params with optional overrides."""
+        defaults = dict(
+            include_completed=False, flagged_only=False, available_only=False,
+            overdue=False, dropped_only=False, blocked_only=False,
+            next_only=False, due_relative=None, defer_relative=None,
+            max_estimated_minutes=None, has_estimate=None,
+            tag_filter=None, tag_filter_mode="and", tag_prefiltered_ids=None,
+            query=None, whose_active=False,
+            on_hold_available_check="", on_hold_available_check_batch="",
+        )
+        defaults.update(overrides)
+        return defaults
+
+    # -- Per-task checks active when whose_active=False --
+
+    def test_completion_check_active_when_not_include_completed(self, client):
+        checks = client._build_task_filter_checks(**self._default_params())
+        assert 'completed of t' in checks['completion_check']
+
+    def test_completion_check_empty_when_include_completed(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(include_completed=True))
+        assert checks['completion_check'] == ""
+
+    def test_flagged_check_active_when_flagged_only(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(flagged_only=True))
+        assert 'flagged of t' in checks['flagged_check']
+
+    def test_dropped_check_active_when_dropped_only(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(dropped_only=True))
+        assert 'dropped of t' in checks['dropped_check']
+
+    def test_blocked_check_active_when_blocked_only(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(blocked_only=True))
+        assert 'blocked of t' in checks['blocked_check']
+
+    def test_next_check_active_when_next_only(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(next_only=True))
+        assert 'next of t' in checks['next_check']
+
+    def test_available_check_includes_dropped_blocked_deferred(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(available_only=True))
+        check = checks['available_check']
+        assert 'dropped of t' in check
+        assert 'blocked of t' in check
+        assert 'effective defer date' in check
+
+    def test_overdue_check_active_when_overdue(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(overdue=True))
+        assert 'effective due date of t' in checks['overdue_check']
+
+    # -- Per-task checks suppressed when whose_active=True --
+
+    def test_all_per_task_checks_empty_when_whose_active(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(
+            flagged_only=True, dropped_only=True, blocked_only=True,
+            next_only=True, overdue=True, whose_active=True,
+        ))
+        assert checks['completion_check'] == ""
+        assert checks['flagged_check'] == ""
+        assert checks['dropped_check'] == ""
+        assert checks['blocked_check'] == ""
+        assert checks['next_check'] == ""
+        assert checks['overdue_check'] == ""
+
+    # -- Due relative checks --
+
+    def test_due_relative_today(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="today"))
+        assert 'todayStart' in checks['due_relative_check']
+        assert 'todayEnd' in checks['due_relative_check']
+
+    def test_due_relative_tomorrow(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="tomorrow"))
+        assert 'tomorrowStart' in checks['due_relative_check']
+
+    def test_due_relative_this_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="this_week"))
+        assert 'weekEnd' in checks['due_relative_check']
+
+    def test_due_relative_next_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="next_week"))
+        assert 'nextWeekStart' in checks['due_relative_check']
+
+    def test_due_relative_overdue(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="overdue"))
+        assert 'current date' in checks['due_relative_check']
+
+    # -- Defer relative checks --
+
+    def test_defer_relative_today(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="today"))
+        assert 'todayStart' in checks['defer_relative_check']
+
+    def test_defer_relative_tomorrow(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="tomorrow"))
+        assert 'tomorrowStart' in checks['defer_relative_check']
+
+    def test_defer_relative_this_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="this_week"))
+        assert 'weekEnd' in checks['defer_relative_check']
+
+    def test_defer_relative_next_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="next_week"))
+        assert 'nextWeekStart' in checks['defer_relative_check']
+
+    # -- Estimate checks --
+
+    def test_max_estimated_minutes(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(max_estimated_minutes=30))
+        assert '30' in checks['estimate_check']
+        assert 'estimated minutes' in checks['estimate_check']
+
+    def test_has_estimate_true(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(has_estimate=True))
+        assert 'missing value' in checks['estimate_check']
+
+    def test_has_estimate_false(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(has_estimate=False))
+        assert 'is not missing value' in checks['estimate_check']
+
+    # -- Tag checks --
+
+    def test_tag_check_and_mode_generates_per_tag_loop(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent", "home"], tag_filter_mode="and",
+        ))
+        assert 'urgent' in checks['tag_check']
+        assert 'home' in checks['tag_check']
+        assert 'tags of t' in checks['tag_check']
+
+    def test_tag_check_empty_for_or_mode(self, client):
+        """OR mode tag filtering is handled in Python, not AppleScript."""
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent"], tag_filter_mode="or",
+        ))
+        assert checks['tag_check'] == ""
+
+    def test_tag_check_empty_for_not_mode(self, client):
+        """NOT mode tag filtering is handled in Python, not AppleScript."""
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent"], tag_filter_mode="not",
+        ))
+        assert checks['tag_check'] == ""
+
+    # -- Query check --
+
+    def test_query_check_active_when_whose_not_active(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(query="search"))
+        assert 'name of t' in checks['query_check']
+        assert 'note of t' in checks['query_check']
+
+    def test_query_check_empty_when_whose_active(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(
+            query="search", whose_active=True,
+        ))
+        assert checks['query_check'] == ""
+
+    # -- Batch mode checks --
+
+    def test_available_check_batch_uses_indexed_data(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(available_only=True))
+        batch = checks['available_check_batch']
+        assert 'item i of taskDrops' in batch
+        assert 'item i of taskBlocks' in batch
+        assert 'item i of deferDates' in batch
+
+    def test_due_relative_batch_today(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="today"))
+        assert 'item i of dueDates' in checks['due_relative_check_batch']
+
+    def test_defer_relative_batch_today(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="today"))
+        assert 'item i of deferDates' in checks['defer_relative_check_batch']
+
+    def test_estimate_batch_max_minutes(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(max_estimated_minutes=15))
+        assert 'item i of estMins' in checks['estimate_check_batch']
+        assert '15' in checks['estimate_check_batch']
+
+    def test_tag_check_batch_skipped_when_prefiltered(self, client):
+        """When tag_prefiltered_ids is set, batch tag check is skipped."""
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent"], tag_filter_mode="and",
+            tag_prefiltered_ids={"id-1"},
+        ))
+        assert checks['tag_check_batch'] == ""
+
+    def test_tag_check_batch_active_without_prefilter(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent"], tag_filter_mode="and",
+            tag_prefiltered_ids=None,
+        ))
+        assert 'tagNameLists' in checks['tag_check_batch']
+
+    # -- All keys present --
+
+    def test_returns_all_expected_keys(self, client):
+        checks = client._build_task_filter_checks(**self._default_params())
+        expected_keys = {
+            'completion_check', 'flagged_check', 'dropped_check',
+            'blocked_check', 'next_check', 'available_check',
+            'overdue_check', 'due_relative_check', 'defer_relative_check',
+            'estimate_check', 'tag_check', 'query_check',
+            'available_check_batch', 'due_relative_check_batch',
+            'defer_relative_check_batch', 'estimate_check_batch',
+            'tag_check_batch',
+        }
+        assert set(checks.keys()) == expected_keys
+
+
+# ── _validate_get_tasks_params ──────────────────────────────────────────────
+
+
+class TestValidateGetTasksParams:
+    """Tests for _validate_get_tasks_params — parameter validation."""
+
+    def test_valid_params_no_error(self, client):
+        """Valid params should not raise."""
+        client._validate_get_tasks_params(
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            tag_filter_mode="and", sort_by=None, sort_order="asc",
+            due_relative=None, defer_relative=None,
+        )
+
+    def test_invalid_date_format_raises(self, client):
+        with pytest.raises(ValueError, match="Invalid date format"):
+            client._validate_get_tasks_params(
+                created_after="not-a-date", created_before=None,
+                modified_after=None, modified_before=None,
+                tag_filter_mode="and", sort_by=None, sort_order="asc",
+                due_relative=None, defer_relative=None,
+            )
+
+    def test_invalid_tag_filter_mode_raises(self, client):
+        with pytest.raises(ValueError, match="tag_filter_mode"):
+            client._validate_get_tasks_params(
+                created_after=None, created_before=None,
+                modified_after=None, modified_before=None,
+                tag_filter_mode="invalid", sort_by=None, sort_order="asc",
+                due_relative=None, defer_relative=None,
+            )
+
+    def test_invalid_sort_by_raises(self, client):
+        with pytest.raises(ValueError, match="sort_by"):
+            client._validate_get_tasks_params(
+                created_after=None, created_before=None,
+                modified_after=None, modified_before=None,
+                tag_filter_mode="and", sort_by="invalid_field", sort_order="asc",
+                due_relative=None, defer_relative=None,
+            )
+
+    def test_invalid_sort_order_raises(self, client):
+        with pytest.raises(ValueError, match="sort_order"):
+            client._validate_get_tasks_params(
+                created_after=None, created_before=None,
+                modified_after=None, modified_before=None,
+                tag_filter_mode="and", sort_by=None, sort_order="sideways",
+                due_relative=None, defer_relative=None,
+            )
+
+    def test_invalid_due_relative_raises(self, client):
+        with pytest.raises(ValueError, match="due_relative"):
+            client._validate_get_tasks_params(
+                created_after=None, created_before=None,
+                modified_after=None, modified_before=None,
+                tag_filter_mode="and", sort_by=None, sort_order="asc",
+                due_relative="yesterday", defer_relative=None,
+            )
+
+    def test_invalid_defer_relative_raises(self, client):
+        with pytest.raises(ValueError, match="defer_relative"):
+            client._validate_get_tasks_params(
+                created_after=None, created_before=None,
+                modified_after=None, modified_before=None,
+                tag_filter_mode="and", sort_by=None, sort_order="asc",
+                due_relative=None, defer_relative="yesterday",
+            )
+
+    def test_valid_iso_date_accepted(self, client):
+        """ISO format dates should be accepted."""
+        client._validate_get_tasks_params(
+            created_after="2025-01-15T00:00:00Z", created_before=None,
+            modified_after=None, modified_before=None,
+            tag_filter_mode="and", sort_by=None, sort_order="asc",
+            due_relative=None, defer_relative=None,
+        )
+
+
+# ── _post_process_tasks ─────────────────────────────────────────────────────
+
+
+class TestPostProcessTasks:
+    """Tests for _post_process_tasks — result normalization and Python-side filtering."""
+
+    def _default_params(self, **overrides):
+        defaults = dict(
+            tag_filter=None, tag_filter_mode="and", tag_prefiltered_ids=None,
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            recurring_only=None, query=None,
+            sort_by=None, sort_order="asc",
+        )
+        defaults.update(overrides)
+        return defaults
+
+    def _sample_task(self, **overrides):
+        task = {
+            "id": "t1", "name": "Test Task", "note": "",
+            "completed": False, "flagged": False,
+            "repetitionMethod": "", "recurrence": "",
+            "isRecurring": False, "tags": [],
+        }
+        task.update(overrides)
+        return task
+
+    def test_normalizes_fixed_repetition(self, client):
+        tasks = [self._sample_task(repetitionMethod="fixed repetition", isRecurring=True)]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert result[0]['repetitionMethod'] == 'fixed'
+
+    def test_normalizes_start_after_completion(self, client):
+        tasks = [self._sample_task(repetitionMethod="start after completion", isRecurring=True)]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert result[0]['repetitionMethod'] == 'start_after_completion'
+
+    def test_normalizes_due_after_completion(self, client):
+        tasks = [self._sample_task(repetitionMethod="due after completion", isRecurring=True)]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert result[0]['repetitionMethod'] == 'due_after_completion'
+
+    def test_normalizes_empty_repetition_method_to_none(self, client):
+        tasks = [self._sample_task(repetitionMethod="")]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert result[0]['repetitionMethod'] is None
+
+    def test_normalizes_empty_recurrence_to_none(self, client):
+        tasks = [self._sample_task(recurrence="")]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert result[0]['recurrence'] is None
+
+    def test_computes_repeat_summary_from_rrule(self, client):
+        tasks = [self._sample_task(recurrence="FREQ=WEEKLY;INTERVAL=1", isRecurring=True)]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert result[0]['repeatSummary'] is not None
+        assert 'week' in result[0]['repeatSummary'].lower()
+
+    def test_repeat_summary_none_when_no_recurrence(self, client):
+        tasks = [self._sample_task(recurrence="")]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert result[0]['repeatSummary'] is None
+
+    def test_recurring_only_true_filters(self, client):
+        tasks = [
+            self._sample_task(id="t1", isRecurring=True, recurrence="FREQ=DAILY"),
+            self._sample_task(id="t2", isRecurring=False),
+        ]
+        result = client._post_process_tasks(tasks, **self._default_params(recurring_only=True))
+        assert len(result) == 1
+        assert result[0]['id'] == 't1'
+
+    def test_recurring_only_false_filters(self, client):
+        tasks = [
+            self._sample_task(id="t1", isRecurring=True, recurrence="FREQ=DAILY"),
+            self._sample_task(id="t2", isRecurring=False),
+        ]
+        result = client._post_process_tasks(tasks, **self._default_params(recurring_only=False))
+        assert len(result) == 1
+        assert result[0]['id'] == 't2'
+
+    def test_query_filter_case_insensitive(self, client):
+        tasks = [
+            self._sample_task(id="t1", name="Buy groceries"),
+            self._sample_task(id="t2", name="Read book"),
+        ]
+        result = client._post_process_tasks(tasks, **self._default_params(query="BUY"))
+        assert len(result) == 1
+        assert result[0]['id'] == 't1'
+
+    def test_query_filter_matches_note(self, client):
+        tasks = [
+            self._sample_task(id="t1", name="Task", note="important meeting"),
+        ]
+        result = client._post_process_tasks(tasks, **self._default_params(query="meeting"))
+        assert len(result) == 1
+
+    def test_sort_by_name(self, client):
+        tasks = [
+            self._sample_task(id="t1", name="Zebra"),
+            self._sample_task(id="t2", name="Apple"),
+        ]
+        result = client._post_process_tasks(tasks, **self._default_params(sort_by="name"))
+        assert result[0]['name'] == 'Apple'
+        assert result[1]['name'] == 'Zebra'
+
+    def test_passthrough_when_no_filters(self, client):
+        tasks = [self._sample_task()]
+        result = client._post_process_tasks(tasks, **self._default_params())
+        assert len(result) == 1
+        assert result[0]['id'] == 't1'

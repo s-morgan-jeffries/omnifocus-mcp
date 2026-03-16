@@ -2090,92 +2090,101 @@ class OmniFocusConnector:
 
         return summary
 
-
-
-    def get_tasks(
+    def _post_process_tasks(
         self,
-        task_id: Optional[str] = None,  # NEW (Phase 3.1): Filter to specific task
-        parent_task_id: Optional[str] = None,  # NEW (Phase 3.1): Filter by parent
-        include_full_notes: bool = False,  # NEW (Phase 3.1): Return full notes
-        project_id: Optional[str] = None,
-        include_completed: bool = False,
-        flagged_only: bool = False,
-        available_only: bool = False,
-        overdue: bool = False,
-        dropped_only: bool = False,
-        blocked_only: bool = False,
-        next_only: bool = False,
-        due_relative: Optional[str] = None,
-        defer_relative: Optional[str] = None,
-        max_estimated_minutes: Optional[int] = None,
-        has_estimate: Optional[bool] = None,
-        tag_filter: Optional[list[str]] = None,
-        tag_filter_mode: str = "and",
-        created_after: Optional[str] = None,
-        created_before: Optional[str] = None,
-        modified_after: Optional[str] = None,
-        modified_before: Optional[str] = None,
-        sort_by: Optional[str] = None,
-        sort_order: str = "asc",
-        recurring_only: Optional[bool] = None,
-        query: Optional[str] = None,
-        inbox_only: bool = False,
-        timeout: int = 120
+        tasks: list[dict[str, Any]],
+        *,
+        tag_filter: Optional[list[str]],
+        tag_filter_mode: str,
+        tag_prefiltered_ids: Optional[set],
+        created_after: Optional[str],
+        created_before: Optional[str],
+        modified_after: Optional[str],
+        modified_before: Optional[str],
+        recurring_only: Optional[bool],
+        query: Optional[str],
+        sort_by: Optional[str],
+        sort_order: str,
     ) -> list[dict[str, Any]]:
-        """Get tasks from OmniFocus with optional filtering.
+        """Post-process tasks returned from AppleScript: normalize and filter.
 
-        NOTE: This method is intentionally long (628 lines) because:
-        1. AppleScript must be generated as a single self-contained string
-        2. AppleScript is verbose and requires extensive property extraction
-        3. 21 parameters require conditional logic for filter generation
-        4. Complex date handling and recurring task logic
-        5. Post-processing filters (tag logic, date ranges) in Python
-
-        The method is organized into clear sections:
-        - Parameter validation and setup
-        - AppleScript filter condition generation
-        - AppleScript property extraction
-        - AppleScript execution
-        - Python-side post-processing filters
-        - Result sorting and return
-
-        Args:
-            task_id: NEW (Phase 3.1): Filter to specific task by ID (consolidates get_task())
-            parent_task_id: NEW (Phase 3.1): Filter to subtasks of specific parent (consolidates get_subtasks())
-            include_full_notes: NEW (Phase 3.1): Return full note content instead of truncated (consolidates get_note())
-            project_id: Optional project ID to filter tasks. If None, returns all tasks (ignored if inbox_only=True).
-            include_completed: Whether to include completed tasks (default: False)
-            flagged_only: Only return flagged tasks (default: False)
-            available_only: Only return available tasks (not blocked or deferred) (default: False)
-            overdue: Only return overdue tasks (default: False)
-            dropped_only: Only return dropped tasks (default: False)
-            blocked_only: Only return blocked tasks (default: False)
-            next_only: Only return next tasks (default: False)
-            due_relative: Relative due date filter - "today", "tomorrow", "this_week", "next_week", "overdue"
-            defer_relative: Relative defer date filter - "today", "tomorrow", "this_week", "next_week"
-            max_estimated_minutes: Only return tasks estimated at or under this many minutes
-            has_estimate: If True, only return tasks with estimates; if False, only tasks without estimates
-            tag_filter: List of tag names to filter by
-            tag_filter_mode: Tag filtering logic - "and" (all tags), "or" (any tag), "not" (none of tags) (default: "and")
-            created_after: Only return tasks created after this ISO date (e.g., "2025-01-15T00:00:00Z")
-            created_before: Only return tasks created before this ISO date
-            modified_after: Only return tasks modified after this ISO date
-            modified_before: Only return tasks modified before this ISO date
-            sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
-            sort_order: Sort order - "asc" or "desc" (default: "asc")
-            recurring_only: If True, only return recurring tasks; if False, only non-recurring tasks; if None, return all (default: None)
-            query: Optional search term to filter by name or note (case-insensitive)
-            inbox_only: Only return inbox tasks (default: False)
-            timeout: Maximum seconds to wait for AppleScript (default: 120). Increase for large task lists (500+)
-
-        Returns:
-            list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, tags, and recurring info
-
-        Raises:
-            ValueError: If relative date filter value, tag_filter_mode, date format, or sort parameters are invalid
-            subprocess.TimeoutExpired: If AppleScript execution exceeds timeout (increase timeout for large task lists)
+        Handles repetition normalization, Python-side tag/date/recurring/query
+        filtering, and sorting.
         """
-        # Validate date formats
+        # Normalize repetitionMethod values
+        for task in tasks:
+            rep_method = task.get('repetitionMethod', '')
+            if rep_method == 'fixed repetition':
+                task['repetitionMethod'] = 'fixed'
+            elif rep_method == 'start after completion':
+                task['repetitionMethod'] = 'start_after_completion'
+            elif rep_method == 'due after completion':
+                task['repetitionMethod'] = 'due_after_completion'
+            elif rep_method == '':
+                task['repetitionMethod'] = None
+
+            # Normalize recurrence
+            if task.get('recurrence', '') == '':
+                task['recurrence'] = None
+
+            # Compute repeatSummary from RRULE
+            rrule = task.get('recurrence')
+            if rrule:
+                task['repeatSummary'] = OmniFocusConnector._rrule_to_summary(rrule)
+            else:
+                task['repeatSummary'] = None
+
+        # Apply Python-based tag filtering
+        # Skip when tag pre-filter already narrowed the task set via whose ID clause
+        if tag_filter and len(tag_filter) > 0 and tag_prefiltered_ids is None:
+            if tag_filter_mode == "and":
+                tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
+            elif tag_filter_mode in ["or", "not"]:
+                tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
+
+        # Apply date range filtering
+        if created_after or created_before or modified_after or modified_before:
+            tasks = self._filter_by_date_range(
+                tasks, created_after, created_before,
+                modified_after, modified_before
+            )
+
+        # Apply recurring filter
+        if recurring_only is not None:
+            if recurring_only:
+                tasks = [t for t in tasks if t.get('isRecurring', False)]
+            else:
+                tasks = [t for t in tasks if not t.get('isRecurring', False)]
+
+        # Apply query filter if provided
+        if query:
+            query_lower = query.lower()
+            tasks = [
+                t for t in tasks
+                if query_lower in t.get('name', '').lower()
+                or query_lower in t.get('note', '').lower()
+            ]
+
+        # Apply sorting if requested
+        if sort_by:
+            tasks = self._sort_tasks(tasks, sort_by, sort_order)
+
+        return tasks
+
+    def _validate_get_tasks_params(
+        self,
+        *,
+        created_after: Optional[str],
+        created_before: Optional[str],
+        modified_after: Optional[str],
+        modified_before: Optional[str],
+        tag_filter_mode: str,
+        sort_by: Optional[str],
+        sort_order: str,
+        due_relative: Optional[str],
+        defer_relative: Optional[str],
+    ) -> None:
+        """Validate get_tasks parameters, raising ValueError for invalid values."""
         from datetime import datetime
         for date_param, date_value in [
             ("created_after", created_after),
@@ -2189,102 +2198,61 @@ class OmniFocusConnector:
                 except ValueError:
                     raise ValueError(f"Invalid date format for {date_param}: {date_value}. Use ISO format (e.g., '2025-01-15T00:00:00Z')")
 
-        # Validate tag filter mode
         valid_tag_filter_modes = ["and", "or", "not"]
         if tag_filter_mode not in valid_tag_filter_modes:
             raise ValueError(f"Invalid tag_filter_mode value: {tag_filter_mode}. Must be one of: {valid_tag_filter_modes}")
 
-        # Validate sort parameters
         valid_sort_by = ["name", "due_date", "defer_date", None]
         valid_sort_order = ["asc", "desc"]
-
         if sort_by not in valid_sort_by:
             raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
         if sort_order not in valid_sort_order:
             raise ValueError(f"Invalid sort_order value: {sort_order}. Must be one of: {valid_sort_order}")
 
-        # Validate relative date parameters
         valid_due_relative = ["today", "tomorrow", "this_week", "next_week", "overdue", None]
         valid_defer_relative = ["today", "tomorrow", "this_week", "next_week", None]
-
         if due_relative not in valid_due_relative:
             raise ValueError(f"Invalid due_relative value: {due_relative}. Must be one of: {valid_due_relative[:-1]}")
         if defer_relative not in valid_defer_relative:
             raise ValueError(f"Invalid defer_relative value: {defer_relative}. Must be one of: {valid_defer_relative[:-1]}")
 
-        # Detect if selective filters are active (Phase 2: Conditional filter-first optimization)
-        # Selective filters eliminate >80% of tasks and benefit from filter-first architecture
-        selective_filters_active = (
-            flagged_only or
-            overdue or
-            dropped_only or
-            blocked_only or
-            next_only or
-            query or
-            available_only or
-            tag_filter or  # Ensures NOT mode uses FILTER-FIRST, not EXTRACT-THEN-FILTER
-            due_relative in ['today', 'tomorrow', 'this_week', 'next_week', 'overdue']
-        )
+    def _build_task_source(
+        self,
+        *,
+        task_id: Optional[str],
+        parent_task_id: Optional[str],
+        inbox_only: bool,
+        project_id: Optional[str],
+        include_completed: bool,
+        flagged_only: bool,
+        next_only: bool,
+        dropped_only: bool,
+        blocked_only: bool,
+        overdue: bool,
+        query: Optional[str],
+        tag_prefiltered_ids: Optional[set],
+    ) -> tuple[str, bool]:
+        """Build AppleScript task source expression and whose conditions.
 
-        # Tag-side pre-filter: query task IDs from tag objects instead of
-        # scanning all tasks. This reverses the lookup direction for massive
-        # speedup (from 120s+ to ~1-2s). Only for AND/OR modes — NOT mode
-        # is inherently a full scan and uses the fallback path.
-        tag_prefiltered_ids = None
-        if (tag_filter and len(tag_filter) > 0
-                and tag_filter_mode != "not"
-                and not task_id and not parent_task_id and not inbox_only):
-            tag_prefiltered_ids = self._get_task_ids_for_tags(
-                tag_filter, tag_filter_mode, include_completed
-            )
-            if tag_prefiltered_ids is not None and len(tag_prefiltered_ids) == 0:
-                return []  # No tasks match — early return
-
-        # Pre-fetch On Hold tag names for available_only filtering.
-        # OmniFocus's Available perspective excludes tasks with On Hold tags.
-        on_hold_tag_names: list[str] = []
-        on_hold_tags_decl = ""
-        on_hold_available_check = ""
-        on_hold_available_check_batch = ""
-        if available_only:
-            on_hold_tag_names = self._get_on_hold_tag_names()
-            if on_hold_tag_names:
-                escaped = [f'"{self._escape_applescript_string(n)}"' for n in on_hold_tag_names]
-                on_hold_tags_decl = f"set onHoldTags to {{{', '.join(escaped)}}}"
-                # Per-task check (filter-first / extract-then-filter)
-                on_hold_available_check = """
-                        -- Skip tasks with On Hold tags
-                        set taskTagNms to name of (tags of t)
-                        repeat with tn in taskTagNms
-                            if tn is in onHoldTags then error "skip unavailable task"
-                        end repeat"""
-                # Batch check (uses already batch-read tagNameLists)
-                on_hold_available_check_batch = """
-                        -- Skip tasks with On Hold tags (batch data)
-                        set taskTagNms to contents of (item i of tagNameLists)
-                        repeat with tn in taskTagNms
-                            if tn is in onHoldTags then error "skip unavailable"
-                        end repeat"""
-
-        # Build task source with native 'whose' pre-filtering where possible.
-        # OmniFocus evaluates 'whose' clauses natively (~20-30x faster than
-        # manual iteration with per-task property checks). See PERFORMANCE_PROFILING.md.
+        Returns (task_source, whose_active) where task_source is the AppleScript
+        expression to get tasks and whose_active indicates if whose filtering is used.
+        """
         if task_id:
             task_id_escaped = self._escape_applescript_string(task_id)
-            task_source = f'(flattened tasks whose id is "{task_id_escaped}")'
+            return f'(flattened tasks whose id is "{task_id_escaped}")', False
         elif parent_task_id:
             parent_id_escaped = self._escape_applescript_string(parent_task_id)
             parent_filter = f'whose id is "{parent_id_escaped}"'
-            task_source = f'tasks of (first flattened task {parent_filter})'
+            return f'tasks of (first flattened task {parent_filter})', False
         elif inbox_only:
-            task_source = 'inbox tasks'
+            return 'inbox tasks', False
         elif project_id:
             project_id_escaped = self._escape_applescript_string(project_id)
             project_filter = f'whose id is "{project_id_escaped}"'
-            task_source = f'flattened tasks of (first flattened project {project_filter})'
+            return f'flattened tasks of (first flattened project {project_filter})', False
         else:
             # Build whose conditions for filters that OmniFocus can evaluate natively
-            whose_conditions = []
+            whose_conditions: list[str] = []
             if not include_completed:
                 whose_conditions.append("completed is false")
             if flagged_only:
@@ -2310,14 +2278,39 @@ class OmniFocusConnector:
                 whose_conditions.append(f'({id_conditions})')
 
             if whose_conditions:
-                task_source = f'(flattened tasks whose {" and ".join(whose_conditions)})'
+                return f'(flattened tasks whose {" and ".join(whose_conditions)})', True
             else:
-                task_source = 'flattened tasks'
+                return 'flattened tasks', False
 
-        # Build in-loop filter checks. These are skipped when 'whose' handles the filter
-        # natively (whose_active). Filters handled by whose: completed, flagged, next,
-        # dropped, blocked, overdue, query.
-        whose_active = len(whose_conditions) > 0 if not (task_id or parent_task_id or inbox_only or project_id) else False
+    def _build_task_filter_checks(
+        self,
+        *,
+        include_completed: bool,
+        flagged_only: bool,
+        available_only: bool,
+        overdue: bool,
+        dropped_only: bool,
+        blocked_only: bool,
+        next_only: bool,
+        due_relative: Optional[str],
+        defer_relative: Optional[str],
+        max_estimated_minutes: Optional[int],
+        has_estimate: Optional[bool],
+        tag_filter: Optional[list[str]],
+        tag_filter_mode: str,
+        tag_prefiltered_ids: Optional[set],
+        query: Optional[str],
+        whose_active: bool,
+        on_hold_available_check: str,
+        on_hold_available_check_batch: str,
+    ) -> dict[str, str]:
+        """Generate AppleScript filter check strings for get_tasks.
+
+        Returns dict with per-task checks (e.g. 'completion_check', 'flagged_check')
+        and batch-mode checks (e.g. 'available_check_batch', 'due_relative_check_batch').
+        The caller selects which set to use based on whose_active.
+        """
+        checks: dict[str, str] = {}
 
         # Completion filter — skip if whose already filters completed
         completion_check = ""
@@ -2327,6 +2320,7 @@ class OmniFocusConnector:
                         if completed of t then
                             error "skip completed task"
                         end if"""
+        checks['completion_check'] = completion_check
 
         # Flagged filter — skip if whose already filters flagged
         flagged_check = ""
@@ -2336,6 +2330,7 @@ class OmniFocusConnector:
                         if not flagged of t then
                             error "skip non-flagged task"
                         end if"""
+        checks['flagged_check'] = flagged_check
 
         # Dropped filter — skip if whose already filters dropped
         dropped_check = ""
@@ -2345,6 +2340,7 @@ class OmniFocusConnector:
                         if not dropped of t then
                             error "skip non-dropped task"
                         end if"""
+        checks['dropped_check'] = dropped_check
 
         # Blocked filter — skip if whose already filters blocked
         blocked_check = ""
@@ -2354,6 +2350,7 @@ class OmniFocusConnector:
                         if not blocked of t then
                             error "skip non-blocked task"
                         end if"""
+        checks['blocked_check'] = blocked_check
 
         # Next filter — skip if whose already filters next
         next_check = ""
@@ -2363,6 +2360,7 @@ class OmniFocusConnector:
                         if not next of t then
                             error "skip non-next task"
                         end if"""
+        checks['next_check'] = next_check
 
         # Build available filter (not dropped, not blocked, not deferred, not On Hold tagged)
         available_check = "" if not available_only else f"""
@@ -2382,6 +2380,7 @@ class OmniFocusConnector:
                                 end if
                             end if
                         end try{on_hold_available_check}"""
+        checks['available_check'] = available_check
 
         # Overdue filter — skip if whose already filters by due date
         overdue_check = ""
@@ -2398,6 +2397,7 @@ class OmniFocusConnector:
                         on error
                             error "skip non-overdue task"
                         end try"""
+        checks['overdue_check'] = overdue_check
 
         # Build relative due date filter
         due_relative_check = ""
@@ -2461,6 +2461,7 @@ class OmniFocusConnector:
                         if taskDue >= (current date) then
                             error "skip task"
                         end if"""
+        checks['due_relative_check'] = due_relative_check
 
         # Build relative defer date filter
         defer_relative_check = ""
@@ -2514,6 +2515,7 @@ class OmniFocusConnector:
                         if taskDefer < nextWeekStart or taskDefer > nextWeekEnd then
                             error "skip task"
                         end if"""
+        checks['defer_relative_check'] = defer_relative_check
 
         # Build time estimate filters
         estimate_check = ""
@@ -2539,13 +2541,11 @@ class OmniFocusConnector:
                         if estMins is not missing value and estMins > 0 then
                             error "skip task"
                         end if"""
+        checks['estimate_check'] = estimate_check
 
-        # Build tag filter
-        # Tag filtering: only use AppleScript for AND mode (existing behavior)
-        # OR and NOT modes will be filtered in Python after retrieval
+        # Build tag filter (AND mode only in AppleScript; OR/NOT handled in Python)
         tag_check = ""
         if tag_filter and len(tag_filter) > 0 and tag_filter_mode == "and":
-            # Build AppleScript to check for all required tags (AND logic)
             tag_checks = []
             for tag_name in tag_filter:
                 tag_escaped = self._escape_applescript_string(tag_name)
@@ -2562,6 +2562,7 @@ class OmniFocusConnector:
                             error "skip task without required tag"
                         end if''')
             tag_check = "".join(tag_checks)
+        checks['tag_check'] = tag_check
 
         # Query filter — skip if whose already filters by name/note contains
         query_check = ""
@@ -2579,14 +2580,10 @@ class OmniFocusConnector:
                         if not queryCheck then
                             error "skip non-matching task"
                         end if"""
+        checks['query_check'] = query_check
 
-        # Build AppleScript with conditional architecture
-        # Three modes:
-        # 1. BATCH: whose_active — batch property reads via 'a reference to' (fastest)
-        # 2. FILTER-FIRST: selective_filters_active but not whose — per-task loop, filters before extraction
-        # 3. EXTRACT-THEN-FILTER: no selective filters — per-task loop, extraction before filters
+        # --- Batch-mode filter checks (use indexed batch data instead of per-task reads) ---
 
-        # Build batch-mode filter checks (use indexed batch data instead of per-task reads)
         available_check_batch = ""
         if available_only:
             available_check_batch = f"""
@@ -2597,6 +2594,7 @@ class OmniFocusConnector:
                         if dVal is not missing value then
                             if dVal > (current date) then error "skip unavailable"
                         end if{on_hold_available_check_batch}"""
+        checks['available_check_batch'] = available_check_batch
 
         due_relative_check_batch = ""
         if due_relative:
@@ -2639,6 +2637,7 @@ class OmniFocusConnector:
                         if taskDue is missing value then error "skip task"
                         if taskDue >= (current date) then error "skip task"
                         """
+        checks['due_relative_check_batch'] = due_relative_check_batch
 
         defer_relative_check_batch = ""
         if defer_relative:
@@ -2675,6 +2674,7 @@ class OmniFocusConnector:
                         set nextWeekEnd to nextWeekStart + (7 * days)
                         if taskDefer < nextWeekStart or taskDefer > nextWeekEnd then error "skip task"
                         """
+        checks['defer_relative_check_batch'] = defer_relative_check_batch
 
         estimate_check_batch = ""
         if max_estimated_minutes is not None:
@@ -2693,6 +2693,7 @@ class OmniFocusConnector:
                         set emVal to contents of (item i of estMins)
                         if emVal is not missing value and emVal > 0 then error "skip task"
                         """
+        checks['estimate_check_batch'] = estimate_check_batch
 
         tag_check_batch = ""
         if tag_filter and len(tag_filter) > 0 and tag_filter_mode == "and" and tag_prefiltered_ids is None:
@@ -2711,12 +2712,28 @@ class OmniFocusConnector:
                         if not hasTag then error "skip task without required tag"
                         ''')
             tag_check_batch = "".join(tag_checks_batch)
+        checks['tag_check_batch'] = tag_check_batch
 
-        if whose_active:
-            # BATCH MODE: Use 'a reference to' for batch property reads.
-            # All properties are read in O(P) Apple Events instead of O(N×P).
-            # See docs/reference/PERFORMANCE_PROFILING.md for experiment results.
-            script = f'''
+        return checks
+
+    def _build_batch_mode_script(
+        self,
+        task_source: str,
+        on_hold_tags_decl: str,
+        filter_checks: dict[str, str],
+    ) -> str:
+        """Build the BATCH mode AppleScript for get_tasks.
+
+        Uses 'a reference to' for O(P) batch property reads.
+        Returns the complete AppleScript string.
+        """
+        available_check_batch = filter_checks['available_check_batch']
+        due_relative_check_batch = filter_checks['due_relative_check_batch']
+        defer_relative_check_batch = filter_checks['defer_relative_check_batch']
+        estimate_check_batch = filter_checks['estimate_check_batch']
+        tag_check_batch = filter_checks['tag_check_batch']
+
+        return f'''
         use AppleScript version "2.4"
         use scripting additions
 
@@ -2952,7 +2969,32 @@ class OmniFocusConnector:
         return "[" & linefeed & output & linefeed & "]"
         ''' + APPLESCRIPT_JSON_HELPERS
 
-        elif selective_filters_active:
+    def _build_per_task_mode_script(
+        self,
+        task_source: str,
+        on_hold_tags_decl: str,
+        selective_filters_active: bool,
+        filter_checks: dict[str, str],
+    ) -> str:
+        """Build per-task mode AppleScript for get_tasks.
+
+        Chooses FILTER-FIRST or EXTRACT-THEN-FILTER based on selective_filters_active.
+        Returns the complete AppleScript string.
+        """
+        completion_check = filter_checks['completion_check']
+        flagged_check = filter_checks['flagged_check']
+        dropped_check = filter_checks['dropped_check']
+        blocked_check = filter_checks['blocked_check']
+        next_check = filter_checks['next_check']
+        available_check = filter_checks['available_check']
+        overdue_check = filter_checks['overdue_check']
+        due_relative_check = filter_checks['due_relative_check']
+        defer_relative_check = filter_checks['defer_relative_check']
+        estimate_check = filter_checks['estimate_check']
+        tag_check = filter_checks['tag_check']
+        query_check = filter_checks['query_check']
+
+        if selective_filters_active:
             # FILTER-FIRST: Apply filters BEFORE property extraction (per-task loop)
             script = f'''
         use AppleScript version "2.4"
@@ -3033,9 +3075,8 @@ class OmniFocusConnector:
                         {tag_check}
                         {query_check}'''
 
-        # For non-batch modes: common per-task property extraction and JSON building
-        if not whose_active:
-            script += f'''
+        # Common per-task property extraction and JSON building
+        script += f'''
 
                         -- Get project info
                         set projectId to ""
@@ -3264,74 +3305,220 @@ class OmniFocusConnector:
         return "[" & linefeed & output & linefeed & "]"
         ''' + APPLESCRIPT_JSON_HELPERS
 
+        return script
+
+
+    def get_tasks(
+        self,
+        task_id: Optional[str] = None,  # NEW (Phase 3.1): Filter to specific task
+        parent_task_id: Optional[str] = None,  # NEW (Phase 3.1): Filter by parent
+        include_full_notes: bool = False,  # NEW (Phase 3.1): Return full notes
+        project_id: Optional[str] = None,
+        include_completed: bool = False,
+        flagged_only: bool = False,
+        available_only: bool = False,
+        overdue: bool = False,
+        dropped_only: bool = False,
+        blocked_only: bool = False,
+        next_only: bool = False,
+        due_relative: Optional[str] = None,
+        defer_relative: Optional[str] = None,
+        max_estimated_minutes: Optional[int] = None,
+        has_estimate: Optional[bool] = None,
+        tag_filter: Optional[list[str]] = None,
+        tag_filter_mode: str = "and",
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
+        modified_after: Optional[str] = None,
+        modified_before: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
+        recurring_only: Optional[bool] = None,
+        query: Optional[str] = None,
+        inbox_only: bool = False,
+        timeout: int = 120
+    ) -> list[dict[str, Any]]:
+        """Get tasks from OmniFocus with optional filtering.
+
+        Orchestrator that delegates to helper methods:
+        - _validate_get_tasks_params() — parameter validation
+        - _build_task_source() — AppleScript task source + whose clauses
+        - _build_task_filter_checks() — per-task and batch filter strings
+        - _build_batch_mode_script() / _build_per_task_mode_script() — AppleScript generation
+        - _post_process_tasks() — normalization, Python-side filtering, sorting
+
+        Args:
+            task_id: NEW (Phase 3.1): Filter to specific task by ID (consolidates get_task())
+            parent_task_id: NEW (Phase 3.1): Filter to subtasks of specific parent (consolidates get_subtasks())
+            include_full_notes: NEW (Phase 3.1): Return full note content instead of truncated (consolidates get_note())
+            project_id: Optional project ID to filter tasks. If None, returns all tasks (ignored if inbox_only=True).
+            include_completed: Whether to include completed tasks (default: False)
+            flagged_only: Only return flagged tasks (default: False)
+            available_only: Only return available tasks (not blocked or deferred) (default: False)
+            overdue: Only return overdue tasks (default: False)
+            dropped_only: Only return dropped tasks (default: False)
+            blocked_only: Only return blocked tasks (default: False)
+            next_only: Only return next tasks (default: False)
+            due_relative: Relative due date filter - "today", "tomorrow", "this_week", "next_week", "overdue"
+            defer_relative: Relative defer date filter - "today", "tomorrow", "this_week", "next_week"
+            max_estimated_minutes: Only return tasks estimated at or under this many minutes
+            has_estimate: If True, only return tasks with estimates; if False, only tasks without estimates
+            tag_filter: List of tag names to filter by
+            tag_filter_mode: Tag filtering logic - "and" (all tags), "or" (any tag), "not" (none of tags) (default: "and")
+            created_after: Only return tasks created after this ISO date (e.g., "2025-01-15T00:00:00Z")
+            created_before: Only return tasks created before this ISO date
+            modified_after: Only return tasks modified after this ISO date
+            modified_before: Only return tasks modified before this ISO date
+            sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
+            sort_order: Sort order - "asc" or "desc" (default: "asc")
+            recurring_only: If True, only return recurring tasks; if False, only non-recurring tasks; if None, return all (default: None)
+            query: Optional search term to filter by name or note (case-insensitive)
+            inbox_only: Only return inbox tasks (default: False)
+            timeout: Maximum seconds to wait for AppleScript (default: 120). Increase for large task lists (500+)
+
+        Returns:
+            list: List of task dictionaries with id, name, note, completed, flagged, dropped, blocked, next, project info, dates, tags, and recurring info
+
+        Raises:
+            ValueError: If relative date filter value, tag_filter_mode, date format, or sort parameters are invalid
+            subprocess.TimeoutExpired: If AppleScript execution exceeds timeout (increase timeout for large task lists)
+        """
+        self._validate_get_tasks_params(
+            created_after=created_after, created_before=created_before,
+            modified_after=modified_after, modified_before=modified_before,
+            tag_filter_mode=tag_filter_mode, sort_by=sort_by,
+            sort_order=sort_order, due_relative=due_relative,
+            defer_relative=defer_relative,
+        )
+
+        # Detect if selective filters are active (Phase 2: Conditional filter-first optimization)
+        # Selective filters eliminate >80% of tasks and benefit from filter-first architecture
+        selective_filters_active = (
+            flagged_only or
+            overdue or
+            dropped_only or
+            blocked_only or
+            next_only or
+            query or
+            available_only or
+            tag_filter or  # Ensures NOT mode uses FILTER-FIRST, not EXTRACT-THEN-FILTER
+            due_relative in ['today', 'tomorrow', 'this_week', 'next_week', 'overdue']
+        )
+
+        # Tag-side pre-filter: query task IDs from tag objects instead of
+        # scanning all tasks. This reverses the lookup direction for massive
+        # speedup (from 120s+ to ~1-2s). Only for AND/OR modes — NOT mode
+        # is inherently a full scan and uses the fallback path.
+        tag_prefiltered_ids = None
+        if (tag_filter and len(tag_filter) > 0
+                and tag_filter_mode != "not"
+                and not task_id and not parent_task_id and not inbox_only):
+            tag_prefiltered_ids = self._get_task_ids_for_tags(
+                tag_filter, tag_filter_mode, include_completed
+            )
+            if tag_prefiltered_ids is not None and len(tag_prefiltered_ids) == 0:
+                return []  # No tasks match — early return
+
+        # Pre-fetch On Hold tag names for available_only filtering.
+        # OmniFocus's Available perspective excludes tasks with On Hold tags.
+        on_hold_tag_names: list[str] = []
+        on_hold_tags_decl = ""
+        on_hold_available_check = ""
+        on_hold_available_check_batch = ""
+        if available_only:
+            on_hold_tag_names = self._get_on_hold_tag_names()
+            if on_hold_tag_names:
+                escaped = [f'"{self._escape_applescript_string(n)}"' for n in on_hold_tag_names]
+                on_hold_tags_decl = f"set onHoldTags to {{{', '.join(escaped)}}}"
+                # Per-task check (filter-first / extract-then-filter)
+                on_hold_available_check = """
+                        -- Skip tasks with On Hold tags
+                        set taskTagNms to name of (tags of t)
+                        repeat with tn in taskTagNms
+                            if tn is in onHoldTags then error "skip unavailable task"
+                        end repeat"""
+                # Batch check (uses already batch-read tagNameLists)
+                on_hold_available_check_batch = """
+                        -- Skip tasks with On Hold tags (batch data)
+                        set taskTagNms to contents of (item i of tagNameLists)
+                        repeat with tn in taskTagNms
+                            if tn is in onHoldTags then error "skip unavailable"
+                        end repeat"""
+
+        # Build task source with native 'whose' pre-filtering where possible.
+        # OmniFocus evaluates 'whose' clauses natively (~20-30x faster than
+        # manual iteration with per-task property checks). See PERFORMANCE_PROFILING.md.
+        task_source, whose_active = self._build_task_source(
+            task_id=task_id,
+            parent_task_id=parent_task_id,
+            inbox_only=inbox_only,
+            project_id=project_id,
+            include_completed=include_completed,
+            flagged_only=flagged_only,
+            next_only=next_only,
+            dropped_only=dropped_only,
+            blocked_only=blocked_only,
+            overdue=overdue,
+            query=query,
+            tag_prefiltered_ids=tag_prefiltered_ids,
+        )
+
+        # Generate all filter check strings (per-task and batch modes)
+        filter_checks = self._build_task_filter_checks(
+            include_completed=include_completed,
+            flagged_only=flagged_only,
+            available_only=available_only,
+            overdue=overdue,
+            dropped_only=dropped_only,
+            blocked_only=blocked_only,
+            next_only=next_only,
+            due_relative=due_relative,
+            defer_relative=defer_relative,
+            max_estimated_minutes=max_estimated_minutes,
+            has_estimate=has_estimate,
+            tag_filter=tag_filter,
+            tag_filter_mode=tag_filter_mode,
+            tag_prefiltered_ids=tag_prefiltered_ids,
+            query=query,
+            whose_active=whose_active,
+            on_hold_available_check=on_hold_available_check,
+            on_hold_available_check_batch=on_hold_available_check_batch,
+        )
+
+        # Build AppleScript with conditional architecture
+        # Three modes:
+        # 1. BATCH: whose_active — batch property reads via 'a reference to' (fastest)
+        # 2. FILTER-FIRST: selective_filters_active but not whose — per-task loop, filters before extraction
+        # 3. EXTRACT-THEN-FILTER: no selective filters — per-task loop, extraction before filters
+
+        if whose_active:
+            script = self._build_batch_mode_script(
+                task_source, on_hold_tags_decl, filter_checks
+            )
+        else:
+            script = self._build_per_task_mode_script(
+                task_source, on_hold_tags_decl, selective_filters_active, filter_checks
+            )
+
         try:
             result = run_applescript(script, timeout=timeout)
             if result:
                 tasks = json.loads(result)
 
-                # Normalize repetitionMethod values
-                for task in tasks:
-                    # Convert AppleScript enum values to Python-friendly snake_case
-                    rep_method = task.get('repetitionMethod', '')
-                    if rep_method == 'fixed repetition':
-                        task['repetitionMethod'] = 'fixed'
-                    elif rep_method == 'start after completion':
-                        task['repetitionMethod'] = 'start_after_completion'
-                    elif rep_method == 'due after completion':
-                        task['repetitionMethod'] = 'due_after_completion'
-                    elif rep_method == '':
-                        task['repetitionMethod'] = None
-
-                    # Normalize recurrence
-                    if task.get('recurrence', '') == '':
-                        task['recurrence'] = None
-
-                    # Compute repeatSummary from RRULE
-                    rrule = task.get('recurrence')
-                    if rrule:
-                        task['repeatSummary'] = OmniFocusConnector._rrule_to_summary(rrule)
-                    else:
-                        task['repeatSummary'] = None
-
-                # Apply Python-based tag filtering
-                # Skip when tag pre-filter already narrowed the task set via whose ID clause
-                if tag_filter and len(tag_filter) > 0 and tag_prefiltered_ids is None:
-                    if tag_filter_mode == "and":
-                        tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
-                    elif tag_filter_mode in ["or", "not"]:
-                        tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
-
-                # Apply date range filtering
-                if created_after or created_before or modified_after or modified_before:
-                    tasks = self._filter_by_date_range(
-                        tasks,
-                        created_after,
-                        created_before,
-                        modified_after,
-                        modified_before
-                    )
-
-                # Apply recurring filter
-                if recurring_only is not None:
-                    if recurring_only:
-                        tasks = [t for t in tasks if t.get('isRecurring', False)]
-                    else:
-                        tasks = [t for t in tasks if not t.get('isRecurring', False)]
-
-                # Apply query filter if provided
-                if query:
-                    query_lower = query.lower()
-                    tasks = [
-                        t for t in tasks
-                        if query_lower in t.get('name', '').lower()
-                        or query_lower in t.get('note', '').lower()
-                    ]
-
-                # Apply sorting if requested
-                if sort_by:
-                    tasks = self._sort_tasks(tasks, sort_by, sort_order)
-
-                return tasks
+                return self._post_process_tasks(
+                    tasks,
+                    tag_filter=tag_filter,
+                    tag_filter_mode=tag_filter_mode,
+                    tag_prefiltered_ids=tag_prefiltered_ids,
+                    created_after=created_after,
+                    created_before=created_before,
+                    modified_after=modified_after,
+                    modified_before=modified_before,
+                    recurring_only=recurring_only,
+                    query=query,
+                    sort_by=sort_by,
+                    sort_order=sort_order,
+                )
             else:
                 raise Exception("No output from OmniFocus AppleScript")
         except subprocess.CalledProcessError as e:
