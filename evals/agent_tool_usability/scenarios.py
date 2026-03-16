@@ -1098,4 +1098,30 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    # ── Text Search ────────────────────────────────────────────────────
+    {
+        "id": 47,
+        "category": "Text Search",
+        "name": "Search Tasks by Keyword",
+        "prompt": (
+            "Do I have any tasks related to 'mortgage'? I'm not sure which "
+            "project they'd be in."
+        ),
+        "expected": {
+            "tools": ["get_tasks"],
+            "key_params": {
+                "get_tasks": {
+                    "query": "mortgage",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses get_tasks with query='mortgage' (no project filter). "
+            "PARTIAL: Uses query but also unnecessarily restricts to a specific "
+            "project or adds filters that weren't requested. "
+            "FAIL: Tries to list all tasks and filter client-side, or uses "
+            "tag_filter instead of query."
+        ),
+        "safety_critical": False,
+    },
 ]

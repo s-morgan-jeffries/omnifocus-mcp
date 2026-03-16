@@ -4,7 +4,7 @@
 
 - **Date:** 2026-03-16 (project date interface changes #329, #336)
 - **Model:** claude-sonnet-4-6 (new scenarios), claude-opus-4-6 (prior scenarios)
-- **Total Score:** 92/92 (100%)
+- **Total Score:** 94/94 (100%)
 - **Critical Failures:** 0 of 5
 - **Previous Score:** 84/84 (100%) — eval consistency improvements #314
 
@@ -31,6 +31,7 @@
 | Tag Exclusivity | 42 | 2 | 2 | 100% |
 | Project Dates | 43-45 | 6 | 6 | 100% |
 | Task Movement | 46 | 2 | 2 | 100% |
+| Text Search | 47 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -256,6 +257,12 @@
 - **Parameters:** Correct — `task_id="task-101"`, `parent_task_id="task-200"`, did NOT pass `project_id`
 - **Concept Understanding:** Excellent — explicitly noted mutual exclusivity of project_id/parent_task_id and that subtask inherits parent's project
 
+### Scenario 47: Search Tasks by Keyword
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `get_tasks`
+- **Parameters:** Correct — `query="mortgage"`, no unnecessary project filter
+- **Concept Understanding:** Excellent — correctly used query for cross-project text search without restricting scope
+
 ## Key Findings
 
 ### Changes in This Run (#329, #336 — Project Dates)
@@ -270,12 +277,12 @@ Tool descriptions updated to include `due_date`, `defer_date`, `planned_date` on
 
 ### Score Delta
 
-92/92 vs 84/84 previous. 4 new scenarios added (43-46), all pass. Prior 42 scenarios unchanged (not re-run).
+94/94 vs 84/84 previous. 5 new scenarios added (43-47), all pass. Prior 42 scenarios unchanged (not re-run).
 
 ### Issues Found
 
-None. All 46 scenarios pass at 2/2. All 5 safety-critical scenarios pass.
+None. All 47 scenarios pass at 2/2. All 5 safety-critical scenarios pass.
 
 ## Conclusion
 
-Project date parameters and task movement are well-understood by agents from tool descriptions alone. 92/92 (100%).
+Project dates, task movement, and text search are well-understood by agents from tool descriptions alone. 94/94 (100%).
