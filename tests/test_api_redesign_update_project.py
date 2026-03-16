@@ -131,7 +131,7 @@ class TestUpdateProjectRedesign:
             call_args = mock_run.call_args[0][0]
             assert "last review date" in call_args, "Should set 'last review date' property"
             assert "next review date" not in call_args, "Should NOT set 'next review date'"
-            assert "2025-10-18" in call_args
+            assert "October 18, 2025" in call_args
 
     def test_update_project_mark_reviewed_now(self, client):
         """NEW API: update_project() sets LAST review date to current date when 'now'."""
