@@ -29,7 +29,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 
 ### Agent-Friendly
 
-47-scenario blind eval suite scores 94/94 — agents that have never seen OmniFocus can correctly use every tool from descriptions alone. Server instructions teach GTD concepts (task states, project types, sequential dependencies, review cycles) so agents make informed decisions, not just API calls.
+47-scenario blind eval suite with 100% pass rate — agents that have never seen OmniFocus can correctly use every tool from descriptions alone. Scenarios cover tool selection, parameter usage, multi-step workflows, date semantics, recurrence, tag behavior, task movement, text search, and safety-critical operations (drop vs delete, destructive action guardrails). Server instructions teach GTD concepts (task states, project types, sequential dependencies, review cycles) so agents make informed decisions, not just API calls.
 
 ## Tools (22)
 
