@@ -1070,4 +1070,58 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    # ── Task Movement ──────────────────────────────────────────────────
+    {
+        "id": 46,
+        "category": "Task Movement",
+        "name": "Make Task a Subtask",
+        "prompt": (
+            "I have a task 'Write introduction' (task-101) that's currently in my inbox. "
+            "I want to make it a subtask of 'Draft report' (task-200), which is in the "
+            "'Q3 Report' project."
+        ),
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {
+                    "task_id": "task-101",
+                    "parent_task_id": "task-200",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses update_task with task_id and parent_task_id. Does NOT also "
+            "pass project_id (mutually exclusive — subtask inherits parent's project). "
+            "PARTIAL: Uses update_task correctly but also passes project_id. "
+            "FAIL: Tries to use a non-existent move_task tool, or uses project_id "
+            "instead of parent_task_id."
+        ),
+        "safety_critical": False,
+    },
+    # ── Text Search ────────────────────────────────────────────────────
+    {
+        "id": 47,
+        "category": "Text Search",
+        "name": "Search Tasks by Keyword",
+        "prompt": (
+            "Do I have any tasks related to 'mortgage'? I'm not sure which "
+            "project they'd be in."
+        ),
+        "expected": {
+            "tools": ["get_tasks"],
+            "key_params": {
+                "get_tasks": {
+                    "query": "mortgage",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses get_tasks with query='mortgage' (no project filter). "
+            "PARTIAL: Uses query but also unnecessarily restricts to a specific "
+            "project or adds filters that weren't requested. "
+            "FAIL: Tries to list all tasks and filter client-side, or uses "
+            "tag_filter instead of query."
+        ),
+        "safety_critical": False,
+    },
 ]

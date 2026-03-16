@@ -4,7 +4,7 @@
 
 - **Date:** 2026-03-16 (project date interface changes #329, #336)
 - **Model:** claude-sonnet-4-6 (new scenarios), claude-opus-4-6 (prior scenarios)
-- **Total Score:** 90/90 (100%)
+- **Total Score:** 94/94 (100%)
 - **Critical Failures:** 0 of 5
 - **Previous Score:** 84/84 (100%) — eval consistency improvements #314
 
@@ -30,6 +30,8 @@
 | Catch Up Automatically | 41 | 2 | 2 | 100% |
 | Tag Exclusivity | 42 | 2 | 2 | 100% |
 | Project Dates | 43-45 | 6 | 6 | 100% |
+| Task Movement | 46 | 2 | 2 | 100% |
+| Text Search | 47 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -249,6 +251,18 @@
 - **Parameters:** Correct — `project_id="proj-xyz"`
 - **Concept Understanding:** Excellent — identified dueDate, deferDate, plannedDate in response schema, noted they're returned by default
 
+### Scenario 46: Make Task a Subtask
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `update_task`
+- **Parameters:** Correct — `task_id="task-101"`, `parent_task_id="task-200"`, did NOT pass `project_id`
+- **Concept Understanding:** Excellent — explicitly noted mutual exclusivity of project_id/parent_task_id and that subtask inherits parent's project
+
+### Scenario 47: Search Tasks by Keyword
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `get_tasks`
+- **Parameters:** Correct — `query="mortgage"`, no unnecessary project filter
+- **Concept Understanding:** Excellent — correctly used query for cross-project text search without restricting scope
+
 ## Key Findings
 
 ### Changes in This Run (#329, #336 — Project Dates)
@@ -263,12 +277,12 @@ Tool descriptions updated to include `due_date`, `defer_date`, `planned_date` on
 
 ### Score Delta
 
-90/90 vs 84/84 previous. 3 new scenarios added, all pass. Prior 42 scenarios unchanged (not re-run).
+94/94 vs 84/84 previous. 5 new scenarios added (43-47), all pass. Prior 42 scenarios unchanged (not re-run).
 
 ### Issues Found
 
-None. All 45 scenarios pass at 2/2. All 5 safety-critical scenarios pass.
+None. All 47 scenarios pass at 2/2. All 5 safety-critical scenarios pass.
 
 ## Conclusion
 
-Project date parameters are well-understood by agents from tool descriptions alone. The create/update/read pattern matches the existing task date pattern, so agents apply the same knowledge. 90/90 (100%).
+Project dates, task movement, and text search are well-understood by agents from tool descriptions alone. 94/94 (100%).
