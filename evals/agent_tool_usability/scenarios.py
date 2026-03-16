@@ -1070,4 +1070,32 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    # ── Task Movement ──────────────────────────────────────────────────
+    {
+        "id": 46,
+        "category": "Task Movement",
+        "name": "Make Task a Subtask",
+        "prompt": (
+            "I have a task 'Write introduction' (task-101) that's currently in my inbox. "
+            "I want to make it a subtask of 'Draft report' (task-200), which is in the "
+            "'Q3 Report' project."
+        ),
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {
+                    "task_id": "task-101",
+                    "parent_task_id": "task-200",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses update_task with task_id and parent_task_id. Does NOT also "
+            "pass project_id (mutually exclusive — subtask inherits parent's project). "
+            "PARTIAL: Uses update_task correctly but also passes project_id. "
+            "FAIL: Tries to use a non-existent move_task tool, or uses project_id "
+            "instead of parent_task_id."
+        ),
+        "safety_critical": False,
+    },
 ]
