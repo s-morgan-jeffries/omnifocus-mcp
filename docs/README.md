@@ -2,7 +2,7 @@
 
 ## Guides
 
-- **[Contributing](guides/CONTRIBUTING.md)** — Development workflow
+- **[Development](guides/DEVELOPMENT.md)** — Development workflow
 - **[Testing](guides/TESTING.md)** — Test strategy, coverage, and running tests
 - **[Integration Testing](guides/INTEGRATION_TESTING.md)** — Real OmniFocus testing setup
 
@@ -16,12 +16,10 @@
 
 ## Performance
 
-- **[get_tasks() Analysis](performance/GET_TASKS_PERFORMANCE_ANALYSIS.md)** — Filter-first architecture
-- **[Optimization Summary](performance/PERFORMANCE_OPTIMIZATION_SUMMARY.md)** — N+1 elimination results
+- **[Performance Profiling](reference/PERFORMANCE_PROFILING.md)** — Benchmark data and optimization results
 
 ## Project
 
-- **[Roadmap](project/ROADMAP.md)** — Project history and phases
 - **[Changelog](../CHANGELOG.md)** — Version history
 
 ## Migration
