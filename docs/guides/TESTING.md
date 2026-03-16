@@ -18,13 +18,12 @@ The project has two types of tests:
 1. **Unit Tests** - Test individual components with mocked dependencies
 2. **Integration Tests (Real)** - Test with real OmniFocus (requires setup)
 
-**Total Test Coverage**: 544 tests (v0.7.2)
-- Unit tests (omnifocus_connector.py core) ✅ 406 passing
-- Unit tests (FastMCP server) ✅ Included above
+**Total Test Coverage**: 920 tests (v0.10.0)
+- Unit tests (connector, server, helpers) ✅ 782 passing
 - Integration tests (real OmniFocus) ⏭️ 138 skipped by default
 
-**Test Execution**: ~0.53 seconds for all mocked tests
-**Code Coverage**: 89% overall
+**Test Execution**: ~2.5 seconds for all unit tests
+**Code Coverage**: 91% overall
 
 ## Database Safety
 
@@ -550,16 +549,12 @@ Before running real integration tests:
 
 **If in doubt, run with safety checks enabled. The system will block operations if configuration is incorrect.**
 
-## Test Metrics
+## Test Metrics (v0.10.0)
 
-- **Total Tests**: 501 (v0.7.1 - increased from 483 in v0.7.0)
-- **Passing**: 385 (all unit tests with mocks)
-- **Skipped**: 116 (integration tests, require real OmniFocus setup)
-- **Coverage**: 86% (exceeds 85% threshold)
-- **Execution Time**: ~110s for all unit tests
-- **Test Reduction**: v0.6.0 API consolidation removed deprecated function tests
-  - Unit tests (FastMCP server): 33 tests
-  - Real OmniFocus tests: 3 tests (skipped by default)
-- **Code Coverage**: 89% overall
-  - `omnifocus_connector.py`: 97%
-  - `server_fastmcp.py`: 73%
+- **Total Tests**: 920 (782 unit + 138 integration)
+- **Passing**: 782 unit tests
+- **Skipped**: 237 (integration/benchmark tests skipped without test DB)
+- **Coverage**: 91% overall
+  - `omnifocus_connector.py`: 93%
+  - `server_fastmcp.py`: 83%
+- **Execution Time**: ~2.5s for all unit tests

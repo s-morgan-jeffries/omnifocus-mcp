@@ -109,7 +109,9 @@ The `evaluate javascript` AppleScript command calls OmniAutomation from AppleScr
 - Tested twice with consistent crashes
 - Likely cause: test database opens without proper window/UI context that OmniAutomation requires
 
-**Implication:** Any connector feature using `evaluate javascript` cannot be covered by integration tests (which use the headless test database). Such features would require manual testing against the production database.
+**Mitigation (v0.9.2, #324):** The connector detects test mode (`self._test_mode`) and skips all `evaluate javascript` calls on headless test databases. Affected operations default to safe fallbacks (e.g., `childrenAreMutuallyExclusive=False` for `get_tags()`). OmniAutomation features are tested via `make test-prod` against the production database with sandbox isolation.
+
+**Implication:** OmniAutomation features require `make test-prod` (production database with sandbox folder). Standard integration tests (`make test-integration`) skip OmniAutomation calls automatically.
 
 ### Rich Text via OmniAutomation
 
