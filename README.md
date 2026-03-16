@@ -25,7 +25,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 
 ### Reliable
 
-782 unit tests and 138 integration tests run against real OmniFocus. AppleScript injection hardening with dedicated string escapers for both AppleScript and OmniAutomation contexts.
+91% code coverage from 782 unit tests. 138 integration tests run against real OmniFocus covering task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
 
 ### Agent-Friendly
 
