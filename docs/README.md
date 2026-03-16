@@ -9,7 +9,6 @@
 ## Reference
 
 - **[Architecture](reference/ARCHITECTURE.md)** — API design rationale, decision tree, anti-patterns
-- **[API Reference](reference/API_REFERENCE.md)** — Complete function signatures and parameters
 - **[AppleScript Gotchas](reference/APPLESCRIPT_GOTCHAS.md)** — Known limitations and workarounds
 - **[OmniFocus 4.8.4 Dictionary](reference/omnifocus-4.8.4-documentation.html)** — Official AppleScript reference
 - **[Release Process](reference/RELEASE_PROCESS.md)** — Tag workflow and release procedures

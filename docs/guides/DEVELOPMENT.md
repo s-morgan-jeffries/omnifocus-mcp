@@ -644,11 +644,9 @@ When asking for help, provide:
 - Fix bugs (add to "Fixed" section)
 - Remove/consolidate functions (document in "Changed - BREAKING" with migration path)
 
-**API_REFERENCE.md** - Update when you:
-- Implement new functions (mark as implemented)
-- Change function signatures (document actual vs proposed)
-- Add new parameters (update parameter lists)
-- After implementation is complete (add "Implementation Notes")
+**tool_descriptions.md** (evals/) - Update when you:
+- Add new tools or parameters (keeps blind eval descriptions in sync)
+- Change tool signatures or return schemas
 
 **ARCHITECTURE.md** - Update when you:
 - Discover new anti-patterns (add with explanation)
