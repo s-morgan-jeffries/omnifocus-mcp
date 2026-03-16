@@ -784,6 +784,100 @@ class OmniFocusConnector:
 
         return task_ops_preamble, task_ops_block, health_init, task_health_json_fields
 
+    def _validate_get_projects_params(
+        self,
+        *,
+        modified_after: Optional[str],
+        modified_before: Optional[str],
+        sort_by: Optional[str],
+        sort_order: str,
+    ) -> None:
+        """Validate get_projects parameters, raising ValueError for invalid values."""
+        from datetime import datetime
+        for date_param, date_value in [
+            ("modified_after", modified_after),
+            ("modified_before", modified_before)
+        ]:
+            if date_value:
+                try:
+                    datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                except ValueError:
+                    raise ValueError(f"Invalid date format for {date_param}: {date_value}. Use ISO format (e.g., '2025-01-15T00:00:00Z')")
+
+        valid_sort_by = ["name", None]
+        valid_sort_order = ["asc", "desc"]
+        if sort_by not in valid_sort_by:
+            raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
+        if sort_order not in valid_sort_order:
+            raise ValueError(f"Invalid sort_order value: {sort_order}. Must be one of: {valid_sort_order}")
+
+    def _post_process_projects(
+        self,
+        projects: list[dict[str, Any]],
+        *,
+        modified_after: Optional[str],
+        modified_before: Optional[str],
+        min_task_count: Optional[int],
+        has_overdue_tasks: Optional[bool],
+        has_no_due_dates: Optional[bool],
+        query: Optional[str],
+        include_task_health: bool,
+        stalled_only: bool,
+        sort_by: Optional[str],
+        sort_order: str,
+    ) -> list[dict[str, Any]]:
+        """Post-process projects: compute types, apply filters, sort."""
+        # Compute projectType from singleton and sequential flags
+        for p in projects:
+            if p.get("singletonActionHolder"):
+                p["projectType"] = "single_actions"
+            elif p.get("sequential"):
+                p["projectType"] = "sequential"
+            else:
+                p["projectType"] = "parallel"
+
+        # Apply date range filtering
+        if modified_after or modified_before:
+            projects = self._filter_by_date_range(
+                projects, None, None, modified_after, modified_before
+            )
+
+        # Apply conditional filters
+        if min_task_count is not None or has_overdue_tasks is not None or has_no_due_dates is not None:
+            projects = self._filter_projects_by_conditions(
+                projects, min_task_count, has_overdue_tasks, has_no_due_dates
+            )
+
+        # Apply query filter
+        if query:
+            query_lower = query.lower()
+            projects = [
+                p for p in projects
+                if query_lower in p.get('name', '').lower()
+                or query_lower in p.get('note', '').lower()
+                or query_lower in p.get('folderPath', '').lower()
+            ]
+
+        # Compute stalled field when task health is available
+        if include_task_health:
+            for p in projects:
+                p["stalled"] = (
+                    p.get("status") == "active status"
+                    and p.get("availableCount", 1) == 0
+                    and not p.get("hasDeferredOnly", False)
+                )
+
+        # Filter to stalled projects only
+        if stalled_only:
+            projects = [p for p in projects if p.get("stalled", False)]
+
+        # Apply sorting
+        if sort_by:
+            reverse = (sort_order == "desc")
+            projects = sorted(projects, key=lambda p: p.get("name", "").lower(), reverse=reverse)
+
+        return projects
+
     def get_projects(
         self,
         project_id: Optional[str] = None,  # NEW (Phase 3.2): Filter to specific project
@@ -803,12 +897,6 @@ class OmniFocusConnector:
         timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
-
-        NOTE: This method is intentionally long (251 lines) because:
-        1. AppleScript must be a single self-contained string with embedded JSON helpers
-        2. Comprehensive property extraction (timestamps, stats, hierarchy, etc.)
-        3. Multiple filter conditions and post-processing logic
-        4. AppleScript is verbose for JSON generation and error handling
 
         Args:
             project_id: NEW (Phase 3.2) - Filter to specific project by ID (consolidates get_project())
@@ -831,26 +919,10 @@ class OmniFocusConnector:
             ValueError: If date format or sort parameters are invalid
             subprocess.TimeoutExpired: If AppleScript execution exceeds timeout
         """
-        # Validate date formats
-        from datetime import datetime
-        for date_param, date_value in [
-            ("modified_after", modified_after),
-            ("modified_before", modified_before)
-        ]:
-            if date_value:
-                try:
-                    datetime.fromisoformat(date_value.replace('Z', '+00:00'))
-                except ValueError:
-                    raise ValueError(f"Invalid date format for {date_param}: {date_value}. Use ISO format (e.g., '2025-01-15T00:00:00Z')")
-
-        # Validate sort parameters
-        valid_sort_by = ["name", None]
-        valid_sort_order = ["asc", "desc"]
-
-        if sort_by not in valid_sort_by:
-            raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
-        if sort_order not in valid_sort_order:
-            raise ValueError(f"Invalid sort_order value: {sort_order}. Must be one of: {valid_sort_order}")
+        self._validate_get_projects_params(
+            modified_after=modified_after, modified_before=modified_before,
+            sort_by=sort_by, sort_order=sort_order,
+        )
 
         # Build project source (specific project or all projects)
         # NEW (Phase 3.2): project_id parameter
@@ -1054,63 +1126,19 @@ class OmniFocusConnector:
             if result:
                 projects = json.loads(result)
 
-                # Compute projectType from singleton and sequential flags
-                for p in projects:
-                    if p.get("singletonActionHolder"):
-                        p["projectType"] = "single_actions"
-                    elif p.get("sequential"):
-                        p["projectType"] = "sequential"
-                    else:
-                        p["projectType"] = "parallel"
-
-                # Apply date range filtering
-                if modified_after or modified_before:
-                    projects = self._filter_by_date_range(
-                        projects,
-                        None,  # created_after (not applicable to projects)
-                        None,  # created_before
-                        modified_after,
-                        modified_before
-                    )
-
-                # Apply conditional filters
-                if min_task_count is not None or has_overdue_tasks is not None or has_no_due_dates is not None:
-                    projects = self._filter_projects_by_conditions(
-                        projects,
-                        min_task_count,
-                        has_overdue_tasks,
-                        has_no_due_dates
-                    )
-
-                # Apply query filter if provided
-                if query:
-                    query_lower = query.lower()
-                    projects = [
-                        p for p in projects
-                        if query_lower in p.get('name', '').lower()
-                        or query_lower in p.get('note', '').lower()
-                        or query_lower in p.get('folderPath', '').lower()
-                    ]
-
-                # Compute stalled field when task health is available
-                if include_task_health:
-                    for p in projects:
-                        p["stalled"] = (
-                            p.get("status") == "active status"
-                            and p.get("availableCount", 1) == 0
-                            and not p.get("hasDeferredOnly", False)
-                        )
-
-                # Filter to stalled projects only
-                if stalled_only:
-                    projects = [p for p in projects if p.get("stalled", False)]
-
-                # Apply sorting if requested
-                if sort_by:
-                    reverse = (sort_order == "desc")
-                    projects = sorted(projects, key=lambda p: p.get("name", "").lower(), reverse=reverse)
-
-                return projects
+                return self._post_process_projects(
+                    projects,
+                    modified_after=modified_after,
+                    modified_before=modified_before,
+                    min_task_count=min_task_count,
+                    has_overdue_tasks=has_overdue_tasks,
+                    has_no_due_dates=has_no_due_dates,
+                    query=query,
+                    include_task_health=include_task_health,
+                    stalled_only=stalled_only,
+                    sort_by=sort_by,
+                    sort_order=sort_order,
+                )
             else:
                 raise Exception("No output from OmniFocus AppleScript")
         except subprocess.CalledProcessError as e:
@@ -3527,6 +3555,282 @@ class OmniFocusConnector:
             raise Exception(f"Error parsing OmniFocus task output: {e}")
 
 
+    def _validate_update_task_params(
+        self,
+        *,
+        task_id: str,
+        task_name: Optional[str],
+        name: Optional[str],
+        project_id: Optional[str],
+        parent_task_id: Optional[str],
+        tags: Optional[list[str]],
+        add_tags: Optional[list[str]],
+        remove_tags: Optional[list[str]],
+        status: Optional[Union[TaskStatus, str]],
+        repetition_method: Optional[str],
+        note: Optional[str],
+        due_date: Optional[str],
+        defer_date: Optional[str],
+        planned_date: Optional[str],
+        flagged: Optional[bool],
+        sequential: Optional[bool],
+        estimated_minutes: Optional[int],
+        completed: Optional[bool],
+        recurrence: Optional[str],
+    ) -> tuple[Optional[str], Optional[TaskStatus]]:
+        """Validate update_task parameters, raising ValueError for invalid values.
+
+        Returns (resolved_task_name, resolved_status) after legacy name support
+        and status enum normalization.
+        """
+        if not task_id:
+            raise ValueError("task_id is required")
+
+        # Support legacy 'name' parameter
+        if name is not None and task_name is None:
+            task_name = name
+
+        if project_id is not None and parent_task_id is not None:
+            raise ValueError("Cannot specify both parent_task_id and project_id - parent task already determines the project.")
+
+        if tags is not None and add_tags is not None:
+            raise ValueError("Cannot specify both tags and add_tags/remove_tags - use tags for full replacement or add_tags/remove_tags for incremental changes.")
+        if tags is not None and remove_tags is not None:
+            raise ValueError("Cannot specify both tags and remove_tags - use tags for full replacement or add_tags/remove_tags for incremental changes.")
+
+        if status is not None:
+            if isinstance(status, str):
+                try:
+                    status = TaskStatus(status)
+                except ValueError:
+                    raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join([s.value for s in TaskStatus])}")
+
+        if repetition_method:
+            valid_methods = ["fixed", "start_after_completion", "due_after_completion"]
+            if repetition_method not in valid_methods:
+                raise ValueError(f"Invalid repetition_method: {repetition_method}. Must be one of: {', '.join(valid_methods)}")
+
+        all_params = [
+            task_name, project_id, parent_task_id, note, due_date, defer_date,
+            planned_date, flagged, sequential, tags, add_tags, remove_tags,
+            estimated_minutes, completed, status, recurrence, repetition_method
+        ]
+        if all(v is None for v in all_params):
+            raise ValueError("At least one field must be provided to update")
+
+        return task_name, status
+
+    def _build_update_task_commands(
+        self,
+        *,
+        task_name: Optional[str],
+        note: Optional[str],
+        flagged: Optional[bool],
+        sequential: Optional[bool],
+        due_date: Optional[str],
+        defer_date: Optional[str],
+        planned_date: Optional[str],
+        estimated_minutes: Optional[int],
+        completed: Optional[bool],
+        status: Optional[TaskStatus],
+        project_id: Optional[str],
+        parent_task_id: Optional[str],
+        tags: Optional[list[str]],
+        add_tags: Optional[list[str]],
+        remove_tags: Optional[list[str]],
+        recurrence: Optional[str],
+        repetition_method: Optional[str],
+    ) -> tuple[list[str], list[str], list[str], bool]:
+        """Build AppleScript property and command strings for update_task.
+
+        Returns (properties, separate_commands, updated_fields, recurrence_js_needed).
+        """
+        properties: list[str] = []
+        separate_commands: list[str] = []
+        updated_fields: list[str] = []
+
+        # Simple properties (set via 'set properties of theTask')
+        if task_name is not None:
+            escaped_name = self._escape_applescript_string(task_name)
+            properties.append(f'name:"{escaped_name}"')
+            updated_fields.append("task_name")
+
+        if note is not None:
+            escaped_note = self._escape_applescript_string(note)
+            properties.append(f'note:"{escaped_note}"')
+            updated_fields.append("note")
+
+        if flagged is not None:
+            properties.append(f'flagged:{str(flagged).lower()}')
+            updated_fields.append("flagged")
+
+        if sequential is not None:
+            properties.append(f'sequential:{str(sequential).lower()}')
+            updated_fields.append("sequential")
+
+        # Dates (clear vs set)
+        if due_date is not None:
+            if due_date == "":
+                separate_commands.append("set due date of theTask to missing value")
+            else:
+                as_date = self._iso_to_applescript_date(due_date)
+                separate_commands.append(f'set due date of theTask to date "{as_date}"')
+            updated_fields.append("due_date")
+
+        if defer_date is not None:
+            if defer_date == "":
+                separate_commands.append("set defer date of theTask to missing value")
+            else:
+                as_date = self._iso_to_applescript_date(defer_date)
+                separate_commands.append(f'set defer date of theTask to date "{as_date}"')
+            updated_fields.append("defer_date")
+
+        if planned_date is not None:
+            if planned_date == "":
+                separate_commands.append("set planned date of theTask to missing value")
+            else:
+                as_date = self._iso_to_applescript_date(planned_date)
+                separate_commands.append(f'set planned date of theTask to date "{as_date}"')
+            updated_fields.append("planned_date")
+
+        # Estimated minutes
+        if estimated_minutes is not None:
+            separate_commands.append(f'set estimated minutes of theTask to {estimated_minutes}')
+            updated_fields.append("estimated_minutes")
+
+        # Completion (use "mark complete" for recurring task safety)
+        if completed is not None:
+            if completed:
+                separate_commands.append("mark complete theTask")
+            else:
+                separate_commands.append("set completed of theTask to false")
+            updated_fields.append("completed")
+
+        # Status (use "mark dropped" command)
+        if status is not None:
+            if status == TaskStatus.DROPPED:
+                separate_commands.append("mark dropped theTask")
+            elif status == TaskStatus.ACTIVE:
+                separate_commands.append("set dropped of theTask to false")
+            updated_fields.append("status")
+
+        # Hierarchy changes
+        if project_id is not None:
+            project_id_escaped = self._escape_applescript_string(project_id)
+            separate_commands.append(f'''
+                    set theProject to first flattened project whose id is "{project_id_escaped}"
+                    move theTask to end of tasks of theProject''')
+            updated_fields.append("project_id")
+
+        if parent_task_id is not None:
+            parent_id_escaped = self._escape_applescript_string(parent_task_id)
+            separate_commands.append(f'''
+                    set theParent to first flattened task whose id is "{parent_id_escaped}"
+                    if id of theTask is id of theParent then
+                        error "Cannot set task as its own parent"
+                    end if
+                    move theTask to end of tasks of theParent''')
+            updated_fields.append("parent_task_id")
+
+        # Tags
+        if tags is not None:
+            if len(tags) > 0:
+                tag_adds = []
+                for tag in tags:
+                    tag_escaped = self._escape_applescript_string(tag)
+                    tag_adds.append(f'''
+                        set tagObj to first flattened tag whose name is "{tag_escaped}"
+                        copy tagObj to end of newTags''')
+                tag_adds_str = "\n                    ".join(tag_adds)
+                separate_commands.append(f'''
+                    set newTags to {{}}
+                    {tag_adds_str}
+                    set tags of theTask to newTags''')
+            else:
+                separate_commands.append("set tags of theTask to {}")
+            updated_fields.append("tags")
+
+        if add_tags is not None:
+            for tag in add_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                separate_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theTask''')
+            updated_fields.append("add_tags")
+
+        if remove_tags is not None:
+            for tag in remove_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                separate_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theTask''')
+            updated_fields.append("remove_tags")
+
+        # Recurrence
+        _recurrence_js_needed = False
+        if recurrence is not None:
+            if recurrence == "":
+                separate_commands.append("set repetition rule of theTask to missing value")
+            else:
+                _recurrence_js_needed = True
+            updated_fields.append("recurrence")
+        elif repetition_method is not None:
+            _recurrence_js_needed = True
+            updated_fields.append("repetition_method")
+
+        return properties, separate_commands, updated_fields, _recurrence_js_needed
+
+    def _execute_recurrence_update(
+        self,
+        task_id_escaped: str,
+        recurrence: Optional[str],
+        repetition_method: Optional[str],
+    ) -> None:
+        """Execute OmniAutomation recurrence update (post-AppleScript).
+
+        Skipped in test mode — OmniAutomation crashes on headless test databases (#324).
+        """
+        if self._test_mode:
+            return
+
+        js_method_map = {
+            "fixed": "Task.RepetitionMethod.Fixed",
+            "due_after_completion": "Task.RepetitionMethod.DueDate",
+            "start_after_completion": "Task.RepetitionMethod.DeferUntilDate",
+        }
+        js_method = js_method_map.get(
+            repetition_method or "fixed",
+            "Task.RepetitionMethod.Fixed"
+        )
+        task_id_js = task_id_escaped.replace("'", "\\'")
+
+        if recurrence is not None:
+            recurrence_js = self._escape_applescript_string(
+                recurrence
+            ).replace("'", "\\'")
+            js_code = (
+                f"var t = Task.byIdentifier('{task_id_js}');"
+                f" if (t) {{ t.repetitionRule = new Task.RepetitionRule("
+                f"'{recurrence_js}', {js_method}); 'ok'; }}"
+                f" else {{ 'not found'; }}"
+            )
+        else:
+            js_code = (
+                f"var t = Task.byIdentifier('{task_id_js}');"
+                f" if (t && t.repetitionRule) {{"
+                f" var rr = t.repetitionRule.ruleString;"
+                f" t.repetitionRule = new Task.RepetitionRule("
+                f"rr, {js_method}); 'ok'; }}"
+                f" else {{ 'no rule'; }}"
+            )
+
+        js_script = (
+            'tell application "OmniFocus"\n'
+            f'    evaluate javascript "{js_code}"\n'
+            'end tell'
+        )
+        run_applescript(js_script)
+
     def update_task(
         self,
         task_id: str,
@@ -3596,202 +3900,35 @@ class OmniFocusConnector:
             - OmniFocus errors (task not found, etc.) → Returns dict with success=False
             - Never raises exceptions for runtime OmniFocus errors
         """
-        # NEW API (Redesign)
-
         # SAFETY: Verify database before modifying
         self._verify_database_safety('update_task')
 
-        if not task_id:
-            raise ValueError("task_id is required")
+        # Validate parameters
+        task_name, status = self._validate_update_task_params(
+            task_id=task_id, task_name=task_name, name=name,
+            project_id=project_id, parent_task_id=parent_task_id,
+            tags=tags, add_tags=add_tags, remove_tags=remove_tags,
+            status=status, repetition_method=repetition_method,
+            note=note, due_date=due_date, defer_date=defer_date,
+            planned_date=planned_date, flagged=flagged, sequential=sequential,
+            estimated_minutes=estimated_minutes, completed=completed,
+            recurrence=recurrence,
+        )
 
-        # Support legacy 'name' parameter
-        if name is not None and task_name is None:
-            task_name = name
+        # Build AppleScript properties and commands
+        properties, separate_commands, updated_fields, _recurrence_js_needed = \
+            self._build_update_task_commands(
+                task_name=task_name, note=note, flagged=flagged,
+                sequential=sequential, due_date=due_date, defer_date=defer_date,
+                planned_date=planned_date, estimated_minutes=estimated_minutes,
+                completed=completed, status=status, project_id=project_id,
+                parent_task_id=parent_task_id, tags=tags, add_tags=add_tags,
+                remove_tags=remove_tags, recurrence=recurrence,
+                repetition_method=repetition_method,
+            )
 
-        # Validate conflict: project_id vs parent_task_id
-        if project_id is not None and parent_task_id is not None:
-            raise ValueError("Cannot specify both parent_task_id and project_id - parent task already determines the project.")
-
-        # Validate conflict: tags vs add_tags/remove_tags
-        if tags is not None and add_tags is not None:
-            raise ValueError("Cannot specify both tags and add_tags/remove_tags - use tags for full replacement or add_tags/remove_tags for incremental changes.")
-        if tags is not None and remove_tags is not None:
-            raise ValueError("Cannot specify both tags and remove_tags - use tags for full replacement or add_tags/remove_tags for incremental changes.")
-
-        # Validate status parameter (accept enum or string)
-        if status is not None:
-            if isinstance(status, str):
-                try:
-                    status = TaskStatus(status)
-                except ValueError:
-                    raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join([s.value for s in TaskStatus])}")
-
-        # Validate repetition parameters (legacy)
-        if repetition_method:
-            valid_methods = ["fixed", "start_after_completion", "due_after_completion"]
-            if repetition_method not in valid_methods:
-                raise ValueError(f"Invalid repetition_method: {repetition_method}. Must be one of: {', '.join(valid_methods)}")
-
-        # Track which fields are being updated
-        updated_fields = []
-
-        # Check if at least one field is provided
-        all_params = [
-            task_name, project_id, parent_task_id, note, due_date, defer_date,
-            planned_date, flagged, sequential, tags, add_tags, remove_tags,
-            estimated_minutes, completed, status, recurrence, repetition_method
-        ]
-        if all(v is None for v in all_params):
-            raise ValueError("At least one field must be provided to update")
-
-        # Build AppleScript
+        # Build and execute AppleScript
         try:
-            # Build properties to update (for set properties of theTask)
-            properties = []
-
-            if task_name is not None:
-                escaped_name = self._escape_applescript_string(task_name)
-                properties.append(f'name:"{escaped_name}"')
-                updated_fields.append("task_name")
-
-            if note is not None:
-                escaped_note = self._escape_applescript_string(note)
-                properties.append(f'note:"{escaped_note}"')
-                updated_fields.append("note")
-
-            if flagged is not None:
-                properties.append(f'flagged:{str(flagged).lower()}')
-                updated_fields.append("flagged")
-
-            if sequential is not None:
-                properties.append(f'sequential:{str(sequential).lower()}')
-                updated_fields.append("sequential")
-
-            # Build separate commands (can't use set properties for these)
-            separate_commands = []
-
-            # Handle dates
-            if due_date is not None:
-                if due_date == "":
-                    separate_commands.append("set due date of theTask to missing value")
-                else:
-                    as_date = self._iso_to_applescript_date(due_date)
-                    separate_commands.append(f'set due date of theTask to date "{as_date}"')
-                updated_fields.append("due_date")
-
-            if defer_date is not None:
-                if defer_date == "":
-                    separate_commands.append("set defer date of theTask to missing value")
-                else:
-                    as_date = self._iso_to_applescript_date(defer_date)
-                    separate_commands.append(f'set defer date of theTask to date "{as_date}"')
-                updated_fields.append("defer_date")
-
-            if planned_date is not None:
-                if planned_date == "":
-                    separate_commands.append("set planned date of theTask to missing value")
-                else:
-                    as_date = self._iso_to_applescript_date(planned_date)
-                    separate_commands.append(f'set planned date of theTask to date "{as_date}"')
-                updated_fields.append("planned_date")
-
-            # Handle estimated minutes
-            if estimated_minutes is not None:
-                separate_commands.append(f'set estimated minutes of theTask to {estimated_minutes}')
-                updated_fields.append("estimated_minutes")
-
-            # Handle completion (use "mark complete" for recurring task safety)
-            if completed is not None:
-                if completed:
-                    separate_commands.append("mark complete theTask")
-                else:
-                    # Uncomplete task
-                    separate_commands.append("set completed of theTask to false")
-                updated_fields.append("completed")
-
-            # Handle status (use "mark dropped" command)
-            if status is not None:
-                if status == TaskStatus.DROPPED:
-                    separate_commands.append("mark dropped theTask")
-                elif status == TaskStatus.ACTIVE:
-                    # Reactivate dropped task
-                    separate_commands.append("set dropped of theTask to false")
-                updated_fields.append("status")
-
-            # Handle hierarchy changes (project_id or parent_task_id)
-            if project_id is not None:
-                # Move to project
-                project_id_escaped = self._escape_applescript_string(project_id)
-                separate_commands.append(f'''
-                    set theProject to first flattened project whose id is "{project_id_escaped}"
-                    move theTask to end of tasks of theProject''')
-                updated_fields.append("project_id")
-
-            if parent_task_id is not None:
-                # Make subtask
-                parent_id_escaped = self._escape_applescript_string(parent_task_id)
-                separate_commands.append(f'''
-                    set theParent to first flattened task whose id is "{parent_id_escaped}"
-                    if id of theTask is id of theParent then
-                        error "Cannot set task as its own parent"
-                    end if
-                    move theTask to end of tasks of theParent''')
-                updated_fields.append("parent_task_id")
-
-            # Handle tags
-            if tags is not None:
-                # Full replacement: remove all tags, then add new ones
-                if len(tags) > 0:
-                    tag_adds = []
-                    for tag in tags:
-                        tag_escaped = self._escape_applescript_string(tag)
-                        tag_adds.append(f'''
-                        set tagObj to first flattened tag whose name is "{tag_escaped}"
-                        copy tagObj to end of newTags''')
-                    tag_adds_str = "\n                    ".join(tag_adds)
-                    separate_commands.append(f'''
-                    set newTags to {{}}
-                    {tag_adds_str}
-                    set tags of theTask to newTags''')
-                else:
-                    # Empty list = remove all tags
-                    separate_commands.append("set tags of theTask to {}")
-                updated_fields.append("tags")
-
-            if add_tags is not None:
-                # Add tags incrementally
-                for tag in add_tags:
-                    tag_escaped = self._escape_applescript_string(tag)
-                    separate_commands.append(f'''
-                    set tagObj to first flattened tag whose name is "{tag_escaped}"
-                    add tagObj to tags of theTask''')
-                updated_fields.append("add_tags")
-
-            if remove_tags is not None:
-                # Remove tags
-                for tag in remove_tags:
-                    tag_escaped = self._escape_applescript_string(tag)
-                    separate_commands.append(f'''
-                    set tagObj to first flattened tag whose name is "{tag_escaped}"
-                    remove tagObj from tags of theTask''')
-                updated_fields.append("remove_tags")
-
-            # Handle recurrence
-            # Note: AppleScript property writes on repetition rules don't persist in
-            # OmniFocus 4.x. Remove works via AppleScript, but set/modify requires
-            # OmniAutomation (evaluate javascript) — handled as a post-update call below.
-            _recurrence_js_needed = False
-            if recurrence is not None:
-                if recurrence == "":
-                    separate_commands.append("set repetition rule of theTask to missing value")
-                else:
-                    _recurrence_js_needed = True
-                updated_fields.append("recurrence")
-            elif repetition_method is not None:
-                _recurrence_js_needed = True
-                updated_fields.append("repetition_method")
-
-            # Build final AppleScript
             task_id_escaped = self._escape_applescript_string(task_id)
             script = f'''
             tell application "OmniFocus"
@@ -3799,12 +3936,10 @@ class OmniFocusConnector:
                     set theTask to first flattened task whose id is "{task_id_escaped}"
                     '''
 
-            # Apply property updates
             if properties:
                 props_str = ", ".join(properties)
                 script += f'\n                    set properties of theTask to {{{props_str}}}'
 
-            # Apply separate commands
             if separate_commands:
                 cmds_str = "\n                    ".join(separate_commands)
                 script += f'\n                    {cmds_str}'
@@ -3817,52 +3952,10 @@ class OmniFocusConnector:
 
             result = run_applescript(script)
             if result.strip() == "true":
-                # Post-update: set/modify recurrence via OmniAutomation
-                # AppleScript property writes on repetition rules don't persist
-                # in OmniFocus 4.x, so we use evaluate javascript instead.
-                # OmniAutomation crashes on headless test databases (#324)
-                if _recurrence_js_needed and not self._test_mode:
-                    js_method_map = {
-                        "fixed": "Task.RepetitionMethod.Fixed",
-                        "due_after_completion": "Task.RepetitionMethod.DueDate",
-                        "start_after_completion": "Task.RepetitionMethod.DeferUntilDate",
-                    }
-                    js_method = js_method_map.get(
-                        repetition_method or "fixed",
-                        "Task.RepetitionMethod.Fixed"
+                if _recurrence_js_needed:
+                    self._execute_recurrence_update(
+                        task_id_escaped, recurrence, repetition_method
                     )
-                    task_id_js = task_id_escaped.replace("'", "\\'")
-
-                    if recurrence is not None:
-                        # Set/modify: create new rule with given RRULE and method
-                        recurrence_js = self._escape_applescript_string(
-                            recurrence
-                        ).replace("'", "\\'")
-                        js_code = (
-                            f"var t = Task.byIdentifier('{task_id_js}');"
-                            f" if (t) {{ t.repetitionRule = new Task.RepetitionRule("
-                            f"'{recurrence_js}', {js_method}); 'ok'; }}"
-                            f" else {{ 'not found'; }}"
-                        )
-                    else:
-                        # Change method only: read current RRULE, create new rule
-                        # with same RRULE but different method
-                        js_code = (
-                            f"var t = Task.byIdentifier('{task_id_js}');"
-                            f" if (t && t.repetitionRule) {{"
-                            f" var rr = t.repetitionRule.ruleString;"
-                            f" t.repetitionRule = new Task.RepetitionRule("
-                            f"rr, {js_method}); 'ok'; }}"
-                            f" else {{ 'no rule'; }}"
-                        )
-
-                    js_script = (
-                        'tell application "OmniFocus"\n'
-                        f'    evaluate javascript "{js_code}"\n'
-                        'end tell'
-                    )
-                    run_applescript(js_script)
-
                 return {
                     "success": True,
                     "task_id": task_id,
@@ -3877,7 +3970,6 @@ class OmniFocusConnector:
                     "error": f"Unexpected result: {result}"
                 }
         except subprocess.CalledProcessError as e:
-            # OmniFocus error (task not found, etc.) - return error dict
             return {
                 "success": False,
                 "task_id": task_id,
@@ -3885,13 +3977,182 @@ class OmniFocusConnector:
                 "error": f"AppleScript error: {e.stderr}"
             }
         except Exception as e:
-            # Other runtime errors - return error dict
             return {
                 "success": False,
                 "task_id": task_id,
                 "updated_fields": [],
                 "error": str(e)
             }
+
+    def _validate_update_tasks_params(
+        self,
+        *,
+        task_ids: Union[str, list[str]],
+        flagged: Optional[bool],
+        sequential: Optional[bool],
+        status: Optional[Union[TaskStatus, str]],
+        completed: Optional[bool],
+        project_id: Optional[str],
+        parent_task_id: Optional[str],
+        tags: Optional[list[str]],
+        add_tags: Optional[list[str]],
+        remove_tags: Optional[list[str]],
+        due_date: Optional[str],
+        defer_date: Optional[str],
+        planned_date: Optional[str],
+        estimated_minutes: Optional[int],
+        kwargs: dict,
+    ) -> list[str]:
+        """Validate update_tasks parameters. Returns normalized ids_list."""
+        if 'task_name' in kwargs or 'name' in kwargs:
+            raise ValueError("task_name is not allowed in batch updates (requires unique values per task)")
+        if 'note' in kwargs:
+            raise ValueError("note is not allowed in batch updates (requires unique values per task)")
+        if kwargs:
+            unexpected = ', '.join(kwargs.keys())
+            raise ValueError(f"Unexpected arguments: {unexpected}")
+
+        ids_list = [task_ids] if isinstance(task_ids, str) else task_ids
+        if not ids_list:
+            raise ValueError("task_ids cannot be empty")
+
+        provided_fields = [
+            flagged, sequential, status, completed, project_id, parent_task_id,
+            tags, add_tags, remove_tags, due_date, defer_date, planned_date,
+            estimated_minutes
+        ]
+        if all(f is None for f in provided_fields):
+            raise ValueError("Must provide at least one field to update")
+
+        if project_id is not None and parent_task_id is not None:
+            raise ValueError("Cannot specify both project_id and parent_task_id")
+        if tags is not None and add_tags is not None:
+            raise ValueError("Cannot specify both tags and add_tags (use one or the other)")
+
+        return ids_list
+
+    def _build_bulk_update_commands(
+        self,
+        *,
+        or_chain_target: str,
+        flagged: Optional[bool],
+        sequential: Optional[bool],
+        due_date: Optional[str],
+        defer_date: Optional[str],
+        planned_date: Optional[str],
+        estimated_minutes: Optional[int],
+        completed: Optional[bool],
+    ) -> tuple[list[str], bool]:
+        """Build bulk-settable OR-chain commands for update_tasks.
+
+        Returns (bulk_commands, has_bulk).
+        """
+        bulk_commands: list[str] = []
+
+        if flagged is not None:
+            bulk_commands.append(
+                f"set flagged of ({or_chain_target}) to {str(flagged).lower()}"
+            )
+        if sequential is not None:
+            bulk_commands.append(
+                f"set sequential of ({or_chain_target}) to {str(sequential).lower()}"
+            )
+        if estimated_minutes is not None:
+            bulk_commands.append(
+                f"set estimated minutes of ({or_chain_target}) to {estimated_minutes}"
+            )
+
+        for field_name, field_val in [("due date", due_date), ("defer date", defer_date), ("planned date", planned_date)]:
+            if field_val is not None:
+                if field_val == "":
+                    bulk_commands.append(
+                        f"set {field_name} of ({or_chain_target}) to missing value"
+                    )
+                else:
+                    as_date = self._iso_to_applescript_date(field_val)
+                    bulk_commands.append(
+                        f'set {field_name} of ({or_chain_target}) to date "{as_date}"'
+                    )
+
+        if completed is True:
+            bulk_commands.append(f"mark complete ({or_chain_target})")
+
+        return bulk_commands, len(bulk_commands) > 0
+
+    def _build_per_task_update_commands(
+        self,
+        *,
+        completed: Optional[bool],
+        status: Optional[Union[TaskStatus, str]],
+        project_id: Optional[str],
+        parent_task_id: Optional[str],
+        tags: Optional[list[str]],
+        add_tags: Optional[list[str]],
+        remove_tags: Optional[list[str]],
+    ) -> tuple[list[str], bool]:
+        """Build per-task repeat-loop commands for update_tasks.
+
+        Returns (per_task_commands, has_per_task).
+        """
+        per_task_commands: list[str] = []
+
+        if completed is False:
+            per_task_commands.append("set completed of theTask to false")
+
+        if status is not None:
+            if isinstance(status, str):
+                status = TaskStatus(status)
+            if status == TaskStatus.DROPPED:
+                per_task_commands.append("mark dropped theTask")
+            elif status == TaskStatus.ACTIVE:
+                per_task_commands.append("set dropped of theTask to false")
+
+        if project_id is not None:
+            project_id_escaped = self._escape_applescript_string(project_id)
+            per_task_commands.append(f'''
+                    set theProject to first flattened project whose id is "{project_id_escaped}"
+                    move theTask to end of tasks of theProject''')
+
+        if parent_task_id is not None:
+            parent_id_escaped = self._escape_applescript_string(parent_task_id)
+            per_task_commands.append(f'''
+                    set theParent to first flattened task whose id is "{parent_id_escaped}"
+                    if id of theTask is id of theParent then
+                        error "Cannot set task as its own parent"
+                    end if
+                    move theTask to end of tasks of theParent''')
+
+        if tags is not None:
+            if len(tags) > 0:
+                tag_adds = []
+                for tag in tags:
+                    tag_escaped = self._escape_applescript_string(tag)
+                    tag_adds.append(f'''
+                        set tagObj to first flattened tag whose name is "{tag_escaped}"
+                        copy tagObj to end of newTags''')
+                tag_adds_str = "\n                    ".join(tag_adds)
+                per_task_commands.append(f'''
+                    set newTags to {{}}
+                    {tag_adds_str}
+                    set tags of theTask to newTags''')
+            else:
+                per_task_commands.append("set tags of theTask to {}")
+
+        if add_tags is not None:
+            for tag in add_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                per_task_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theTask''')
+
+        if remove_tags is not None:
+            for tag in remove_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                per_task_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theTask''')
+
+        return per_task_commands, len(per_task_commands) > 0
 
     def update_tasks(
         self,
@@ -3962,180 +4223,31 @@ class OmniFocusConnector:
         # SAFETY: Verify database before modifying
         self._verify_database_safety('update_tasks')
 
-        # Validation: task_name and note are NOT allowed (require unique values)
-        if 'task_name' in kwargs or 'name' in kwargs:
-            raise ValueError("task_name is not allowed in batch updates (requires unique values per task)")
-        if 'note' in kwargs:
-            raise ValueError("note is not allowed in batch updates (requires unique values per task)")
+        # Validate and normalize parameters
+        ids_list = self._validate_update_tasks_params(
+            task_ids=task_ids, flagged=flagged, sequential=sequential,
+            status=status, completed=completed, project_id=project_id,
+            parent_task_id=parent_task_id, tags=tags, add_tags=add_tags,
+            remove_tags=remove_tags, due_date=due_date, defer_date=defer_date,
+            planned_date=planned_date, estimated_minutes=estimated_minutes,
+            kwargs=kwargs,
+        )
 
-        # Reject any other unexpected arguments
-        if kwargs:
-            unexpected = ', '.join(kwargs.keys())
-            raise ValueError(f"Unexpected arguments: {unexpected}")
-
-        # Normalize task_ids to list
-        if isinstance(task_ids, str):
-            ids_list = [task_ids]
-        else:
-            ids_list = task_ids
-
-        # Validation: task_ids must not be empty
-        if not ids_list:
-            raise ValueError("task_ids cannot be empty")
-
-        # Validation: Must provide at least one field to update
-        provided_fields = [
-            flagged, sequential, status, completed, project_id, parent_task_id,
-            tags, add_tags, remove_tags, due_date, defer_date, planned_date,
-            estimated_minutes
-        ]
-        if all(f is None for f in provided_fields):
-            raise ValueError("Must provide at least one field to update")
-
-        # Validation: Conflicting parameters
-        if project_id is not None and parent_task_id is not None:
-            raise ValueError("Cannot specify both project_id and parent_task_id")
-
-        if tags is not None and add_tags is not None:
-            raise ValueError("Cannot specify both tags and add_tags (use one or the other)")
-
-        # Classify fields into bulk-settable (or-chain) vs per-task (repeat loop)
-        # Bulk: flagged, estimated_minutes, due_date, defer_date, completed=True
-        # Per-task: completed=False, status, project_id, parent_task_id, tags, add_tags, remove_tags
-        has_bulk = False
-        has_per_task = False
-
-        bulk_commands = []
         or_chain_target = self._build_whose_or_chain(ids_list, "flattened task")
 
-        # --- Bulk-settable fields ---
+        # Build bulk-settable and per-task commands
+        bulk_commands, has_bulk = self._build_bulk_update_commands(
+            or_chain_target=or_chain_target, flagged=flagged,
+            sequential=sequential, due_date=due_date, defer_date=defer_date,
+            planned_date=planned_date, estimated_minutes=estimated_minutes,
+            completed=completed,
+        )
 
-        if flagged is not None:
-            bulk_commands.append(
-                f"set flagged of ({or_chain_target}) to {str(flagged).lower()}"
-            )
-            has_bulk = True
-
-        if sequential is not None:
-            bulk_commands.append(
-                f"set sequential of ({or_chain_target}) to {str(sequential).lower()}"
-            )
-            has_bulk = True
-
-        if estimated_minutes is not None:
-            bulk_commands.append(
-                f"set estimated minutes of ({or_chain_target}) to {estimated_minutes}"
-            )
-            has_bulk = True
-
-        if due_date is not None:
-            if due_date == "":
-                bulk_commands.append(
-                    f"set due date of ({or_chain_target}) to missing value"
-                )
-            else:
-                as_date = self._iso_to_applescript_date(due_date)
-                bulk_commands.append(
-                    f'set due date of ({or_chain_target}) to date "{as_date}"'
-                )
-            has_bulk = True
-
-        if defer_date is not None:
-            if defer_date == "":
-                bulk_commands.append(
-                    f"set defer date of ({or_chain_target}) to missing value"
-                )
-            else:
-                as_date = self._iso_to_applescript_date(defer_date)
-                bulk_commands.append(
-                    f'set defer date of ({or_chain_target}) to date "{as_date}"'
-                )
-            has_bulk = True
-
-        if planned_date is not None:
-            if planned_date == "":
-                bulk_commands.append(
-                    f"set planned date of ({or_chain_target}) to missing value"
-                )
-            else:
-                as_date = self._iso_to_applescript_date(planned_date)
-                bulk_commands.append(
-                    f'set planned date of ({or_chain_target}) to date "{as_date}"'
-                )
-            has_bulk = True
-
-        if completed is True:
-            bulk_commands.append(f"mark complete ({or_chain_target})")
-            has_bulk = True
-
-        # --- Per-task fields (need repeat loop) ---
-
-        per_task_properties = []
-        per_task_commands = []
-
-        if completed is False:
-            per_task_commands.append("set completed of theTask to false")
-            has_per_task = True
-
-        # Validate and normalize status
-        if status is not None:
-            if isinstance(status, str):
-                status = TaskStatus(status)
-            if status == TaskStatus.DROPPED:
-                per_task_commands.append("mark dropped theTask")
-            elif status == TaskStatus.ACTIVE:
-                per_task_commands.append("set dropped of theTask to false")
-            has_per_task = True
-
-        if project_id is not None:
-            project_id_escaped = self._escape_applescript_string(project_id)
-            per_task_commands.append(f'''
-                    set theProject to first flattened project whose id is "{project_id_escaped}"
-                    move theTask to end of tasks of theProject''')
-            has_per_task = True
-
-        if parent_task_id is not None:
-            parent_id_escaped = self._escape_applescript_string(parent_task_id)
-            per_task_commands.append(f'''
-                    set theParent to first flattened task whose id is "{parent_id_escaped}"
-                    if id of theTask is id of theParent then
-                        error "Cannot set task as its own parent"
-                    end if
-                    move theTask to end of tasks of theParent''')
-            has_per_task = True
-
-        if tags is not None:
-            if len(tags) > 0:
-                tag_adds = []
-                for tag in tags:
-                    tag_escaped = self._escape_applescript_string(tag)
-                    tag_adds.append(f'''
-                        set tagObj to first flattened tag whose name is "{tag_escaped}"
-                        copy tagObj to end of newTags''')
-                tag_adds_str = "\n                    ".join(tag_adds)
-                per_task_commands.append(f'''
-                    set newTags to {{}}
-                    {tag_adds_str}
-                    set tags of theTask to newTags''')
-            else:
-                per_task_commands.append("set tags of theTask to {}")
-            has_per_task = True
-
-        if add_tags is not None:
-            for tag in add_tags:
-                tag_escaped = self._escape_applescript_string(tag)
-                per_task_commands.append(f'''
-                    set tagObj to first flattened tag whose name is "{tag_escaped}"
-                    add tagObj to tags of theTask''')
-            has_per_task = True
-
-        if remove_tags is not None:
-            for tag in remove_tags:
-                tag_escaped = self._escape_applescript_string(tag)
-                per_task_commands.append(f'''
-                    set tagObj to first flattened tag whose name is "{tag_escaped}"
-                    remove tagObj from tags of theTask''')
-            has_per_task = True
+        per_task_commands, has_per_task = self._build_per_task_update_commands(
+            completed=completed, status=status, project_id=project_id,
+            parent_task_id=parent_task_id, tags=tags, add_tags=add_tags,
+            remove_tags=remove_tags,
+        )
 
         # --- Build AppleScript ---
 
