@@ -1479,15 +1479,12 @@ class OmniFocusConnector:
             # Special handling for 'done' status - OmniFocus requires 'mark complete' verb
             if status_str == "done":
                 status_command = 'mark complete theProject'
-            else:
-                # Map other status strings to OmniFocus status values
-                status_map = {
-                    "active": "active",
-                    "on_hold": "on hold",
-                    "dropped": "dropped"
-                }
-                of_status = status_map[status_str]
-                status_command = f'set status of theProject to {of_status}'
+            elif status_str == "dropped":
+                status_command = 'set dropped of theProject to true'
+            elif status_str == "active":
+                status_command = 'set dropped of theProject to false'
+            elif status_str == "on_hold":
+                status_command = 'set status of theProject to on hold'
             updated_fields.append("status")
 
         # Build review interval command
@@ -1772,16 +1769,12 @@ class OmniFocusConnector:
 
             if status_str == "done":
                 bulk_commands.append(f"mark complete ({or_chain_target})")
-            else:
-                status_map = {
-                    "active": "active",
-                    "on_hold": "on hold",
-                    "dropped": "dropped"
-                }
-                of_status = status_map[status_str]
-                bulk_commands.append(
-                    f"set status of ({or_chain_target}) to {of_status}"
-                )
+            elif status_str == "dropped":
+                bulk_commands.append(f"set dropped of ({or_chain_target}) to true")
+            elif status_str == "active":
+                bulk_commands.append(f"set dropped of ({or_chain_target}) to false")
+            elif status_str == "on_hold":
+                bulk_commands.append(f"set status of ({or_chain_target}) to on hold")
             has_bulk = True
 
         if review_interval_weeks is not None:
