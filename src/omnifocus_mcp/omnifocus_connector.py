@@ -4502,11 +4502,19 @@ class OmniFocusConnector:
                             set tagStatus to "on hold"
                         end if
 
+                        -- Get parent tag ID (empty string if top-level)
+                        set parentTagId to ""
+                        set tagContainer to container of t
+                        if class of tagContainer is tag then
+                            set parentTagId to id of tagContainer
+                        end if
+
                         -- Build JSON manually
                         set jsonLine to "{" & ¬
                             "\\"id\\": \\"" & tagId & "\\", " & ¬
                             "\\"name\\": \\"" & my escapeJSON(tagName) & "\\", " & ¬
-                            "\\"status\\": \\"" & tagStatus & "\\"" & ¬
+                            "\\"status\\": \\"" & tagStatus & "\\", " & ¬
+                            "\\"parentTagId\\": \\"" & parentTagId & "\\"" & ¬
                             "}"
 
                         if output is not "" then
