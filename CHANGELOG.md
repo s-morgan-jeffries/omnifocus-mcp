@@ -5,6 +5,48 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-03-17
+
+### Added
+
+- **`reorder_project` tool** (#357)
+  - Move projects before/after other projects within a folder
+  - Parallel implementation to `reorder_task` (23 tools total)
+  - Blind eval scenario 52: PASS (104/104, 100%)
+
+### Changed
+
+- **All `get_tasks()` paths now use batch mode** (#368)
+  - Eliminated per-task execution paths (`_build_per_task_mode_script` deleted, ~326 lines)
+  - `inbox_only`: 9.13s → 0.64s (14x faster)
+  - `get_tasks()` complexity: 24 → 15, `_build_task_filter_checks`: 54 → 35
+  - Also fixes `get_tasks(include_completed=True)` timeout (#364) and `defer_relative` filter gap (#367)
+
+### Fixed
+
+- **`update_project(status='dropped')` now works** (#359)
+  - Projects use `mark dropped` (command verb) and `set status to active status` (enum), not `set dropped to true/false`
+  - Both single and batch paths fixed
+  - Documented in APPLESCRIPT_GOTCHAS.md
+
+- **`update_task(status='active')` now raises clear error** (#372)
+  - OmniFocus does not support undropping tasks via any automation API (AppleScript or OmniAutomation)
+  - Previously generated broken AppleScript that always failed
+  - Now raises `ValueError` with explanation
+
+- **Inherited availability for tasks in done/dropped containers** (#363)
+  - Tasks in completed or dropped projects now correctly show `available: false`
+  - Uses `effectively completed` and `effectively dropped` batch-readable properties
+
+- **Integration test coverage for project status transitions** (#369)
+  - Full lifecycle test: ACTIVE → ON_HOLD → ACTIVE → DROPPED → ACTIVE → DONE
+  - Strengthened existing tests to verify actual status (not just success bool)
+  - Batch project drop test added
+
+### Removed
+
+- Stale `docs/reference/API_REFERENCE.md` (3,024 lines) (#353)
+
 ## [0.10.0] - 2026-03-16
 
 ### Added

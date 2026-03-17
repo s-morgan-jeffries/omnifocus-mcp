@@ -27,11 +27,11 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 
 ### Reliable
 
-91% code coverage from 782 unit tests. 138 integration tests run against real OmniFocus covering task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
+91% code coverage from 787 unit tests. 144 integration tests run against real OmniFocus covering task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
 
 ### Agent-Friendly
 
-47-scenario blind eval suite with 100% pass rate — agents that have never seen OmniFocus can correctly use every tool from descriptions alone. Scenarios cover tool selection, parameter usage, multi-step workflows, date semantics, recurrence, tag behavior, task movement, text search, and safety-critical operations (drop vs delete, destructive action guardrails). Server instructions teach GTD concepts (task states, project types, sequential dependencies, review cycles) so agents make informed decisions, not just API calls.
+52-scenario blind eval suite with 100% pass rate — agents that have never seen OmniFocus can correctly use every tool from descriptions alone. Scenarios cover tool selection, parameter usage, multi-step workflows, date semantics, recurrence, tag behavior, task movement, text search, and safety-critical operations (drop vs delete, destructive action guardrails). Server instructions teach GTD concepts (task states, project types, sequential dependencies, review cycles) so agents make informed decisions, not just API calls.
 
 ## Tools (23)
 
@@ -80,7 +80,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 ```bash
 git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
-git checkout v0.10.0  # Latest stable release
+git checkout v0.10.1  # Latest stable release
 
 # Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
