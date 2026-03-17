@@ -1476,13 +1476,15 @@ class OmniFocusConnector:
         # Build status command (separate from properties)
         status_command = ""
         if status_str is not None:
-            # Special handling for 'done' status - OmniFocus requires 'mark complete' verb
+            # OmniFocus projects use enum values for status (e.g. 'active status')
+            # and 'mark complete'/'mark dropped' verbs for done/dropped.
+            # Using 'set dropped of theProject to true/false' fails for projects.
             if status_str == "done":
                 status_command = 'mark complete theProject'
             elif status_str == "dropped":
-                status_command = 'set dropped of theProject to true'
+                status_command = 'mark dropped theProject'
             elif status_str == "active":
-                status_command = 'set dropped of theProject to false'
+                status_command = 'set status of theProject to active status'
             elif status_str == "on_hold":
                 status_command = 'set status of theProject to on hold'
             updated_fields.append("status")
@@ -1770,9 +1772,9 @@ class OmniFocusConnector:
             if status_str == "done":
                 bulk_commands.append(f"mark complete ({or_chain_target})")
             elif status_str == "dropped":
-                bulk_commands.append(f"set dropped of ({or_chain_target}) to true")
+                bulk_commands.append(f"mark dropped ({or_chain_target})")
             elif status_str == "active":
-                bulk_commands.append(f"set dropped of ({or_chain_target}) to false")
+                bulk_commands.append(f"set status of ({or_chain_target}) to active status")
             elif status_str == "on_hold":
                 bulk_commands.append(f"set status of ({or_chain_target}) to on hold")
             has_bulk = True
@@ -2414,295 +2416,74 @@ class OmniFocusConnector:
         tag_prefiltered_ids: Optional[set],
         query: Optional[str],
         whose_active: bool,
-        on_hold_available_check: str,
         on_hold_available_check_batch: str,
     ) -> dict[str, str]:
-        """Generate AppleScript filter check strings for get_tasks.
+        """Generate batch-mode AppleScript filter check strings for get_tasks.
 
-        Returns dict with per-task checks (e.g. 'completion_check', 'flagged_check')
-        and batch-mode checks (e.g. 'available_check_batch', 'due_relative_check_batch').
-        The caller selects which set to use based on whose_active.
+        All checks use indexed batch data (e.g. 'item i of taskComps') instead
+        of per-task property reads. Checks gated on 'whose_active' are skipped
+        when whose clauses already handle that filter natively.
         """
         checks: dict[str, str] = {}
 
-        # Completion filter — skip if whose already filters completed
-        completion_check = ""
+        # --- Filters that whose handles when active (skip if whose_active) ---
+
+        completion_check_batch = ""
         if not include_completed and not whose_active:
-            completion_check = """
-                        -- Skip completed tasks
-                        if completed of t then
-                            error "skip completed task"
-                        end if"""
-        checks['completion_check'] = completion_check
+            completion_check_batch = """
+                        if item i of taskComps then error "skip completed task"
+                        """
+        checks['completion_check_batch'] = completion_check_batch
 
-        # Flagged filter — skip if whose already filters flagged
-        flagged_check = ""
+        flagged_check_batch = ""
         if flagged_only and not whose_active:
-            flagged_check = """
-                        -- Skip non-flagged tasks
-                        if not flagged of t then
-                            error "skip non-flagged task"
-                        end if"""
-        checks['flagged_check'] = flagged_check
+            flagged_check_batch = """
+                        if not (item i of taskFlags) then error "skip non-flagged task"
+                        """
+        checks['flagged_check_batch'] = flagged_check_batch
 
-        # Dropped filter — skip if whose already filters dropped
-        dropped_check = ""
+        dropped_check_batch = ""
         if dropped_only and not whose_active:
-            dropped_check = """
-                        -- Skip non-dropped tasks
-                        if not dropped of t then
-                            error "skip non-dropped task"
-                        end if"""
-        checks['dropped_check'] = dropped_check
+            dropped_check_batch = """
+                        if not (item i of taskDrops) then error "skip non-dropped task"
+                        """
+        checks['dropped_check_batch'] = dropped_check_batch
 
-        # Blocked filter — skip if whose already filters blocked
-        blocked_check = ""
+        blocked_check_batch = ""
         if blocked_only and not whose_active:
-            blocked_check = """
-                        -- Skip non-blocked tasks
-                        if not blocked of t then
-                            error "skip non-blocked task"
-                        end if"""
-        checks['blocked_check'] = blocked_check
+            blocked_check_batch = """
+                        if not (item i of taskBlocks) then error "skip non-blocked task"
+                        """
+        checks['blocked_check_batch'] = blocked_check_batch
 
-        # Next filter — skip if whose already filters next
-        next_check = ""
+        next_check_batch = ""
         if next_only and not whose_active:
-            next_check = """
-                        -- Skip non-next tasks
-                        if not next of t then
-                            error "skip non-next task"
-                        end if"""
-        checks['next_check'] = next_check
+            next_check_batch = """
+                        if not (item i of taskNexts) then error "skip non-next task"
+                        """
+        checks['next_check_batch'] = next_check_batch
 
-        # Build available filter (not dropped, not blocked, not deferred, not On Hold tagged)
-        available_check = "" if not available_only else f"""
-                        -- Skip unavailable tasks
-                        if dropped of t then
-                            error "skip unavailable task"
-                        end if
-                        if blocked of t then
-                            error "skip unavailable task"
-                        end if
-                        -- Skip tasks in completed/dropped containers
-                        if effectively completed of t then
-                            error "skip unavailable task"
-                        end if
-                        if effectively dropped of t then
-                            error "skip unavailable task"
-                        end if
-                        -- Check if deferred
-                        try
-                            set taskDeferDate to effective defer date of t
-                            if taskDeferDate is not missing value then
-                                if taskDeferDate > (current date) then
-                                    error "skip unavailable task"
-                                end if
-                            end if
-                        end try{on_hold_available_check}"""
-        checks['available_check'] = available_check
-
-        # Overdue filter — skip if whose already filters by due date
-        overdue_check = ""
+        overdue_check_batch = ""
         if overdue and not whose_active:
-            overdue_check = """
-                        -- Skip non-overdue tasks
-                        try
-                            set taskDueDate to effective due date of t
-                            if taskDueDate is missing value then
-                                error "skip non-overdue task"
-                            else if taskDueDate >= (current date) then
-                                error "skip non-overdue task"
-                            end if
-                        on error
-                            error "skip non-overdue task"
-                        end try"""
-        checks['overdue_check'] = overdue_check
+            overdue_check_batch = """
+                        set taskDue to contents of (item i of dueDates)
+                        if taskDue is missing value then error "skip non-overdue task"
+                        if taskDue ≥ (current date) then error "skip non-overdue task"
+                        """
+        checks['overdue_check_batch'] = overdue_check_batch
 
-        # Build relative due date filter
-        due_relative_check = ""
-        if due_relative:
-            if due_relative == "today":
-                due_relative_check = """
-                        -- Skip tasks not due today
-                        set taskDue to effective due date of t
-                        if taskDue is missing value then
-                            error "skip task"
-                        end if
-                        set todayStart to (current date)
-                        set time of todayStart to 0
-                        set todayEnd to todayStart + (24 * hours)
-                        if taskDue < todayStart or taskDue ≥ todayEnd then
-                            error "skip task"
-                        end if"""
-            elif due_relative == "tomorrow":
-                due_relative_check = """
-                        -- Skip tasks not due tomorrow
-                        set taskDue to effective due date of t
-                        if taskDue is missing value then
-                            error "skip task"
-                        end if
-                        set tomorrowStart to (current date) + (1 * days)
-                        set time of tomorrowStart to 0
-                        set tomorrowEnd to tomorrowStart + (24 * hours)
-                        if taskDue < tomorrowStart or taskDue ≥ tomorrowEnd then
-                            error "skip task"
-                        end if"""
-            elif due_relative == "this_week":
-                due_relative_check = """
-                        -- Skip tasks not due this week
-                        set taskDue to effective due date of t
-                        if taskDue is missing value then
-                            error "skip task"
-                        end if
-                        set weekEnd to (current date) + (7 * days)
-                        if taskDue > weekEnd then
-                            error "skip task"
-                        end if"""
-            elif due_relative == "next_week":
-                due_relative_check = """
-                        -- Skip tasks not due next week
-                        set taskDue to effective due date of t
-                        if taskDue is missing value then
-                            error "skip task"
-                        end if
-                        set nextWeekStart to (current date) + (7 * days)
-                        set nextWeekEnd to nextWeekStart + (7 * days)
-                        if taskDue < nextWeekStart or taskDue > nextWeekEnd then
-                            error "skip task"
-                        end if"""
-            elif due_relative == "overdue":
-                due_relative_check = """
-                        -- Skip non-overdue tasks
-                        set taskDue to effective due date of t
-                        if taskDue is missing value then
-                            error "skip task"
-                        end if
-                        if taskDue >= (current date) then
-                            error "skip task"
-                        end if"""
-        checks['due_relative_check'] = due_relative_check
-
-        # Build relative defer date filter
-        defer_relative_check = ""
-        if defer_relative:
-            if defer_relative == "today":
-                defer_relative_check = """
-                        -- Skip tasks not deferred until today
-                        set taskDefer to effective defer date of t
-                        if taskDefer is missing value then
-                            error "skip task"
-                        end if
-                        set todayStart to (current date)
-                        set time of todayStart to 0
-                        set todayEnd to todayStart + (24 * hours)
-                        if taskDefer < todayStart or taskDefer ≥ todayEnd then
-                            error "skip task"
-                        end if"""
-            elif defer_relative == "tomorrow":
-                defer_relative_check = """
-                        -- Skip tasks not deferred until tomorrow
-                        set taskDefer to effective defer date of t
-                        if taskDefer is missing value then
-                            error "skip task"
-                        end if
-                        set tomorrowStart to (current date) + (1 * days)
-                        set time of tomorrowStart to 0
-                        set tomorrowEnd to tomorrowStart + (24 * hours)
-                        if taskDefer < tomorrowStart or taskDefer ≥ tomorrowEnd then
-                            error "skip task"
-                        end if"""
-            elif defer_relative == "this_week":
-                defer_relative_check = """
-                        -- Skip tasks not deferred until this week
-                        set taskDefer to effective defer date of t
-                        if taskDefer is missing value then
-                            error "skip task"
-                        end if
-                        set weekEnd to (current date) + (7 * days)
-                        if taskDefer > weekEnd then
-                            error "skip task"
-                        end if"""
-            elif defer_relative == "next_week":
-                defer_relative_check = """
-                        -- Skip tasks not deferred until next week
-                        set taskDefer to effective defer date of t
-                        if taskDefer is missing value then
-                            error "skip task"
-                        end if
-                        set nextWeekStart to (current date) + (7 * days)
-                        set nextWeekEnd to nextWeekStart + (7 * days)
-                        if taskDefer < nextWeekStart or taskDefer > nextWeekEnd then
-                            error "skip task"
-                        end if"""
-        checks['defer_relative_check'] = defer_relative_check
-
-        # Build time estimate filters
-        estimate_check = ""
-        if max_estimated_minutes is not None:
-            estimate_check = f"""
-                        -- Skip tasks over time limit
-                        set estMins to estimated minutes of t
-                        if estMins is missing value or estMins = 0 or estMins > {max_estimated_minutes} then
-                            error "skip task"
-                        end if"""
-        elif has_estimate is not None:
-            if has_estimate:
-                estimate_check = """
-                        -- Skip tasks without estimate
-                        set estMins to estimated minutes of t
-                        if estMins is missing value or estMins = 0 then
-                            error "skip task"
-                        end if"""
-            else:
-                estimate_check = """
-                        -- Skip tasks with estimate
-                        set estMins to estimated minutes of t
-                        if estMins is not missing value and estMins > 0 then
-                            error "skip task"
-                        end if"""
-        checks['estimate_check'] = estimate_check
-
-        # Build tag filter (AND mode only in AppleScript; OR/NOT handled in Python)
-        tag_check = ""
-        if tag_filter and len(tag_filter) > 0 and tag_filter_mode == "and":
-            tag_checks = []
-            for tag_name in tag_filter:
-                tag_escaped = self._escape_applescript_string(tag_name)
-                tag_checks.append(f'''
-                        -- Check for tag: {tag_escaped}
-                        set hasTag to false
-                        repeat with tg in tags of t
-                            if name of tg is "{tag_escaped}" then
-                                set hasTag to true
-                                exit repeat
-                            end if
-                        end repeat
-                        if not hasTag then
-                            error "skip task without required tag"
-                        end if''')
-            tag_check = "".join(tag_checks)
-        checks['tag_check'] = tag_check
-
-        # Query filter — skip if whose already filters by name/note contains
-        query_check = ""
+        query_check_batch = ""
         if query and not whose_active:
             query_escaped = self._escape_applescript_string(query)
-            query_check = f"""
-                        -- Skip tasks not matching query (AppleScript contains is case-insensitive)
+            query_check_batch = f"""
                         set queryCheck to false
-                        if (name of t) contains "{query_escaped}" then
-                            set queryCheck to true
-                        end if
-                        if (note of t) contains "{query_escaped}" then
-                            set queryCheck to true
-                        end if
-                        if not queryCheck then
-                            error "skip non-matching task"
-                        end if"""
-        checks['query_check'] = query_check
+                        if (item i of taskNames) contains "{query_escaped}" then set queryCheck to true
+                        if (item i of taskNotes) contains "{query_escaped}" then set queryCheck to true
+                        if not queryCheck then error "skip non-matching task"
+                        """
+        checks['query_check_batch'] = query_check_batch
 
-        # --- Batch-mode filter checks (use indexed batch data instead of per-task reads) ---
+        # --- Filters always applied in batch mode (not handled by whose) ---
 
         available_check_batch = ""
         if available_only:
@@ -2849,6 +2630,13 @@ class OmniFocusConnector:
         Uses 'a reference to' for O(P) batch property reads.
         Returns the complete AppleScript string.
         """
+        completion_check_batch = filter_checks['completion_check_batch']
+        flagged_check_batch = filter_checks['flagged_check_batch']
+        dropped_check_batch = filter_checks['dropped_check_batch']
+        blocked_check_batch = filter_checks['blocked_check_batch']
+        next_check_batch = filter_checks['next_check_batch']
+        overdue_check_batch = filter_checks['overdue_check_batch']
+        query_check_batch = filter_checks['query_check_batch']
         available_check_batch = filter_checks['available_check_batch']
         due_relative_check_batch = filter_checks['due_relative_check_batch']
         defer_relative_check_batch = filter_checks['defer_relative_check_batch']
@@ -2904,7 +2692,14 @@ class OmniFocusConnector:
                 -- Build JSON from parallel lists (local loop, minimal IPC)
                 repeat with i from 1 to taskCount
                     try
-                        -- Apply remaining filters using batch-read data
+                        -- Apply all filters using batch-read data
+                        {completion_check_batch}
+                        {flagged_check_batch}
+                        {dropped_check_batch}
+                        {blocked_check_batch}
+                        {next_check_batch}
+                        {overdue_check_batch}
+                        {query_check_batch}
                         {available_check_batch}
                         {due_relative_check_batch}
                         {defer_relative_check_batch}
@@ -3096,346 +2891,6 @@ class OmniFocusConnector:
         return "[" & linefeed & output & linefeed & "]"
         ''' + APPLESCRIPT_JSON_HELPERS
 
-    def _build_per_task_mode_script(
-        self,
-        task_source: str,
-        on_hold_tags_decl: str,
-        selective_filters_active: bool,
-        filter_checks: dict[str, str],
-    ) -> str:
-        """Build per-task mode AppleScript for get_tasks.
-
-        Chooses FILTER-FIRST or EXTRACT-THEN-FILTER based on selective_filters_active.
-        Returns the complete AppleScript string.
-        """
-        completion_check = filter_checks['completion_check']
-        flagged_check = filter_checks['flagged_check']
-        dropped_check = filter_checks['dropped_check']
-        blocked_check = filter_checks['blocked_check']
-        next_check = filter_checks['next_check']
-        available_check = filter_checks['available_check']
-        overdue_check = filter_checks['overdue_check']
-        due_relative_check = filter_checks['due_relative_check']
-        defer_relative_check = filter_checks['defer_relative_check']
-        estimate_check = filter_checks['estimate_check']
-        tag_check = filter_checks['tag_check']
-        query_check = filter_checks['query_check']
-
-        if selective_filters_active:
-            # FILTER-FIRST: Apply filters BEFORE property extraction (per-task loop)
-            script = f'''
-        use AppleScript version "2.4"
-        use scripting additions
-
-        set output to ""
-        set taskIndex to 0
-        {on_hold_tags_decl}
-
-        tell application "OmniFocus"
-            tell front document
-                set allTasks to {task_source}
-
-                repeat with t in allTasks
-                    set taskIndex to taskIndex + 1
-                    try
-                        -- PHASE 1: Apply ALL filters using direct property access
-                        {completion_check}
-                        {flagged_check}
-                        {dropped_check}
-                        {blocked_check}
-                        {next_check}
-                        {available_check}
-                        {overdue_check}
-                        {due_relative_check}
-                        {defer_relative_check}
-                        {estimate_check}
-                        {tag_check}
-                        {query_check}
-
-                        -- PHASE 2: Extract ALL properties (only for tasks that passed filters)
-                        set taskId to id of t
-                        set taskName to name of t
-                        set taskNote to note of t
-                        set taskCompleted to completed of t
-                        set taskFlagged to flagged of t
-                        set taskDropped to dropped of t
-                        set taskBlocked to blocked of t
-                        set taskNext to next of t'''
-        else:
-            # EXTRACT-THEN-FILTER: Current architecture (avoids empty filter overhead)
-            script = f'''
-        use AppleScript version "2.4"
-        use scripting additions
-
-        set output to ""
-        set taskIndex to 0
-        {on_hold_tags_decl}
-
-        tell application "OmniFocus"
-            tell front document
-                set allTasks to {task_source}
-
-                repeat with t in allTasks
-                    set taskIndex to taskIndex + 1
-                    try
-                        -- PHASE 1: Extract basic properties
-                        set taskId to id of t
-                        set taskName to name of t
-                        set taskNote to note of t
-                        set taskCompleted to completed of t
-                        set taskFlagged to flagged of t
-                        set taskDropped to dropped of t
-                        set taskBlocked to blocked of t
-                        set taskNext to next of t
-
-                        -- PHASE 2: Apply filters
-                        {completion_check}
-                        {flagged_check}
-                        {dropped_check}
-                        {blocked_check}
-                        {next_check}
-                        {available_check}
-                        {overdue_check}
-                        {due_relative_check}
-                        {defer_relative_check}
-                        {estimate_check}
-                        {tag_check}
-                        {query_check}'''
-
-        # Common per-task property extraction and JSON building
-        script += f'''
-
-                        -- Get project info
-                        set projectId to ""
-                        set projectName to ""
-                        try
-                            set parentProj to containing project of t
-                            if parentProj is not missing value then
-                                set projectId to id of parentProj
-                                set projectName to name of parentProj
-                            end if
-                        end try
-
-                        -- Get dates
-                        set dueDate to ""
-                        try
-                            set dueDateObj to effective due date of t
-                            if dueDateObj is not missing value then
-                                set dueDate to dueDateObj as «class isot» as string
-                            end if
-                        end try
-
-                        set deferDate to ""
-                        try
-                            set deferDateObj to effective defer date of t
-                            if deferDateObj is not missing value then
-                                set deferDate to deferDateObj as «class isot» as string
-                            end if
-                        end try
-
-                        set plannedDate to ""
-                        try
-                            set plannedDateObj to effective planned date of t
-                            if plannedDateObj is not missing value then
-                                set plannedDate to plannedDateObj as «class isot» as string
-                            end if
-                        end try
-
-                        -- Get next occurrence dates (recurring tasks only)
-                        set nextDueDate to ""
-                        try
-                            set nextDueDateObj to next due date of t
-                            if nextDueDateObj is not missing value then
-                                set nextDueDate to nextDueDateObj as «class isot» as string
-                            end if
-                        end try
-
-                        set nextDeferDate to ""
-                        try
-                            set nextDeferDateObj to next defer date of t
-                            if nextDeferDateObj is not missing value then
-                                set nextDeferDate to nextDeferDateObj as «class isot» as string
-                            end if
-                        end try
-
-                        set nextPlannedDate to ""
-                        try
-                            set nextPlannedDateObj to next planned date of t
-                            if nextPlannedDateObj is not missing value then
-                                set nextPlannedDate to nextPlannedDateObj as «class isot» as string
-                            end if
-                        end try
-
-                        -- Get timestamp fields
-                        set creationDateStr to "null"
-                        try
-                            set creationDateObj to creation date of t
-                            if creationDateObj is not missing value then
-                                set creationDateStr to "\\"" & (creationDateObj as «class isot» as string) & "\\""
-                            end if
-                        end try
-
-                        set modificationDateStr to "null"
-                        try
-                            set modificationDateObj to modification date of t
-                            if modificationDateObj is not missing value then
-                                set modificationDateStr to "\\"" & (modificationDateObj as «class isot» as string) & "\\""
-                            end if
-                        end try
-
-                        set completionDateStr to "null"
-                        try
-                            set completionDateObj to completion date of t
-                            if completionDateObj is not missing value then
-                                set completionDateStr to "\\"" & (completionDateObj as «class isot» as string) & "\\""
-                            end if
-                        end try
-
-                        set droppedDateStr to "null"
-                        try
-                            set droppedDateObj to dropped date of t
-                            if droppedDateObj is not missing value then
-                                set droppedDateStr to "\\"" & (droppedDateObj as «class isot» as string) & "\\""
-                            end if
-                        end try
-
-                        -- Get tags as JSON array
-                        set tagsJSON to "[]"
-                        try
-                            set taskTags to tags of t
-                            if (count of taskTags) > 0 then
-                                set tagItems to {{}}
-                                repeat with tg in taskTags
-                                    set tagName to name of tg
-                                    set end of tagItems to "\\"" & my escapeJSON(tagName) & "\\""
-                                end repeat
-                                set AppleScript's text item delimiters to ", "
-                                set tagsJSON to "[" & (tagItems as text) & "]"
-                                set AppleScript's text item delimiters to ""
-                            end if
-                        end try
-
-                        -- Get estimated minutes
-                        set estimatedMins to "null"
-                        try
-                            set estMins to estimated minutes of t
-                            if estMins is not missing value and estMins is not 0 then
-                                set estimatedMins to estMins as text
-                            end if
-                        end try
-
-                        -- Get repetition info
-                        set isRecurring to "false"
-                        set recurrenceStr to ""
-                        set repetitionMethodStr to ""
-                        set catchUpAutoStr to "null"
-                        try
-                            set repRule to repetition rule of t
-                            if repRule is not missing value then
-                                set isRecurring to "true"
-                                try
-                                    set recurrenceStr to recurrence of repRule
-                                end try
-                                try
-                                    set repetitionMethodStr to (repetition method of repRule) as text
-                                end try
-                                try
-                                    set catchUpAutoStr to (catch up automatically of repRule) as text
-                                end try
-                            end if
-                        end try
-
-                        -- Get hierarchy fields
-                        set parentTaskId to ""
-                        try
-                            set parentTaskObj to parent task of t
-                            if parentTaskObj is not missing value then
-                                -- Check if parent is same as containing project (means no parent task)
-                                set parentTaskObjId to id of parentTaskObj
-                                if parentTaskObjId is not equal to projectId then
-                                    set parentTaskId to parentTaskObjId
-                                end if
-                            end if
-                        end try
-
-                        set taskSubtaskCount to 0
-                        try
-                            set taskSubtaskCount to count of (tasks of t)
-                        end try
-
-                        set taskSequential to false
-                        try
-                            set taskSequential to sequential of t
-                        end try
-
-                        -- Get availability fields
-                        set numAvailableTasks to 0
-                        try
-                            set numAvailableTasks to number of available tasks of t
-                        end try
-
-                        -- Compute available status
-                        set deferDateObj to effective defer date of t
-                        set isDeferred to false
-                        if deferDateObj is not missing value then
-                            set isDeferred to (deferDateObj > (current date))
-                        end if
-
-                        set directlyAvailable to (not taskCompleted) and (not taskDropped) and (not taskBlocked) and (not isDeferred)
-                        set effComp to effectively completed of t
-                        set effDrop to effectively dropped of t
-                        set containerActive to (not effComp) and (not effDrop)
-                        set taskAvailable to (directlyAvailable or (numAvailableTasks > 0)) and containerActive
-
-                        -- Build JSON manually
-                        set jsonLine to "{{" & ¬
-                            "\\"id\\": \\"" & taskId & "\\", " & ¬
-                            "\\"name\\": \\"" & my escapeJSON(taskName) & "\\", " & ¬
-                            "\\"note\\": \\"" & my escapeJSON(taskNote) & "\\", " & ¬
-                            "\\"completed\\": " & (taskCompleted as text) & ", " & ¬
-                            "\\"flagged\\": " & (taskFlagged as text) & ", " & ¬
-                            "\\"dropped\\": " & (taskDropped as text) & ", " & ¬
-                            "\\"blocked\\": " & (taskBlocked as text) & ", " & ¬
-                            "\\"next\\": " & (taskNext as text) & ", " & ¬
-                            "\\"projectId\\": \\"" & projectId & "\\", " & ¬
-                            "\\"projectName\\": \\"" & my escapeJSON(projectName) & "\\", " & ¬
-                            "\\"dueDate\\": \\"" & dueDate & "\\", " & ¬
-                            "\\"deferDate\\": \\"" & deferDate & "\\", " & ¬
-                            "\\"plannedDate\\": \\"" & plannedDate & "\\", " & ¬
-                            "\\"nextDueDate\\": \\"" & nextDueDate & "\\", " & ¬
-                            "\\"nextDeferDate\\": \\"" & nextDeferDate & "\\", " & ¬
-                            "\\"nextPlannedDate\\": \\"" & nextPlannedDate & "\\", " & ¬
-                            "\\"creationDate\\": " & creationDateStr & ", " & ¬
-                            "\\"modificationDate\\": " & modificationDateStr & ", " & ¬
-                            "\\"completionDate\\": " & completionDateStr & ", " & ¬
-                            "\\"droppedDate\\": " & droppedDateStr & ", " & ¬
-                            "\\"tags\\": " & tagsJSON & ", " & ¬
-                            "\\"estimatedMinutes\\": " & estimatedMins & ", " & ¬
-                            "\\"isRecurring\\": " & isRecurring & ", " & ¬
-                            "\\"recurrence\\": \\"" & my escapeJSON(recurrenceStr) & "\\", " & ¬
-                            "\\"repetitionMethod\\": \\"" & my escapeJSON(repetitionMethodStr) & "\\", " & ¬
-                            "\\"catchUpAutomatically\\": " & catchUpAutoStr & ", " & ¬
-                            "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
-                            "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
-                            "\\"sequential\\": " & (taskSequential as text) & ", " & ¬
-                            "\\"position\\": " & (taskIndex as text) & ", " & ¬
-                            "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
-                            "\\"available\\": " & (taskAvailable as text) & ¬
-                            "}}"
-
-                        if output is not "" then
-                            set output to output & "," & linefeed
-                        end if
-                        set output to output & jsonLine
-                    end try
-                end repeat
-            end tell
-        end tell
-
-        return "[" & linefeed & output & linefeed & "]"
-        ''' + APPLESCRIPT_JSON_HELPERS
-
-        return script
 
 
     def get_tasks(
@@ -3473,8 +2928,8 @@ class OmniFocusConnector:
         Orchestrator that delegates to helper methods:
         - _validate_get_tasks_params() — parameter validation
         - _build_task_source() — AppleScript task source + whose clauses
-        - _build_task_filter_checks() — per-task and batch filter strings
-        - _build_batch_mode_script() / _build_per_task_mode_script() — AppleScript generation
+        - _build_task_filter_checks() — batch filter strings
+        - _build_batch_mode_script() — AppleScript generation
         - _post_process_tasks() — normalization, Python-side filtering, sorting
 
         Args:
@@ -3521,20 +2976,6 @@ class OmniFocusConnector:
             defer_relative=defer_relative,
         )
 
-        # Detect if selective filters are active (Phase 2: Conditional filter-first optimization)
-        # Selective filters eliminate >80% of tasks and benefit from filter-first architecture
-        selective_filters_active = (
-            flagged_only or
-            overdue or
-            dropped_only or
-            blocked_only or
-            next_only or
-            query or
-            available_only or
-            tag_filter or  # Ensures NOT mode uses FILTER-FIRST, not EXTRACT-THEN-FILTER
-            due_relative in ['today', 'tomorrow', 'this_week', 'next_week', 'overdue']
-        )
-
         # Tag-side pre-filter: query task IDs from tag objects instead of
         # scanning all tasks. This reverses the lookup direction for massive
         # speedup (from 120s+ to ~1-2s). Only for AND/OR modes — NOT mode
@@ -3553,21 +2994,12 @@ class OmniFocusConnector:
         # OmniFocus's Available perspective excludes tasks with On Hold tags.
         on_hold_tag_names: list[str] = []
         on_hold_tags_decl = ""
-        on_hold_available_check = ""
         on_hold_available_check_batch = ""
         if available_only:
             on_hold_tag_names = self._get_on_hold_tag_names()
             if on_hold_tag_names:
                 escaped = [f'"{self._escape_applescript_string(n)}"' for n in on_hold_tag_names]
                 on_hold_tags_decl = f"set onHoldTags to {{{', '.join(escaped)}}}"
-                # Per-task check (filter-first / extract-then-filter)
-                on_hold_available_check = """
-                        -- Skip tasks with On Hold tags
-                        set taskTagNms to name of (tags of t)
-                        repeat with tn in taskTagNms
-                            if tn is in onHoldTags then error "skip unavailable task"
-                        end repeat"""
-                # Batch check (uses already batch-read tagNameLists)
                 on_hold_available_check_batch = """
                         -- Skip tasks with On Hold tags (batch data)
                         set taskTagNms to contents of (item i of tagNameLists)
@@ -3593,7 +3025,7 @@ class OmniFocusConnector:
             tag_prefiltered_ids=tag_prefiltered_ids,
         )
 
-        # Generate all filter check strings (per-task and batch modes)
+        # Generate batch filter check strings
         filter_checks = self._build_task_filter_checks(
             include_completed=include_completed,
             flagged_only=flagged_only,
@@ -3611,24 +3043,13 @@ class OmniFocusConnector:
             tag_prefiltered_ids=tag_prefiltered_ids,
             query=query,
             whose_active=whose_active,
-            on_hold_available_check=on_hold_available_check,
             on_hold_available_check_batch=on_hold_available_check_batch,
         )
 
-        # Build AppleScript with conditional architecture
-        # Three modes:
-        # 1. BATCH: whose_active — batch property reads via 'a reference to' (fastest)
-        # 2. FILTER-FIRST: selective_filters_active but not whose — per-task loop, filters before extraction
-        # 3. EXTRACT-THEN-FILTER: no selective filters — per-task loop, extraction before filters
-
-        if whose_active:
-            script = self._build_batch_mode_script(
-                task_source, on_hold_tags_decl, filter_checks
-            )
-        else:
-            script = self._build_per_task_mode_script(
-                task_source, on_hold_tags_decl, selective_filters_active, filter_checks
-            )
+        # Always use batch mode — 'a reference to' works with all source types
+        script = self._build_batch_mode_script(
+            task_source, on_hold_tags_decl, filter_checks
+        )
 
         try:
             result = run_applescript(script, timeout=timeout)

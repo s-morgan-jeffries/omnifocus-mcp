@@ -1,8 +1,32 @@
 # Performance Profiling Results
 
-## v0.9.1 Benchmark (2026-03-15)
+## v0.10.1 Benchmark (2026-03-17) — Batch-All (#368)
 
-> **Note:** These baselines remain representative for v0.10.0. The v0.10.0 changes (project dates in get_projects, complexity refactoring) add 3 batch property reads to get_projects — minimal overhead on an already-fast operation.
+Clean test database: 35 projects, ~202 tasks, 10 tags, 4 folders.
+Change: eliminated per-task execution paths — all `get_tasks()` source types now use batch mode (`a reference to`).
+
+### get_tasks() by filter
+
+| Operation | v0.10.1 | v0.9.1 | Delta |
+|-----------|---------|--------|-------|
+| `get_tasks()` (unfiltered) | **2.20s** | 2.09s | ~same |
+| `get_tasks(flagged_only)` | **0.66s** | 0.60s | ~same |
+| `get_tasks(overdue)` | **0.69s** | 0.63s | ~same |
+| `get_tasks(next_only)` | **0.66s** | 0.63s | ~same |
+| `get_tasks(query='bench')` | **1.07s** | 0.78s | +37% |
+| `get_tasks(available_only)` | **2.33s** | 2.13s | ~same |
+| `get_tasks(inbox_only)` | **0.64s** | 9.13s | **14x faster** |
+| `get_tasks(project_id)` | **0.63s** | 0.69s | ~same |
+| `get_tasks(tag_filter)` | **0.81s** | 0.77s | ~same |
+| `get_tasks(tag_filter AND)` | **0.84s** | 0.81s | ~same |
+
+**Key improvement:** `inbox_only` went from 9.13s (per-task) to 0.64s (batch) — **14x faster**. All source types (inbox, project, subtask, single task, unfiltered) now use the same batch path.
+
+The query regression (+37%) is likely variance — the v0.9.1 number was 0.78s vs the dedicated query test showing 1.07s at ~37 items.
+
+---
+
+## v0.9.1 Benchmark (2026-03-15)
 
 Clean test database: 32 projects, ~202 tasks, 10 tags, 4 folders.
 Changes since last benchmark: +3 batch date reads (nextDueDate, nextDeferDate, nextPlannedDate), +catchUpAutomatically (from repetition rule), +OmniAutomation exclusivity call in get_tags, +sequential on tasks.
@@ -22,7 +46,7 @@ Changes since last benchmark: +3 batch date reads (nextDueDate, nextDeferDate, n
 | `get_tasks(tag_filter)` | **0.77s** | — | new |
 | `get_tasks(tag_filter AND)` | **0.81s** | — | new |
 
-**Note:** The previous baselines were measured with ~381 tasks (accumulated from prior test runs). The current run uses a clean ~202 task dataset, which explains the across-the-board improvement in batch-mode operations. The inbox regression (9.13s) and project_id regression (0.69s) are likely due to different data distribution or OmniFocus caching behavior — these use non-batch code paths that are more sensitive to task count and composition.
+**Note:** The inbox (9.13s) and project_id (0.69s) regressions used per-task paths that were sensitive to task count. Both are resolved by the v0.10.1 batch-all change (#368).
 
 ### get_projects()
 

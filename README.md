@@ -14,12 +14,14 @@ Sub-second reads on filtered queries, even with hundreds of tasks in the databas
 
 | Operation | Time | Database |
 |-----------|------|----------|
-| Get flagged tasks | 0.88s | ~200 tasks |
-| Get overdue tasks | 0.72s | ~200 tasks |
-| Search tasks by keyword | 1.61s | ~200 tasks |
-| Get all tasks (unfiltered) | 5.65s | ~200 tasks |
-| Get all projects | 1.78s | 32 projects |
-| Create or update a task | 0.6-0.7s | — |
+| Get flagged tasks | 0.66s | ~200 tasks |
+| Get overdue tasks | 0.69s | ~200 tasks |
+| Get next tasks | 0.66s | ~200 tasks |
+| Get inbox tasks | 0.64s | ~200 tasks |
+| Search tasks by keyword | 1.07s | ~200 tasks |
+| Get all tasks (unfiltered) | 2.20s | ~200 tasks |
+| Get all projects | 0.57s | 35 projects |
+| Create or update a task | 0.9s | — |
 
 Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFILING.md)
 

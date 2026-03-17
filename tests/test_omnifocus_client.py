@@ -746,12 +746,10 @@ class TestWhoseClauseOptimization:
             # Should still return results (fallback path)
             assert isinstance(result, list)
 
-    def test_tag_filter_not_mode_uses_filter_first(self, client, sample_tasks_json):
-        """NOT mode tag_filter should route through FILTER-FIRST, not EXTRACT-THEN-FILTER.
+    def test_tag_filter_not_mode_uses_batch_mode(self, client, sample_tasks_json):
+        """NOT mode tag_filter uses batch mode like all other source types.
 
-        With include_completed=True and no other filters, tag_filter alone must
-        trigger selective_filters_active so the FILTER-FIRST path is used.
-        Without tag_filter in selective_filters_active, this falls to the slow path.
+        After #368, all get_tasks calls use batch mode with 'a reference to'.
         """
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = sample_tasks_json
@@ -760,10 +758,8 @@ class TestWhoseClauseOptimization:
                 include_completed=True
             )
             script = mock_run.call_args[0][0]
-            # FILTER-FIRST has "PHASE 1: Apply ALL filters" before extraction
-            # EXTRACT-THEN-FILTER has "PHASE 1: Extract basic properties" before filters
-            assert "PHASE 1: Apply ALL filters" in script
-            assert "PHASE 1: Extract basic properties" not in script
+            # Batch mode uses 'a reference to' for property reads
+            assert "a reference to" in script
 
 
 class TestBatchPropertyExtraction:
@@ -833,21 +829,21 @@ class TestBatchPropertyExtraction:
             # Should NOT use per-task loop with property reads
             assert "set taskId to id of t" not in script
 
-    def test_project_id_does_not_use_batch(self, client, sample_tasks_json):
-        """project_id path should NOT use batch extraction (already fast)."""
+    def test_project_id_uses_batch(self, client, sample_tasks_json):
+        """project_id path uses batch extraction after #368."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = sample_tasks_json
             client.get_tasks(project_id="proj-001")
             script = mock_run.call_args[0][0]
-            assert "a reference to" not in script
+            assert "a reference to" in script
 
-    def test_inbox_does_not_use_batch(self, client, sample_tasks_json):
-        """inbox path should NOT use batch extraction."""
+    def test_inbox_uses_batch(self, client, sample_tasks_json):
+        """inbox path uses batch extraction after #368."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = sample_tasks_json
             client.get_tasks(inbox_only=True)
             script = mock_run.call_args[0][0]
-            assert "a reference to" not in script
+            assert "a reference to" in script
 
     def test_no_filter_uses_batch(self, client, sample_tasks_json):
         """Unfiltered get_tasks should also use batch extraction (whose completed is false)."""

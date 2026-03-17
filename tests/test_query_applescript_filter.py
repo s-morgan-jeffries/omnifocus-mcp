@@ -59,8 +59,8 @@ class TestQueryAppleScriptFilter:
             assert len(tasks) == 1
             assert "meeting" in tasks[0]['name'].lower()
 
-    def test_query_with_selective_filter_includes_query_check(self, client):
-        """When query is combined with selective filters, query should also filter in AppleScript."""
+    def test_query_with_other_filter_includes_query_in_script(self, client):
+        """When query is combined with other filters, query should appear in the batch AppleScript."""
         with patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = '[]'
             client.get_tasks(query="meeting", flagged_only=True)
