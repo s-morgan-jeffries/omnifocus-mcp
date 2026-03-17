@@ -323,7 +323,7 @@ Tags (formerly 'contexts') represent contexts for doing work — location (Offic
 
 **Parameters:** None
 
-**Returns:** Each tag includes: id, name, status (values: "active", "on hold", "dropped"), childrenAreMutuallyExclusive (boolean — when true, child tags are mutually exclusive: assigning one child tag to a task silently removes any other child from the same group).
+**Returns:** Each tag includes: id, name, status (values: "active", "on hold", "dropped"), parentTagId (empty string if top-level, parent tag's ID if nested), childrenAreMutuallyExclusive (boolean — when true, child tags are mutually exclusive: assigning one child tag to a task silently removes any other child from the same group).
 
 ---
 
