@@ -1195,4 +1195,27 @@ SCENARIOS = [
         ),
         "safety_critical": True,
     },
+    # ── Inherited Status ───────────────────────────────────────────────
+    {
+        "id": 51,
+        "category": "Inherited Status",
+        "name": "Tasks in Completed Project",
+        "prompt": (
+            "I completed a project last month but now get_tasks is returning some "
+            "tasks from it as active (completed=false). The project shows as done "
+            "in OmniFocus. Why are these tasks showing up?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that completion status is NOT inherited — tasks in "
+            "done/dropped projects remain completed=false in the data model. "
+            "Recommends using available_only=True or checking the project's status. "
+            "PARTIAL: Correctly identifies the behavior but doesn't suggest a workaround. "
+            "FAIL: Says this is a bug, or suggests marking each task complete individually."
+        ),
+        "safety_critical": False,
+    },
 ]

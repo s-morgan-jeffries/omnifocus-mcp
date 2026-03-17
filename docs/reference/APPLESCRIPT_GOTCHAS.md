@@ -2,7 +2,7 @@
 
 **Purpose:** Documents known limitations, workarounds, and gotchas when working with OmniFocus via AppleScript.
 
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-03-17
 
 ---
 
@@ -419,6 +419,16 @@ AppleScript Error: Can't get property recurrence of "FREQ=WEEKLY"
 **Solution:** Use AppleScript `mark complete` command (see "Recurring Tasks" section)
 
 ---
+
+## Completion Status Is Not Inherited
+
+When a project is marked done or dropped, its incomplete tasks remain `completed: false` in the AppleScript data model. OmniFocus hides them in the UI, but `completed of task` still returns `false`.
+
+This means `flattened tasks whose completed is false` returns tasks that the user considers "done" because their project is done. There is no "effective completed" property — unlike effective dates, which DO inherit from the containing project.
+
+**Implication:** `get_tasks()` may return tasks from completed/dropped projects. Use `available_only=True` to get only truly actionable tasks, or check the containing project's status.
+
+**Discovered:** 2026-03-17, Issue #359
 
 ## Testing Considerations
 
