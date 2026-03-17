@@ -2484,6 +2484,13 @@ class OmniFocusConnector:
                         if blocked of t then
                             error "skip unavailable task"
                         end if
+                        -- Skip tasks in completed/dropped containers
+                        if effectively completed of t then
+                            error "skip unavailable task"
+                        end if
+                        if effectively dropped of t then
+                            error "skip unavailable task"
+                        end if
                         -- Check if deferred
                         try
                             set taskDeferDate to effective defer date of t
@@ -2703,6 +2710,8 @@ class OmniFocusConnector:
                         -- Skip unavailable tasks (using batch-read data)
                         if item i of taskDrops then error "skip unavailable"
                         if item i of taskBlocks then error "skip unavailable"
+                        if item i of effComps then error "skip unavailable"
+                        if item i of effDrops then error "skip unavailable"
                         set dVal to contents of (item i of deferDates)
                         if dVal is not missing value then
                             if dVal > (current date) then error "skip unavailable"
@@ -2880,6 +2889,8 @@ class OmniFocusConnector:
                 set nextPlannedDates to next planned date of ft
                 set availCounts to number of available tasks of ft
                 set subtaskCounts to number of tasks of ft
+                set effComps to effectively completed of ft
+                set effDrops to effectively dropped of ft
 
                 -- Nested batch reads (project, parent, tags)
                 set projIds to id of (containing project of ft)
@@ -3032,7 +3043,10 @@ class OmniFocusConnector:
                         set taskDropped to item i of taskDrops
                         set taskBlocked to item i of taskBlocks
                         set directlyAvailable to (not taskCompleted) and (not taskDropped) and (not taskBlocked) and (not isDeferred)
-                        set taskAvailable to directlyAvailable or (numAvailableTasks > 0)
+                        set effComp to item i of effComps
+                        set effDrop to item i of effDrops
+                        set containerActive to (not effComp) and (not effDrop)
+                        set taskAvailable to (directlyAvailable or (numAvailableTasks > 0)) and containerActive
 
                         -- Build JSON
                         set jsonLine to "{{" & ¬
@@ -3368,7 +3382,10 @@ class OmniFocusConnector:
                         end if
 
                         set directlyAvailable to (not taskCompleted) and (not taskDropped) and (not taskBlocked) and (not isDeferred)
-                        set taskAvailable to directlyAvailable or (numAvailableTasks > 0)
+                        set effComp to effectively completed of t
+                        set effDrop to effectively dropped of t
+                        set containerActive to (not effComp) and (not effDrop)
+                        set taskAvailable to (directlyAvailable or (numAvailableTasks > 0)) and containerActive
 
                         -- Build JSON manually
                         set jsonLine to "{{" & ¬

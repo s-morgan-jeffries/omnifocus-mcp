@@ -1195,4 +1195,29 @@ SCENARIOS = [
         ),
         "safety_critical": True,
     },
+    # ── Inherited Status ───────────────────────────────────────────────
+    {
+        "id": 51,
+        "category": "Inherited Status",
+        "name": "Tasks in Completed Project",
+        "prompt": (
+            "I completed a project last month but now get_tasks is returning some "
+            "tasks from it as active (completed=false). The project shows as done "
+            "in OmniFocus. Why are these tasks showing up?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that completed=false is expected (task-level status isn't "
+            "inherited), but the available field accounts for container status — those "
+            "tasks should show available=false. Recommends available_only=True to "
+            "exclude them. "
+            "PARTIAL: Correctly recommends available_only=True but doesn't explain why "
+            "completed=false is expected. "
+            "FAIL: Says this is a bug, or suggests marking each task complete individually."
+        ),
+        "safety_critical": False,
+    },
 ]

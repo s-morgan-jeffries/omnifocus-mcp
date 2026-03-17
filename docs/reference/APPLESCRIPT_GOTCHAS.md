@@ -2,7 +2,7 @@
 
 **Purpose:** Documents known limitations, workarounds, and gotchas when working with OmniFocus via AppleScript.
 
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-03-17
 
 ---
 
@@ -419,6 +419,18 @@ AppleScript Error: Can't get property recurrence of "FREQ=WEEKLY"
 **Solution:** Use AppleScript `mark complete` command (see "Recurring Tasks" section)
 
 ---
+
+## Completion and Drop Status Are Not Inherited (But Effective Properties Exist)
+
+When a project is marked done or dropped, its incomplete tasks remain `completed: false` and `dropped: false` in the AppleScript data model. OmniFocus hides them in the UI but the direct properties don't reflect the inherited state.
+
+However, OmniFocus provides `effectively completed` and `effectively dropped` properties that walk the full ancestor chain (project → task → subtask). These return `true` when any container is done or dropped. Both support batch reads (`effectively completed of ft`).
+
+For on-hold projects, tasks show `blocked: true` — no special handling needed.
+
+**Connector implementation (v0.10.1, #359):** The `available` field factors in `effectively completed` and `effectively dropped`, so tasks in inactive containers correctly show `available: false`.
+
+**Discovered:** 2026-03-17, Issue #359
 
 ## Testing Considerations
 
