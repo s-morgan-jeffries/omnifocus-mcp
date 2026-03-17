@@ -283,7 +283,7 @@
 
 ### Scenario 51: Tasks in Completed Project
 - **Score:** 2/2 (PASS)
-- **Concept Understanding:** Excellent — correctly explained that completion status is NOT inherited, tasks remain completed=false in data. Recommended available_only=True as workaround.
+- **Concept Understanding:** Excellent — correctly explained that completed=false is expected (task-level, not inherited), that available=false accounts for container status, and recommended available_only=True to exclude them.
 
 ## Key Findings
 
