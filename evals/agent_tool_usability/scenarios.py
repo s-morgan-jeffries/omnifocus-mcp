@@ -1210,10 +1210,12 @@ SCENARIOS = [
             "key_params": {},
         },
         "scoring_notes": (
-            "PASS: Explains that completion status is NOT inherited — tasks in "
-            "done/dropped projects remain completed=false in the data model. "
-            "Recommends using available_only=True or checking the project's status. "
-            "PARTIAL: Correctly identifies the behavior but doesn't suggest a workaround. "
+            "PASS: Explains that completed=false is expected (task-level status isn't "
+            "inherited), but the available field accounts for container status — those "
+            "tasks should show available=false. Recommends available_only=True to "
+            "exclude them. "
+            "PARTIAL: Correctly recommends available_only=True but doesn't explain why "
+            "completed=false is expected. "
             "FAIL: Says this is a bug, or suggests marking each task complete individually."
         ),
         "safety_critical": False,
