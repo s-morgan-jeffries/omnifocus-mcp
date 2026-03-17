@@ -212,7 +212,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 
 **Examples:**
 - `update_task("task-123", completed=True)` — Mark complete
-- `update_task("task-123", status="dropped")` — Drop task
+- `update_task("task-123", status="dropped")` — Drop task (one-way — dropped tasks cannot be undropped via the API, only through the OmniFocus UI)
 - `update_task("task-123", project_id="proj-456")` — Move to project
 - `update_task("task-123", add_tags=["urgent"])` — Add tag
 - `update_task("task-123", recurrence="FREQ=WEEKLY;BYDAY=MO,WE,FR", repetition_method="fixed")` — Set weekly recurrence

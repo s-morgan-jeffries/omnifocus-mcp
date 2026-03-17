@@ -4,7 +4,7 @@ import subprocess
 from unittest import mock
 import pytest
 
-from omnifocus_mcp.omnifocus_connector import OmniFocusConnector, run_applescript
+from omnifocus_mcp.omnifocus_connector import OmniFocusConnector, TaskStatus, run_applescript
 
 
 class TestRunAppleScript:
@@ -1998,6 +1998,24 @@ class TestIdEscapingInMethods:
             script = mock_run.call_args[0][0]
             assert 'p\\"1' in script
             assert 'p\\"2' in script
+
+
+class TestUndropTaskLimitation:
+    """Tests that undropping tasks raises a clear error (#372)."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_update_task_status_active_raises_valueerror(self, client):
+        """update_task(status=ACTIVE) should raise ValueError — OmniFocus cannot undrop tasks."""
+        with pytest.raises(ValueError, match="Cannot undrop"):
+            client.update_task("task-001", status=TaskStatus.ACTIVE)
+
+    def test_update_tasks_status_active_raises_valueerror(self, client):
+        """update_tasks(status=ACTIVE) should raise ValueError — OmniFocus cannot undrop tasks."""
+        with pytest.raises(ValueError, match="Cannot undrop"):
+            client.update_tasks(["task-001"], status=TaskStatus.ACTIVE)
 
 
 class TestReorderProject:

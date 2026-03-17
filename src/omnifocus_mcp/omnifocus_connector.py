@@ -3234,7 +3234,12 @@ class OmniFocusConnector:
             if status == TaskStatus.DROPPED:
                 separate_commands.append("mark dropped theTask")
             elif status == TaskStatus.ACTIVE:
-                separate_commands.append("set dropped of theTask to false")
+                raise ValueError(
+                    "Cannot undrop a task via automation. "
+                    "OmniFocus does not support restoring dropped tasks "
+                    "through AppleScript or OmniAutomation. "
+                    "Use the OmniFocus UI to restore dropped tasks."
+                )
             updated_fields.append("status")
 
         # Hierarchy changes
@@ -3633,7 +3638,12 @@ class OmniFocusConnector:
             if status == TaskStatus.DROPPED:
                 per_task_commands.append("mark dropped theTask")
             elif status == TaskStatus.ACTIVE:
-                per_task_commands.append("set dropped of theTask to false")
+                raise ValueError(
+                    "Cannot undrop a task via automation. "
+                    "OmniFocus does not support restoring dropped tasks "
+                    "through AppleScript or OmniAutomation. "
+                    "Use the OmniFocus UI to restore dropped tasks."
+                )
 
         if project_id is not None:
             project_id_escaped = self._escape_applescript_string(project_id)
