@@ -66,13 +66,13 @@ The API was consolidated from 40+ functions to 16 in October 2025. This is inten
 
 **What is NOT a bottleneck:** Loop iteration itself (0.17s for 381 tasks), string concatenation (<100ms for 400 items), JSON building.
 
-**Current baselines** (32 projects, ~381 tasks — see profiling doc for full table):
-- `get_tasks(project_id)`: 0.20s | `get_tasks(flagged)`: 18.9s | `get_tasks(query)`: 80.8s
-- `get_projects()`: 18.7s | `get_perspectives()`: 0.17s | Write ops: 0.63-0.67s
+**Current baselines** (35 projects, ~202 tasks — see profiling doc for full table):
+- `get_tasks(flagged)`: 0.66s | `get_tasks(inbox)`: 0.64s | `get_tasks(query)`: 1.07s
+- `get_tasks()` (all): 2.20s | `get_projects()`: 0.57s | Write ops: 0.9s
 
 Default timeout: 60s, max: 300s (configurable).
 
-**Optimization path:** Use `whose` to pre-filter, then extract properties only from the small result set. Projected: `get_tasks(flagged)` from 18.9s to ~3.5s.
+**Architecture:** All `get_tasks()` paths use batch mode (`a reference to`) for O(P) property reads. `whose` clauses further pre-filter when available (20-30x faster than without).
 
 **Project task health:** `get_projects(include_task_health=True)` returns per-project task counts in a single AppleScript call. +133% overhead due to nested per-project task loops.
 

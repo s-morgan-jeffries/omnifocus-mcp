@@ -59,17 +59,16 @@ echo ""
 # Documented exceptions with higher limits:
 #
 # Extracted helpers (inherent complexity — CC maps 1:1 to parameter/filter count):
-#   - _build_task_filter_checks: CC ≤ 55 (54 current - 12 filter types × per-task + batch variants)
+#   - _build_task_filter_checks: CC ≤ 36 (35 current - 12 filter types, batch-only after #368)
 #   - _build_update_task_commands: CC ≤ 30 (29 current - 17 updatable fields)
 #   - _post_process_tasks: CC ≤ 29 (28 current - normalization + 6 filter steps)
 #   - _filter_projects_by_conditions: CC ≤ 25 (24 current - 3 conditions × pos/neg matching)
 #   - _post_process_projects: CC ≤ 23 (22 current - projectType + 6 filter steps)
 #
 # Original functions not yet refactored:
-#   - update_projects: CC ≤ 41 (40 current — v0.10.0 added project dates)
-#   - update_project: CC ≤ 37 (36 current — v0.10.0 added project dates)
+#   - update_projects: CC ≤ 44 (43 current — v0.10.0 added project dates)
+#   - update_project: CC ≤ 40 (39 current — v0.10.0 added project dates)
 #   - _format_task: CC ≤ 26 (25 current)
-#   - get_tasks: CC ≤ 25 (24 current - orchestrator)
 #   - create_task: CC ≤ 23 (22 current)
 #   - _validate_update_task_params: CC ≤ 19 (18 current)
 EXCESSIVE_COMPLEXITY=$($RADON cc src/omnifocus_mcp/ -n D -j | $PYTHON -c "
@@ -85,7 +84,7 @@ try:
                 name = item['name']
                 # Documented exceptions with specific limits
                 # Extracted helpers (inherent complexity)
-                if name == '_build_task_filter_checks' and cc <= 55:
+                if name == '_build_task_filter_checks' and cc <= 36:
                     continue
                 elif name == '_build_update_task_commands' and cc <= 30:
                     continue
@@ -96,13 +95,11 @@ try:
                 elif name == '_post_process_projects' and cc <= 23:
                     continue
                 # Original functions
-                elif name == 'update_projects' and cc <= 41:
+                elif name == 'update_projects' and cc <= 44:
                     continue
-                elif name == 'update_project' and cc <= 37:
+                elif name == 'update_project' and cc <= 40:
                     continue
                 elif name == '_format_task' and cc <= 26:
-                    continue
-                elif name == 'get_tasks' and cc <= 25:
                     continue
                 elif name == 'create_task' and cc <= 23:
                     continue
@@ -134,8 +131,8 @@ fi
 echo "✅ PASS: All functions within complexity limits"
 echo ""
 echo "Documented exceptions (see script comments for full list):"
-echo "  - Extracted helpers: _build_task_filter_checks (54), _build_update_task_commands (29), _post_process_tasks (28)"
-echo "  - Original functions: update_projects (34), update_project (32), _format_task (25), create_task (22)"
+echo "  - Extracted helpers: _build_task_filter_checks (35), _build_update_task_commands (29), _post_process_tasks (28)"
+echo "  - Original functions: update_projects (43), update_project (39), _format_task (25), create_task (22)"
 echo "  - All other functions: CC ≤ 20"
 echo ""
 echo "See inline documentation in omnifocus_connector.py for rationale."

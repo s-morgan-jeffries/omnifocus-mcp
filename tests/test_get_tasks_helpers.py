@@ -153,156 +153,36 @@ class TestBuildTaskFilterChecks:
             max_estimated_minutes=None, has_estimate=None,
             tag_filter=None, tag_filter_mode="and", tag_prefiltered_ids=None,
             query=None, whose_active=False,
-            on_hold_available_check="", on_hold_available_check_batch="",
+            on_hold_available_check_batch="",
         )
         defaults.update(overrides)
         return defaults
 
-    # -- Per-task checks active when whose_active=False --
+    # -- Batch checks active when whose_active=False --
 
     def test_completion_check_active_when_not_include_completed(self, client):
         checks = client._build_task_filter_checks(**self._default_params())
-        assert 'completed of t' in checks['completion_check']
+        assert 'item i of taskComps' in checks['completion_check_batch']
 
     def test_completion_check_empty_when_include_completed(self, client):
         checks = client._build_task_filter_checks(**self._default_params(include_completed=True))
-        assert checks['completion_check'] == ""
+        assert checks['completion_check_batch'] == ""
 
     def test_flagged_check_active_when_flagged_only(self, client):
         checks = client._build_task_filter_checks(**self._default_params(flagged_only=True))
-        assert 'flagged of t' in checks['flagged_check']
+        assert 'item i of taskFlags' in checks['flagged_check_batch']
 
     def test_dropped_check_active_when_dropped_only(self, client):
         checks = client._build_task_filter_checks(**self._default_params(dropped_only=True))
-        assert 'dropped of t' in checks['dropped_check']
+        assert 'item i of taskDrops' in checks['dropped_check_batch']
 
     def test_blocked_check_active_when_blocked_only(self, client):
         checks = client._build_task_filter_checks(**self._default_params(blocked_only=True))
-        assert 'blocked of t' in checks['blocked_check']
+        assert 'item i of taskBlocks' in checks['blocked_check_batch']
 
     def test_next_check_active_when_next_only(self, client):
         checks = client._build_task_filter_checks(**self._default_params(next_only=True))
-        assert 'next of t' in checks['next_check']
-
-    def test_available_check_includes_dropped_blocked_deferred(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(available_only=True))
-        check = checks['available_check']
-        assert 'dropped of t' in check
-        assert 'blocked of t' in check
-        assert 'effective defer date' in check
-
-    def test_overdue_check_active_when_overdue(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(overdue=True))
-        assert 'effective due date of t' in checks['overdue_check']
-
-    # -- Per-task checks suppressed when whose_active=True --
-
-    def test_all_per_task_checks_empty_when_whose_active(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(
-            flagged_only=True, dropped_only=True, blocked_only=True,
-            next_only=True, overdue=True, whose_active=True,
-        ))
-        assert checks['completion_check'] == ""
-        assert checks['flagged_check'] == ""
-        assert checks['dropped_check'] == ""
-        assert checks['blocked_check'] == ""
-        assert checks['next_check'] == ""
-        assert checks['overdue_check'] == ""
-
-    # -- Due relative checks --
-
-    def test_due_relative_today(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(due_relative="today"))
-        assert 'todayStart' in checks['due_relative_check']
-        assert 'todayEnd' in checks['due_relative_check']
-
-    def test_due_relative_tomorrow(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(due_relative="tomorrow"))
-        assert 'tomorrowStart' in checks['due_relative_check']
-
-    def test_due_relative_this_week(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(due_relative="this_week"))
-        assert 'weekEnd' in checks['due_relative_check']
-
-    def test_due_relative_next_week(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(due_relative="next_week"))
-        assert 'nextWeekStart' in checks['due_relative_check']
-
-    def test_due_relative_overdue(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(due_relative="overdue"))
-        assert 'current date' in checks['due_relative_check']
-
-    # -- Defer relative checks --
-
-    def test_defer_relative_today(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(defer_relative="today"))
-        assert 'todayStart' in checks['defer_relative_check']
-
-    def test_defer_relative_tomorrow(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(defer_relative="tomorrow"))
-        assert 'tomorrowStart' in checks['defer_relative_check']
-
-    def test_defer_relative_this_week(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(defer_relative="this_week"))
-        assert 'weekEnd' in checks['defer_relative_check']
-
-    def test_defer_relative_next_week(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(defer_relative="next_week"))
-        assert 'nextWeekStart' in checks['defer_relative_check']
-
-    # -- Estimate checks --
-
-    def test_max_estimated_minutes(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(max_estimated_minutes=30))
-        assert '30' in checks['estimate_check']
-        assert 'estimated minutes' in checks['estimate_check']
-
-    def test_has_estimate_true(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(has_estimate=True))
-        assert 'missing value' in checks['estimate_check']
-
-    def test_has_estimate_false(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(has_estimate=False))
-        assert 'is not missing value' in checks['estimate_check']
-
-    # -- Tag checks --
-
-    def test_tag_check_and_mode_generates_per_tag_loop(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(
-            tag_filter=["urgent", "home"], tag_filter_mode="and",
-        ))
-        assert 'urgent' in checks['tag_check']
-        assert 'home' in checks['tag_check']
-        assert 'tags of t' in checks['tag_check']
-
-    def test_tag_check_empty_for_or_mode(self, client):
-        """OR mode tag filtering is handled in Python, not AppleScript."""
-        checks = client._build_task_filter_checks(**self._default_params(
-            tag_filter=["urgent"], tag_filter_mode="or",
-        ))
-        assert checks['tag_check'] == ""
-
-    def test_tag_check_empty_for_not_mode(self, client):
-        """NOT mode tag filtering is handled in Python, not AppleScript."""
-        checks = client._build_task_filter_checks(**self._default_params(
-            tag_filter=["urgent"], tag_filter_mode="not",
-        ))
-        assert checks['tag_check'] == ""
-
-    # -- Query check --
-
-    def test_query_check_active_when_whose_not_active(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(query="search"))
-        assert 'name of t' in checks['query_check']
-        assert 'note of t' in checks['query_check']
-
-    def test_query_check_empty_when_whose_active(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(
-            query="search", whose_active=True,
-        ))
-        assert checks['query_check'] == ""
-
-    # -- Batch mode checks --
+        assert 'item i of taskNexts' in checks['next_check_batch']
 
     def test_available_check_batch_uses_indexed_data(self, client):
         checks = client._build_task_filter_checks(**self._default_params(available_only=True))
@@ -311,18 +191,109 @@ class TestBuildTaskFilterChecks:
         assert 'item i of taskBlocks' in batch
         assert 'item i of deferDates' in batch
 
-    def test_due_relative_batch_today(self, client):
+    def test_overdue_check_active_when_overdue(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(overdue=True))
+        assert 'item i of dueDates' in checks['overdue_check_batch']
+
+    def test_query_check_active_when_whose_not_active(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(query="search"))
+        assert 'item i of taskNames' in checks['query_check_batch']
+        assert 'item i of taskNotes' in checks['query_check_batch']
+
+    # -- Batch checks suppressed when whose_active=True --
+
+    def test_all_whose_gated_checks_empty_when_whose_active(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(
+            flagged_only=True, dropped_only=True, blocked_only=True,
+            next_only=True, overdue=True, query="search", whose_active=True,
+        ))
+        assert checks['completion_check_batch'] == ""
+        assert checks['flagged_check_batch'] == ""
+        assert checks['dropped_check_batch'] == ""
+        assert checks['blocked_check_batch'] == ""
+        assert checks['next_check_batch'] == ""
+        assert checks['overdue_check_batch'] == ""
+        assert checks['query_check_batch'] == ""
+
+    # -- Due relative checks (batch) --
+
+    def test_due_relative_today(self, client):
         checks = client._build_task_filter_checks(**self._default_params(due_relative="today"))
-        assert 'item i of dueDates' in checks['due_relative_check_batch']
+        assert 'todayStart' in checks['due_relative_check_batch']
+        assert 'todayEnd' in checks['due_relative_check_batch']
 
-    def test_defer_relative_batch_today(self, client):
+    def test_due_relative_tomorrow(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="tomorrow"))
+        assert 'tomorrowStart' in checks['due_relative_check_batch']
+
+    def test_due_relative_this_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="this_week"))
+        assert 'weekEnd' in checks['due_relative_check_batch']
+
+    def test_due_relative_next_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="next_week"))
+        assert 'nextWeekStart' in checks['due_relative_check_batch']
+
+    def test_due_relative_overdue(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(due_relative="overdue"))
+        assert 'current date' in checks['due_relative_check_batch']
+
+    # -- Defer relative checks (batch) --
+
+    def test_defer_relative_today(self, client):
         checks = client._build_task_filter_checks(**self._default_params(defer_relative="today"))
-        assert 'item i of deferDates' in checks['defer_relative_check_batch']
+        assert 'todayStart' in checks['defer_relative_check_batch']
 
-    def test_estimate_batch_max_minutes(self, client):
-        checks = client._build_task_filter_checks(**self._default_params(max_estimated_minutes=15))
+    def test_defer_relative_tomorrow(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="tomorrow"))
+        assert 'tomorrowStart' in checks['defer_relative_check_batch']
+
+    def test_defer_relative_this_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="this_week"))
+        assert 'weekEnd' in checks['defer_relative_check_batch']
+
+    def test_defer_relative_next_week(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(defer_relative="next_week"))
+        assert 'nextWeekStart' in checks['defer_relative_check_batch']
+
+    # -- Estimate checks (batch) --
+
+    def test_max_estimated_minutes(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(max_estimated_minutes=30))
+        assert '30' in checks['estimate_check_batch']
         assert 'item i of estMins' in checks['estimate_check_batch']
-        assert '15' in checks['estimate_check_batch']
+
+    def test_has_estimate_true(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(has_estimate=True))
+        assert 'missing value' in checks['estimate_check_batch']
+
+    def test_has_estimate_false(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(has_estimate=False))
+        assert 'is not missing value' in checks['estimate_check_batch']
+
+    # -- Tag checks (batch) --
+
+    def test_tag_check_batch_and_mode_generates_tag_loop(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent", "home"], tag_filter_mode="and",
+        ))
+        assert 'urgent' in checks['tag_check_batch']
+        assert 'home' in checks['tag_check_batch']
+        assert 'tagNameLists' in checks['tag_check_batch']
+
+    def test_tag_check_batch_empty_for_or_mode(self, client):
+        """OR mode tag filtering is handled in Python, not AppleScript."""
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent"], tag_filter_mode="or",
+        ))
+        assert checks['tag_check_batch'] == ""
+
+    def test_tag_check_batch_empty_for_not_mode(self, client):
+        """NOT mode tag filtering is handled in Python, not AppleScript."""
+        checks = client._build_task_filter_checks(**self._default_params(
+            tag_filter=["urgent"], tag_filter_mode="not",
+        ))
+        assert checks['tag_check_batch'] == ""
 
     def test_tag_check_batch_skipped_when_prefiltered(self, client):
         """When tag_prefiltered_ids is set, batch tag check is skipped."""
@@ -339,18 +310,24 @@ class TestBuildTaskFilterChecks:
         ))
         assert 'tagNameLists' in checks['tag_check_batch']
 
+    # -- Query check suppressed when whose_active --
+
+    def test_query_check_empty_when_whose_active(self, client):
+        checks = client._build_task_filter_checks(**self._default_params(
+            query="search", whose_active=True,
+        ))
+        assert checks['query_check_batch'] == ""
+
     # -- All keys present --
 
     def test_returns_all_expected_keys(self, client):
         checks = client._build_task_filter_checks(**self._default_params())
         expected_keys = {
-            'completion_check', 'flagged_check', 'dropped_check',
-            'blocked_check', 'next_check', 'available_check',
-            'overdue_check', 'due_relative_check', 'defer_relative_check',
-            'estimate_check', 'tag_check', 'query_check',
-            'available_check_batch', 'due_relative_check_batch',
-            'defer_relative_check_batch', 'estimate_check_batch',
-            'tag_check_batch',
+            'completion_check_batch', 'flagged_check_batch', 'dropped_check_batch',
+            'blocked_check_batch', 'next_check_batch', 'overdue_check_batch',
+            'query_check_batch', 'available_check_batch',
+            'due_relative_check_batch', 'defer_relative_check_batch',
+            'estimate_check_batch', 'tag_check_batch',
         }
         assert set(checks.keys()) == expected_keys
 

@@ -420,6 +420,44 @@ AppleScript Error: Can't get property recurrence of "FREQ=WEEKLY"
 
 ---
 
+## Project Status Commands Differ from Task Status Commands
+
+Projects and tasks use different AppleScript patterns for status changes. Using the wrong pattern produces `Can't set dropped of project to true` errors.
+
+**Projects — use commands and enum values:**
+```applescript
+-- Drop a project (command verb)
+mark dropped theProject
+
+-- Complete a project (command verb)
+mark complete theProject
+
+-- Set to active or on_hold (enum values)
+set status of theProject to active status
+set status of theProject to on hold
+```
+
+**Tasks — use `mark` commands and boolean properties:**
+```applescript
+-- Drop a task (command verb)
+mark dropped theTask
+
+-- Reactivate a task (boolean property)
+set dropped of theTask to false
+```
+
+**What does NOT work for projects:**
+```applescript
+-- These all FAIL for projects:
+set dropped of theProject to true    -- "Can't set dropped of project to true"
+set dropped of theProject to false   -- "Can't set dropped of project to false"
+set status of theProject to dropped  -- AppleScript reads 'dropped' as boolean property
+```
+
+**Discovered:** 2026-03-17, Issue #359
+
+---
+
 ## Completion and Drop Status Are Not Inherited (But Effective Properties Exist)
 
 When a project is marked done or dropped, its incomplete tasks remain `completed: false` and `dropped: false` in the AppleScript data model. OmniFocus hides them in the UI but the direct properties don't reflect the inherited state.
