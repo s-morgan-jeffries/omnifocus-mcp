@@ -1336,6 +1336,38 @@ def reorder_task(task_id: str, before_task_id: Optional[str] = None, after_task_
         return f"Error reordering task: {str(e)}"
 
 
+@mcp.tool()
+def reorder_project(project_id: str, before_project_id: Optional[str] = None, after_project_id: Optional[str] = None) -> str:
+    """Move a project before or after another project to change its position within a folder.
+
+    Use this to reorder projects within a folder. Both projects must be in the same folder.
+
+    Args:
+        project_id: The ID of the project to move
+        before_project_id: Move the project before this project (provide either this OR after_project_id)
+        after_project_id: Move the project after this project (provide either this OR before_project_id)
+
+    Returns:
+        Success message confirming the project was reordered
+
+    Note:
+        Both projects must be in the same folder.
+        Exactly one of before_project_id or after_project_id must be provided.
+    """
+    client = get_client()
+    try:
+        success = client.reorder_project(project_id, before_project_id, after_project_id)
+        if success:
+            if before_project_id:
+                return f"Successfully moved project {project_id} before project {before_project_id}"
+            else:
+                return f"Successfully moved project {project_id} after project {after_project_id}"
+        else:
+            return f"Error: Failed to reorder project {project_id}"
+    except ValueError as e:
+        return f"Error: {str(e)}"
+    except Exception as e:
+        return f"Error reordering project: {str(e)}"
 
 
 

@@ -6,7 +6,7 @@ A comprehensive, fast, reliable, and agent-friendly MCP server for OmniFocus on 
 
 ### Comprehensive
 
-22 tools covering projects, tasks, folders, tags, perspectives, and focus. Full CRUD on projects and tasks with batch operations, 14 filter types on task queries, and date management including recurrence (RRULE read/write).
+23 tools covering projects, tasks, folders, tags, perspectives, and focus. Full CRUD on projects and tasks with batch operations, 14 filter types on task queries, and date management including recurrence (RRULE read/write).
 
 ### Fast
 
@@ -33,14 +33,15 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 
 47-scenario blind eval suite with 100% pass rate — agents that have never seen OmniFocus can correctly use every tool from descriptions alone. Scenarios cover tool selection, parameter usage, multi-step workflows, date semantics, recurrence, tag behavior, task movement, text search, and safety-critical operations (drop vs delete, destructive action guardrails). Server instructions teach GTD concepts (task states, project types, sequential dependencies, review cycles) so agents make informed decisions, not just API calls.
 
-## Tools (22)
+## Tools (23)
 
-### Projects (5)
+### Projects (6)
 - **get_projects** — filter by ID, query, status; includes dates, review info, task health, stalled detection
 - **create_project** — with folder placement, dates, review interval, project type
 - **update_project** — all properties: name, note, status, dates, folder, review settings
 - **update_projects** — batch update (status, dates, folder, review settings)
 - **delete_projects** — single or batch
+- **reorder_project** — position relative to siblings within a folder (before/after)
 
 ### Tasks (6)
 - **get_tasks** — 14 filter types: by ID, project, parent, tags, status, dates, flags, text search, inbox

@@ -4712,6 +4712,66 @@ class OmniFocusConnector:
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error reordering task: {e.stderr}")
 
+    def reorder_project(self, project_id: str, before_project_id: Optional[str] = None, after_project_id: Optional[str] = None) -> bool:
+        """Reorder a project by moving it before or after another project.
+
+        Args:
+            project_id: The ID of the project to move
+            before_project_id: Move the project before this project (optional)
+            after_project_id: Move the project after this project (optional)
+
+        Note:
+            Exactly one of before_project_id or after_project_id must be provided.
+            Both projects must be in the same folder.
+
+        Returns:
+            True if operation was successful
+
+        Raises:
+            ValueError: If project_id is empty, or neither/both reference IDs provided
+            Exception: If projects not found, not in same folder, or operation fails
+        """
+        # SAFETY: Verify database before modifying
+        self._verify_database_safety('reorder_project')
+
+        if not project_id:
+            raise ValueError("project_id is required")
+
+        # Validate parameters
+        if before_project_id is None and after_project_id is None:
+            raise ValueError("Must provide either before_project_id or after_project_id")
+        if before_project_id is not None and after_project_id is not None:
+            raise ValueError("Cannot provide both before_project_id and after_project_id")
+
+        reference_project_id = before_project_id if before_project_id else after_project_id
+        position = "before" if before_project_id else "after"
+
+        script = f'''
+        tell application "OmniFocus"
+            tell front document
+                try
+                    set theProject to first flattened project whose id is "{self._escape_applescript_string(project_id)}"
+                    set refProject to first flattened project whose id is "{self._escape_applescript_string(reference_project_id)}"
+
+                    -- Move project to before/after reference project
+                    move theProject to {position} refProject
+                    return "true"
+                on error errMsg
+                    return "false: " & errMsg
+                end try
+            end tell
+        end tell
+        '''
+
+        try:
+            result = run_applescript(script)
+            if result.strip() == "true":
+                return True
+            else:
+                raise Exception(f"Error reordering project: {result}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Error reordering project: {e.stderr}")
+
 
 
 

@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-16 (project date interface changes #329, #336)
-- **Model:** claude-sonnet-4-6 (new scenarios), claude-opus-4-6 (prior scenarios)
-- **Total Score:** 102/102 (100%)
+- **Date:** 2026-03-17 (reorder_project #357)
+- **Model:** claude-opus-4-6 (scenario 52), claude-sonnet-4-6 (scenarios 43-51), claude-opus-4-6 (prior scenarios)
+- **Total Score:** 104/104 (100%)
 - **Critical Failures:** 0 of 5
-- **Previous Score:** 84/84 (100%) — eval consistency improvements #314
+- **Previous Score:** 102/102 (100%) — project date interface changes #329, #336
 
 ## Category Scores
 
@@ -35,6 +35,7 @@
 | Tag Hierarchy | 48 | 2 | 2 | 100% |
 | Dropping | 49-50 | 4 | 4 | 100% |
 | Inherited Status | 51 | 2 | 2 | 100% |
+| Project Reordering | 52 | 2 | 2 | 100% |
 
 ## Per-Scenario Results
 
@@ -285,26 +286,28 @@
 - **Score:** 2/2 (PASS)
 - **Concept Understanding:** Excellent — correctly explained that completed=false is expected (task-level, not inherited), that available=false accounts for container status, and recommended available_only=True to exclude them.
 
+### Scenario 52: Reorder Project Within Folder
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `reorder_project`
+- **Parameters:** Correct — `project_id="proj-C"`, `before_project_id="proj-A"`
+- **Concept Understanding:** Excellent — also suggested `get_projects` first to resolve names to IDs
+
 ## Key Findings
 
-### Changes in This Run (#329, #336 — Project Dates)
+### Changes in This Run (#357 — reorder_project)
 
-**Added 3 new scenarios (43-45) for project date operations — all PASS.**
+**Added 1 new scenario (52) for project reordering — PASS.**
 
-1. **Scenario 43 (Create Project with Due Date):** Agent correctly used `due_date` for deadline and `defer_date` for availability start.
-2. **Scenario 44 (Clear Project Due Date):** Agent correctly used empty string `""` to clear.
-3. **Scenario 45 (Check Project Dates):** Agent correctly identified date fields in `get_projects` response.
-
-Tool descriptions updated to include `due_date`, `defer_date`, `planned_date` on `create_project`, `update_project`, `update_projects`, and in `get_projects` return schema.
+1. **Scenario 52 (Reorder Project Within Folder):** Agent correctly selected `reorder_project` with correct parameters.
 
 ### Score Delta
 
-102/102 vs 84/84 previous. 9 new scenarios added (43-51), all pass. Prior 42 scenarios unchanged (not re-run).
+104/104 vs 102/102 previous. 1 new scenario added (52), pass. Prior 51 scenarios unchanged (not re-run).
 
 ### Issues Found
 
-None. All 51 scenarios pass at 2/2. All 7 safety-critical scenarios pass.
+None. All 52 scenarios pass at 2/2. All 7 safety-critical scenarios pass.
 
 ## Conclusion
 
-All interface additions and behavioral documentation are well-understood by agents from tool descriptions alone. 102/102 (100%).
+All interface additions and behavioral documentation are well-understood by agents from tool descriptions alone. 104/104 (100%).

@@ -280,6 +280,21 @@ Use this to reorder tasks within a project or within a parent task's subtasks. I
 
 ---
 
+### reorder_project
+
+Move a project before or after another project to change its position within a folder.
+
+**Parameters:**
+- `project_id: str` (required) — The ID of the project to move
+- `before_project_id: str` (optional) — Move the project before this project (provide either this OR after_project_id)
+- `after_project_id: str` (optional) — Move the project after this project (provide either this OR before_project_id)
+
+**Returns:** Success message confirming the project was reordered
+
+**Note:** Both projects must be in the same folder. Exactly one of before_project_id or after_project_id must be provided.
+
+---
+
 ### get_folders
 
 Get all folders from OmniFocus with their hierarchy.
