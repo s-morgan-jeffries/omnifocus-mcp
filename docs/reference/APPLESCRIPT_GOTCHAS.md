@@ -437,13 +437,12 @@ set status of theProject to active status
 set status of theProject to on hold
 ```
 
-**Tasks — use `mark` commands and boolean properties:**
+**Tasks — dropping is one-way:**
 ```applescript
 -- Drop a task (command verb)
 mark dropped theTask
 
--- Reactivate a task (boolean property)
-set dropped of theTask to false
+-- ⚠️ UNDROPPING IS NOT POSSIBLE via any automation API
 ```
 
 **What does NOT work for projects:**
@@ -454,7 +453,20 @@ set dropped of theProject to false   -- "Can't set dropped of project to false"
 set status of theProject to dropped  -- AppleScript reads 'dropped' as boolean property
 ```
 
-**Discovered:** 2026-03-17, Issue #359
+**What does NOT work for undropping tasks:**
+```applescript
+-- AppleScript — all fail with "Can't set dropped of inbox task to false":
+set dropped of theTask to false
+tell theTask to set its dropped to false
+set properties of theTask to {dropped:false}
+```
+```javascript
+// OmniAutomation — property appears to set but doesn't persist:
+t.dropped = false;    // Returns false, but task remains dropped
+t.taskStatus = Task.Status.Available;  // Error: "taskStatus is read-only"
+```
+
+**Discovered:** 2026-03-17, Issues #359 (projects), #372 (tasks)
 
 ---
 
