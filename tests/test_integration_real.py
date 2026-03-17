@@ -432,23 +432,30 @@ class TestProjectCRUD:
         print(f"  Modified: {project['modificationDate']}")
 
     def test_set_project_status_to_on_hold(self, client, test_project):
-        """Test changing project status to on-hold."""
+        """Test changing project status to on-hold with verification."""
         from omnifocus_mcp.omnifocus_connector import ProjectStatus
 
-        # Change fixture project to on-hold
         result = client.update_project(test_project, status=ProjectStatus.ON_HOLD)
         assert result["success"] is True
-        print("\n✓ Set project to on-hold")
+
+        # Verify actual status change
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        assert projects[0]['status'] == 'on hold status'
+        print("\n✓ Set project to on-hold (verified)")
 
     def test_set_project_status_to_done(self, client, test_project):
-        """Test completing a project."""
+        """Test completing a project with verification."""
         from omnifocus_mcp.omnifocus_connector import ProjectStatus
 
-        # Mark fixture project as done
         result = client.update_project(test_project, status=ProjectStatus.DONE)
         assert result["success"] is True
-        print("\n✓ Marked project as done")
-        # Fixture will clean up
+
+        # Verify actual status change
+        projects = client.get_projects(project_id=test_project)
+        assert len(projects) == 1
+        assert projects[0]['status'] == 'done status'
+        print("\n✓ Marked project as done (verified)")
 
     def test_update_project_name(self, client, test_project):
         """Test updating project name."""
@@ -618,29 +625,50 @@ class TestProjectCRUD:
     # NEW API Integration Tests (update_project enhancements)
     # ========================================================================
 
-    def test_update_project_set_status_integration(self, client, test_project):
-        """Integration: update_project() can set project status."""
-        # Set status to on_hold
+    def test_update_project_status_full_lifecycle(self, client, test_project):
+        """Integration: all project status transitions with verification.
+
+        Tests the full lifecycle: ACTIVE → ON_HOLD → ACTIVE → DROPPED → ACTIVE → DONE.
+        Each transition verifies the actual status via get_projects().
+        Validates the AppleScript patterns: mark dropped, set status to active status,
+        mark complete, set status to on hold (#359, #370).
+        """
+        def assert_status(expected_status):
+            projects = client.get_projects(project_id=test_project)
+            assert len(projects) == 1, f"Project not found after setting status to {expected_status}"
+            actual = projects[0]['status']
+            assert actual == expected_status, \
+                f"Expected status '{expected_status}', got '{actual}'"
+
+        # ACTIVE → ON_HOLD
         result = client.update_project(test_project, status="on_hold")
         assert result["success"] is True
-        assert "status" in result["updated_fields"]
-        print(f"\n✓ Set project status to on_hold: {result}")
+        assert_status('on hold status')
+        print("\n✓ ACTIVE → ON_HOLD")
 
-        # Verify status was set
-        projects = client.get_projects(project_id=test_project)
-        assert len(projects) == 1
-        project = projects[0]
-        # NOTE: OmniFocus returns status with " status" suffix
-        assert project['status'] == 'on hold status'
-
-        # Set status to active
+        # ON_HOLD → ACTIVE
         result = client.update_project(test_project, status="active")
         assert result["success"] is True
-        projects = client.get_projects(project_id=test_project)
-        assert len(projects) == 1
-        project = projects[0]
-        assert project['status'] == 'active status'
-        print("\n✓ Changed status to active")
+        assert_status('active status')
+        print("✓ ON_HOLD → ACTIVE")
+
+        # ACTIVE → DROPPED
+        result = client.update_project(test_project, status="dropped")
+        assert result["success"] is True
+        # Note: get_projects() skips dropped projects, so we verify via return value only
+        print("✓ ACTIVE → DROPPED")
+
+        # DROPPED → ACTIVE
+        result = client.update_project(test_project, status="active")
+        assert result["success"] is True
+        assert_status('active status')
+        print("✓ DROPPED → ACTIVE")
+
+        # ACTIVE → DONE
+        result = client.update_project(test_project, status="done")
+        assert result["success"] is True
+        assert_status('done status')
+        print("✓ ACTIVE → DONE")
 
     def test_update_project_set_review_interval_integration(self, client, test_project):
         """Integration: update_project() can set review interval."""
@@ -749,6 +777,25 @@ class TestProjectCRUD:
             results = client.get_projects(project_id=project_id)
             assert len(results) == 1
             assert results[0]['status'] == 'on hold status'
+
+    def test_update_projects_batch_dropped_integration(self, client, test_projects):
+        """Integration: update_projects() can batch-drop projects."""
+        result = client.update_projects(test_projects, status="dropped")
+
+        assert result["updated_count"] == 3
+        assert result["failed_count"] == 0
+        print(f"\n✓ Batch dropped 3 projects: {result}")
+
+        # Restore all to active (get_projects skips dropped, so verify via restore)
+        result2 = client.update_projects(test_projects, status="active")
+        assert result2["updated_count"] == 3
+        print("✓ Batch restored to active")
+
+        # Now verify they're active
+        for project_id in test_projects:
+            results = client.get_projects(project_id=project_id)
+            assert len(results) == 1
+            assert results[0]['status'] == 'active status'
 
     def test_update_projects_single_id_string_integration(self, client, test_project):
         """Integration: update_projects() accepts single ID as string (Union type)."""
