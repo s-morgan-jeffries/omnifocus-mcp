@@ -1220,4 +1220,29 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    # ── Project Reordering ────────────────────────────────────────────────
+    {
+        "id": 52,
+        "category": "Project Reordering",
+        "name": "Reorder Project Within Folder",
+        "prompt": (
+            "I have three projects in my Work folder: proj-A, proj-B, proj-C "
+            "(in that order). I want proj-C to appear first, before proj-A."
+        ),
+        "expected": {
+            "tools": ["reorder_project"],
+            "key_params": {
+                "reorder_project": {
+                    "project_id": "proj-C",
+                    "before_project_id": "proj-A",
+                }
+            },
+        },
+        "scoring_notes": (
+            "PASS: reorder_project(project_id='proj-C', before_project_id='proj-A'). "
+            "PARTIAL: Correct tool but swapped parameters or used after instead of before. "
+            "FAIL: Tries to use update_project or reorder_task instead."
+        ),
+        "safety_critical": False,
+    },
 ]

@@ -338,6 +338,30 @@ class TestWriteBenchmarks:
             times.append(time.perf_counter() - start)
         BenchmarkResult("delete_projects", times).report()
 
+    def test_reorder_project(self, client):
+        """reorder_project() — move project before another."""
+        # Create 2 projects to reorder between
+        p1 = client.create_project(f"__bench_reorder_a_{uuid.uuid4().hex[:8]}")
+        p2 = client.create_project(f"__bench_reorder_b_{uuid.uuid4().hex[:8]}")
+        try:
+            toggle = [True, False, True]
+            idx = 0
+
+            def reorder():
+                nonlocal idx
+                if toggle[idx % len(toggle)]:
+                    client.reorder_project(p1, before_project_id=p2)
+                else:
+                    client.reorder_project(p1, after_project_id=p2)
+                idx += 1
+
+            _benchmark("reorder_project", reorder, iterations=WRITE_ITERATIONS)
+        finally:
+            try:
+                client.delete_projects([p1, p2])
+            except Exception:
+                pass
+
     def test_update_tasks_batch(self, client, test_project):
         """update_tasks() — batch update (N sequential calls, pre-optimization baseline)."""
         batch_size = 5

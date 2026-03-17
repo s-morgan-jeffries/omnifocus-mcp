@@ -1990,6 +1990,73 @@ class TestIdEscapingInMethods:
             assert 't\\"1' in script
             assert 't\\"2' in script
 
+    def test_reorder_project_escapes_ids(self, client):
+        """reorder_project() should escape project_id and reference_project_id."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            client.reorder_project(project_id='p"1', before_project_id='p"2')
+            script = mock_run.call_args[0][0]
+            assert 'p\\"1' in script
+            assert 'p\\"2' in script
+
+
+class TestReorderProject:
+    """Tests for reorder_project method."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_reorder_project_before(self, client):
+        """reorder_project() with before_project_id uses 'before' in AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.reorder_project("proj-A", before_project_id="proj-B")
+            assert result is True
+            script = mock_run.call_args[0][0]
+            assert "before" in script
+            assert "proj-A" in script
+            assert "proj-B" in script
+
+    def test_reorder_project_after(self, client):
+        """reorder_project() with after_project_id uses 'after' in AppleScript."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.reorder_project("proj-A", after_project_id="proj-C")
+            assert result is True
+            script = mock_run.call_args[0][0]
+            assert "after" in script
+            assert "proj-A" in script
+            assert "proj-C" in script
+
+    def test_reorder_project_requires_one_param(self, client):
+        """reorder_project() raises ValueError when both or neither params provided."""
+        with pytest.raises(ValueError, match="Must provide either"):
+            client.reorder_project("proj-A")
+        with pytest.raises(ValueError, match="Cannot provide both"):
+            client.reorder_project("proj-A", before_project_id="proj-B", after_project_id="proj-C")
+
+    def test_reorder_project_requires_project_id(self, client):
+        """reorder_project() raises ValueError on empty project_id."""
+        with pytest.raises(ValueError, match="project_id"):
+            client.reorder_project("", before_project_id="proj-B")
+
+    def test_reorder_project_uses_flattened_project(self, client):
+        """reorder_project() uses 'flattened project' in AppleScript (not 'flattened task')."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            client.reorder_project("proj-A", before_project_id="proj-B")
+            script = mock_run.call_args[0][0]
+            assert "flattened project" in script
+            assert "flattened task" not in script
+
+    def test_reorder_project_raises_on_failure(self, client):
+        """reorder_project() raises Exception on AppleScript failure."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "false: Projects not in same folder"
+            with pytest.raises(Exception, match="reordering project"):
+                client.reorder_project("proj-A", before_project_id="proj-B")
+
 
 class TestGetTags:
     """Tests for get_tags method."""

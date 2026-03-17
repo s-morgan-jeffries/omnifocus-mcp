@@ -2143,6 +2143,83 @@ class TestTaskReordering:
             client.delete_projects(project_id)
 
 
+class TestProjectReordering:
+    """Tests for reordering projects within a folder."""
+
+    def test_reorder_project_before_another(self, client):
+        """Test moving a project before another project in the same folder."""
+        # Create a folder and 3 projects in it
+        folder_name = f"test-reorder-{__import__('uuid').uuid4().hex[:8]}"
+        client.create_folder(folder_name)
+
+        try:
+            proj_a = client.create_project("test-ProjA", folder_path=folder_name)
+            proj_b = client.create_project("test-ProjB", folder_path=folder_name)
+            proj_c = client.create_project("test-ProjC", folder_path=folder_name)
+
+            # Get initial order (should be A, B, C by creation)
+            test_names = {"test-ProjA", "test-ProjB", "test-ProjC"}
+            projects = [p for p in client.get_projects() if p['name'] in test_names]
+            names_before = [p['name'] for p in projects]
+            assert names_before == ["test-ProjA", "test-ProjB", "test-ProjC"], \
+                f"Initial order should be A, B, C but got {names_before}"
+
+            # Move C before A
+            success = client.reorder_project(proj_c, before_project_id=proj_a)
+            assert success is True
+
+            # Verify new order: C, A, B
+            projects_after = [p for p in client.get_projects() if p['name'] in test_names]
+            names_after = [p['name'] for p in projects_after]
+            assert names_after == ["test-ProjC", "test-ProjA", "test-ProjB"], \
+                f"After moving C before A, expected [C, A, B] but got {names_after}"
+
+            print(f"\n✓ Reordered projects: {names_before} → {names_after}")
+        finally:
+            for pid in [proj_a, proj_b, proj_c]:
+                try:
+                    client.delete_projects(pid)
+                except Exception:
+                    pass
+
+    def test_reorder_project_after_another(self, client):
+        """Test moving a project after another project in the same folder."""
+        folder_name = f"test-reorder-{__import__('uuid').uuid4().hex[:8]}"
+        client.create_folder(folder_name)
+
+        try:
+            proj_a = client.create_project("test-ProjX", folder_path=folder_name)
+            proj_b = client.create_project("test-ProjY", folder_path=folder_name)
+            proj_c = client.create_project("test-ProjZ", folder_path=folder_name)
+
+            # Move A after C
+            success = client.reorder_project(proj_a, after_project_id=proj_c)
+            assert success is True
+
+            # Verify new order: B, C, A
+            test_names = {"test-ProjX", "test-ProjY", "test-ProjZ"}
+            projects_after = [p for p in client.get_projects() if p['name'] in test_names]
+            names_after = [p['name'] for p in projects_after]
+            assert names_after == ["test-ProjY", "test-ProjZ", "test-ProjX"], \
+                f"After moving A after C, expected [Y, Z, X] but got {names_after}"
+
+            print(f"\n✓ Reordered projects with 'after': {names_after}")
+        finally:
+            for pid in [proj_a, proj_b, proj_c]:
+                try:
+                    client.delete_projects(pid)
+                except Exception:
+                    pass
+
+    def test_reorder_project_requires_one_parameter(self, client):
+        """Test that reorder_project requires either before or after."""
+        with pytest.raises(ValueError, match="Must provide either"):
+            client.reorder_project("proj-1")
+        with pytest.raises(ValueError, match="Cannot provide both"):
+            client.reorder_project("proj-1", before_project_id="proj-2", after_project_id="proj-3")
+        print("\n✓ Parameter validation works correctly")
+
+
 class TestAvailabilityFields:
     """Tests for availability status fields.
 
