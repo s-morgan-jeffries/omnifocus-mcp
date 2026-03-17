@@ -56,7 +56,7 @@ class TestUpdateProjectRedesign:
             assert "status" in result["updated_fields"]
 
             call_args = mock_run.call_args[0][0]
-            assert "active" in call_args.lower()
+            assert "set dropped of theProject to false" in call_args
 
     def test_update_project_drop_status(self, client):
         """NEW API: update_project() can drop a project (status=ProjectStatus.DROPPED)."""
