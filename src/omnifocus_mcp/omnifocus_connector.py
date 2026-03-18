@@ -4990,7 +4990,7 @@ class OmniFocusConnector:
             if item_type == "project":
                 collection = f'flattened projects whose id is "{id_escaped}"'
             else:
-                collection = f'folders whose id is "{id_escaped}"'
+                collection = f'flattened folders whose id is "{id_escaped}"'
             lookup_lines.append(
                 f'set matchingItems{i} to {collection}\n'
                 f'                if (count of matchingItems{i}) = 0 then\n'

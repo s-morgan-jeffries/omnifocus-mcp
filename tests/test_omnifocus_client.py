@@ -1398,7 +1398,7 @@ class TestSetFocus:
             assert 'set focus to' in call_args
 
     def test_set_focus_single_folder(self, client):
-        """Test focusing on a single folder."""
+        """Test focusing on a single folder uses flattened folders for nested support."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "SUCCESS"
             result = client.set_focus(item_ids="folder-456", item_types="folder")
@@ -1406,7 +1406,7 @@ class TestSetFocus:
             assert result["action"] == "set"
             assert result["focused_items"] == [{"id": "folder-456", "type": "folder"}]
             call_args = mock_run.call_args[0][0]
-            assert 'folders whose id' in call_args
+            assert 'flattened folders whose id' in call_args
 
     def test_set_focus_multiple_items(self, client):
         """Test focusing on multiple items."""
