@@ -19,7 +19,15 @@ HIERARCHY: Folders → Projects → Tasks → Subtasks. Folders organize project
 
 SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links. The `next` field on a task is true when it is the first available action in a sequential project or action group. In parallel projects, all incomplete tasks have `next: true`.
 
-ACTION GROUPS: A task with subtasks is an "action group." It can be parallel or sequential, just like a project. The parent task appears as `blocked: true` while its subtasks are active — this is normal behavior, not an error. Check `subtaskCount > 0` to identify action groups. An action group parent cannot be completed until its subtasks are resolved.
+ACTION GROUPS: A task with subtasks is an "action group." It can be parallel or sequential, just like a project. The parent task appears as `blocked: true` while its subtasks are active — this is normal behavior, not an error or a problem to fix. Check `subtaskCount > 0` to identify action groups. An action group parent cannot be completed until its subtasks are resolved. If you see a task with `blocked: true` and `subtaskCount > 0`, it means "work on the subtasks first" — do not try to unblock it.
+
+INHERITED STATUS: Task-level fields like `completed` and `dropped` reflect the task's own state, NOT its container's state. A task inside a completed project will show `completed: false` (because the task itself wasn't individually completed) but `available: false` (because its container is inactive). This is expected behavior. To find truly actionable tasks, always use `available` or `available_only=True` — do not rely on `completed` alone.
+
+EFFECTIVE DATES: Date fields (dueDate, deferDate, plannedDate) returned by get_tasks are EFFECTIVE dates — they include dates inherited from the containing project. A task with no direct due date in a project with dueDate=April 15 will return dueDate="2026-04-15T17:00:00" (not empty). Do not assume an empty due date on a task means the project has no due date either. Write operations (update_task) set the task's own date directly.
+
+BATCH OPERATIONS: When applying the same change to multiple items, prefer the batch tools (update_tasks, update_projects) over multiple individual calls. Batch tools accept a list of IDs and are more efficient.
+
+RECURRING TASKS: Setting completed=True on a recurring task uses OmniFocus's 'mark complete' command, which automatically creates the next occurrence. This is guaranteed behavior — do not hedge or warn that recurrence might stop.
 
 TAGS: Formerly "contexts." Represent work contexts (location, tools, energy, people, workflow states like Waiting-for or Agenda). Cut across projects. Use for filtering. Tags can be Active or On Hold — tasks with On Hold tags are excluded from OmniFocus's native Available perspective.
 
@@ -1448,7 +1456,7 @@ def set_focus(
 ) -> str:
     """Set focus on one or more items, or clear focus.
 
-    OmniFocus supports focusing on projects and folders only.
+    OmniFocus supports focusing on projects and folders only (NOT tasks or tags). To highlight specific tasks, use update_task(flagged=True) instead.
     Call with no arguments (or empty lists) to clear focus.
 
     Args:
