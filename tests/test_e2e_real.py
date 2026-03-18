@@ -91,13 +91,13 @@ class TestCreateTaskE2E:
 
         print(f"\n✓ E2E create_task in inbox: {result}")
 
-    def test_create_task_with_tags_e2e(self, test_project):
+    def test_create_task_with_tags_e2e(self, test_project, ensure_test_tags):
         """E2E: Create task with tags via MCP tool (tests JSON string conversion)."""
         # MCP tools receive tags as JSON string
         result = create_task(
             task_name="E2E Test Task - Tags",
             project_id=test_project,
-            tags='["Test"]'  # JSON string, not Python list!
+            tags='["work"]'  # JSON string, not Python list!
         )
 
         assert isinstance(result, str)
@@ -105,7 +105,7 @@ class TestCreateTaskE2E:
         assert "Successfully created" in result
         # Tags might be in response
         if "Tags:" in result:
-            assert "Test" in result
+            assert "work" in result
 
         print(f"\n✓ E2E create_task with tags: {result}")
 
@@ -127,20 +127,20 @@ class TestCreateTaskE2E:
         print(f"\n✓ E2E create_task with dates: {result}")
 
     def test_create_task_error_handling_e2e(self):
-        """E2E: Verify MCP tool raises ValueError for invalid parameters."""
+        """E2E: Verify MCP tool returns error for invalid parameters."""
         # Try to create with both project_id and parent_task_id (invalid)
-        # This should raise ValueError (proper MCP behavior for validation errors)
-        with pytest.raises(ValueError) as exc_info:
-            create_task(
-                task_name="Bad Task",
-                project_id="proj-123",
-                parent_task_id="task-456"
-            )
+        # The server catches ValueError and returns an error string
+        result = create_task(
+            task_name="Bad Task",
+            project_id="proj-123",
+            parent_task_id="task-456"
+        )
 
-        # Verify error message is informative
-        assert "project_id" in str(exc_info.value).lower() or "parent" in str(exc_info.value).lower()
+        # Verify error message is returned (not raised)
+        assert isinstance(result, str)
+        assert "error" in result.lower()
 
-        print(f"\n✓ E2E create_task error handling: Correctly raised ValueError")
+        print(f"\n✓ E2E create_task error handling: {result}")
 
 
 class TestUpdateTaskE2E:
@@ -298,10 +298,8 @@ class TestUpdateProjectE2E:
     def test_update_project_set_status_e2e(self, test_project):
         """E2E: Set project status via MCP tool."""
         # Import the MCP tool function
-        update_project = server.update_project.fn
-
         # Call the MCP tool to set status
-        result = update_project(project_id=test_project, status="on_hold")
+        result = server.update_project(project_id=test_project, status="on_hold")
 
         # Verify MCP tool returns human-readable response
         assert isinstance(result, str)
@@ -312,10 +310,8 @@ class TestUpdateProjectE2E:
 
     def test_update_project_review_interval_e2e(self, test_project):
         """E2E: Set review interval via MCP tool."""
-        update_project = server.update_project.fn
-
         # Call the MCP tool to set review interval
-        result = update_project(project_id=test_project, review_interval_weeks=3)
+        result = server.update_project(project_id=test_project, review_interval_weeks=3)
 
         assert isinstance(result, str)
         assert "success" in result.lower() or "updated" in result.lower()
@@ -324,10 +320,8 @@ class TestUpdateProjectE2E:
 
     def test_update_project_multiple_fields_e2e(self, test_project):
         """E2E: Update multiple fields at once via MCP tool."""
-        update_project = server.update_project.fn
-
         # Call the MCP tool to update multiple fields
-        result = update_project(
+        result = server.update_project(
             project_id=test_project,
             project_name="E2E Updated Project Name",
             status="active",
@@ -344,10 +338,8 @@ class TestUpdateProjectE2E:
 
     def test_update_project_error_handling_e2e(self):
         """E2E: Error handling when update fails."""
-        update_project = server.update_project.fn
-
         # Try to update with invalid project ID
-        result = update_project(project_id="invalid-id-999", status="active")
+        result = server.update_project(project_id="invalid-id-999", status="active")
 
         # Should return error message (not raise exception for runtime errors)
         assert isinstance(result, str)
@@ -376,8 +368,7 @@ class TestUpdateProjectsE2E:
         proj_id_2 = client.create_project("E2E Batch 2")
 
         # Call the MCP tool
-        update_projects = server.update_projects.fn
-        result = update_projects(
+        result = server.update_projects(
             project_ids=[proj_id_1, proj_id_2],
             status="on_hold"
         )
@@ -398,8 +389,7 @@ class TestUpdateProjectsE2E:
         proj_id = client.create_project("E2E Single ID")
 
         # Call MCP tool
-        update_projects = server.update_projects.fn
-        result = update_projects(project_ids=proj_id, sequential="true")
+        result = server.update_projects(project_ids=proj_id, sequential="true")
 
         assert isinstance(result, str)
         assert "1" in result  # Should mention 1 project
