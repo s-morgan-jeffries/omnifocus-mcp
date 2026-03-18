@@ -1,6 +1,6 @@
 # OmniFocus MCP Connector — Gap Analysis
 
-*Produced March 11, 2026. Updated March 13, 2026 post-v0.9.0. Compared against OmniFocus 4.8.4 Reference Manual, MCP connector v0.9.0, and OmniFocus SDEF.*
+*Produced March 11, 2026. Updated March 18, 2026 post-v0.10.1. Compared against OmniFocus 4.8.4 Reference Manual, MCP connector v0.10.1, and OmniFocus SDEF.*
 
 ---
 
@@ -36,11 +36,10 @@ Ranked by likely utility for a power user with Claude integration.
 - **Impact:** An agent seeing `blocked: true` with `subtaskCount: 3` has no context that this is normal action group behavior.
 - **Effort:** Very low — add to server instructions block.
 
-**2.2. Repeat Rule Details**
-- Connector returns `isRecurring`, `recurrence` (raw RRULE string), `repetitionMethod`, and `repeatSummary` (human-readable OF-generated string, added in #260).
-- The `repeatSummary` field now provides the human-readable form (e.g., "Every day").
-- Remaining gap: `catch up automatically` from the repetition rule record is not exposed (see §4.2 below).
-- **Status:** Partially addressed. `repeatSummary` closes the human-readability gap. `catch up automatically` remains open.
+**2.2. Repeat Rule Details** ✅ FULLY IMPLEMENTED
+- Connector returns `isRecurring`, `recurrence` (raw RRULE string), `repetitionMethod`, `repeatSummary` (human-readable), and `catchUpAutomatically`.
+- `repeatSummary` closes the human-readability gap. `catchUpAutomatically` added in v0.9.1 (see §4.2).
+- **Status:** Fully addressed.
 
 **2.3. Folder Status (Active vs Dropped)** ✅ IMPLEMENTED in v0.9.0 (#258)
 - `status` field (active/dropped) added to `get_folders`. `update_folder` supports status changes.
@@ -159,7 +158,7 @@ Per APPLESCRIPT_GOTCHAS.md, `set completed of collection to false` fails with er
 
 These items were not in the original gap analysis. Discovered by reading the OmniFocus SDEF directly.
 
-### 4.1. Next Occurrence Dates on Recurring Tasks
+### 4.1. Next Occurrence Dates on Recurring Tasks ✅ IMPLEMENTED
 
 The SDEF exposes three read-only properties on tasks:
 - `next defer date` — defer date of the next occurrence (recurring tasks)
@@ -168,19 +167,15 @@ The SDEF exposes three read-only properties on tasks:
 
 These return `missing value` for non-recurring tasks. For recurring tasks, they allow an agent to reason about *when the next instance will become relevant* without completing the current one.
 
-- **Current state:** None of these are returned by `get_tasks`.
-- **Impact:** Useful for recurring task planning (e.g., "this task recurs weekly, next due Friday"). The `/plan-my-day` plugin could use these to surface recurring commitments.
-- **Effort:** Low — add to batch property extraction and return schema.
-- **Filed:** Issue TBD (v0.9.1)
+- **Implemented:** `nextDueDate`, `nextDeferDate`, `nextPlannedDate` added to batch property extraction and `get_tasks` return schema.
+- **Status:** Fully addressed.
 
-### 4.2. `catch up automatically` in Repetition Rule
+### 4.2. `catch up automatically` in Repetition Rule ✅ IMPLEMENTED
 
 The `repetition rule` record in the SDEF includes a `catch up automatically` boolean property. When `true`, if a task with recurrence is missed, only one catch-up occurrence is scheduled (not one per missed interval). When `false`, each missed occurrence is scheduled individually.
 
-- **Current state:** `recurrence` (RRULE string) is exposed, but `catch up automatically` is not extracted from the `repetition rule` record and not returned.
-- **Impact:** An agent scheduling tasks around recurring items needs to know whether a missed recurrence will flood the inbox. Currently this is opaque.
-- **Effort:** Low — extract `catch up automatically` from the repetition rule and include in `get_tasks` return schema alongside `isRecurring`/`recurrence`.
-- **Filed:** Issue TBD (v0.9.1)
+- **Implemented:** `catchUpAutomatically` extracted from the repetition rule and included in `get_tasks` return schema.
+- **Status:** Fully addressed.
 
 ### 4.3. `should use floating time zone`
 
@@ -194,27 +189,87 @@ Tasks and projects have a `should use floating time zone` boolean property. When
 
 ---
 
-## Summary: Priority Recommendations (updated March 13, 2026)
+## 5. New Gaps Found via Metadata Audit (March 18, 2026)
 
-| Priority | Item | Type | Effort | Status |
-|----------|------|------|--------|--------|
-| **P1** | Planned date support | Gap | Medium | ✅ v0.9.0 |
-| **P1** | Effective dates (inherited) | Gap + Bug | Low-Medium | ✅ v0.9.0 |
-| **P1** | Action group documentation | Doc | Very Low | Open |
-| **P1** | "Next" task semantics | Doc | Very Low | Open |
-| **P1** | Blocked semantics (action groups) | Doc | Very Low | Open |
-| **P2** | Single Actions List project type | Gap | Medium | ✅ v0.9.0 |
-| **P2** | Complete with last action | Gap | Low | ✅ v0.9.0 |
-| **P2** | Stalled projects | Gap | Low | ✅ v0.9.0 |
-| **P2** | Next review date | Gap | Very Low | ✅ v0.9.0 |
-| **P2** | Inherited dates audit | Bug | Low | ✅ v0.9.0 |
-| **P2** | Available + On Hold tags audit | Bug | Low | Open |
-| **P2** | Next occurrence dates (new) | Gap | Low | Open (v0.9.1) |
-| **P2** | `catch up automatically` (new) | Gap | Low | Open (v0.9.1) |
-| **P3** | Folder status | Gap | Low | ✅ v0.9.0 |
-| **P3** | Repeat rule parsing | Gap | Medium | Partially done (repeatSummary) |
-| **P3** | Tag dropped status | Gap | Very Low | ✅ v0.9.0 |
-| **P3** | Uncomplete batch audit | Bug | Low | Open |
-| **P3** | Tag locations | Gap | Low | Open (reassessed — feasible but low-value) |
-| **P3** | `should use floating time zone` (new) | Gap | Very Low | Open (low priority) |
-| **P3** | Mutually exclusive tag enforcement | Verified | Low | Enforced at data model level; `childrenAreMutuallyExclusive` accessible via OmniAutomation (#302) |
+These items were identified during the v0.10.2 metadata audit (#376).
+
+### 5.1. Display Bug: Task Dates Not Shown (#377)
+
+The connector fetches `creationDate`, `modificationDate`, `completionDate`, and `droppedDate` for tasks, but `_format_task` in `server_fastmcp.py` does not include them in the output. Agents never see these dates on tasks.
+
+Additionally, `_format_project` only displays `creationDate` — `modificationDate`, `completionDate`, and `droppedDate` are fetched but not displayed for projects either.
+
+- **Impact:** Agents cannot reason about when tasks/projects were created, last modified, completed, or dropped.
+- **Effort:** Very low — add conditional output lines to `_format_task` and `_format_project`.
+- **Filed:** #377 (v0.10.2)
+
+### 5.2. `in_inbox` Boolean on Tasks (#378)
+
+The SDEF exposes `in inbox` (boolean) on tasks. Currently, inbox membership must be inferred from `projectName: "N/A"` or by using `get_tasks(source="inbox")`.
+
+- **Impact:** Low-medium. An explicit boolean is unambiguous and useful for agents triaging tasks.
+- **Effort:** Very low — one additional batch property read.
+- **Filed:** #378 (v0.10.2, read-only)
+
+### 5.3. `completed_by_children` on Tasks (#379)
+
+`completed_by_children` is supported on projects (create, update, get) but not on tasks. Tasks with subtasks (action groups) also support this property — when true, completing all subtasks auto-completes the parent.
+
+- **Impact:** Medium. Agents managing action groups can't see or control this behavior.
+- **Effort:** Low — mirror existing project implementation for tasks.
+- **Filed:** #379 (v0.10.2, read/write)
+
+### 5.4. `primary_tag` on Tasks — Deferred
+
+The SDEF exposes `primary tag` (the first tag in a task's tag list). Since we already return the full `tags` array, this is redundant with `tags[0]`.
+
+- **Decision:** Skip. No issue filed.
+
+### 5.5. Mutually Exclusive Tag Configuration (#303)
+
+`Tag.childrenAreMutuallyExclusive` is readable/writable via OmniAutomation. Research completed in #302. Implementation designed in #303, previously blocked on #274 (production test infrastructure), now unblocked.
+
+- **Filed:** #303 (v0.10.2, read/write via OmniAutomation)
+
+---
+
+## Summary: Priority Recommendations (updated March 18, 2026)
+
+### Implemented
+
+| Item | Type | Version |
+|------|------|---------|
+| Planned date support | Gap | ✅ v0.9.0 |
+| Effective dates (inherited) | Gap + Bug | ✅ v0.9.0 |
+| Single Actions List project type | Gap | ✅ v0.9.0 |
+| Complete with last action (projects) | Gap | ✅ v0.9.0 |
+| Stalled projects | Gap | ✅ v0.9.0 |
+| Next review date | Gap | ✅ v0.9.0 |
+| Inherited dates audit | Bug | ✅ v0.9.0 |
+| Folder status | Gap | ✅ v0.9.0 |
+| Tag dropped status | Gap | ✅ v0.9.0 |
+| Next occurrence dates | Gap | ✅ v0.9.1 |
+| `catch up automatically` | Gap | ✅ v0.9.1 |
+| Repeat rule details (full) | Gap | ✅ v0.9.1 |
+
+### Open — Filed for v0.10.2
+
+| Priority | Item | Type | Effort | Issue |
+|----------|------|------|--------|-------|
+| **P1** | Task/project date display bug | Bug | Very Low | #377 |
+| **P2** | `in_inbox` boolean on tasks | Gap | Very Low | #378 |
+| **P2** | `completed_by_children` on tasks | Gap | Low | #379 |
+| **P2** | Mutually exclusive tag configuration | Gap | Medium | #303 |
+
+### Open — Unfiled / Deferred
+
+| Priority | Item | Type | Effort | Notes |
+|----------|------|------|--------|-------|
+| **P1** | Action group documentation | Doc | Very Low | Tool description improvement |
+| **P1** | "Next" task semantics | Doc | Very Low | Tool description improvement |
+| **P1** | Blocked semantics (action groups) | Doc | Very Low | Tool description improvement |
+| **P2** | Available + On Hold tags audit | Bug | Low | May affect `available_only` accuracy |
+| **P3** | Uncomplete batch audit | Bug | Low | `set completed to false` may fail in batch |
+| **P3** | Tag locations | Gap | Low | Feasible but low-value |
+| **P3** | `should use floating time zone` | Gap | Very Low | Edge case |
+| **Skip** | `primary_tag` on tasks | Gap | Very Low | Redundant with `tags[0]` |
