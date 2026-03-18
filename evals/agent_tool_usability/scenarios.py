@@ -1245,4 +1245,62 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    # ── Tag Exclusivity: Creation & Configuration ─────────────────────────
+    {
+        "id": 53,
+        "category": "Tag Exclusivity",
+        "name": "Create Mutually Exclusive Tag Group",
+        "prompt": (
+            "I want to set up a 'Priority' tag group where each task can only have one "
+            "priority level at a time. If a task has 'High' and I assign 'Low', "
+            "the 'High' tag should be automatically removed. Create the Priority "
+            "parent tag with child tags High, Medium, and Low."
+        ),
+        "expected": {
+            "tools": ["create_tag", "create_tag", "create_tag", "create_tag"],
+            "key_params": {
+                "create_tag (parent)": {
+                    "name": "Priority",
+                    "children_are_mutually_exclusive": True,
+                },
+                "create_tag (children)": {
+                    "parent_tag": "Priority",
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Creates parent tag with children_are_mutually_exclusive=True, "
+            "then creates child tags with parent_tag='Priority'. "
+            "PARTIAL: Correct structure but forgets children_are_mutually_exclusive=True. "
+            "FAIL: Doesn't use children_are_mutually_exclusive, or creates flat tags "
+            "without parent-child relationship."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 54,
+        "category": "Tag Exclusivity",
+        "name": "Toggle Exclusivity on Existing Tag",
+        "prompt": (
+            "I have an existing 'Energy' tag (ID: tag-energy-001) with child tags "
+            "'High Energy', 'Medium Energy', 'Low Energy'. Right now a task can have "
+            "multiple energy levels, but I want to change it so only one energy level "
+            "can be assigned at a time. How do I fix this?"
+        ),
+        "expected": {
+            "tools": ["update_tag"],
+            "key_params": {
+                "update_tag": {
+                    "tag_id": "tag-energy-001",
+                    "children_are_mutually_exclusive": True,
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_tag(tag_id='tag-energy-001', children_are_mutually_exclusive=True). "
+            "PARTIAL: Correct tool and concept but wrong parameter name or missing tag_id. "
+            "FAIL: Suggests recreating tags, or doesn't know about children_are_mutually_exclusive."
+        ),
+        "safety_critical": False,
+    },
 ]
