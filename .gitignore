@@ -43,6 +43,11 @@ Thumbs.db
 
 # Config
 config.json
+.env
+
+# Eval raw results (large JSON files with full model responses)
+evals/agent_tool_usability/results/raw_*.json
+evals/agent_tool_usability/results/claude_batch_*.txt
 
 # Hygiene check results
 .hygiene-check-results-*.txt
