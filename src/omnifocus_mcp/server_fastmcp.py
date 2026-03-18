@@ -103,6 +103,14 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
         result += f"Next Defer: {task['nextDeferDate']}\n"
     if task.get('nextPlannedDate'):
         result += f"Next Planned: {task['nextPlannedDate']}\n"
+    if task.get('creationDate'):
+        result += f"Created: {task['creationDate']}\n"
+    if task.get('modificationDate'):
+        result += f"Modified: {task['modificationDate']}\n"
+    if task.get('completionDate'):
+        result += f"Completed Date: {task['completionDate']}\n"
+    if task.get('droppedDate'):
+        result += f"Dropped Date: {task['droppedDate']}\n"
     if task.get('estimatedMinutes'):
         result += f"Estimated: {task['estimatedMinutes']} minutes\n"
     if task.get('repeatSummary'):
@@ -152,6 +160,16 @@ def _format_project(proj: dict, truncate_notes: bool = True) -> str:
         result += f"Sequential: {proj['sequential']}\n"
     if proj.get('creationDate'):
         result += f"Created: {proj['creationDate']}\n"
+    if proj.get('modificationDate'):
+        result += f"Modified: {proj['modificationDate']}\n"
+    if proj.get('completionDate'):
+        result += f"Completed Date: {proj['completionDate']}\n"
+    if proj.get('droppedDate'):
+        result += f"Dropped Date: {proj['droppedDate']}\n"
+    if proj.get('lastReviewDate'):
+        result += f"Last Review: {proj['lastReviewDate']}\n"
+    if proj.get('nextReviewDate'):
+        result += f"Next Review: {proj['nextReviewDate']}\n"
     if proj.get('note'):
         note_text = proj['note'] if not truncate_notes else _truncate_note(proj['note'])
         result += f"Note: {note_text}\n"

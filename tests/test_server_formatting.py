@@ -120,6 +120,54 @@ class TestTaskFormatting:
         assert "Note:" in result
         assert "..." in result
 
+    def test_format_task_displays_metadata_dates(self):
+        """Test that _format_task includes creation, modification, completion, and dropped dates."""
+        task = {
+            "id": "task123",
+            "name": "Task With Dates",
+            "projectName": "Project",
+            "completed": True,
+            "creationDate": "2025-10-01T09:00:00",
+            "modificationDate": "2025-11-15T14:30:00",
+            "completionDate": "2025-12-01T10:00:00",
+            "droppedDate": "",
+        }
+
+        result = _format_task(task)
+
+        assert "Created: 2025-10-01T09:00:00" in result
+        assert "Modified: 2025-11-15T14:30:00" in result
+        assert "Completed Date: 2025-12-01T10:00:00" in result
+        assert "Dropped Date" not in result  # empty string should be omitted
+
+    def test_format_task_displays_dropped_date(self):
+        """Test that _format_task includes dropped date when present."""
+        task = {
+            "id": "task456",
+            "name": "Dropped Task",
+            "projectName": "Project",
+            "completed": False,
+            "droppedDate": "2025-12-10T08:00:00",
+        }
+
+        result = _format_task(task)
+        assert "Dropped Date: 2025-12-10T08:00:00" in result
+
+    def test_format_task_omits_metadata_dates_when_absent(self):
+        """Test that _format_task omits date fields when not present."""
+        task = {
+            "id": "task789",
+            "name": "Minimal Task",
+            "projectName": "Project",
+            "completed": False,
+        }
+
+        result = _format_task(task)
+        assert "Created:" not in result
+        assert "Modified:" not in result
+        assert "Completed Date:" not in result
+        assert "Dropped Date:" not in result
+
 
 class TestProjectFormatting:
     """Test project formatting function."""
@@ -196,3 +244,52 @@ class TestProjectFormatting:
 
         result = _format_project(project)
         assert "Last Activity" not in result
+
+    def test_format_project_displays_metadata_dates(self):
+        """Test that _format_project includes modification, completion, and dropped dates."""
+        project = {
+            "id": "proj123",
+            "name": "Project With Dates",
+            "status": "done",
+            "creationDate": "2025-10-01T09:00:00",
+            "modificationDate": "2025-11-15T14:30:00",
+            "completionDate": "2025-12-01T10:00:00",
+            "droppedDate": "",
+        }
+
+        result = _format_project(project)
+
+        assert "Created: 2025-10-01T09:00:00" in result
+        assert "Modified: 2025-11-15T14:30:00" in result
+        assert "Completed Date: 2025-12-01T10:00:00" in result
+        assert "Dropped Date" not in result  # empty string should be omitted
+
+    def test_format_project_displays_review_dates(self):
+        """Test that _format_project includes last review and next review dates."""
+        project = {
+            "id": "proj123",
+            "name": "Project With Reviews",
+            "status": "active",
+            "lastReviewDate": "2026-03-10T09:00:00",
+            "nextReviewDate": "2026-03-17T09:00:00",
+        }
+
+        result = _format_project(project)
+
+        assert "Last Review: 2026-03-10T09:00:00" in result
+        assert "Next Review: 2026-03-17T09:00:00" in result
+
+    def test_format_project_omits_metadata_dates_when_absent(self):
+        """Test that _format_project omits date fields when not present."""
+        project = {
+            "id": "proj123",
+            "name": "Minimal Project",
+            "status": "active",
+        }
+
+        result = _format_project(project)
+        assert "Modified:" not in result
+        assert "Completed Date:" not in result
+        assert "Dropped Date:" not in result
+        assert "Last Review:" not in result
+        assert "Next Review:" not in result
