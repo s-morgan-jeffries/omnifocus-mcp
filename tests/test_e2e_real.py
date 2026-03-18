@@ -427,12 +427,11 @@ class TestSetFocusE2E:
     def test_set_focus_on_project_e2e(self, test_project):
         """E2E: Set focus on a project via MCP tool."""
         # Call the MCP tool
-        set_focus = server.set_focus.fn
-        result = set_focus(item_id=test_project, item_type="project")
+        result = server.set_focus(item_ids=test_project, item_types="project")
 
         # Verify MCP tool returns human-readable response
         assert isinstance(result, str)
-        assert "success" in result.lower()
+        assert "Focus set on" in result
         assert "project" in result.lower()
         assert test_project in result
 
@@ -441,12 +440,11 @@ class TestSetFocusE2E:
     def test_set_focus_on_folder_e2e(self, test_folder):
         """E2E: Set focus on a folder via MCP tool."""
         # Call the MCP tool
-        set_focus = server.set_focus.fn
-        result = set_focus(item_id=test_folder, item_type="folder")
+        result = server.set_focus(item_ids=test_folder, item_types="folder")
 
         # Verify MCP tool returns human-readable response
         assert isinstance(result, str)
-        assert "success" in result.lower()
+        assert "Focus set on" in result
         assert "folder" in result.lower()
         assert test_folder in result
 
@@ -455,8 +453,7 @@ class TestSetFocusE2E:
     def test_set_focus_invalid_type_e2e(self):
         """E2E: Test error handling for invalid item type via MCP tool."""
         # Call the MCP tool with invalid type
-        set_focus = server.set_focus.fn
-        result = set_focus(item_id="any-id", item_type="task")
+        result = server.set_focus(item_ids="any-id", item_types="task")
 
         # Verify MCP tool returns error message
         assert isinstance(result, str)
