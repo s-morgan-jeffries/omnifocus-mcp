@@ -2679,6 +2679,7 @@ class OmniFocusConnector:
                 set subtaskCounts to number of tasks of ft
                 set effComps to effectively completed of ft
                 set effDrops to effectively dropped of ft
+                set taskInInbox to in inbox of ft
 
                 -- Nested batch reads (project, parent, tags)
                 set projIds to id of (containing project of ft)
@@ -2876,6 +2877,7 @@ class OmniFocusConnector:
                             "\\"sequential\\": " & (item i of taskSeqs as text) & ", " & ¬
                             "\\"position\\": " & (i as text) & ", " & ¬
                             "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
+                            "\\"inInbox\\": " & (item i of taskInInbox as text) & ", " & ¬
                             "\\"available\\": " & (taskAvailable as text) & ¬
                             "}}"
 

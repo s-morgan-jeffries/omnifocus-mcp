@@ -168,6 +168,32 @@ class TestTaskFormatting:
         assert "Completed Date:" not in result
         assert "Dropped Date:" not in result
 
+    def test_format_task_displays_in_inbox(self):
+        """Test that _format_task shows In Inbox when inInbox is true."""
+        task = {
+            "id": "task-inbox",
+            "name": "Inbox Task",
+            "projectName": "N/A",
+            "completed": False,
+            "inInbox": True,
+        }
+
+        result = _format_task(task)
+        assert "In Inbox: Yes" in result
+
+    def test_format_task_omits_in_inbox_when_false(self):
+        """Test that _format_task omits In Inbox when inInbox is false."""
+        task = {
+            "id": "task-proj",
+            "name": "Project Task",
+            "projectName": "My Project",
+            "completed": False,
+            "inInbox": False,
+        }
+
+        result = _format_task(task)
+        assert "In Inbox" not in result
+
 
 class TestProjectFormatting:
     """Test project formatting function."""

@@ -279,6 +279,21 @@ class TestRealOmniFocusIntegration:
 
         print(f"\n✓ Found {len(inbox_tasks)} inbox tasks")
 
+    def test_inbox_task_has_in_inbox_true(self, client, test_task_inbox):
+        """Test that inbox tasks return inInbox=True and project tasks return inInbox=False."""
+        # Inbox task should have inInbox=True
+        inbox_tasks = client.get_tasks(task_id=test_task_inbox)
+        assert len(inbox_tasks) == 1
+        assert inbox_tasks[0]['inInbox'] is True
+        print(f"\n✓ Inbox task has inInbox=True")
+
+    def test_project_task_has_in_inbox_false(self, client, test_task):
+        """Test that project tasks return inInbox=False."""
+        tasks = client.get_tasks(task_id=test_task)
+        assert len(tasks) == 1
+        assert tasks[0]['inInbox'] is False
+        print(f"\n✓ Project task has inInbox=False")
+
     def test_get_tags_real(self, client):
         """Test getting tags from real OmniFocus."""
         tags = client.get_tags()
