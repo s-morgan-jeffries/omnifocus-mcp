@@ -91,6 +91,8 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
         result += f"Next: Yes\n"
     if task.get('flagged'):
         result += f"Flagged: Yes\n"
+    if task.get('inInbox'):
+        result += f"In Inbox: Yes\n"
     if task.get('dueDate'):
         result += f"Due: {task['dueDate']}\n"
     if task.get('deferDate'):
@@ -572,8 +574,8 @@ def get_tasks(
 
     Returns:
         Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
-        flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless
-        include_full_notes=True), parentTaskId, subtaskCount, sequential, nextDueDate,
+        flagged, inInbox, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated
+        unless include_full_notes=True), parentTaskId, subtaskCount, sequential, nextDueDate,
         nextDeferDate, nextPlannedDate, catchUpAutomatically.
         `available` is true when the task is not completed, not dropped, not blocked, and not
         deferred (defer date is in the past or unset). Equivalent to OmniFocus's native Available

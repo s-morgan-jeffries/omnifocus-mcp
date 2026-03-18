@@ -430,6 +430,38 @@ class TestGetTasks:
             # Verify the AppleScript includes blocked in JSON output
             assert '\\"blocked\\"' in call_args
 
+    def test_get_tasks_includes_in_inbox_field(self, client):
+        """Test that get_tasks includes the inInbox field in the AppleScript and response."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Inbox Task",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "dropped": False,
+                "blocked": False,
+                "inInbox": True,
+                "projectId": "",
+                "projectName": "",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks()
+            # Verify inInbox field is in returned data
+            assert 'inInbox' in tasks[0]
+            assert tasks[0]['inInbox'] is True
+            # Verify the AppleScript retrieves the in inbox field
+            call_args = mock_run.call_args[0][0]
+            assert "in inbox of ft" in call_args
+            # Verify the AppleScript includes inInbox in JSON output
+            assert '\\"inInbox\\"' in call_args
+
     def test_get_tasks_blocked_only(self, client):
         """Test filtering for only blocked tasks."""
         blocked_tasks_json = json.dumps([
