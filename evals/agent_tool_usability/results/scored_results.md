@@ -2,11 +2,11 @@
 
 ## Summary
 
-- **Date:** 2026-03-17 (reorder_project #357)
-- **Model:** claude-opus-4-6 (scenario 52), claude-sonnet-4-6 (scenarios 43-51), claude-opus-4-6 (prior scenarios)
-- **Total Score:** 104/104 (100%)
+- **Date:** 2026-03-18 (tag exclusivity creation #303)
+- **Model:** claude-sonnet-4-6 (scenarios 53-54), claude-opus-4-6 (scenario 52), claude-sonnet-4-6 (scenarios 43-51), claude-opus-4-6 (prior scenarios)
+- **Total Score:** 108/108 (100%)
 - **Critical Failures:** 0 of 5
-- **Previous Score:** 102/102 (100%) — project date interface changes #329, #336
+- **Previous Score:** 104/104 (100%) — reorder_project #357
 
 ## Category Scores
 
@@ -28,7 +28,7 @@
 | Next Occurrence Dates | 39 | 2 | 2 | 100% |
 | Stalled Projects | 40 | 2 | 2 | 100% |
 | Catch Up Automatically | 41 | 2 | 2 | 100% |
-| Tag Exclusivity | 42 | 2 | 2 | 100% |
+| Tag Exclusivity | 42, 53-54 | 6 | 6 | 100% |
 | Project Dates | 43-45 | 6 | 6 | 100% |
 | Task Movement | 46 | 2 | 2 | 100% |
 | Text Search | 47 | 2 | 2 | 100% |
@@ -300,14 +300,26 @@
 
 1. **Scenario 52 (Reorder Project Within Folder):** Agent correctly selected `reorder_project` with correct parameters.
 
+### Scenario 53: Create Mutually Exclusive Tag Group
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `create_tag` x4 (parent + 3 children)
+- **Parameters:** Correct — parent with `children_are_mutually_exclusive=True`, children with `parent_tag="Priority"`
+- **Concept Understanding:** Excellent — correctly set exclusivity on parent (not children), noted order dependency (parent must exist before children), explained the automatic removal behavior
+
+### Scenario 54: Toggle Exclusivity on Existing Tag
+- **Score:** 2/2 (PASS)
+- **Tool Selection:** Correct — `update_tag` (single call)
+- **Parameters:** Correct — `tag_id="tag-energy-001"`, `children_are_mutually_exclusive=True`
+- **Concept Understanding:** Excellent — correctly identified that exclusivity is a property of the parent tag, no other calls needed
+
 ### Score Delta
 
-104/104 vs 102/102 previous. 1 new scenario added (52), pass. Prior 51 scenarios unchanged (not re-run).
+108/108 vs 104/104 previous. 2 new scenarios added (53-54), both pass. Prior 52 scenarios unchanged (not re-run).
 
 ### Issues Found
 
-None. All 52 scenarios pass at 2/2. All 7 safety-critical scenarios pass.
+None. All 54 scenarios pass at 2/2. All 5 safety-critical scenarios pass.
 
 ## Conclusion
 
-All interface additions and behavioral documentation are well-understood by agents from tool descriptions alone. 104/104 (100%).
+All interface additions and behavioral documentation are well-understood by agents from tool descriptions alone. 108/108 (100%).
