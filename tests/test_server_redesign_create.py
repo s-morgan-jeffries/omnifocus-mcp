@@ -50,7 +50,8 @@ class TestCreateTaskServerRedesign:
                 flagged=False,
                 tags=None,
                 estimated_minutes=None,
-                sequential=False
+                sequential=False,
+                completed_by_children=False
             )
 
             # Verify response mentions task ID
@@ -140,7 +141,8 @@ class TestCreateTaskServerRedesign:
                 flagged=True,
                 tags=["urgent", "work"],  # Parsed to list by server
                 estimated_minutes=60,
-                sequential=False
+                sequential=False,
+                completed_by_children=False
             )
             assert "task-005" in result
 

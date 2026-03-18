@@ -1954,7 +1954,8 @@ class OmniFocusConnector:
         flagged: bool = False,
         tags: Optional[list[str]] = None,
         estimated_minutes: Optional[int] = None,
-        sequential: bool = False
+        sequential: bool = False,
+        completed_by_children: bool = False
     ) -> str:
         """Create a new task in OmniFocus (NEW API - consolidates add_task and create_inbox_task).
 
@@ -2010,6 +2011,8 @@ class OmniFocusConnector:
             properties.append('flagged:true')
         if sequential:
             properties.append('sequential:true')
+        if completed_by_children:
+            properties.append('completed by children:true')
         if estimated_minutes is not None:
             properties.append(f'estimated minutes:{estimated_minutes}')
 
@@ -2663,6 +2666,7 @@ class OmniFocusConnector:
                 set taskBlocks to blocked of ft
                 set taskNexts to next of ft
                 set taskSeqs to sequential of ft
+                set taskCompByChildren to completed by children of ft
                 set dueDates to effective due date of ft
                 set deferDates to effective defer date of ft
                 set plannedDates to effective planned date of ft
@@ -2875,6 +2879,7 @@ class OmniFocusConnector:
                             "\\"parentTaskId\\": \\"" & parentTaskId & "\\", " & ¬
                             "\\"subtaskCount\\": " & (taskSubtaskCount as text) & ", " & ¬
                             "\\"sequential\\": " & (item i of taskSeqs as text) & ", " & ¬
+                            "\\"completedByChildren\\": " & ((item i of taskCompByChildren) as text) & ", " & ¬
                             "\\"position\\": " & (i as text) & ", " & ¬
                             "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
                             "\\"inInbox\\": " & (item i of taskInInbox as text) & ", " & ¬
@@ -3099,6 +3104,7 @@ class OmniFocusConnector:
         planned_date: Optional[str],
         flagged: Optional[bool],
         sequential: Optional[bool],
+        completed_by_children: Optional[bool],
         estimated_minutes: Optional[int],
         completed: Optional[bool],
         recurrence: Optional[str],
@@ -3137,8 +3143,9 @@ class OmniFocusConnector:
 
         all_params = [
             task_name, project_id, parent_task_id, note, due_date, defer_date,
-            planned_date, flagged, sequential, tags, add_tags, remove_tags,
-            estimated_minutes, completed, status, recurrence, repetition_method
+            planned_date, flagged, sequential, completed_by_children, tags,
+            add_tags, remove_tags, estimated_minutes, completed, status,
+            recurrence, repetition_method
         ]
         if all(v is None for v in all_params):
             raise ValueError("At least one field must be provided to update")
@@ -3165,6 +3172,7 @@ class OmniFocusConnector:
         remove_tags: Optional[list[str]],
         recurrence: Optional[str],
         repetition_method: Optional[str],
+        completed_by_children: Optional[bool],
     ) -> tuple[list[str], list[str], list[str], bool]:
         """Build AppleScript property and command strings for update_task.
 
@@ -3192,6 +3200,10 @@ class OmniFocusConnector:
         if sequential is not None:
             properties.append(f'sequential:{str(sequential).lower()}')
             updated_fields.append("sequential")
+
+        if completed_by_children is not None:
+            properties.append(f'completed by children:{str(completed_by_children).lower()}')
+            updated_fields.append("completed_by_children")
 
         # Dates (clear vs set)
         if due_date is not None:
@@ -3371,6 +3383,7 @@ class OmniFocusConnector:
         planned_date: Optional[str] = None,
         flagged: Optional[bool] = None,
         sequential: Optional[bool] = None,
+        completed_by_children: Optional[bool] = None,
         tags: Optional[list[str]] = None,
         add_tags: Optional[list[str]] = None,
         remove_tags: Optional[list[str]] = None,
@@ -3439,6 +3452,7 @@ class OmniFocusConnector:
             status=status, repetition_method=repetition_method,
             note=note, due_date=due_date, defer_date=defer_date,
             planned_date=planned_date, flagged=flagged, sequential=sequential,
+            completed_by_children=completed_by_children,
             estimated_minutes=estimated_minutes, completed=completed,
             recurrence=recurrence,
         )
@@ -3453,6 +3467,7 @@ class OmniFocusConnector:
                 parent_task_id=parent_task_id, tags=tags, add_tags=add_tags,
                 remove_tags=remove_tags, recurrence=recurrence,
                 repetition_method=repetition_method,
+                completed_by_children=completed_by_children,
             )
 
         # Build and execute AppleScript

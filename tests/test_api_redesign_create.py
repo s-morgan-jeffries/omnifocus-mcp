@@ -240,6 +240,35 @@ class TestCreateTaskRedesign:
             assert "sequential:true" not in script
 
     # ========================================================================
+    # Completed By Children (#379)
+    # ========================================================================
+
+    def test_create_task_completed_by_children(self, client):
+        """#379: create_task() supports completed_by_children parameter."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-379"
+            result = client.create_task(
+                task_name="Auto-Complete Group",
+                project_id="proj-123",
+                completed_by_children=True
+            )
+            assert result == "task-379"
+            script = mock_run.call_args[0][0]
+            assert "completed by children:true" in script
+
+    def test_create_task_completed_by_children_default(self, client):
+        """#379: create_task() defaults to completed_by_children=False."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "task-379b"
+            result = client.create_task(
+                task_name="Normal Task",
+                project_id="proj-123"
+            )
+            assert result == "task-379b"
+            script = mock_run.call_args[0][0]
+            assert "completed by children:true" not in script
+
+    # ========================================================================
     # Required Parameters
     # ========================================================================
 

@@ -462,6 +462,38 @@ class TestGetTasks:
             # Verify the AppleScript includes inInbox in JSON output
             assert '\\"inInbox\\"' in call_args
 
+    def test_get_tasks_includes_completed_by_children_field(self, client):
+        """Test that get_tasks includes completedByChildren in AppleScript and response."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Action Group",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "dropped": False,
+                "blocked": False,
+                "completedByChildren": True,
+                "projectId": "proj-001",
+                "projectName": "Test Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks()
+            # Verify field is in returned data
+            assert 'completedByChildren' in tasks[0]
+            assert tasks[0]['completedByChildren'] is True
+            # Verify AppleScript reads the property
+            call_args = mock_run.call_args[0][0]
+            assert "completed by children of ft" in call_args
+            # Verify JSON output includes the field
+            assert '\\"completedByChildren\\"' in call_args
+
     def test_get_tasks_blocked_only(self, client):
         """Test filtering for only blocked tasks."""
         blocked_tasks_json = json.dumps([
@@ -1070,6 +1102,24 @@ class TestUpdateTask:
             assert result["success"] is True
             call_args = mock_run.call_args[0][0]
             assert "sequential:false" in call_args
+
+    def test_update_task_completed_by_children_true(self, client):
+        """#379: update_task() sets completed_by_children on action groups."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_task("task-001", completed_by_children=True)
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "completed by children:true" in call_args
+
+    def test_update_task_completed_by_children_false(self, client):
+        """#379: update_task() can set completed_by_children to false."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "true"
+            result = client.update_task("task-001", completed_by_children=False)
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "completed by children:false" in call_args
 
     def test_update_task_multiple_fields(self, client):
         """Test updating multiple task fields at once (LEGACY TEST - updated for new API return format)."""

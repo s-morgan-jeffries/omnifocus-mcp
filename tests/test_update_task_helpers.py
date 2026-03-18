@@ -26,6 +26,7 @@ class TestValidateUpdateTaskParams:
             status=None, repetition_method=None,
             note=None, due_date=None, defer_date=None,
             planned_date=None, flagged=None, sequential=None,
+            completed_by_children=None,
             estimated_minutes=None, completed=None, recurrence=None,
         )
         defaults.update(overrides)
@@ -80,6 +81,7 @@ class TestBuildUpdateTaskCommands:
     def _call(self, client, **overrides):
         defaults = dict(
             task_name=None, note=None, flagged=None, sequential=None,
+            completed_by_children=None,
             due_date=None, defer_date=None, planned_date=None,
             estimated_minutes=None, completed=None, status=None,
             project_id=None, parent_task_id=None,
