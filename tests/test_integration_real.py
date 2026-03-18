@@ -2503,6 +2503,35 @@ class TestUINavigation:
         # Clean up: clear focus
         client.set_focus()
 
+    def test_set_focus_nested_folder(self, client):
+        """Test setting focus on a nested (non-top-level) folder.
+
+        Regression test for #381: set_focus used 'folders whose id' which only
+        searched top-level folders. Must use 'flattened folders whose id' to
+        find nested folders.
+        """
+        import uuid
+        unique = uuid.uuid4().hex[:8]
+        parent_name = f"test-Parent-{unique}"
+        child_name = f"test-Child-{unique}"
+
+        # Create parent folder, then nested child folder
+        parent_id = client.create_folder(parent_name)
+        child_id = client.create_folder(child_name, parent_path=parent_name)
+
+        # Focus on the nested child folder — this was the bug
+        result = client.set_focus(item_ids=child_id, item_types="folder")
+
+        assert result["success"] is True
+        assert result["action"] == "set"
+        assert len(result["focused_items"]) == 1
+        assert result["focused_items"][0]["id"] == child_id
+        assert result["focused_items"][0]["type"] == "folder"
+        print(f"\n✓ Set focus on nested folder: {child_name} (inside {parent_name})")
+
+        # Clean up: clear focus
+        client.set_focus()
+
     def test_set_focus_multiple_items(self, client, test_project, test_folder):
         """Test setting focus on multiple items (project + folder)."""
         result = client.set_focus(
