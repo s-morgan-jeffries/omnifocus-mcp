@@ -294,6 +294,45 @@ class TestRealOmniFocusIntegration:
         assert tasks[0]['inInbox'] is False
         print(f"\n✓ Project task has inInbox=False")
 
+    def test_completed_by_children_create_and_read(self, client, test_project):
+        """Test that completed_by_children can be set on create and read back."""
+        task_id = client.create_task(
+            "test-CompByChildren",
+            project_id=test_project,
+            completed_by_children=True
+        )
+        tasks = client.get_tasks(task_id=task_id)
+        assert len(tasks) == 1
+        assert tasks[0]['completedByChildren'] is True
+        print(f"\n✓ Created task with completedByChildren=True, read back correctly")
+
+        # Clean up
+        client.delete_tasks(task_id)
+
+    def test_completed_by_children_update(self, client, test_project):
+        """Test that completed_by_children can be toggled via update."""
+        task_id = client.create_task(
+            "test-CompByChildrenUpdate",
+            project_id=test_project,
+        )
+        # Default should be false
+        tasks = client.get_tasks(task_id=task_id)
+        assert tasks[0]['completedByChildren'] is False
+
+        # Toggle on
+        client.update_task(task_id, completed_by_children=True)
+        tasks = client.get_tasks(task_id=task_id)
+        assert tasks[0]['completedByChildren'] is True
+
+        # Toggle off
+        client.update_task(task_id, completed_by_children=False)
+        tasks = client.get_tasks(task_id=task_id)
+        assert tasks[0]['completedByChildren'] is False
+        print(f"\n✓ Toggled completedByChildren on/off via update_task")
+
+        # Clean up
+        client.delete_tasks(task_id)
+
     def test_get_tags_real(self, client):
         """Test getting tags from real OmniFocus."""
         tags = client.get_tags()

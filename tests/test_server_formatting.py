@@ -194,6 +194,31 @@ class TestTaskFormatting:
         result = _format_task(task)
         assert "In Inbox" not in result
 
+    def test_format_task_displays_completed_by_children(self):
+        """Test that _format_task shows Completed By Children when present."""
+        task = {
+            "id": "task-group",
+            "name": "Action Group",
+            "projectName": "Project",
+            "completed": False,
+            "completedByChildren": True,
+        }
+
+        result = _format_task(task)
+        assert "Completed By Children: True" in result
+
+    def test_format_task_omits_completed_by_children_when_absent(self):
+        """Test that _format_task omits Completed By Children when not in dict."""
+        task = {
+            "id": "task-plain",
+            "name": "Plain Task",
+            "projectName": "Project",
+            "completed": False,
+        }
+
+        result = _format_task(task)
+        assert "Completed By Children" not in result
+
 
 class TestProjectFormatting:
     """Test project formatting function."""

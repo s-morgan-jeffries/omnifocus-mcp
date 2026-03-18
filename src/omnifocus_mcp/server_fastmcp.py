@@ -137,6 +137,8 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
         result += f"Subtask Count: {task['subtaskCount']}\n"
     if 'sequential' in task:
         result += f"Sequential: {task['sequential']}\n"
+    if 'completedByChildren' in task:
+        result += f"Completed By Children: {task['completedByChildren']}\n"
     if 'position' in task:
         result += f"Position: {task['position']}\n"
 
@@ -651,7 +653,8 @@ def create_task(
     flagged: bool = False,
     tags: Optional[str] = None,
     estimated_minutes: Optional[int] = None,
-    sequential: bool = False
+    sequential: bool = False,
+    completed_by_children: bool = False
 ) -> str:
     """Create a new task in OmniFocus (NEW API - consolidates add_task and create_inbox_task).
 
@@ -714,7 +717,8 @@ def create_task(
             flagged=flagged,
             tags=tags_list,
             estimated_minutes=estimated_minutes,
-            sequential=sequential
+            sequential=sequential,
+            completed_by_children=completed_by_children
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -764,6 +768,7 @@ def update_task(
     recurrence: Optional[str] = None,
     repetition_method: Optional[str] = None,
     sequential: Optional[bool] = None,
+    completed_by_children: Optional[bool] = None,
     # Legacy parameters (backward compatibility)
     name: Optional[str] = None
 ) -> str:
@@ -852,6 +857,7 @@ def update_task(
             recurrence=recurrence,
             repetition_method=repetition_method,
             sequential=sequential,
+            completed_by_children=completed_by_children,
             name=name  # Pass to client for its own backward compat handling
         )
     except ValueError as e:
