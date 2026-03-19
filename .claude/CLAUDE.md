@@ -3,7 +3,7 @@
 An MCP server bridging Claude and OmniFocus via AppleScript on macOS.
 
 **Stack:** Python 3.10+, FastMCP, AppleScript (via `osascript`)
-**Version:** v0.10.1 | **Tests:** 787 unit, 144 integration/E2E, 26 benchmark/profiling | **Coverage:** 91%
+**Version:** v0.10.1 | **Tests:** 803 unit, 144 integration/E2E, 26 benchmark/profiling | **Coverage:** 90%
 
 ## Commands
 
@@ -21,13 +21,13 @@ make test-prod             # Production DB tests (OmniAutomation, sandbox folder
 
 **Running the server:** `uv run python -m omnifocus_mcp.server_fastmcp` or via Claude Desktop config.
 
-## API Surface (22 functions: 20 core + UI navigation)
+## API Surface (23 functions: 21 core + UI navigation)
 
 The API was consolidated from 40+ functions to 16 in October 2025. This is intentional — resist adding new functions.
 
 **Projects (6):** create_project, get_projects, update_project, update_projects, delete_projects, reorder_project
 **Tasks (6):** create_task, get_tasks, update_task, update_tasks, delete_tasks, reorder_task
-**Folders (2):** create_folder, get_folders
+**Folders (3):** create_folder, get_folders, update_folder
 **Tags (4):** get_tags, create_tag, update_tag, delete_tags
 **Perspectives (2):** get_perspectives, switch_perspective
 **Navigation (2):** set_focus, get_focus
@@ -67,8 +67,8 @@ The API was consolidated from 40+ functions to 16 in October 2025. This is inten
 **What is NOT a bottleneck:** Loop iteration itself (0.17s for 381 tasks), string concatenation (<100ms for 400 items), JSON building.
 
 **Current baselines** (35 projects, ~202 tasks, 10 tags, 4 folders — see profiling doc for full table):
-- `get_tasks(flagged)`: 0.66s (14) | `get_tasks(inbox)`: 0.64s (10) | `get_tasks(query)`: 1.07s (~37)
-- `get_tasks()` (all): 2.20s (~202) | `get_projects()`: 0.57s (35) | Write ops: 0.9s
+- `get_tasks(flagged)`: 0.66s (14) | `get_tasks(inbox)`: 0.64s (10) | `get_tasks(query)`: 1.07s (37)
+- `get_tasks()` (all): 2.20s (202) | `get_projects()`: 0.57s (35) | Write ops: 0.9s
 
 Default timeout: 60s, max: 300s (configurable).
 

@@ -9,12 +9,12 @@ Change: eliminated per-task execution paths — all `get_tasks()` source types n
 
 | Operation | v0.10.1 | Items | v0.9.1 | Delta |
 |-----------|---------|-------|--------|-------|
-| `get_tasks()` (unfiltered) | **2.20s** | ~202 | 2.09s | ~same |
+| `get_tasks()` (unfiltered) | **2.20s** | 202 | 2.09s | ~same |
 | `get_tasks(flagged_only)` | **0.66s** | 14 | 0.60s | ~same |
 | `get_tasks(overdue)` | **0.69s** | 8 | 0.63s | ~same |
 | `get_tasks(next_only)` | **0.66s** | 27 | 0.63s | ~same |
-| `get_tasks(query='bench')` | **1.07s** | ~37 | 0.78s | +37% |
-| `get_tasks(available_only)` | **2.33s** | ~180 | 2.13s | ~same |
+| `get_tasks(query='bench')` | **1.07s** | 37 | 0.78s | +37% |
+| `get_tasks(available_only)` | **2.33s** | 180 | 2.13s | ~same |
 | `get_tasks(inbox_only)` | **0.64s** | 10 | 9.13s | **14x faster** |
 | `get_tasks(project_id)` | **0.63s** | varies | 0.69s | ~same |
 | `get_tasks(tag_filter)` | **0.81s** | varies | 0.77s | ~same |
@@ -22,7 +22,7 @@ Change: eliminated per-task execution paths — all `get_tasks()` source types n
 
 **Key improvement:** `inbox_only` went from 9.13s (per-task) to 0.64s (batch) — **14x faster**. All source types (inbox, project, subtask, single task, unfiltered) now use the same batch path.
 
-The query regression (+37%) is likely variance — the v0.9.1 number was 0.78s vs the dedicated query test showing 1.07s at ~37 items.
+The query regression (+37%) is likely variance — the v0.9.1 number was 0.78s vs the dedicated query test showing 1.07s at 37 items.
 
 ---
 
@@ -35,12 +35,12 @@ Changes since last benchmark: +3 batch date reads (nextDueDate, nextDeferDate, n
 
 | Operation | v0.9.1 | Items | Previous (batch) | Delta |
 |-----------|--------|-------|-----------------|-------|
-| `get_tasks()` (unfiltered) | **2.09s** | ~202 | 5.70s | 2.7x faster |
+| `get_tasks()` (unfiltered) | **2.09s** | 202 | 5.70s | 2.7x faster |
 | `get_tasks(flagged_only)` | **0.60s** | 14 | 0.82s | 27% faster |
 | `get_tasks(overdue)` | **0.63s** | 8 | 0.60s | ~same |
 | `get_tasks(next_only)` | **0.63s** | 27 | 1.10s | 43% faster |
-| `get_tasks(query='bench')` | **0.78s** | ~37 | 2.00s | 2.6x faster |
-| `get_tasks(available_only)` | **2.13s** | ~180 | 5.79s | 2.7x faster |
+| `get_tasks(query='bench')` | **0.78s** | 37 | 2.00s | 2.6x faster |
+| `get_tasks(available_only)` | **2.13s** | 180 | 5.79s | 2.7x faster |
 | `get_tasks(inbox_only)` | **9.13s** | 10 | 4.20s | 2.2x slower |
 | `get_tasks(project_id)` | **0.69s** | varies | 0.20s | 3.5x slower |
 | `get_tasks(tag_filter)` | **0.77s** | varies | — | new |
@@ -65,7 +65,7 @@ Changes since last benchmark: +3 batch date reads (nextDueDate, nextDeferDate, n
 |-----------|--------|-------|----------|-------|
 | `get_folders()` | **0.62s** | 4 | 0.60s | ~same |
 | `get_tags()` | **2.00s** | 10 | 0.96s | +1.04s (OmniAutomation exclusivity call) |
-| `get_perspectives()` | **0.96s** | ~24 | 0.21s | +0.75s (variance) |
+| `get_perspectives()` | **0.96s** | 24 | 0.21s | +0.75s (variance) |
 
 **`get_tags()` regression explained:** The +1.04s overhead is from the new OmniAutomation `evaluate javascript` call that reads `childrenAreMutuallyExclusive` for all tags (#303). This is a single additional round-trip, not per-tag — acceptable for the safety benefit.
 

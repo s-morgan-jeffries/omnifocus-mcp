@@ -12,26 +12,26 @@ A comprehensive, fast, reliable, and agent-friendly MCP server for OmniFocus on 
 
 Sub-second reads on filtered queries, even with hundreds of tasks in the database.
 
-| Operation | Time | Database |
-|-----------|------|----------|
-| Get flagged tasks | 0.66s | ~200 tasks |
-| Get overdue tasks | 0.69s | ~200 tasks |
-| Get next tasks | 0.66s | ~200 tasks |
-| Get inbox tasks | 0.64s | ~200 tasks |
-| Search tasks by keyword | 1.07s | ~200 tasks |
-| Get all tasks (unfiltered) | 2.20s | ~200 tasks |
-| Get all projects | 0.57s | 35 projects |
-| Create or update a task | 0.9s | — |
+| Operation | Time | Items | Database |
+|-----------|------|-------|----------|
+| Get flagged tasks | 0.66s | 14 | 202 tasks |
+| Get overdue tasks | 0.69s | 8 | 202 tasks |
+| Get next tasks | 0.66s | 27 | 202 tasks |
+| Get inbox tasks | 0.64s | 10 | 202 tasks |
+| Search tasks by keyword | 1.07s | 37 | 202 tasks |
+| Get all tasks (unfiltered) | 2.20s | 202 | 202 tasks |
+| Get all projects | 0.57s | 35 | 35 projects |
+| Create or update a task | 0.9s | — | — |
 
 Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFILING.md)
 
 ### Reliable
 
-91% code coverage from 787 unit tests. 144 integration tests run against real OmniFocus covering task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
+90% code coverage from 803 unit tests. 144 integration tests run against real OmniFocus covering task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
 
 ### Agent-Friendly
 
-52-scenario blind eval suite with 100% pass rate — agents that have never seen OmniFocus can correctly use every tool from descriptions alone. Scenarios cover tool selection, parameter usage, multi-step workflows, date semantics, recurrence, tag behavior, task movement, text search, and safety-critical operations (drop vs delete, destructive action guardrails). Server instructions teach GTD concepts (task states, project types, sequential dependencies, review cycles) so agents make informed decisions, not just API calls.
+54-scenario blind eval suite with frontier models scoring 100% and popular open-weight models averaging over 90% ([full results](evals/agent_tool_usability/results/scored_results.md)). Agents that have never seen OmniFocus can correctly use every tool from descriptions alone. Scenarios cover tool selection, parameter usage, multi-step workflows, date semantics, recurrence, tag behavior, task movement, text search, and safety-critical operations (drop vs delete, destructive action guardrails). Server instructions teach GTD concepts (task states, project types, sequential dependencies, review cycles) so agents make informed decisions, not just API calls.
 
 ## Tools (23)
 
@@ -51,9 +51,10 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 - **delete_tasks** — single or batch
 - **reorder_task** — position relative to siblings (before/after)
 
-### Folders (2)
+### Folders (3)
 - **get_folders** — hierarchy with paths
 - **create_folder** — with optional parent
+- **update_folder** — rename or move to different parent
 
 ### Tags (4)
 - **get_tags** — with status and mutual exclusivity info
