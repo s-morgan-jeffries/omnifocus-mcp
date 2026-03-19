@@ -523,21 +523,24 @@ class TestParameterVariations:
         results = {}
         for label, kwargs in configs:
             times = []
+            count = 0
             for _ in range(ITERATIONS):
                 start = time.perf_counter()
-                client.get_projects(**kwargs)
+                projects = client.get_projects(**kwargs)
                 times.append(time.perf_counter() - start)
+                count = len(projects)
             mean = statistics.mean(times)
             stdev = statistics.stdev(times) if len(times) > 1 else 0.0
-            results[label] = mean
-            print(f"    {label:20s}: mean={mean:.3f}s  stdev={stdev:.3f}s")
+            results[label] = (mean, count)
+            print(f"    {label:20s}: mean={mean:.3f}s  stdev={stdev:.3f}s  "
+                  f"items={count}")
 
-        baseline = results["baseline"]
-        print(f"\n    Overhead vs baseline ({baseline:.3f}s):")
-        for label, mean in results.items():
+        baseline_mean = results["baseline"][0]
+        print(f"\n    Overhead vs baseline ({baseline_mean:.3f}s):")
+        for label, (mean, _) in results.items():
             if label != "baseline":
-                overhead = mean - baseline
-                pct = (overhead / baseline * 100) if baseline > 0 else 0
+                overhead = mean - baseline_mean
+                pct = (overhead / baseline_mean * 100) if baseline_mean > 0 else 0
                 print(f"      {label:20s}: +{overhead:.3f}s ({pct:+.0f}%)")
 
     def test_get_tasks_filter_comparison(self, client):

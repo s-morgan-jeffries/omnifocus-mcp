@@ -66,9 +66,9 @@ The API was consolidated from 40+ functions to 16 in October 2025. This is inten
 
 **What is NOT a bottleneck:** Loop iteration itself (0.17s for 381 tasks), string concatenation (<100ms for 400 items), JSON building.
 
-**Current baselines** (35 projects, ~202 tasks — see profiling doc for full table):
-- `get_tasks(flagged)`: 0.66s | `get_tasks(inbox)`: 0.64s | `get_tasks(query)`: 1.07s
-- `get_tasks()` (all): 2.20s | `get_projects()`: 0.57s | Write ops: 0.9s
+**Current baselines** (35 projects, ~202 tasks, 10 tags, 4 folders — see profiling doc for full table):
+- `get_tasks(flagged)`: 0.66s (14) | `get_tasks(inbox)`: 0.64s (10) | `get_tasks(query)`: 1.07s (~37)
+- `get_tasks()` (all): 2.20s (~202) | `get_projects()`: 0.57s (35) | Write ops: 0.9s
 
 Default timeout: 60s, max: 300s (configurable).
 
