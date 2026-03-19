@@ -915,7 +915,7 @@ omnifocus-mcp/
 │       ├── OMNIFOCUS_AUTOMATION_NOTES.md  # OmniAutomation findings
 │       └── PERFORMANCE_PROFILING.md  # Benchmark data
 ├── src/omnifocus_mcp/
-│   ├── omnifocus_connector.py       # Core OmniFocus client (22 tools)
+│   ├── omnifocus_connector.py       # Core OmniFocus client (23 tools)
 │   └── server_fastmcp.py           # FastMCP server (MCP tool wrappers)
 ├── tests/
 │   ├── test_omnifocus_client.py     # Client unit tests

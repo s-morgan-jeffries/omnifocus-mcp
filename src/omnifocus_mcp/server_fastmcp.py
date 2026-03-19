@@ -690,6 +690,8 @@ def create_task(
         estimated_minutes: Estimated time in minutes to complete the task
         sequential: If True, subtasks of this task (action group) must be completed in order —
             only the first available subtask is actionable. (default: False = parallel)
+        completed_by_children: If True, this task (action group) is automatically marked complete
+            when all its subtasks are completed. (default: False)
 
     Returns:
         Success message with task ID and location (project/inbox/parent)
@@ -826,6 +828,9 @@ def update_task(
             window (defer date) to shift instead.
         sequential: If True, subtasks of this task (action group) must be completed in order.
             If False, subtasks are parallel (all available). Omitting means no change. (optional)
+        completed_by_children: If True, this task (action group) is automatically marked complete
+            when all its subtasks are completed. If False, requires manual completion. Omitting
+            means no change. (optional)
         name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
 
     Returns:

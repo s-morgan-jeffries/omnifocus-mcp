@@ -5,6 +5,55 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2] - 2026-03-19
+
+### Added
+
+- **`inInbox` boolean on tasks** (#378, #385)
+  - `get_tasks` now returns `inInbox: true/false` for each task
+  - Enables reliable inbox detection without relying on missing `containingProjectId`
+
+- **`completed_by_children` on tasks (read/write)** (#379, #390)
+  - `get_tasks` returns `completedByChildren` for action groups
+  - `update_task` accepts `completed_by_children` to toggle auto-completion behavior
+
+- **Blind eval scenarios for mutually exclusive tag creation** (#303, #392)
+  - 2 new scenarios (53-54): create exclusive tag group, verify mutual exclusivity warning
+
+- **Blind agent evals with open-weight models** (#342, #393)
+  - Evaluated DeepSeek V3 (96%), Qwen 2.5 72B (91%), Mistral Large (88%), Llama 3.3 70B (87%)
+  - Tool description improvements driven by open-weight failure analysis
+
+- **Release review phases** (#388, #395)
+  - Test coverage review (Phase 6), code review (Phase 7), documentation review (Phase 8)
+  - Coverage threshold (`fail_under = 90`) added to `pyproject.toml`
+
+- **Item counts in performance benchmark results** (#391, #394)
+  - Benchmark output and profiling doc baselines now include number of items returned
+
+### Fixed
+
+- **`set_focus` cannot find nested folders** (#381, #384)
+  - Changed `folders whose id is` to `flattened folders whose id is` for nested folder support
+
+- **Missing `creationDate` and `modificationDate` in task/project output** (#377, #382)
+  - Dates were fetched but omitted from formatted output
+
+- **8 failing E2E tests** (#387, #389)
+  - Wrong parameter names and `.fn` accessor issues in set_focus tests
+
+- **E2E set_focus tests using wrong parameter names** (#383, #386)
+
+### Changed
+
+- **Documentation accuracy sweep** (#388, #395)
+  - Coverage 91% → 90%, unit test count 787 → 803, API surface 22 → 23 (added `update_folder`)
+  - README: updated eval results (52 → 54 scenarios, multi-model scores), added benchmark item counts
+  - Removed tilde approximations from all benchmark tables
+
+- **Metadata audit** (#376, #380)
+  - Identified and documented all unexposed OmniFocus task/project properties
+
 ## [0.10.1] - 2026-03-17
 
 ### Added

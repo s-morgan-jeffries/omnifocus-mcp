@@ -99,7 +99,7 @@ try:
                     continue
                 elif name == 'update_project' and cc <= 40:
                     continue
-                elif name == '_format_task' and cc <= 26:
+                elif name == '_format_task' and cc <= 32:
                     continue
                 elif name == 'create_task' and cc <= 23:
                     continue
@@ -132,7 +132,7 @@ echo "✅ PASS: All functions within complexity limits"
 echo ""
 echo "Documented exceptions (see script comments for full list):"
 echo "  - Extracted helpers: _build_task_filter_checks (35), _build_update_task_commands (29), _post_process_tasks (28)"
-echo "  - Original functions: update_projects (43), update_project (39), _format_task (25), create_task (22)"
+echo "  - Original functions: update_projects (43), update_project (39), _format_task (31), create_task (22)"
 echo "  - All other functions: CC ≤ 20"
 echo ""
 echo "See inline documentation in omnifocus_connector.py for rationale."
