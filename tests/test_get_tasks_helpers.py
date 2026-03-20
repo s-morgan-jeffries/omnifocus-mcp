@@ -422,7 +422,7 @@ class TestPostProcessTasks:
             tag_filter=None, tag_filter_mode="and", tag_prefiltered_ids=None,
             created_after=None, created_before=None,
             modified_after=None, modified_before=None,
-            recurring_only=None, query=None,
+            recurring_only=None,
             sort_by=None, sort_order="asc",
         )
         defaults.update(overrides)
@@ -491,22 +491,6 @@ class TestPostProcessTasks:
         result = client._post_process_tasks(tasks, **self._default_params(recurring_only=False))
         assert len(result) == 1
         assert result[0]['id'] == 't2'
-
-    def test_query_filter_case_insensitive(self, client):
-        tasks = [
-            self._sample_task(id="t1", name="Buy groceries"),
-            self._sample_task(id="t2", name="Read book"),
-        ]
-        result = client._post_process_tasks(tasks, **self._default_params(query="BUY"))
-        assert len(result) == 1
-        assert result[0]['id'] == 't1'
-
-    def test_query_filter_matches_note(self, client):
-        tasks = [
-            self._sample_task(id="t1", name="Task", note="important meeting"),
-        ]
-        result = client._post_process_tasks(tasks, **self._default_params(query="meeting"))
-        assert len(result) == 1
 
     def test_sort_by_name(self, client):
         tasks = [

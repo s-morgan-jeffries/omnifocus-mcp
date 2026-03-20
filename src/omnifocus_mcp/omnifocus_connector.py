@@ -2220,14 +2220,14 @@ class OmniFocusConnector:
         modified_after: Optional[str],
         modified_before: Optional[str],
         recurring_only: Optional[bool],
-        query: Optional[str],
         sort_by: Optional[str],
         sort_order: str,
     ) -> list[dict[str, Any]]:
         """Post-process tasks returned from AppleScript: normalize and filter.
 
-        Handles repetition normalization, Python-side tag/date/recurring/query
-        filtering, and sorting.
+        Handles repetition normalization, Python-side tag/date/recurring
+        filtering, and sorting. Query filtering is handled upstream by
+        AppleScript (whose clause or batch filter check).
         """
         # Normalize repetitionMethod values
         for task in tasks:
@@ -2273,15 +2273,6 @@ class OmniFocusConnector:
                 tasks = [t for t in tasks if t.get('isRecurring', False)]
             else:
                 tasks = [t for t in tasks if not t.get('isRecurring', False)]
-
-        # Apply query filter if provided
-        if query:
-            query_lower = query.lower()
-            tasks = [
-                t for t in tasks
-                if query_lower in t.get('name', '').lower()
-                or query_lower in t.get('note', '').lower()
-            ]
 
         # Apply sorting if requested
         if sort_by:
@@ -3073,7 +3064,6 @@ class OmniFocusConnector:
                     modified_after=modified_after,
                     modified_before=modified_before,
                     recurring_only=recurring_only,
-                    query=query,
                     sort_by=sort_by,
                     sort_order=sort_order,
                 )
