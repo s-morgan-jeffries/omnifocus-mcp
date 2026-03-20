@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """FastMCP Server for OmniFocus integration."""
-import json
 import os
 from typing import Optional, Union
 
@@ -659,7 +658,7 @@ def create_task(
     defer_date: Optional[str] = None,
     planned_date: Optional[str] = None,
     flagged: bool = False,
-    tags: Optional[str] = None,
+    tags: Optional[list[str]] = None,
     estimated_minutes: Optional[int] = None,
     sequential: bool = False,
     completed_by_children: bool = False
@@ -685,8 +684,7 @@ def create_task(
             purely a scheduling signal with no behavioral constraints.
         flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
             Flagged tasks can be queried with get_tasks(flagged_only=True). (default: False)
-        tags: Optional JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must
-            already exist. Note: this takes a JSON string; update_task takes a native list instead.
+        tags: Optional list of tag names (e.g., ["Computer", "Work"]). Tags must already exist.
         estimated_minutes: Estimated time in minutes to complete the task
         sequential: If True, subtasks of this task (action group) must be completed in order —
             only the first available subtask is actionable. (default: False = parallel)
@@ -705,15 +703,9 @@ def create_task(
     """
     client = get_client()
 
-    # Parse tags parameter - convert JSON string to list
-    tags_list = None
-    if tags:
-        try:
-            tags_list = json.loads(tags)
-            if not isinstance(tags_list, list):
-                return f"Error: tags must be a JSON array string, e.g., '[\"Computer\"]'"
-        except json.JSONDecodeError as e:
-            return f"Error: Invalid JSON for tags parameter: {e}"
+    # Validate tags parameter
+    if tags is not None and not isinstance(tags, list):
+        return f"Error: tags must be a list of tag names, e.g., [\"Computer\", \"Work\"]. Got {type(tags).__name__}."
 
     try:
         task_id = client.create_task(
@@ -725,7 +717,7 @@ def create_task(
             defer_date=defer_date,
             planned_date=planned_date,
             flagged=flagged,
-            tags=tags_list,
+            tags=tags,
             estimated_minutes=estimated_minutes,
             sequential=sequential,
             completed_by_children=completed_by_children
@@ -749,8 +741,8 @@ def create_task(
         result += f"\nDefer date: {defer_date}"
     if flagged:
         result += "\nFlagged: Yes"
-    if tags_list:
-        result += f"\nTags: {', '.join(tags_list)}"
+    if tags:
+        result += f"\nTags: {', '.join(tags)}"
     if estimated_minutes:
         result += f"\nEstimated time: {estimated_minutes} minutes"
 
@@ -810,7 +802,7 @@ def update_task(
         flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
             Pass True to flag, False to unflag. (optional)
         tags: Full replacement — set exact tag list as a native list (optional, conflicts
-            with add_tags/remove_tags). Note: unlike create_task, this takes a list not a JSON string.
+            with add_tags/remove_tags).
         add_tags: Add these tags incrementally (optional, conflicts with tags)
         remove_tags: Remove these tags (optional, conflicts with tags)
         estimated_minutes: Estimated time in minutes (optional)
