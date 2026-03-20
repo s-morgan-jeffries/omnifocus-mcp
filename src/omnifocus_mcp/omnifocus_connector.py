@@ -3513,11 +3513,21 @@ class OmniFocusConnector:
                     "error": f"Unexpected result: {result}"
                 }
         except subprocess.CalledProcessError as e:
+            error_msg = f"AppleScript error: {e.stderr}"
+            # Type coercion error on tag operations typically means the task
+            # is dropped or in a state that prevents modification
+            if "(-1700)" in (e.stderr or "") and "type tag" in (e.stderr or ""):
+                error_msg = (
+                    f"Cannot modify tags on task '{task_id}': the task may be "
+                    f"dropped or completed. Change the task's status to active "
+                    f"first, or create a new task. "
+                    f"(Original error: {e.stderr})"
+                )
             return {
                 "success": False,
                 "task_id": task_id,
                 "updated_fields": [],
-                "error": f"AppleScript error: {e.stderr}"
+                "error": error_msg
             }
         except Exception as e:
             return {
