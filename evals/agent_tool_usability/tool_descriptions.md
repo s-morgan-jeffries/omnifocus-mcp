@@ -211,7 +211,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
 - `estimated_minutes: int` (optional) — Estimated time in minutes
 - `completed: bool` (optional) — Mark task complete/incomplete. Uses `mark complete` internally, which correctly handles recurring tasks by spawning the next occurrence.
-- `status: str` (optional) — Task status - "active" or "dropped"
+- `status: str` (optional) — Task status - "active" or "dropped". To drop an entire recurring series (not just the current occurrence), pass both recurrence="" and status="dropped" in the same call.
 - `recurrence: str` (optional) — iCalendar RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR"), or empty string to remove recurrence. Omitting means no change.
 - `repetition_method: str` (optional) — How the next occurrence is calculated. Values: "fixed" (next occurrence on the original schedule regardless of when completed), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Only meaningful when recurrence is set.
 - `sequential: bool` (optional) — If True, subtasks of this task (action group) must be completed in order. If False, subtasks are parallel (all available). Omitting means no change.
@@ -225,6 +225,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `update_task("task-123", add_tags=["urgent"])` — Add tag
 - `update_task("task-123", recurrence="FREQ=WEEKLY;BYDAY=MO,WE,FR", repetition_method="fixed")` — Set weekly recurrence
 - `update_task("task-123", recurrence="")` — Remove recurrence
+- `update_task("task-123", recurrence="", status="dropped")` — Drop entire recurring series
 
 ---
 

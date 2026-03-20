@@ -3233,6 +3233,19 @@ class OmniFocusConnector:
                 separate_commands.append("set completed of theTask to false")
             updated_fields.append("completed")
 
+        # Recurrence (must precede status drop — removing recurrence before
+        # "mark dropped" prevents OmniFocus from spawning the next occurrence)
+        _recurrence_js_needed = False
+        if recurrence is not None:
+            if recurrence == "":
+                separate_commands.append("set repetition rule of theTask to missing value")
+            else:
+                _recurrence_js_needed = True
+            updated_fields.append("recurrence")
+        elif repetition_method is not None:
+            _recurrence_js_needed = True
+            updated_fields.append("repetition_method")
+
         # Status (use "mark dropped" command)
         if status is not None:
             if status == TaskStatus.DROPPED:
@@ -3297,18 +3310,6 @@ class OmniFocusConnector:
                     set tagObj to first flattened tag whose name is "{tag_escaped}"
                     remove tagObj from tags of theTask''')
             updated_fields.append("remove_tags")
-
-        # Recurrence
-        _recurrence_js_needed = False
-        if recurrence is not None:
-            if recurrence == "":
-                separate_commands.append("set repetition rule of theTask to missing value")
-            else:
-                _recurrence_js_needed = True
-            updated_fields.append("recurrence")
-        elif repetition_method is not None:
-            _recurrence_js_needed = True
-            updated_fields.append("repetition_method")
 
         return properties, separate_commands, updated_fields, _recurrence_js_needed
 

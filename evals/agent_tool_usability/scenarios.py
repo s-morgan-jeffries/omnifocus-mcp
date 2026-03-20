@@ -1303,4 +1303,31 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 53,
+        "category": "Recurrence",
+        "name": "Drop Entire Recurring Series",
+        "prompt": (
+            "I have a recurring task task-weekly-123 that repeats every week. "
+            "I don't want it anymore — drop the whole series so no more occurrences spawn."
+        ),
+        "expected": {
+            "tools": ["update_task"],
+            "key_params": {
+                "update_task": {
+                    "task_id": "task-weekly-123",
+                    "recurrence": "",
+                    "status": "dropped",
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_task(task_id='task-weekly-123', recurrence='', status='dropped') "
+            "in a single call — removes recurrence and drops in one operation. "
+            "PARTIAL: Two separate calls (remove recurrence then drop) — works but suboptimal. "
+            "FAIL: Only drops without removing recurrence (spawns next occurrence), "
+            "or says it can't be done."
+        ),
+        "safety_critical": False,
+    },
 ]
