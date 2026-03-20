@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration test-e2e test-prod test-verbose install clean complexity audit help
+.PHONY: test test-unit test-integration test-e2e test-prod test-verbose install clean complexity audit coverage help
 
 help:
 	@echo "Available targets:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make test-e2e         - Run end-to-end tests (full MCP stack with real OmniFocus)"
 	@echo "  make test-prod        - Run production DB tests (OmniAutomation, sandbox folder)"
 	@echo "  make test-verbose     - Run tests with verbose output"
+	@echo "  make coverage         - Run tests with coverage report"
 	@echo "  make complexity       - Check code complexity with radon"
 	@echo "  make clean            - Remove cache and build artifacts"
 
@@ -36,6 +37,9 @@ test-prod:
 
 test-verbose:
 	./venv/bin/pytest tests/ -v --tb=long
+
+coverage:
+	./venv/bin/pytest tests/ --cov=omnifocus_mcp --cov-report=term-missing -q
 
 complexity:
 	@./scripts/check_complexity.sh
