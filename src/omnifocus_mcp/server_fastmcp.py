@@ -808,7 +808,9 @@ def update_task(
         estimated_minutes: Estimated time in minutes (optional)
         completed: Mark task complete/incomplete (optional). Uses `mark complete` internally,
             which correctly handles recurring tasks by spawning the next occurrence.
-        status: Task status - "active" or "dropped" (optional)
+        status: Task status - "active" or "dropped" (optional). To drop an entire
+            recurring series (not just the current occurrence), pass both
+            recurrence="" and status="dropped" in the same call.
         recurrence: iCalendar RRULE string (e.g., "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR"),
             or empty string to remove recurrence. Omitting means no change. (optional)
         repetition_method: How the next occurrence is calculated (optional). Only meaningful
@@ -836,6 +838,7 @@ def update_task(
         update_task("task-123", task_name="New Name", flagged=True, due_date="2025-12-31")
         update_task("task-123", recurrence="FREQ=WEEKLY;BYDAY=MO,WE,FR", repetition_method="fixed")
         update_task("task-123", recurrence="")  # Remove recurrence
+        update_task("task-123", recurrence="", status="dropped")  # Drop entire recurring series
     """
     # Support legacy 'name' parameter for backward compatibility
     if name is not None and task_name is None:

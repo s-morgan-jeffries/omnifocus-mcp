@@ -149,6 +149,24 @@ class TestBuildUpdateTaskCommands:
         _, _, _, js_needed = self._call(client, repetition_method="fixed")
         assert js_needed is True
 
+    def test_recurrence_clear_before_drop_in_command_order(self, client):
+        """Recurrence removal must precede mark dropped to prevent next occurrence."""
+        _, cmds, fields, _ = self._call(
+            client, recurrence="", status=TaskStatus.DROPPED
+        )
+        recurrence_idx = next(
+            i for i, c in enumerate(cmds) if 'missing value' in c
+        )
+        drop_idx = next(
+            i for i, c in enumerate(cmds) if 'mark dropped' in c
+        )
+        assert recurrence_idx < drop_idx, (
+            f"Recurrence removal (index {recurrence_idx}) must come before "
+            f"mark dropped (index {drop_idx})"
+        )
+        assert "recurrence" in fields
+        assert "status" in fields
+
 
 # ── _execute_recurrence_update ──────────────────────────────────────────────
 
