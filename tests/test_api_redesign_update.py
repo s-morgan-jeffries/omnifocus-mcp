@@ -346,6 +346,24 @@ class TestUpdateTaskRedesign:
             assert "error" in result
             assert isinstance(result["error"], str)
 
+    def test_update_task_tag_on_dropped_task_gives_clear_error(self, client):
+        """Modifying tags on a dropped task returns a clear error, not opaque -1700."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(
+                1, 'osascript',
+                stderr='Can\'t make {tag id "aSKRkTUXWBe" of default document} into type tag. (-1700)'
+            )
+
+            result = client.update_task(
+                task_id="task-dropped",
+                add_tags=["SomeTag"]
+            )
+
+            assert result["success"] is False
+            assert "dropped" in result["error"].lower() or "cannot modify" in result["error"].lower()
+            # Should still include enough context to debug
+            assert "-1700" in result["error"]
+
 
 class TestUpdateTasksRedesign:
     """Tests for update_tasks() batch function (NEW API).
