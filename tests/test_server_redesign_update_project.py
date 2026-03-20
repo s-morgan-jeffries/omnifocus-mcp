@@ -48,6 +48,13 @@ class TestUpdateProjectServerRedesign:
                 due_date=None,
                 defer_date=None,
                 planned_date=None,
+                flagged=None,
+                estimated_minutes=None,
+                tags=None,
+                add_tags=None,
+                remove_tags=None,
+                recurrence=None,
+                repetition_method=None,
             )
 
             assert isinstance(result, str)
@@ -303,3 +310,138 @@ class TestUpdateProjectCompletedByChildren:
             call_kwargs = mock_client.update_project.call_args[1]
             assert call_kwargs["completed_by_children"] is True
             assert "updated" in result.lower() or "success" in result.lower()
+
+
+class TestUpdateProjectNewParams:
+    """Tests for new parameters: tags, flagged, estimated_minutes, recurrence."""
+
+    def test_update_project_flagged(self):
+        """Server: update_project() can set flagged on a project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-1",
+                "updated_fields": ["flagged"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-1", flagged=True)
+
+            mock_client.update_project.assert_called_once()
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["flagged"] is True
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_update_project_estimated_minutes(self):
+        """Server: update_project() can set estimated_minutes on a project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-1",
+                "updated_fields": ["estimated_minutes"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-1", estimated_minutes=30)
+
+            mock_client.update_project.assert_called_once()
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["estimated_minutes"] == 30
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_update_project_add_tags(self):
+        """Server: update_project() can add tags to a project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-1",
+                "updated_fields": ["add_tags"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-1", add_tags=["urgent", "work"])
+
+            mock_client.update_project.assert_called_once()
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["add_tags"] == ["urgent", "work"]
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_update_project_remove_tags(self):
+        """Server: update_project() can remove tags from a project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-1",
+                "updated_fields": ["remove_tags"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-1", remove_tags=["old-tag"])
+
+            mock_client.update_project.assert_called_once()
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["remove_tags"] == ["old-tag"]
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_update_project_tags_replacement(self):
+        """Server: update_project() can do full tag replacement."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-1",
+                "updated_fields": ["tags"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-1", tags=["tag-a", "tag-b"])
+
+            mock_client.update_project.assert_called_once()
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["tags"] == ["tag-a", "tag-b"]
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_update_project_recurrence(self):
+        """Server: update_project() can set recurrence on a project."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-1",
+                "updated_fields": ["recurrence"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(
+                project_id="proj-1",
+                recurrence="FREQ=WEEKLY;BYDAY=MO",
+                repetition_method="fixed"
+            )
+
+            mock_client.update_project.assert_called_once()
+            call_kwargs = mock_client.update_project.call_args[1]
+            assert call_kwargs["recurrence"] == "FREQ=WEEKLY;BYDAY=MO"
+            assert call_kwargs["repetition_method"] == "fixed"
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_update_project_tags_conflict_with_add_tags(self):
+        """Server: update_project() rejects tags + add_tags together."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.side_effect = ValueError(
+                "Cannot specify both tags and add_tags"
+            )
+            mock_get_client.return_value = mock_client
+
+            result = update_project(
+                project_id="proj-1",
+                tags=["a"],
+                add_tags=["b"]
+            )
+
+            assert "error" in result.lower()
+            assert "tags" in result.lower() or "add_tags" in result.lower()
