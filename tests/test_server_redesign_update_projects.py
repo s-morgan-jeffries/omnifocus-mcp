@@ -189,3 +189,104 @@ class TestUpdateProjectsServerRedesign:
             # Should be user-friendly, not raw JSON
             assert "5" in result
             assert "project" in result.lower()
+
+
+class TestUpdateProjectsNewParams:
+    """Tests for new parameters: flagged, estimated_minutes, add_tags, remove_tags."""
+
+    def test_update_projects_flagged(self):
+        """Server: update_projects() can set flagged on multiple projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_projects.return_value = {
+                "updated_count": 2,
+                "failed_count": 0,
+                "updated_ids": ["proj-1", "proj-2"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            update_projects = server.update_projects
+
+            result = update_projects(
+                project_ids=["proj-1", "proj-2"],
+                flagged=True
+            )
+
+            mock_client.update_projects.assert_called_once()
+            call_kwargs = mock_client.update_projects.call_args[1]
+            assert call_kwargs["flagged"] is True
+            assert "2" in result
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_update_projects_estimated_minutes(self):
+        """Server: update_projects() can set estimated_minutes on multiple projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_projects.return_value = {
+                "updated_count": 2,
+                "failed_count": 0,
+                "updated_ids": ["proj-1", "proj-2"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            update_projects = server.update_projects
+
+            result = update_projects(
+                project_ids=["proj-1", "proj-2"],
+                estimated_minutes=60
+            )
+
+            mock_client.update_projects.assert_called_once()
+            call_kwargs = mock_client.update_projects.call_args[1]
+            assert call_kwargs["estimated_minutes"] == 60
+            assert "2" in result
+
+    def test_update_projects_add_tags(self):
+        """Server: update_projects() can add tags to multiple projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_projects.return_value = {
+                "updated_count": 2,
+                "failed_count": 0,
+                "updated_ids": ["proj-1", "proj-2"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            update_projects = server.update_projects
+
+            result = update_projects(
+                project_ids=["proj-1", "proj-2"],
+                add_tags=["urgent"]
+            )
+
+            mock_client.update_projects.assert_called_once()
+            call_kwargs = mock_client.update_projects.call_args[1]
+            assert call_kwargs["add_tags"] == ["urgent"]
+            assert "2" in result
+
+    def test_update_projects_remove_tags(self):
+        """Server: update_projects() can remove tags from multiple projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_projects.return_value = {
+                "updated_count": 2,
+                "failed_count": 0,
+                "updated_ids": ["proj-1", "proj-2"],
+                "failures": []
+            }
+            mock_get_client.return_value = mock_client
+
+            update_projects = server.update_projects
+
+            result = update_projects(
+                project_ids=["proj-1", "proj-2"],
+                remove_tags=["old-tag"]
+            )
+
+            mock_client.update_projects.assert_called_once()
+            call_kwargs = mock_client.update_projects.call_args[1]
+            assert call_kwargs["remove_tags"] == ["old-tag"]
+            assert "2" in result

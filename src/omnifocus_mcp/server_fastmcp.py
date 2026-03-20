@@ -366,6 +366,13 @@ def update_project(
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
     planned_date: Optional[str] = None,
+    flagged: Optional[bool] = None,
+    estimated_minutes: Optional[int] = None,
+    tags: Optional[list[str]] = None,
+    add_tags: Optional[list[str]] = None,
+    remove_tags: Optional[list[str]] = None,
+    recurrence: Optional[str] = None,
+    repetition_method: Optional[str] = None,
 ) -> str:
     """Update an existing project in OmniFocus.
 
@@ -384,6 +391,17 @@ def update_project(
         due_date: Due date in ISO 8601 format, or "" to clear (optional)
         defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
         planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
+        flagged: Flag marks a project as a priority — pass True to flag, False to unflag. (optional)
+        estimated_minutes: Estimated time in minutes (optional)
+        tags: Full replacement — set exact tag list as a native list (optional, conflicts
+            with add_tags/remove_tags).
+        add_tags: Add these tags incrementally (optional, conflicts with tags)
+        remove_tags: Remove these tags (optional, conflicts with tags)
+        recurrence: iCalendar RRULE string (e.g., "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO"),
+            or empty string to remove recurrence. Omitting means no change. (optional)
+        repetition_method: How the next occurrence is calculated (optional). Only meaningful
+            when recurrence is set. Values: "fixed", "start_after_completion",
+            "due_after_completion".
 
     Returns:
         Success message with project ID and updated fields, or error message
@@ -418,6 +436,13 @@ def update_project(
             due_date=due_date,
             defer_date=defer_date,
             planned_date=planned_date,
+            flagged=flagged,
+            estimated_minutes=estimated_minutes,
+            tags=tags,
+            add_tags=add_tags,
+            remove_tags=remove_tags,
+            recurrence=recurrence,
+            repetition_method=repetition_method,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -450,6 +475,10 @@ def update_projects(
     due_date: Optional[str] = None,
     defer_date: Optional[str] = None,
     planned_date: Optional[str] = None,
+    flagged: Optional[bool] = None,
+    estimated_minutes: Optional[int] = None,
+    add_tags: Optional[list[str]] = None,
+    remove_tags: Optional[list[str]] = None,
 ) -> str:
     """Update multiple projects with the same properties (NEW API - Phase 2, Batch Function).
 
@@ -471,6 +500,10 @@ def update_projects(
         due_date: Due date in ISO 8601 format, or "" to clear (optional)
         defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
         planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
+        flagged: Flag marks projects as a priority — pass True to flag, False to unflag. (optional)
+        estimated_minutes: Estimated time in minutes (optional)
+        add_tags: Add these tags incrementally (optional)
+        remove_tags: Remove these tags (optional)
 
     Returns:
         Success message with updated and failed counts, or error message
@@ -510,6 +543,10 @@ def update_projects(
             due_date=due_date,
             defer_date=defer_date,
             planned_date=planned_date,
+            flagged=flagged,
+            estimated_minutes=estimated_minutes,
+            add_tags=add_tags,
+            remove_tags=remove_tags,
         )
 
         # Handle dict return from client

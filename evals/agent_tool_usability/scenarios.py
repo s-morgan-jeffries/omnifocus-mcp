@@ -1356,4 +1356,29 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 55,
+        "category": "Parameter Usage",
+        "name": "Tag and Flag a Project",
+        "prompt": (
+            "Flag the project proj-website-001 as high priority and add the tag 'High Priority' to it."
+        ),
+        "expected": {
+            "tools": ["update_project"],
+            "key_params": {
+                "update_project": {
+                    "project_id": "proj-website-001",
+                    "flagged": True,
+                    "add_tags": ["High Priority"],
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_project(project_id='proj-website-001', flagged=True, add_tags=['High Priority']) "
+            "in a single call. "
+            "PARTIAL: Two separate calls (one for flag, one for tag). "
+            "FAIL: Uses update_task, says projects can't be flagged/tagged, or wrong tool."
+        ),
+        "safety_critical": False,
+    },
 ]

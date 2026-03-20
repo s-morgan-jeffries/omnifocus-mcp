@@ -66,8 +66,8 @@ echo ""
 #   - _post_process_projects: CC ≤ 23 (22 current - projectType + 6 filter steps)
 #
 # Original functions not yet refactored:
-#   - update_projects: CC ≤ 44 (43 current — v0.10.0 added project dates)
-#   - update_project: CC ≤ 40 (39 current — v0.10.0 added project dates)
+#   - update_projects: CC ≤ 54 (53 current — #417 added flagged/estimated/tags)
+#   - update_project: CC ≤ 57 (56 current — #417 added flagged/estimated/tags/recurrence)
 #   - _format_task: CC ≤ 26 (25 current)
 #   - create_task: CC ≤ 23 (22 current)
 #   - _validate_update_task_params: CC ≤ 19 (18 current)
@@ -95,9 +95,9 @@ try:
                 elif name == '_post_process_projects' and cc <= 23:
                     continue
                 # Original functions
-                elif name == 'update_projects' and cc <= 44:
+                elif name == 'update_projects' and cc <= 54:
                     continue
-                elif name == 'update_project' and cc <= 40:
+                elif name == 'update_project' and cc <= 57:
                     continue
                 elif name == '_format_task' and cc <= 32:
                     continue
@@ -132,7 +132,7 @@ echo "✅ PASS: All functions within complexity limits"
 echo ""
 echo "Documented exceptions (see script comments for full list):"
 echo "  - Extracted helpers: _build_task_filter_checks (35), _build_update_task_commands (29), _post_process_tasks (28)"
-echo "  - Original functions: update_projects (43), update_project (39), _format_task (31), create_task (22)"
+echo "  - Original functions: update_project (56), update_projects (53), _format_task (31), create_task (22)"
 echo "  - All other functions: CC ≤ 20"
 echo ""
 echo "See inline documentation in omnifocus_connector.py for rationale."

@@ -1368,6 +1368,13 @@ class OmniFocusConnector:
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
         planned_date: Optional[str] = None,
+        flagged: Optional[bool] = None,
+        estimated_minutes: Optional[int] = None,
+        tags: Optional[list[str]] = None,
+        add_tags: Optional[list[str]] = None,
+        remove_tags: Optional[list[str]] = None,
+        recurrence: Optional[str] = None,
+        repetition_method: Optional[str] = None,
     ) -> dict:
         """Update properties of an existing project (NEW API - Phase 2).
 
@@ -1384,6 +1391,13 @@ class OmniFocusConnector:
             due_date: Due date in ISO 8601 format, or "" to clear (optional)
             defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
             planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
+            flagged: Flag the project as a priority (optional)
+            estimated_minutes: Estimated time in minutes (optional)
+            tags: Full replacement - set exact tag list (optional, conflicts with add_tags/remove_tags)
+            add_tags: Add these tags incrementally (optional, conflicts with tags)
+            remove_tags: Remove these tags (optional, conflicts with tags)
+            recurrence: iCalendar RRULE string, or "" to clear (optional)
+            repetition_method: "fixed", "start_after_completion", or "due_after_completion" (optional)
 
         Returns:
             dict: {
@@ -1394,13 +1408,19 @@ class OmniFocusConnector:
             }
 
         Raises:
-            ValueError: If project_id is empty, no fields provided, or invalid status
+            ValueError: If project_id is empty, no fields provided, invalid status, or conflicting tag params
         """
         # SAFETY: Verify database before modifying
         self._verify_database_safety('update_project')
 
         if not project_id:
             raise ValueError("project_id is required")
+
+        # Validate tag conflicts
+        if tags is not None and add_tags is not None:
+            raise ValueError("Cannot specify both tags and add_tags (use one or the other)")
+        if tags is not None and remove_tags is not None:
+            raise ValueError("Cannot specify both tags and remove_tags (use one or the other)")
 
         # Collect all provided fields
         all_fields = {
@@ -1417,6 +1437,13 @@ class OmniFocusConnector:
             "due_date": due_date,
             "defer_date": defer_date,
             "planned_date": planned_date,
+            "flagged": flagged,
+            "estimated_minutes": estimated_minutes,
+            "tags": tags,
+            "add_tags": add_tags,
+            "remove_tags": remove_tags,
+            "recurrence": recurrence,
+            "repetition_method": repetition_method,
         }
 
         # Check if at least one field is provided
@@ -1536,6 +1563,73 @@ class OmniFocusConnector:
             completed_by_children_command = f'set completed by children of theProject to {str(completed_by_children).lower()}'
             updated_fields.append("completed_by_children")
 
+        # Build flagged property
+        if flagged is not None:
+            properties.append(f'flagged:{str(flagged).lower()}')
+            updated_fields.append("flagged")
+
+        # Build estimated minutes command
+        estimated_command = ""
+        if estimated_minutes is not None:
+            estimated_command = f'set estimated minutes of theProject to {estimated_minutes}'
+            updated_fields.append("estimated_minutes")
+
+        # Build tag commands
+        tag_commands = ""
+        if tags is not None:
+            tag_lines = []
+            # Remove all existing tags
+            tag_lines.append('''
+                    repeat while (count of tags of theProject) > 0
+                        remove first tag of theProject from tags of theProject
+                    end repeat''')
+            # Add new tags
+            for tag in tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                tag_lines.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theProject''')
+            tag_commands = "\n".join(tag_lines)
+            updated_fields.append("tags")
+
+        if add_tags is not None:
+            tag_lines = []
+            for tag in add_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                tag_lines.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theProject''')
+            tag_commands += "\n".join(tag_lines)
+            updated_fields.append("add_tags")
+
+        if remove_tags is not None:
+            tag_lines = []
+            for tag in remove_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                tag_lines.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theProject''')
+            tag_commands += "\n".join(tag_lines)
+            updated_fields.append("remove_tags")
+
+        # Build recurrence command (clear only — set is done post-AppleScript via OmniAutomation)
+        recurrence_command = ""
+        recurrence_js_needed = False
+        if recurrence is not None:
+            if recurrence == "":
+                # Clear recurrence
+                recurrence_command = 'set repetition rule of theProject to missing value'
+                updated_fields.append("recurrence")
+            else:
+                # Set recurrence — handled by _execute_recurrence_update after main script
+                recurrence_js_needed = True
+                updated_fields.append("recurrence")
+
+        if repetition_method is not None and recurrence is None:
+            # Update repetition method only (recurrence rule stays the same)
+            recurrence_js_needed = True
+            updated_fields.append("repetition_method")
+
         # Build folder path command
         folder_command = ""
         if folder_path is not None:
@@ -1610,12 +1704,15 @@ class OmniFocusConnector:
                     end if
 
                     {properties_command}
+                    {recurrence_command}
                     {status_command}
                     {review_command}
                     {reviewed_command}
                     {next_review_command}
                     {date_commands_str}
                     {completed_by_children_command}
+                    {estimated_command}
+                    {tag_commands}
                     {folder_command}
 
                     return "true"
@@ -1631,6 +1728,11 @@ class OmniFocusConnector:
             result = result.strip()
 
             if result.startswith("true"):
+                # Post-AppleScript: set recurrence via OmniAutomation if needed
+                if recurrence_js_needed:
+                    self._execute_recurrence_update(
+                        project_id, recurrence, repetition_method
+                    )
                 return {
                     "success": True,
                     "project_id": project_id,
@@ -1665,6 +1767,10 @@ class OmniFocusConnector:
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
         planned_date: Optional[str] = None,
+        flagged: Optional[bool] = None,
+        estimated_minutes: Optional[int] = None,
+        add_tags: Optional[list[str]] = None,
+        remove_tags: Optional[list[str]] = None,
         **kwargs  # Catch invalid parameters like project_name, note
     ) -> dict:
         """Update properties of multiple projects (NEW API - Phase 2, Batch Function).
@@ -1687,6 +1793,10 @@ class OmniFocusConnector:
             due_date: Due date in ISO 8601 format, or "" to clear (optional)
             defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
             planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
+            flagged: Flag the projects as a priority (optional)
+            estimated_minutes: Estimated time in minutes (optional)
+            add_tags: Add these tags incrementally (optional)
+            remove_tags: Remove these tags (optional)
 
         Returns:
             dict: {
@@ -1732,7 +1842,9 @@ class OmniFocusConnector:
         if (folder_path is None and sequential is None and status is None and
                 review_interval_weeks is None and last_reviewed is None and
                 next_review_date is None and due_date is None and
-                defer_date is None and planned_date is None):
+                defer_date is None and planned_date is None and
+                flagged is None and estimated_minutes is None and
+                add_tags is None and remove_tags is None):
             raise ValueError("At least one field must be provided to update")
 
         # Normalize project_ids to list
@@ -1817,9 +1929,33 @@ class OmniFocusConnector:
                     )
                 has_bulk = True
 
+        if flagged is not None:
+            bulk_commands.append(f"set flagged of ({or_chain_target}) to {str(flagged).lower()}")
+            has_bulk = True
+
+        if estimated_minutes is not None:
+            bulk_commands.append(f"set estimated minutes of ({or_chain_target}) to {estimated_minutes}")
+            has_bulk = True
+
         # --- Per-project fields (need repeat loop) ---
 
         per_project_commands = []
+
+        if add_tags is not None:
+            for tag in add_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                per_project_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theProject''')
+            has_per_project = True
+
+        if remove_tags is not None:
+            for tag in remove_tags:
+                tag_escaped = self._escape_applescript_string(tag)
+                per_project_commands.append(f'''
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    remove tagObj from tags of theProject''')
+            has_per_project = True
 
         if folder_path is not None:
             # Build folder navigation commands (reuse existing logic)

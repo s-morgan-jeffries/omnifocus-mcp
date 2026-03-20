@@ -94,8 +94,20 @@ Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_
 - `due_date: str` (optional) — Due date in ISO 8601 format, or "" to clear
 - `defer_date: str` (optional) — Defer date in ISO 8601 format, or "" to clear
 - `planned_date: str` (optional) — Planned date in ISO 8601 format, or "" to clear
+- `flagged: bool` (optional) — Flag marks a project as a priority. Pass True to flag, False to unflag.
+- `estimated_minutes: int` (optional) — Estimated time in minutes for the project
+- `tags: list[str]` (optional) — Full replacement — set exact tag list. Conflicts with add_tags/remove_tags.
+- `add_tags: list[str]` (optional) — Add these tags incrementally. Conflicts with tags.
+- `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
+- `recurrence: str` (optional) — iCalendar RRULE string, or empty string to remove recurrence.
+- `repetition_method: str` (optional) — "fixed", "start_after_completion", or "due_after_completion". Only meaningful when recurrence is set.
 
 **Returns:** Success message with project ID and updated fields, or error message
+
+**Examples:**
+- `update_project("proj-123", flagged=True)` — Flag project
+- `update_project("proj-123", add_tags=["High Priority"])` — Add tag to project
+- `update_project("proj-123", tags=[])` — Clear all tags from project
 
 ---
 
@@ -116,6 +128,10 @@ IMPORTANT: This function does NOT accept project_name or note parameters because
 - `due_date: str` (optional) — Due date in ISO 8601 format, or "" to clear
 - `defer_date: str` (optional) — Defer date in ISO 8601 format, or "" to clear
 - `planned_date: str` (optional) — Planned date in ISO 8601 format, or "" to clear
+- `flagged: bool` (optional) — Flag/unflag all specified projects
+- `estimated_minutes: int` (optional) — Set estimated time for all specified projects
+- `add_tags: list[str]` (optional) — Add these tags to all specified projects
+- `remove_tags: list[str]` (optional) — Remove these tags from all specified projects
 
 **Returns:** Success message with updated and failed counts
 
