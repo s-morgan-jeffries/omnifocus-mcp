@@ -185,7 +185,7 @@ SCENARIOS = [
     {
         "id": 9,
         "category": "Parameter Usage",
-        "name": "Tags JSON String vs Native List",
+        "name": "Tags on Create vs Add Tags on Update",
         "prompt": (
             "Create a task 'Review PR' with tags Computer and Work, "
             "then add the tag 'Urgent' to existing task task-555."
@@ -193,14 +193,14 @@ SCENARIOS = [
         "expected": {
             "tools": ["create_task", "update_task"],
             "key_params": {
-                "create_task": {"task_name": "Review PR", "tags": '["Computer", "Work"]'},
+                "create_task": {"task_name": "Review PR", "tags": ["Computer", "Work"]},
                 "update_task": {"task_id": "task-555", "add_tags": ["Urgent"]},
             },
         },
         "scoring_notes": (
-            "PASS: create_task tags as JSON string, update_task add_tags as native list. "
-            "PARTIAL: Correct tools but wrong tag format (e.g., native list for create_task). "
-            "FAIL: Uses 'tags' instead of 'add_tags' on update (would replace all tags)."
+            "PASS: create_task tags as native list, update_task add_tags as native list. "
+            "PARTIAL: Correct tools but uses 'tags' instead of 'add_tags' on update. "
+            "FAIL: Wrong tools or missing tag assignment entirely."
         ),
         "safety_critical": False,
     },
@@ -308,14 +308,14 @@ SCENARIOS = [
                 },
                 "create_task": {
                     "project_id": "<returned_id>",
-                    "tags": '["Web Team"]',
+                    "tags": ["Web Team"],
                 },
             },
         },
         "scoring_notes": (
-            "PASS: create_project with all params, 6x create_task in order with tags as JSON string, "
+            "PASS: create_project with all params, 6x create_task in order with tags as native list, "
             "uses returned project ID. "
-            "PARTIAL: Missing some params (e.g., no review_interval_weeks) or wrong tag format. "
+            "PARTIAL: Missing some params (e.g., no review_interval_weeks). "
             "FAIL: Parallel project or wrong task order."
         ),
         "safety_critical": False,

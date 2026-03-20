@@ -180,7 +180,7 @@ Create a new task in OmniFocus.
 - `defer_date: str` (optional) — Defer date in ISO 8601 format (when task becomes available — hidden until then)
 - `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on this task — a scheduling signal with no availability or overdue constraints, unlike defer/due dates)
 - `flagged: bool` (default: False) — Flag marks a task as a priority — typically 'I want to work on this today.' Flagged tasks can be queried with get_tasks(flagged_only=True).
-- `tags: str` (optional) — JSON array string of tag names (e.g., '["Computer", "Work"]'). Tags must already exist. Note: this takes a JSON string; update_task takes a native list instead.
+- `tags: list[str]` (optional) — List of tag names (e.g., ["Computer", "Work"]). Tags must already exist.
 - `estimated_minutes: int` (optional) — Estimated time in minutes
 - `sequential: bool` (default: False) — If True, subtasks of this task (action group) must be completed in order — only the first available subtask is actionable.
 
@@ -206,7 +206,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `defer_date: str` (optional) — New defer date in ISO 8601 format (when task becomes available), or empty string to clear. Omitting means no change.
 - `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on this task), or empty string to clear. A scheduling signal with no availability or overdue constraints.
 - `flagged: bool` (optional) — Flag marks a task as a priority — typically 'I want to work on this today.' Pass True to flag, False to unflag.
-- `tags: list[str]` (optional) — Full replacement — set exact tag list as a native list. Conflicts with add_tags/remove_tags. Note: unlike create_task, this takes a list not a JSON string.
+- `tags: list[str]` (optional) — Full replacement — set exact tag list. Conflicts with add_tags/remove_tags.
 - `add_tags: list[str]` (optional) — Add these tags incrementally. Conflicts with tags.
 - `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
 - `estimated_minutes: int` (optional) — Estimated time in minutes

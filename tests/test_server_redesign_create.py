@@ -126,7 +126,7 @@ class TestCreateTaskServerRedesign:
                 due_date="2025-12-31",
                 defer_date="2025-12-01",
                 flagged=True,
-                tags='["urgent", "work"]',  # JSON string, not list
+                tags=["urgent", "work"],  # Native list, same as update_task
                 estimated_minutes=60
             )
 
@@ -145,6 +145,21 @@ class TestCreateTaskServerRedesign:
                 completed_by_children=False
             )
             assert "task-005" in result
+
+    def test_create_task_tags_rejects_json_string(self):
+        """Tags parameter must be a native list, not a JSON string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_task.return_value = "task-006"
+            mock_get_client.return_value = mock_client
+
+            result = create_task(
+                task_name="Task with JSON string tags",
+                tags='["urgent", "work"]'  # Old format — should error
+            )
+
+            assert "error" in result.lower()
+            mock_client.create_task.assert_not_called()
 
     # ========================================================================
     # Error Handling

@@ -92,12 +92,11 @@ class TestCreateTaskE2E:
         print(f"\n✓ E2E create_task in inbox: {result}")
 
     def test_create_task_with_tags_e2e(self, test_project, ensure_test_tags):
-        """E2E: Create task with tags via MCP tool (tests JSON string conversion)."""
-        # MCP tools receive tags as JSON string
+        """E2E: Create task with tags via MCP tool."""
         result = create_task(
             task_name="E2E Test Task - Tags",
             project_id=test_project,
-            tags='["work"]'  # JSON string, not Python list!
+            tags=["work"]
         )
 
         assert isinstance(result, str)
