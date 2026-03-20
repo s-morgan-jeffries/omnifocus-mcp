@@ -4100,7 +4100,8 @@ class OmniFocusConnector:
         tag_id: str,
         name: Optional[str] = None,
         status: Optional[str] = None,
-        children_are_mutually_exclusive: Optional[bool] = None
+        children_are_mutually_exclusive: Optional[bool] = None,
+        parent_tag: Optional[str] = None
     ) -> dict:
         """Update properties of an existing tag.
 
@@ -4114,6 +4115,8 @@ class OmniFocusConnector:
             children_are_mutually_exclusive: If True, child tags of this
                 tag are mutually exclusive (assigning one removes others).
                 Set via OmniAutomation. (optional)
+            parent_tag: Move tag under this parent tag (by name), or
+                empty string to move to top level. (optional)
 
         Returns:
             dict: {
@@ -4144,6 +4147,7 @@ class OmniFocusConnector:
             "name": name,
             "status": status,
             "children_are_mutually_exclusive": children_are_mutually_exclusive,
+            "parent_tag": parent_tag,
         }
         if all(v is None for v in all_fields.values()):
             raise ValueError("At least one field must be provided to update")
@@ -4168,7 +4172,19 @@ class OmniFocusConnector:
                 set_lines.append('set hidden of theTag to true')
             updated_fields.append("status")
 
-        # Run AppleScript for name/status changes (if any)
+        if parent_tag is not None:
+            if parent_tag == "":
+                # Move to top level
+                set_lines.append("move theTag to end of tags of it")
+            else:
+                parent_escaped = self._escape_applescript_string(parent_tag)
+                set_lines.append(
+                    f'set parentTag to first flattened tag whose name is "{parent_escaped}"\n'
+                    f'                        move theTag to end of tags of parentTag'
+                )
+            updated_fields.append("parent_tag")
+
+        # Run AppleScript for name/status/parent changes (if any)
         if set_lines:
             set_block = "\n                        ".join(set_lines)
             fields_json = ", ".join(f'\\"{f}\\"' for f in updated_fields)

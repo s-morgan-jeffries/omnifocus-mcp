@@ -370,15 +370,21 @@ Tags can be nested (e.g., create "High" under parent "Energy" to get "Energy : H
 
 Update properties of an existing tag in OmniFocus.
 
-Tags can be renamed or have their status changed. Tags have three states: active (tasks are actionable), on_hold (tasks excluded from available queries), and dropped (tag hidden from most views).
+Tags can be renamed, reparented, or have their status changed. Tags have three states: active (tasks are actionable), on_hold (tasks excluded from available queries), and dropped (tag hidden from most views).
 
 **Parameters:**
 - `tag_id: str` (required) — The ID of the tag to update (from get_tags)
 - `name: str` (optional) — New tag name
 - `status: str` (optional) — Tag status. Values: "active", "on_hold", "dropped". Active = tasks with this tag are actionable. On hold = tag is paused, **tasks with this tag become unavailable** (excluded from Available perspective) — use for temporary pauses. Dropped = tag is retired/archived, **tasks remain available** but the tag is hidden from most views — use for permanent retirement.
 - `children_are_mutually_exclusive: bool` (optional) — If True, child tags of this tag will be mutually exclusive. If False, children are independent (default behavior).
+- `parent_tag: str` (optional) — Move this tag under a different parent tag (by name), or empty string to move to top level. Preserves all task associations.
 
 **Returns:** Success message with updated fields, or error message
+
+**Examples:**
+- `update_tag("tag-123", parent_tag="People")` — Move tag under "People"
+- `update_tag("tag-123", parent_tag="")` — Move tag to top level
+- `update_tag("tag-123", name="Renamed", parent_tag="Work")` — Rename and reparent in one call
 
 ---
 
