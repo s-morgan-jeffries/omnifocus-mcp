@@ -3277,22 +3277,20 @@ class OmniFocusConnector:
                     move theTask to end of tasks of theParent''')
             updated_fields.append("parent_task_id")
 
-        # Tags
+        # Tags — full replacement uses remove-all + add-each because
+        # "set tags of theTask to {list}" causes -1700 type coercion errors
         if tags is not None:
-            if len(tags) > 0:
-                tag_adds = []
-                for tag in tags:
-                    tag_escaped = self._escape_applescript_string(tag)
-                    tag_adds.append(f'''
-                        set tagObj to first flattened tag whose name is "{tag_escaped}"
-                        copy tagObj to end of newTags''')
-                tag_adds_str = "\n                    ".join(tag_adds)
+            # Remove all existing tags
+            separate_commands.append('''
+                    repeat while (count of tags of theTask) > 0
+                        remove first tag of theTask from tags of theTask
+                    end repeat''')
+            # Add new tags one by one
+            for tag in tags:
+                tag_escaped = self._escape_applescript_string(tag)
                 separate_commands.append(f'''
-                    set newTags to {{}}
-                    {tag_adds_str}
-                    set tags of theTask to newTags''')
-            else:
-                separate_commands.append("set tags of theTask to {}")
+                    set tagObj to first flattened tag whose name is "{tag_escaped}"
+                    add tagObj to tags of theTask''')
             updated_fields.append("tags")
 
         if add_tags is not None:
@@ -3504,21 +3502,11 @@ class OmniFocusConnector:
                     "error": f"Unexpected result: {result}"
                 }
         except subprocess.CalledProcessError as e:
-            error_msg = f"AppleScript error: {e.stderr}"
-            # Type coercion error on tag operations typically means the task
-            # is dropped or in a state that prevents modification
-            if "(-1700)" in (e.stderr or "") and "type tag" in (e.stderr or ""):
-                error_msg = (
-                    f"Cannot modify tags on task '{task_id}': the task may be "
-                    f"dropped or completed. Change the task's status to active "
-                    f"first, or create a new task. "
-                    f"(Original error: {e.stderr})"
-                )
             return {
                 "success": False,
                 "task_id": task_id,
                 "updated_fields": [],
-                "error": error_msg
+                "error": f"AppleScript error: {e.stderr}"
             }
         except Exception as e:
             return {

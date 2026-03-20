@@ -346,8 +346,8 @@ class TestUpdateTaskRedesign:
             assert "error" in result
             assert isinstance(result["error"], str)
 
-    def test_update_task_tag_on_dropped_task_gives_clear_error(self, client):
-        """Modifying tags on a dropped task returns a clear error, not opaque -1700."""
+    def test_update_task_applescript_error_returns_stderr(self, client):
+        """AppleScript errors are returned in the error dict with stderr content."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(
                 1, 'osascript',
@@ -355,14 +355,13 @@ class TestUpdateTaskRedesign:
             )
 
             result = client.update_task(
-                task_id="task-dropped",
+                task_id="task-123",
                 add_tags=["SomeTag"]
             )
 
             assert result["success"] is False
-            assert "dropped" in result["error"].lower() or "cannot modify" in result["error"].lower()
-            # Should still include enough context to debug
             assert "-1700" in result["error"]
+            assert "AppleScript error" in result["error"]
 
 
 class TestUpdateTasksRedesign:
