@@ -1330,4 +1330,30 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    {
+        "id": 54,
+        "category": "Tag Management",
+        "name": "Reparent Tag Under New Parent",
+        "prompt": (
+            "I have a tag 'Aimee' (ID: tag-aimee-001) that's currently at the top level. "
+            "I want to move it under the 'People' tag to organize my tag hierarchy. "
+            "Make sure all existing task associations are preserved."
+        ),
+        "expected": {
+            "tools": ["update_tag"],
+            "key_params": {
+                "update_tag": {
+                    "tag_id": "tag-aimee-001",
+                    "parent_tag": "People",
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: update_tag(tag_id='tag-aimee-001', parent_tag='People') — "
+            "single call, preserves task associations. "
+            "PARTIAL: Suggests delete + recreate (works but loses task associations). "
+            "FAIL: Says tag reparenting isn't possible, or uses wrong tool."
+        ),
+        "safety_critical": False,
+    },
 ]

@@ -1069,13 +1069,14 @@ def update_tag(
     tag_id: str,
     name: Optional[str] = None,
     status: Optional[str] = None,
-    children_are_mutually_exclusive: Optional[bool] = None
+    children_are_mutually_exclusive: Optional[bool] = None,
+    parent_tag: Optional[str] = None
 ) -> str:
     """Update properties of an existing tag in OmniFocus.
 
-    Tags can be renamed or have their status changed. Tags have three states:
-    active (tasks are actionable), on_hold (tasks excluded from available queries),
-    and dropped (tag hidden from most views).
+    Tags can be renamed, reparented, or have their status changed. Tags have three
+    states: active (tasks are actionable), on_hold (tasks excluded from available
+    queries), and dropped (tag hidden from most views).
 
     Args:
         tag_id: The ID of the tag to update (from get_tags)
@@ -1088,9 +1089,15 @@ def update_tag(
         children_are_mutually_exclusive: If True, child tags of this tag will be
             mutually exclusive — assigning one child tag to a task silently removes
             any other child from the same group. Set via OmniAutomation. (optional)
+        parent_tag: Move this tag under a different parent tag (by name), or empty
+            string to move to top level. Preserves all task associations. (optional)
 
     Returns:
         Success message with updated fields, or error message
+
+    Examples:
+        update_tag("tag-123", parent_tag="People")  # Move under "People"
+        update_tag("tag-123", parent_tag="")  # Move to top level
     """
     client = get_client()
     try:
@@ -1098,7 +1105,8 @@ def update_tag(
             tag_id=tag_id,
             name=name,
             status=status,
-            children_are_mutually_exclusive=children_are_mutually_exclusive
+            children_are_mutually_exclusive=children_are_mutually_exclusive,
+            parent_tag=parent_tag
         )
 
         fields = ", ".join(result["updated_fields"])

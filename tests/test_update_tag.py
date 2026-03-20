@@ -31,7 +31,8 @@ class TestUpdateTagServer:
 
             mock_client.update_tag.assert_called_once_with(
                 tag_id="tag-001", name="Renamed", status=None,
-                children_are_mutually_exclusive=None
+                children_are_mutually_exclusive=None,
+                parent_tag=None
             )
             assert "tag-001" in result
             assert "Successfully" in result
@@ -52,7 +53,8 @@ class TestUpdateTagServer:
 
             mock_client.update_tag.assert_called_once_with(
                 tag_id="tag-002", name=None, status="on_hold",
-                children_are_mutually_exclusive=None
+                children_are_mutually_exclusive=None,
+                parent_tag=None
             )
             assert "tag-002" in result
             assert "Successfully" in result
@@ -99,6 +101,59 @@ class TestUpdateTagServer:
             result = update_tag(tag_id="tag-001")
 
             assert "Error" in result
+
+
+class TestUpdateTagReparenting:
+    """Tests for update_tag() parent_tag parameter (tag reparenting)."""
+
+    def test_server_passes_parent_tag_to_connector(self):
+        """Server passes parent_tag parameter to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tag.return_value = {
+                "success": True,
+                "tag_id": "tag-001",
+                "updated_fields": ["parent_tag"],
+                "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tag(tag_id="tag-001", parent_tag="People")
+
+            mock_client.update_tag.assert_called_once_with(
+                tag_id="tag-001", name=None, status=None,
+                children_are_mutually_exclusive=None,
+                parent_tag="People"
+            )
+            assert "Successfully" in result
+
+    def test_connector_move_under_parent(self):
+        """Connector builds move command to reparent tag under another tag."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '{"success": true, "updated_fields": ["parent_tag"]}'
+
+            client = OmniFocusConnector()
+            result = client.update_tag("tag-child", parent_tag="People")
+
+            assert result["success"] is True
+            assert "parent_tag" in result["updated_fields"]
+            call_args = mock_run.call_args[0][0]
+            assert "move theTag" in call_args
+            assert "People" in call_args
+
+    def test_connector_move_to_top_level(self):
+        """Connector builds move command to make tag top-level (parent_tag='')."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '{"success": true, "updated_fields": ["parent_tag"]}'
+
+            client = OmniFocusConnector()
+            result = client.update_tag("tag-child", parent_tag="")
+
+            assert result["success"] is True
+            call_args = mock_run.call_args[0][0]
+            assert "move theTag" in call_args
+            # Should move to document level, not under a parent
+            assert "tags of it" in call_args
 
 
 class TestGetTagsDroppedStatus:
@@ -271,7 +326,8 @@ class TestUpdateTagStatus:
 
             mock_client.update_tag.assert_called_once_with(
                 tag_id="tag-001", name=None, status="dropped",
-                children_are_mutually_exclusive=None
+                children_are_mutually_exclusive=None,
+                parent_tag=None
             )
             assert "Successfully" in result
 
