@@ -124,12 +124,18 @@ class TestBuildUpdateTaskCommands:
 
     def test_tags_full_replacement(self, client):
         _, cmds, fields, _ = self._call(client, tags=["urgent", "home"])
-        assert any('newTags' in c for c in cmds)
+        # Should remove all existing tags then add each new one
+        cmds_str = "\n".join(cmds)
+        assert "repeat while" in cmds_str and "remove" in cmds_str
+        assert "add tagObj to tags of theTask" in cmds_str
         assert "tags" in fields
 
     def test_tags_empty_clears(self, client):
         _, cmds, _, _ = self._call(client, tags=[])
-        assert any('set tags of theTask to {}' in c for c in cmds)
+        # Should remove all existing tags (no adds)
+        cmds_str = "\n".join(cmds)
+        assert "repeat while" in cmds_str and "remove" in cmds_str
+        assert "add tagObj" not in cmds_str
 
     def test_add_tags(self, client):
         _, cmds, fields, _ = self._call(client, add_tags=["urgent"])
