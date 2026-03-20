@@ -5,6 +5,36 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.3] - 2026-03-20
+
+### Added
+
+- **Drop entire recurring task series** (#405, #410)
+  - `update_task(task_id, recurrence="", status="dropped")` now drops the whole series in a single call
+  - Reordered internal command building so recurrence removal precedes `mark dropped`, preventing next occurrence from spawning
+  - New blind eval scenario (#53) validates Claude discovers the pattern from tool descriptions
+
+- **Test coverage threshold enforcement** (#396, #411)
+  - `fail_under` raised from 89 → 90 in `pyproject.toml`
+  - 55 new unit tests covering format helpers, error handlers, and batch response formatting
+  - `server_fastmcp.py` coverage: 82% → 99%; overall: 90% → 95%
+  - Added `make coverage` Makefile target
+  - Excluded unreachable `if __name__ == "__main__"` from coverage
+
+### Fixed
+
+- **Normalized `create_task` tags parameter to native list** (#403, #406)
+  - Changed `tags` from `Optional[str]` (JSON string) to `Optional[list[str]]`, matching `update_task`
+  - Removed JSON parsing logic and unused `import json` from server
+  - Clear error message when non-list type is passed
+
+- **Clear error when modifying tags on dropped tasks** (#404, #407)
+  - AppleScript type coercion error (-1700) on tag operations against dropped tasks now returns an actionable message instead of opaque error
+
+- **Removed redundant Python-side query filter in `get_tasks`** (#398, #408)
+  - `_post_process_tasks()` re-checked name/note containment after both upstream paths (whose clause and batch filter) already handled it
+  - Removed dead code and `query` parameter from `_post_process_tasks()`
+
 ## [0.10.2] - 2026-03-19
 
 ### Added
