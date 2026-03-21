@@ -35,7 +35,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 # Number of iterations per benchmark
-ITERATIONS = 3
+ITERATIONS = 5
 WRITE_ITERATIONS = 3  # Fewer for write ops (they modify state)
 
 
