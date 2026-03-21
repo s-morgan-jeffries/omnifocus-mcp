@@ -3,7 +3,7 @@
 An MCP server bridging Claude and OmniFocus via AppleScript on macOS.
 
 **Stack:** Python 3.10+, FastMCP, AppleScript (via `osascript`)
-**Version:** v0.10.4 | **Tests:** 873 unit, 144 integration/E2E, 26 benchmark/profiling | **Coverage:** 93%
+**Version:** v0.10.5 | **Tests:** 895 unit, 158 integration/E2E, 26 benchmark/profiling | **Coverage:** 93%
 
 ## Commands
 
