@@ -124,8 +124,8 @@ class TestAppleScriptSyntax:
 
         # They should be roughly balanced
         # (rough check because of string escaping and multi-line blocks)
-        if abs(tell_count - end_tell_count) > 10:
+        if abs(tell_count - end_tell_count) > 5:
             pytest.fail(
                 f"Unbalanced tell blocks: {tell_count} 'tell' vs {end_tell_count} 'end tell'. "
-                "Difference > 10 suggests syntax errors."
+                "Difference > 5 suggests syntax errors."
             )
