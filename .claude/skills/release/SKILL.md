@@ -133,6 +133,7 @@ Use the Edit tool for each file. Be precise about what to change.
    - Missing feature documentation for new capabilities
    - Incorrect cross-references between docs
    - Test count / coverage stats in CLAUDE.md header
+   - README coverage badge (`coverage-XX%25-brightgreen`) matches actual coverage
 
 3. Flag discrepancies and fix them on the release branch before proceeding.
 
