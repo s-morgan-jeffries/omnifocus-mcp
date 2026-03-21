@@ -4310,7 +4310,9 @@ class OmniFocusConnector:
 
         if parent_tag is not None:
             if parent_tag == "":
-                # Move to top level
+                # Move to top level — "it" refers to front document from the
+                # enclosing tell block. "front document" doesn't work here
+                # (tested: causes AppleScript error in this context).
                 set_lines.append("move theTag to end of tags of it")
             else:
                 parent_escaped = self._escape_applescript_string(parent_tag)
