@@ -732,14 +732,13 @@ class TestProjectCRUD:
         assert "review_interval_weeks" in result["updated_fields"]
         print(f"\n✓ Set review interval to 2 weeks: {result}")
 
-        # NOTE: reviewInterval retrieval currently has a bug (returns None)
+        # Verify read-back — reviewInterval retrieval has a known bug (returns None).
         # The interval IS set correctly (verified manually), but get_projects()
-        # doesn't parse the {unit:week, steps:N, fixed:true} record format
-        # For now, we just verify the operation succeeded
+        # doesn't parse the {unit:week, steps:N, fixed:true} record format.
         projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
-        # TODO: Fix get_projects() to parse review interval correctly
-        # assert projects[0]['reviewInterval'] == "2 weeks"
+        if projects[0].get('reviewInterval') is None:
+            pytest.xfail("Known bug: get_projects() doesn't parse reviewInterval record format")
 
     def test_update_project_next_review_date_integration(self, client, test_project):
         """Integration: update_project() can set next_review_date explicitly."""
@@ -809,8 +808,9 @@ class TestProjectCRUD:
         project = projects[0]
         assert project['name'] == "Multi-field Test Updated"
         assert project['status'] == 'active status'
-        # NOTE: reviewInterval retrieval has a bug (returns None)
-        # Just verify the operation succeeded
+        # reviewInterval retrieval has a known bug (returns None)
+        if project.get('reviewInterval') is None:
+            pytest.xfail("Known bug: get_projects() doesn't parse reviewInterval record format")
 
     def test_update_projects_batch_integration(self, client, test_projects):
         """Integration: update_projects() can update multiple projects at once."""
