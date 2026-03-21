@@ -129,6 +129,9 @@ class TestGetProjectsEdgeCases:
         mock_gc.return_value.get_projects.return_value = []
         result = server.get_projects(query="nonexistent")
         assert "No projects found matching 'nonexistent'" in result
+        mock_gc.return_value.get_projects.assert_called_once()
+        call_kwargs = mock_gc.return_value.get_projects.call_args[1]
+        assert call_kwargs["query"] == "nonexistent"
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_with_results(self, mock_gc):
@@ -137,6 +140,9 @@ class TestGetProjectsEdgeCases:
         ]
         result = server.get_projects(query="Match")
         assert "Found 1 projects matching 'Match':" in result
+        mock_gc.return_value.get_projects.assert_called_once()
+        call_kwargs = mock_gc.return_value.get_projects.call_args[1]
+        assert call_kwargs["query"] == "Match"
 
 
 class TestCreateProjectEdgeCases:
@@ -147,12 +153,18 @@ class TestCreateProjectEdgeCases:
         mock_gc.return_value.create_project.return_value = "proj-123"
         result = server.create_project(name="Test", review_interval_weeks=2)
         assert "Review Interval:" in result
+        mock_gc.return_value.create_project.assert_called_once()
+        call_kwargs = mock_gc.return_value.create_project.call_args[1]
+        assert call_kwargs["review_interval_weeks"] == 2
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_note_in_response(self, mock_gc):
         mock_gc.return_value.create_project.return_value = "proj-123"
         result = server.create_project(name="Test", note="Some note")
         assert "Note:" in result
+        mock_gc.return_value.create_project.assert_called_once()
+        call_kwargs = mock_gc.return_value.create_project.call_args[1]
+        assert call_kwargs["note"] == "Some note"
 
 
 class TestUpdateProjectsEdgeCases:
@@ -176,6 +188,9 @@ class TestUpdateProjectsEdgeCases:
         result = server.update_projects(project_ids=["p1", "p2"], status="active")
         assert "Failed to update" in result
         assert "p1: not found" in result
+        mock_gc.return_value.update_projects.assert_called_once()
+        call_kwargs = mock_gc.return_value.update_projects.call_args[1]
+        assert call_kwargs["status"] == "active"
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
@@ -192,12 +207,18 @@ class TestGetTasksEdgeCases:
         mock_gc.return_value.get_tasks.return_value = []
         result = server.get_tasks(query="missing")
         assert "No tasks found matching 'missing'" in result
+        mock_gc.return_value.get_tasks.assert_called_once()
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["query"] == "missing"
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_inbox_no_results(self, mock_gc):
         mock_gc.return_value.get_tasks.return_value = []
         result = server.get_tasks(inbox_only=True)
         assert "No tasks in inbox" in result
+        mock_gc.return_value.get_tasks.assert_called_once()
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["inbox_only"] is True
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_and_inbox_with_results(self, mock_gc):
@@ -206,6 +227,10 @@ class TestGetTasksEdgeCases:
         ]
         result = server.get_tasks(query="milk", inbox_only=True)
         assert "Found 1 inbox tasks matching 'milk':" in result
+        mock_gc.return_value.get_tasks.assert_called_once()
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["query"] == "milk"
+        assert call_kwargs["inbox_only"] is True
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_with_results(self, mock_gc):
@@ -215,6 +240,9 @@ class TestGetTasksEdgeCases:
         ]
         result = server.get_tasks(query="Report")
         assert "Found 2 tasks matching 'Report':" in result
+        mock_gc.return_value.get_tasks.assert_called_once()
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["query"] == "Report"
 
 
 class TestUpdateTaskEdgeCases:
@@ -228,6 +256,9 @@ class TestUpdateTaskEdgeCases:
         }
         result = server.update_task(task_id="t1")
         assert "no changes detected" in result
+        mock_gc.return_value.update_task.assert_called_once()
+        call_kwargs = mock_gc.return_value.update_task.call_args[1]
+        assert call_kwargs["task_id"] == "t1"
 
 
 class TestUpdateTasksEdgeCases:
@@ -242,6 +273,10 @@ class TestUpdateTasksEdgeCases:
         }
         result = server.update_tasks(task_ids="t1", flagged=True)
         assert "Failed to update task: not found" in result
+        mock_gc.return_value.update_tasks.assert_called_once()
+        call_kwargs = mock_gc.return_value.update_tasks.call_args[1]
+        assert call_kwargs["task_ids"] == "t1"
+        assert call_kwargs["flagged"] is True
 
 
 class TestGetTagsEdgeCases:
@@ -252,6 +287,7 @@ class TestGetTagsEdgeCases:
         mock_gc.return_value.get_tags.return_value = []
         result = server.get_tags()
         assert "Found 0 tags" in result
+        mock_gc.return_value.get_tags.assert_called_once()
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_mutually_exclusive_tag(self, mock_gc):
@@ -260,6 +296,7 @@ class TestGetTagsEdgeCases:
         ]
         result = server.get_tags()
         assert "Children Are Mutually Exclusive: Yes" in result
+        mock_gc.return_value.get_tags.assert_called_once()
 
 
 # ============================================================================
@@ -278,6 +315,7 @@ class TestDeleteTagsEdgeCases:
         }
         result = server.delete_tags(tag_ids="tag1")
         assert "Failed to delete tag" in result
+        mock_gc.return_value.delete_tags.assert_called_once_with("tag1")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_multiple_tags_all_failed(self, mock_gc):
@@ -287,6 +325,7 @@ class TestDeleteTagsEdgeCases:
         }
         result = server.delete_tags(tag_ids=["t1", "t2", "t3"])
         assert "Failed to delete all 3 tags" in result
+        mock_gc.return_value.delete_tags.assert_called_once_with(["t1", "t2", "t3"])
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
@@ -306,6 +345,7 @@ class TestDeleteTasksEdgeCases:
         }
         result = server.delete_tasks(task_ids="task1")
         assert "Failed to delete task" in result
+        mock_gc.return_value.delete_tasks.assert_called_once_with("task1")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
@@ -325,6 +365,7 @@ class TestDeleteProjectsEdgeCases:
         }
         result = server.delete_projects(project_ids="p1")
         assert "Successfully deleted 1 project" in result
+        mock_gc.return_value.delete_projects.assert_called_once_with("p1")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_multiple_projects_deleted(self, mock_gc):
@@ -334,6 +375,7 @@ class TestDeleteProjectsEdgeCases:
         }
         result = server.delete_projects(project_ids=["p1", "p2", "p3"])
         assert "Successfully deleted 3 projects" in result
+        mock_gc.return_value.delete_projects.assert_called_once_with(["p1", "p2", "p3"])
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_partial_failure(self, mock_gc):
@@ -343,6 +385,7 @@ class TestDeleteProjectsEdgeCases:
         }
         result = server.delete_projects(project_ids=["p1", "p2"])
         assert "Deleted 1 of 2 projects (1 failed)" in result
+        mock_gc.return_value.delete_projects.assert_called_once_with(["p1", "p2"])
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_project_id_total_count(self, mock_gc):
@@ -352,6 +395,7 @@ class TestDeleteProjectsEdgeCases:
         }
         result = server.delete_projects(project_ids="p1")
         assert "Deleted 0 of 1 projects (1 failed)" in result
+        mock_gc.return_value.delete_projects.assert_called_once_with("p1")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
@@ -368,6 +412,7 @@ class TestCreateFolderEdgeCases:
         mock_gc.return_value.create_folder.return_value = "folder-123"
         result = server.create_folder(name="New Folder")
         assert "at root level" in result
+        mock_gc.return_value.create_folder.assert_called_once_with("New Folder", None)
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
@@ -387,6 +432,7 @@ class TestUpdateFolderEdgeCases:
         }
         result = server.update_folder(folder_id="f1", name="Renamed")
         assert "Successfully updated folder f1: name" in result
+        mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="Renamed", status=None)
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_multiple_fields_updated(self, mock_gc):
@@ -396,6 +442,7 @@ class TestUpdateFolderEdgeCases:
         }
         result = server.update_folder(folder_id="f1", name="Renamed", status="dropped")
         assert "2 fields" in result
+        mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="Renamed", status="dropped")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_failure(self, mock_gc):
@@ -405,6 +452,7 @@ class TestUpdateFolderEdgeCases:
         }
         result = server.update_folder(folder_id="f1", name="X")
         assert "Error updating folder f1:" in result
+        mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="X", status=None)
 
 
 class TestReorderTaskEdgeCases:
@@ -415,12 +463,14 @@ class TestReorderTaskEdgeCases:
         mock_gc.return_value.reorder_task.return_value = True
         result = server.reorder_task(task_id="t1", before_task_id="t2")
         assert "before task t2" in result
+        mock_gc.return_value.reorder_task.assert_called_once_with("t1", "t2", None)
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_success_after(self, mock_gc):
         mock_gc.return_value.reorder_task.return_value = True
         result = server.reorder_task(task_id="t1", after_task_id="t3")
         assert "after task t3" in result
+        mock_gc.return_value.reorder_task.assert_called_once_with("t1", None, "t3")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_failure(self, mock_gc):
@@ -449,12 +499,14 @@ class TestReorderProjectEdgeCases:
         mock_gc.return_value.reorder_project.return_value = True
         result = server.reorder_project(project_id="p1", before_project_id="p2")
         assert "before project p2" in result
+        mock_gc.return_value.reorder_project.assert_called_once_with("p1", "p2", None)
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_success_after(self, mock_gc):
         mock_gc.return_value.reorder_project.return_value = True
         result = server.reorder_project(project_id="p1", after_project_id="p3")
         assert "after project p3" in result
+        mock_gc.return_value.reorder_project.assert_called_once_with("p1", None, "p3")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_failure(self, mock_gc):
