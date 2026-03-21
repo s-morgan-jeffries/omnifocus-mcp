@@ -1,5 +1,10 @@
 # OmniFocus MCP Server
 
+[![CI](https://github.com/s-morgan-jeffries/omnifocus-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/s-morgan-jeffries/omnifocus-mcp/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](https://github.com/s-morgan-jeffries/omnifocus-mcp)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A comprehensive, fast, reliable, and agent-friendly MCP server for OmniFocus on macOS.
 
 ## Why This Server
