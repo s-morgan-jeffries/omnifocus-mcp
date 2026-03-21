@@ -1176,6 +1176,61 @@ class TestFolderOperations:
         assert folder["status"] == "active"
         print(f"\n✓ Dropped and restored folder successfully")
 
+    def test_update_folder_rename(self, client, test_folder):
+        """Test renaming a folder via update_folder and verifying via get_folders."""
+        # Rename
+        result = client.update_folder(test_folder, name="test-renamed-folder")
+        assert result["success"] is True
+        assert "name" in result["updated_fields"]
+
+        # Read back and verify
+        folders = client.get_folders()
+        folder = next((f for f in folders if f['id'] == test_folder), None)
+        assert folder is not None
+        assert folder["name"] == "test-renamed-folder"
+        print(f"\n✓ Renamed folder and verified via read-back")
+
+    def test_move_project_between_folders(self, client):
+        """Test moving a project from one folder to another."""
+        import uuid
+        suffix = uuid.uuid4().hex[:8]
+        folder_a = f"test-folder-A-{suffix}"
+        folder_b = f"test-folder-B-{suffix}"
+
+        client.create_folder(folder_a)
+        client.create_folder(folder_b)
+
+        try:
+            # Create project in folder A
+            proj_id = client.create_project(f"test-move-project-{suffix}", folder_path=folder_a)
+
+            # Verify it's in folder A
+            projects = client.get_projects(project_id=proj_id)
+            assert len(projects) == 1
+            assert projects[0]["folderPath"] == folder_a
+
+            # Move to folder B
+            result = client.update_project(proj_id, folder_path=folder_b)
+            assert result["success"] is True
+            assert "folder_path" in result["updated_fields"]
+
+            # Verify it's now in folder B
+            projects = client.get_projects(project_id=proj_id)
+            assert len(projects) == 1
+            assert projects[0]["folderPath"] == folder_b
+            print(f"\n✓ Moved project from {folder_a} to {folder_b} and verified via read-back")
+        finally:
+            try:
+                client.delete_projects(proj_id)
+            except Exception:
+                pass
+            # Drop folders (can't delete folders via AppleScript)
+            for folder_name in [folder_a, folder_b]:
+                folders = client.get_folders()
+                f = next((f for f in folders if f['name'] == folder_name), None)
+                if f:
+                    client.update_folder(f['id'], status="dropped")
+
 
 class TestNoteOperations:
     """Test note operations integrated into CRUD.
