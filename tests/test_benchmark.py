@@ -128,99 +128,116 @@ class TestReadBenchmarks:
         """Warm up OmniFocus connection."""
         pass
 
+    # Performance thresholds: 5x documented baseline from PERFORMANCE_PROFILING.md
+    # Catches catastrophic regressions (batch mode revert = 20-30x) while
+    # tolerating natural variance. Tighten after increasing iterations (#446).
+
     def test_get_tasks_all(self, client):
         """get_tasks() with no filters — full table scan."""
         try:
-            _benchmark("get_tasks (all)", lambda: client.get_tasks(timeout=120))
+            br = _benchmark("get_tasks (all)", lambda: client.get_tasks(timeout=120))
+            assert br.mean < 11.0, f"get_tasks() regression: {br.mean:.2f}s (baseline: 2.20s, threshold: 11.0s)"
         except subprocess.TimeoutExpired:
             print("\n  get_tasks (all): TIMEOUT (>120s)")
             pytest.skip("get_tasks() timed out")
 
     def test_get_tasks_flagged(self, client):
         """get_tasks() with flagged_only=True — filter-first path."""
-        _benchmark("get_tasks (flagged)", lambda: client.get_tasks(flagged_only=True))
+        br = _benchmark("get_tasks (flagged)", lambda: client.get_tasks(flagged_only=True))
+        assert br.mean < 3.5, f"get_tasks(flagged) regression: {br.mean:.2f}s (baseline: 0.66s, threshold: 3.5s)"
 
     def test_get_tasks_query(self, client):
         """get_tasks() with query filter — AppleScript-side filtering."""
-        _benchmark("get_tasks (query='bench')", lambda: client.get_tasks(query="bench"))
+        br = _benchmark("get_tasks (query='bench')", lambda: client.get_tasks(query="bench"))
+        assert br.mean < 5.5, f"get_tasks(query) regression: {br.mean:.2f}s (baseline: 1.07s, threshold: 5.5s)"
 
     def test_get_tasks_overdue(self, client):
         """get_tasks() with overdue filter."""
-        _benchmark("get_tasks (overdue)", lambda: client.get_tasks(overdue=True))
+        br = _benchmark("get_tasks (overdue)", lambda: client.get_tasks(overdue=True))
+        assert br.mean < 3.5, f"get_tasks(overdue) regression: {br.mean:.2f}s (baseline: 0.69s, threshold: 3.5s)"
 
     def test_get_tasks_inbox(self, client):
         """get_tasks() with inbox_only filter."""
-        _benchmark("get_tasks (inbox)", lambda: client.get_tasks(inbox_only=True))
+        br = _benchmark("get_tasks (inbox)", lambda: client.get_tasks(inbox_only=True))
+        assert br.mean < 3.5, f"get_tasks(inbox) regression: {br.mean:.2f}s (baseline: 0.64s, threshold: 3.5s)"
 
     def test_get_tasks_by_project(self, client):
         """get_tasks() filtered to a single project."""
-        # Get first project to use as filter
         projects = client.get_projects()
         if not projects:
             pytest.skip("No projects in test database")
         project_id = projects[0]["id"]
-        _benchmark(
+        br = _benchmark(
             "get_tasks (project_id)",
             lambda: client.get_tasks(project_id=project_id),
         )
+        assert br.mean < 3.5, f"get_tasks(project_id) regression: {br.mean:.2f}s (baseline: 0.63s, threshold: 3.5s)"
 
     def test_get_tasks_available(self, client):
         """get_tasks() with available_only filter."""
         try:
-            _benchmark(
+            br = _benchmark(
                 "get_tasks (available)",
                 lambda: client.get_tasks(available_only=True, timeout=120),
             )
+            assert br.mean < 12.0, f"get_tasks(available) regression: {br.mean:.2f}s (baseline: 2.33s, threshold: 12.0s)"
         except subprocess.TimeoutExpired:
             print("\n  get_tasks (available): TIMEOUT (>120s)")
             pytest.skip("get_tasks(available_only) timed out")
 
     def test_get_tasks_next(self, client):
         """get_tasks() with next_only filter."""
-        _benchmark("get_tasks (next)", lambda: client.get_tasks(next_only=True))
+        br = _benchmark("get_tasks (next)", lambda: client.get_tasks(next_only=True))
+        assert br.mean < 3.5, f"get_tasks(next) regression: {br.mean:.2f}s (baseline: 0.66s, threshold: 3.5s)"
 
     def test_get_tasks_tag_filter(self, client):
         """get_tasks() with tag_filter — tag-side pre-filter path (#249)."""
-        _benchmark(
+        br = _benchmark(
             "get_tasks (tag_filter='bench-work')",
             lambda: client.get_tasks(tag_filter=["bench-work"]),
         )
+        assert br.mean < 4.0, f"get_tasks(tag_filter) regression: {br.mean:.2f}s (baseline: 0.81s, threshold: 4.0s)"
 
     def test_get_tasks_tag_filter_and(self, client):
         """get_tasks() with tag_filter AND mode — intersection of two tags."""
-        _benchmark(
+        br = _benchmark(
             "get_tasks (tag_filter AND)",
             lambda: client.get_tasks(tag_filter=["bench-work", "bench-urgent"]),
         )
+        assert br.mean < 4.5, f"get_tasks(tag_filter AND) regression: {br.mean:.2f}s (baseline: 0.84s, threshold: 4.5s)"
 
     def test_get_projects_all(self, client):
         """get_projects() baseline."""
-        _benchmark("get_projects (all)", lambda: client.get_projects())
+        br = _benchmark("get_projects (all)", lambda: client.get_projects())
+        assert br.mean < 3.0, f"get_projects() regression: {br.mean:.2f}s (baseline: 0.57s, threshold: 3.0s)"
 
     def test_get_projects_task_health(self, client):
         """get_projects() with include_task_health — single batch call."""
-        _benchmark(
+        br = _benchmark(
             "get_projects (task_health)",
             lambda: client.get_projects(include_task_health=True),
         )
+        assert br.mean < 3.5, f"get_projects(task_health) regression: {br.mean:.2f}s (baseline: 0.65s, threshold: 3.5s)"
 
     def test_get_projects_last_activity(self, client):
         """get_projects() with include_last_activity — expensive per-project calc."""
-        _benchmark(
+        br = _benchmark(
             "get_projects (last_activity)",
             lambda: client.get_projects(include_last_activity=True),
         )
+        assert br.mean < 3.0, f"get_projects(last_activity) regression: {br.mean:.2f}s (baseline: 0.60s, threshold: 3.0s)"
 
     def test_get_projects_full_notes(self, client):
         """get_projects() with include_full_notes."""
-        _benchmark(
+        br = _benchmark(
             "get_projects (full_notes)",
             lambda: client.get_projects(include_full_notes=True),
         )
+        assert br.mean < 3.0, f"get_projects(full_notes) regression: {br.mean:.2f}s (baseline: 0.57s, threshold: 3.0s)"
 
     def test_get_projects_all_options(self, client):
         """get_projects() with all optional data enabled."""
-        _benchmark(
+        br = _benchmark(
             "get_projects (all options)",
             lambda: client.get_projects(
                 include_task_health=True,
@@ -228,18 +245,24 @@ class TestReadBenchmarks:
                 include_full_notes=True,
             ),
         )
+        assert br.mean < 3.5, f"get_projects(all options) regression: {br.mean:.2f}s (baseline: 0.70s, threshold: 3.5s)"
 
     def test_get_folders(self, client):
         """get_folders() baseline."""
-        _benchmark("get_folders", lambda: client.get_folders())
+        br = _benchmark("get_folders", lambda: client.get_folders())
+        # Folders use recursive traversal (not batch mode), scales with folder count.
+        # Baseline 0.62s was with 4 folders; test DB may have 25+.
+        assert br.mean < 10.0, f"get_folders() regression: {br.mean:.2f}s (baseline: 0.62s@4folders, threshold: 10.0s)"
 
     def test_get_tags(self, client):
         """get_tags() baseline."""
-        _benchmark("get_tags", lambda: client.get_tags())
+        br = _benchmark("get_tags", lambda: client.get_tags())
+        assert br.mean < 10.0, f"get_tags() regression: {br.mean:.2f}s (baseline: 2.00s, threshold: 10.0s)"
 
     def test_get_perspectives(self, client):
         """get_perspectives() baseline."""
-        _benchmark("get_perspectives", lambda: client.get_perspectives())
+        br = _benchmark("get_perspectives", lambda: client.get_perspectives())
+        assert br.mean < 5.0, f"get_perspectives() regression: {br.mean:.2f}s (baseline: 0.96s, threshold: 5.0s)"
 
 
 class TestWriteBenchmarks:
