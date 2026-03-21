@@ -250,9 +250,8 @@ class TestReadBenchmarks:
     def test_get_folders(self, client):
         """get_folders() baseline."""
         br = _benchmark("get_folders", lambda: client.get_folders())
-        # Folders use recursive traversal (not batch mode), scales with folder count.
-        # Baseline 0.62s was with 4 folders; test DB may have 25+.
-        assert br.mean < 10.0, f"get_folders() regression: {br.mean:.2f}s (baseline: 0.62s@4folders, threshold: 10.0s)"
+        # Batch mode since v0.10.5 — scales well with folder count.
+        assert br.mean < 3.5, f"get_folders() regression: {br.mean:.2f}s (baseline: 0.26s@28folders, threshold: 3.5s)"
 
     def test_get_tags(self, client):
         """get_tags() baseline."""

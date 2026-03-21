@@ -4605,56 +4605,67 @@ class OmniFocusConnector:
     def get_folders(self) -> list[dict]:
         """Get all folders from OmniFocus.
 
+        Uses batch mode ('a reference to') for O(P) property reads,
+        matching the pattern used by get_tasks() and get_projects().
+
         Returns:
-            List of folder dictionaries with id, name, and path
+            List of folder dictionaries with id, name, path, and status
         """
-        script = '''
-        -- Helper to build folder path
-        on getFolderPath(f)
-            tell application "OmniFocus"
-                set pathParts to {name of f}
-                set currentFolder to f
-                repeat
-                    try
-                        set parentFolder to container of currentFolder
-                        if class of parentFolder is folder then
-                            set pathParts to {name of parentFolder} & pathParts
-                            set currentFolder to parentFolder
-                        else
-                            exit repeat
-                        end if
-                    on error
-                        exit repeat
-                    end try
-                end repeat
-
-                set AppleScript's text item delimiters to " > "
-                set folderPath to pathParts as text
-                set AppleScript's text item delimiters to ""
-                return folderPath
-            end tell
-        end getFolderPath
-
-        -- Process folders recursively
-        on processFolders(foldersToProcess, folderResults)
-            tell application "OmniFocus"
-                repeat with f in foldersToProcess
-                    set folderPath to my getFolderPath(f)
-                    set folderHidden to hidden of f
-                    set folderInfo to "{" & quote & "id" & quote & ":" & quote & (id of f) & quote & "," & quote & "name" & quote & ":" & quote & (name of f) & quote & "," & quote & "path" & quote & ":" & quote & folderPath & quote & "," & quote & "hidden" & quote & ":" & (folderHidden as text) & "}"
-                    set end of folderResults to folderInfo
-                    my processFolders(folders of f, folderResults)
-                end repeat
-                return folderResults
-            end tell
-        end processFolders
+        script = f'''
+        {APPLESCRIPT_JSON_HELPERS}
 
         tell application "OmniFocus"
             tell front document
-                set folderList to my processFolders(folders, {})
+                set ff to a reference to flattened folders
+                set folderCount to count of ff
+                if folderCount is 0 then return "[]"
 
-                set AppleScript's text item delimiters to ","
-                return "[" & (folderList as text) & "]"
+                -- Batch read all properties (one Apple Event each)
+                set folderIds to id of ff
+                set folderNames to name of ff
+                set folderHiddens to hidden of ff
+                set folderContainerIds to id of (container of ff)
+                set folderContainerClasses to class of (container of ff)
+
+                -- Build folder paths locally (same algorithm as get_projects)
+                set folderPaths to {{}}
+                repeat with i from 1 to folderCount
+                    if item i of folderContainerClasses is folder then
+                        set parentId to item i of folderContainerIds
+                        set parentPath to ""
+                        repeat with j from 1 to (i - 1)
+                            if item j of folderIds is parentId then
+                                set parentPath to item j of folderPaths
+                                exit repeat
+                            end if
+                        end repeat
+                        if parentPath is "" then
+                            set end of folderPaths to item i of folderNames
+                        else
+                            set end of folderPaths to parentPath & " > " & (item i of folderNames)
+                        end if
+                    else
+                        set end of folderPaths to item i of folderNames
+                    end if
+                end repeat
+
+                -- Build JSON output
+                set output to ""
+                repeat with i from 1 to folderCount
+                    set folderHidden to item i of folderHiddens
+                    set jsonLine to "{{\\"id\\": \\"" & (item i of folderIds) & "\\", " & ¬
+                        "\\"name\\": \\"" & my escapeJSON(item i of folderNames) & "\\", " & ¬
+                        "\\"path\\": \\"" & my escapeJSON(item i of folderPaths) & "\\", " & ¬
+                        "\\"hidden\\": " & (folderHidden as text) & "}}"
+
+                    if output is "" then
+                        set output to jsonLine
+                    else
+                        set output to output & "," & jsonLine
+                    end if
+                end repeat
+
+                return "[" & output & "]"
             end tell
         end tell
         '''
