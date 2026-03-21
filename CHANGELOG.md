@@ -5,6 +5,49 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.5] - 2026-03-21
+
+### Added
+
+- **E2E test coverage for 14 previously uncovered MCP functions** (#435, #450)
+  - get_tasks (4 filter variants), get_projects, create_project, delete_projects
+  - Tag lifecycle (create/update/delete), folder lifecycle, perspectives, focus
+
+- **Unicode/emoji test fixture across all layers** (#434, #456)
+  - 19 unit tests + 4 integration tests verifying round-trip for accented chars, emoji, CJK, Cyrillic
+
+- **Performance baseline assertions in benchmarks** (#447, #453)
+  - 19 read benchmarks now assert against 5x documented baselines — catches catastrophic regressions
+
+- **Batch mode invariant tests** (#444, #452)
+  - Verifies `a reference to` pattern exists in get_tasks, get_projects, and get_folders
+
+- **8 new blind eval scenarios** (#440-#443, #463)
+  - Under-covered tools (reorder, delete_tags, perspectives, folders), multi-step triage, error recovery, tags-format regression
+
+- **Full blind eval run on Claude + 4 open-weight models** (#464, #465)
+  - DeepSeek Chat matched Claude at 99.2%; Llama improved +6.1pp to 93.1% (0 FAILs)
+  - All 9 new scenarios passed universally across all models
+
+### Changed
+
+- **get_folders converted to batch mode — 15x speedup** (#454, #462)
+  - Replaced recursive per-folder AppleScript traversal with `a reference to flattened folders`
+  - 28 folders: 4.0s → 0.26s
+
+- **Benchmark iterations increased from 3 to 5** for read operations (#446, #463)
+
+### Fixed
+
+- **Hollow coverage tests strengthened** (#448, #449)
+  - Added `assert_called_once_with` to 30 tests that previously only checked output strings
+
+- **reviewInterval commented-out assertion replaced with pytest.xfail** (#437, #457)
+
+- **AppleScript tell-block balance checker tightened** from tolerance 10 to 5 (#433, #458)
+
+- **Folder rename and cross-folder project move integration tests** (#439, #461)
+
 ## [0.10.4] - 2026-03-20
 
 ### Added
