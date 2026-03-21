@@ -1381,4 +1381,180 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+    # =========================================================================
+    # #440: Under-covered tools
+    # =========================================================================
+    {
+        "id": 56,
+        "category": "Task Hierarchy",
+        "name": "Reorder Task Before Another",
+        "prompt": (
+            "In my 'Website Redesign' project, move the 'QA testing' task (task-qa-001) "
+            "before the 'Frontend build' task (task-fe-001)."
+        ),
+        "expected": {
+            "tools": ["reorder_task"],
+            "key_params": {
+                "reorder_task": {
+                    "task_id": "task-qa-001",
+                    "before_task_id": "task-fe-001",
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: reorder_task(task_id='task-qa-001', before_task_id='task-fe-001'). "
+            "PARTIAL: Uses after_task_id instead of before_task_id (wrong position). "
+            "FAIL: Uses update_task to move, or says task ordering can't be changed."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 57,
+        "category": "Tag Management",
+        "name": "Delete Tag vs Drop Tag",
+        "prompt": (
+            "I don't need the 'Errands' tag (tag-errands-001) anymore. "
+            "I want it completely gone, not just hidden."
+        ),
+        "expected": {
+            "tools": ["delete_tags"],
+            "key_params": {
+                "delete_tags": {"tag_ids": "tag-errands-001"},
+            },
+        },
+        "scoring_notes": (
+            "PASS: delete_tags(tag_ids='tag-errands-001') — permanent deletion. "
+            "PARTIAL: Uses update_tag(status='dropped') — hides but doesn't delete. "
+            "FAIL: Says tags can't be deleted, or uses wrong tool."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 58,
+        "category": "Navigation",
+        "name": "List Custom Perspectives",
+        "prompt": "What custom perspectives do I have set up?",
+        "expected": {
+            "tools": ["get_perspectives"],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: get_perspectives() — returns list of perspectives. "
+            "FAIL: Tries get_tasks or get_projects, or says perspectives aren't accessible."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 59,
+        "category": "Folder Management",
+        "name": "Create Nested Folder",
+        "prompt": "Create a 'Q2' folder inside my 'Work' folder.",
+        "expected": {
+            "tools": ["create_folder"],
+            "key_params": {
+                "create_folder": {"name": "Q2", "parent_path": "Work"},
+            },
+        },
+        "scoring_notes": (
+            "PASS: create_folder(name='Q2', parent_path='Work'). "
+            "PARTIAL: Creates folder but without parent_path. "
+            "FAIL: Uses wrong tool or says nested folders aren't supported."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 60,
+        "category": "Navigation",
+        "name": "Switch to Perspective",
+        "prompt": "Switch to my 'Weekly Review' perspective.",
+        "expected": {
+            "tools": ["switch_perspective"],
+            "key_params": {
+                "switch_perspective": {"perspective_name": "Weekly Review"},
+            },
+        },
+        "scoring_notes": (
+            "PASS: switch_perspective(perspective_name='Weekly Review'). "
+            "FAIL: Uses get_perspectives instead, or says perspectives can't be switched."
+        ),
+        "safety_critical": False,
+    },
+    # =========================================================================
+    # #441: Multi-step adaptive scenario
+    # =========================================================================
+    {
+        "id": 61,
+        "category": "Multi-Step Workflows",
+        "name": "Triage Overdue Tasks",
+        "prompt": (
+            "Show me all my overdue tasks. Then flag the 3 most urgent ones "
+            "so I can focus on them today."
+        ),
+        "expected": {
+            "tools": ["get_tasks", "update_task"],
+            "key_params": {
+                "get_tasks": {"overdue": True},
+            },
+        },
+        "scoring_notes": (
+            "PASS: First calls get_tasks(overdue=True) to retrieve overdue tasks, "
+            "then explains it would review the results and call update_task(flagged=True) "
+            "on the 3 most urgent. Shows understanding of the two-step flow. "
+            "PARTIAL: Calls get_tasks correctly but tries to flag all overdue tasks "
+            "instead of selecting 3. "
+            "FAIL: Doesn't use overdue filter, or tries to do everything in one call."
+        ),
+        "safety_critical": False,
+    },
+    # =========================================================================
+    # #442: Error recovery scenario
+    # =========================================================================
+    {
+        "id": 62,
+        "category": "Error Handling",
+        "name": "Query Returns No Results",
+        "prompt": (
+            "Show me all tasks in the 'Quantum Computing Research' project. "
+            "I'm not sure if that project exists."
+        ),
+        "expected": {
+            "tools": ["get_tasks"],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Calls get_tasks with a project filter or query, and acknowledges "
+            "that the project might not exist — explains what an empty result would mean. "
+            "PARTIAL: Makes the call but doesn't mention the possibility of no results. "
+            "FAIL: Refuses to try because the project might not exist."
+        ),
+        "safety_critical": False,
+    },
+    # =========================================================================
+    # #443: Llama tags-format regression
+    # =========================================================================
+    {
+        "id": 63,
+        "category": "Parameter Usage",
+        "name": "Create Task with Multiple Tags (Format Test)",
+        "prompt": (
+            "Create a task called 'Buy birthday gift' in my inbox with "
+            "tags Computer and Errands."
+        ),
+        "expected": {
+            "tools": ["create_task"],
+            "key_params": {
+                "create_task": {
+                    "task_name": "Buy birthday gift",
+                    "tags": ["Computer", "Errands"],
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: create_task(task_name='Buy birthday gift', tags=['Computer', 'Errands']) "
+            "with tags as a native list. "
+            "PARTIAL: Correct tool but tags in wrong format (JSON string, single tag). "
+            "FAIL: Uses update_task to add tags separately, or wrong tool."
+        ),
+        "safety_critical": False,
+    },
 ]
