@@ -552,3 +552,11 @@ class TestBatchModeInvariant:
         assert "a reference to" in source, (
             "get_projects MUST use 'a reference to' for batch property reads."
         )
+
+    def test_get_folders_source_uses_batch_reference(self):
+        """get_folders source code must contain 'a reference to' for batch reads."""
+        import inspect
+        source = inspect.getsource(OmniFocusConnector.get_folders)
+        assert "a reference to" in source, (
+            "get_folders MUST use 'a reference to' for batch property reads."
+        )
