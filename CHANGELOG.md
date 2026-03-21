@@ -5,6 +5,36 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.4] - 2026-03-20
+
+### Added
+
+- **Tags, flagged, estimated_minutes, recurrence on projects** (#417, #418)
+  - `update_project` gains 7 new parameters: `tags`, `add_tags`, `remove_tags`, `flagged`, `estimated_minutes`, `recurrence`, `repetition_method`
+  - `update_projects` (batch) gains 4 new parameters: `flagged`, `estimated_minutes`, `add_tags`, `remove_tags`
+  - Projects are tasks in OmniFocus's data model — same AppleScript patterns apply
+
+- **Tag reparenting via `update_tag(parent_tag=...)`** (#415, #416)
+  - Move tags between parents: `update_tag(tag_id, parent_tag="People")`
+  - Move to top level: `update_tag(tag_id, parent_tag="")`
+  - Preserves all task associations
+
+- **GitHub project polish** (#409, #419-#426)
+  - MIT license (`LICENSE`)
+  - PR template (`.github/PULL_REQUEST_TEMPLATE.md`)
+  - SECURITY.md responsible disclosure policy
+  - Dependabot for monthly dependency updates and security alerts
+  - README badges (CI, coverage, Python version, license)
+  - Required status checks on branch protection (CI must pass to merge)
+
+### Fixed
+
+- **Tag full replacement broken on all tasks** (#413, #414)
+  - `update_task(tags=["X"])` was silently failing with -1700 on ALL tasks (not just dropped)
+  - Root cause: AppleScript `set tags of theTask to {list}` can't coerce constructed tag lists
+  - Rewrote to remove-all + add-each pattern (same as working `add_tags`/`remove_tags`)
+  - Removed misleading "dropped task" error message from #404
+
 ## [0.10.3] - 2026-03-20
 
 ### Added

@@ -1,7 +1,7 @@
 # OmniFocus MCP Server
 
 [![CI](https://github.com/s-morgan-jeffries/omnifocus-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/s-morgan-jeffries/omnifocus-mcp/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](https://github.com/s-morgan-jeffries/omnifocus-mcp)
+[![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)](https://github.com/s-morgan-jeffries/omnifocus-mcp)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -86,7 +86,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 ```bash
 git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
-git checkout v0.10.3  # Latest stable release
+git checkout v0.10.4  # Latest stable release
 
 # Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
