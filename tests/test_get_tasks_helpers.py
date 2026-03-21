@@ -506,3 +506,49 @@ class TestPostProcessTasks:
         result = client._post_process_tasks(tasks, **self._default_params())
         assert len(result) == 1
         assert result[0]['id'] == 't1'
+
+
+# ── Batch mode invariant ──────────────────────────────────────────────────
+
+
+class TestBatchModeInvariant:
+    """Verify 'a reference to' batch mode pattern exists in generated AppleScript.
+
+    This is the key performance optimization: batch property reads use
+    O(P) Apple Events instead of O(N*P). Removing this would cause a
+    20-30x regression. See docs/reference/PERFORMANCE_PROFILING.md.
+    """
+
+    def test_get_tasks_script_uses_batch_reference(self, client):
+        """get_tasks AppleScript must use 'a reference to' for batch reads."""
+        filter_checks = {
+            'completion_check_batch': '',
+            'flagged_check_batch': '',
+            'dropped_check_batch': '',
+            'blocked_check_batch': '',
+            'next_check_batch': '',
+            'overdue_check_batch': '',
+            'query_check_batch': '',
+            'available_check_batch': '',
+            'due_relative_check_batch': '',
+            'defer_relative_check_batch': '',
+            'estimate_check_batch': '',
+            'tag_check_batch': '',
+        }
+        script = client._build_batch_mode_script(
+            task_source="flattened tasks",
+            on_hold_tags_decl="",
+            filter_checks=filter_checks,
+        )
+        assert "a reference to" in script, (
+            "Batch mode script MUST use 'a reference to' for O(P) property reads. "
+            "Removing this causes a 20-30x performance regression."
+        )
+
+    def test_get_projects_source_uses_batch_reference(self):
+        """get_projects source code must contain 'a reference to' for batch reads."""
+        import inspect
+        source = inspect.getsource(OmniFocusConnector.get_projects)
+        assert "a reference to" in source, (
+            "get_projects MUST use 'a reference to' for batch property reads."
+        )
