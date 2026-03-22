@@ -83,13 +83,13 @@ class TestUpdateProjectsServerRedesign:
             result = update_projects(
                 project_ids=["proj-001", "proj-002"],
                 status="active",
-                sequential="true",
+                sequential=True,
                 review_interval_weeks=4
             )
 
             call_kwargs = mock_client.update_projects.call_args[1]
             assert call_kwargs["status"] == "active"
-            assert call_kwargs["sequential"] is True  # Converted from string
+            assert call_kwargs["sequential"] is True
             assert call_kwargs["review_interval_weeks"] == 4
 
             assert "2" in result
@@ -151,20 +151,15 @@ class TestUpdateProjectsServerRedesign:
 
             update_projects = server.update_projects
 
-            # Test with "true"
-            result = update_projects(project_ids="proj-001", sequential="true")
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["sequential"] is True
-
-            # Test with "false"
-            result = update_projects(project_ids="proj-001", sequential="false")
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["sequential"] is False
-
-            # Test with bool (from tests)
+            # Test with True
             result = update_projects(project_ids="proj-001", sequential=True)
             call_kwargs = mock_client.update_projects.call_args[1]
             assert call_kwargs["sequential"] is True
+
+            # Test with False
+            result = update_projects(project_ids="proj-001", sequential=False)
+            call_kwargs = mock_client.update_projects.call_args[1]
+            assert call_kwargs["sequential"] is False
 
     def test_update_projects_returns_human_readable_response(self):
         """Server: update_projects() MCP tool returns human-readable response."""
