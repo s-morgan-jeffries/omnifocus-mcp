@@ -228,7 +228,7 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 - `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
 - `estimated_minutes: int` (optional) — Estimated time in minutes
 - `completed: bool` (optional) — Mark task complete/incomplete. Uses `mark complete` internally, which correctly handles recurring tasks by spawning the next occurrence.
-- `status: str` (optional) — Task status - "active" or "dropped". To drop an entire recurring series (not just the current occurrence), pass both recurrence="" and status="dropped" in the same call.
+- `status: str` (optional) — Task status - "active" or "dropped". WARNING: Dropping is one-way via the API — dropped tasks cannot be undropped through automation, only through the OmniFocus UI. To drop an entire recurring series, pass both recurrence="" and status="dropped".
 - `recurrence: str` (optional) — iCalendar RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR"), or empty string to remove recurrence. Omitting means no change.
 - `repetition_method: str` (optional) — How the next occurrence is calculated. Values: "fixed" (next occurrence on the original schedule regardless of when completed), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Only meaningful when recurrence is set.
 - `sequential: bool` (optional) — If True, subtasks of this task (action group) must be completed in order. If False, subtasks are parallel (all available). Omitting means no change.
@@ -297,8 +297,8 @@ Use this to reorder tasks within a project or within a parent task's subtasks. I
 
 **Parameters:**
 - `task_id: str` (required) — The ID of the task to move
-- `before_task_id: str` (optional) — Move the task before this task (provide either this OR after_task_id)
-- `after_task_id: str` (optional) — Move the task after this task (provide either this OR before_task_id)
+- `before_task_id: str` (optional) — Place task immediately BEFORE this reference task. Example: reorder_task("C", before_task_id="A") → [..., C, A, ...]
+- `after_task_id: str` (optional) — Place task immediately AFTER this reference task. Example: reorder_task("C", after_task_id="A") → [..., A, C, ...]
 
 **Returns:** Success message confirming the task was reordered
 
@@ -312,8 +312,8 @@ Move a project before or after another project to change its position within a f
 
 **Parameters:**
 - `project_id: str` (required) — The ID of the project to move
-- `before_project_id: str` (optional) — Move the project before this project (provide either this OR after_project_id)
-- `after_project_id: str` (optional) — Move the project after this project (provide either this OR before_project_id)
+- `before_project_id: str` (optional) — Place project immediately BEFORE this reference project. Example: reorder_project("C", before_project_id="A") → [..., C, A, ...]
+- `after_project_id: str` (optional) — Place project immediately AFTER this reference project. Example: reorder_project("C", after_project_id="A") → [..., A, C, ...]
 
 **Returns:** Success message confirming the project was reordered
 
@@ -364,7 +364,7 @@ Tags (formerly 'contexts') represent contexts for doing work — location (Offic
 
 **Parameters:** None
 
-**Returns:** Each tag includes: id, name, status (values: "active", "on hold", "dropped"), parentTagId (empty string if top-level, parent tag's ID if nested), childrenAreMutuallyExclusive (boolean — when true, child tags are mutually exclusive: assigning one child tag to a task silently removes any other child from the same group).
+**Returns:** Each tag includes: id, name, status (values: "active", "on hold", "dropped"), parentTagId (empty string if top-level, parent tag's ID if nested — note: create_tag and update_tag accept parent_tag by NAME, not this ID), childrenAreMutuallyExclusive (boolean — when true, child tags are mutually exclusive: assigning one child tag to a task silently removes any other child from the same group).
 
 ---
 
@@ -376,7 +376,7 @@ Tags can be nested (e.g., create "High" under parent "Energy" to get "Energy : H
 
 **Parameters:**
 - `name: str` (required) — The name of the tag to create
-- `parent_tag: str` (optional) — Parent tag name for nesting. Parent tag must already exist.
+- `parent_tag: str` (optional) — Parent tag by NAME (not ID) for nesting. Parent tag must already exist.
 - `children_are_mutually_exclusive: bool` (default: False) — If True, child tags of this tag will be mutually exclusive — assigning one child tag to a task silently removes any other child from the same group.
 
 **Returns:** Success message with tag ID and name
@@ -394,7 +394,7 @@ Tags can be renamed, reparented, or have their status changed. Tags have three s
 - `name: str` (optional) — New tag name
 - `status: str` (optional) — Tag status. Values: "active", "on_hold", "dropped". Active = tasks with this tag are actionable. On hold = tag is paused, **tasks with this tag become unavailable** (excluded from Available perspective) — use for temporary pauses. Dropped = tag is retired/archived, **tasks remain available** but the tag is hidden from most views — use for permanent retirement.
 - `children_are_mutually_exclusive: bool` (optional) — If True, child tags of this tag will be mutually exclusive. If False, children are independent (default behavior).
-- `parent_tag: str` (optional) — Move this tag under a different parent tag (by name), or empty string to move to top level. Preserves all task associations.
+- `parent_tag: str` (optional) — Move this tag under a different parent tag by NAME (not ID), or empty string to move to top level. Preserves all task associations. Note: get_tags() returns parentTagId by ID, but this parameter accepts the tag's name.
 
 **Returns:** Success message with updated fields, or error message
 
