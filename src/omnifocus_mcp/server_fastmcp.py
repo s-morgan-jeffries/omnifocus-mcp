@@ -816,9 +816,10 @@ def update_task(
         estimated_minutes: Estimated time in minutes (optional)
         completed: Mark task complete/incomplete (optional). Uses `mark complete` internally,
             which correctly handles recurring tasks by spawning the next occurrence.
-        status: Task status - "active" or "dropped" (optional). To drop an entire
-            recurring series (not just the current occurrence), pass both
-            recurrence="" and status="dropped" in the same call.
+        status: Task status — "active" or "dropped" (optional). WARNING: Dropping is
+            one-way via the API — dropped tasks cannot be undropped through automation,
+            only through the OmniFocus UI. To drop an entire recurring series (not just
+            the current occurrence), pass both recurrence="" and status="dropped".
         recurrence: iCalendar RRULE string (e.g., "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR"),
             or empty string to remove recurrence. Omitting means no change. (optional)
         repetition_method: How the next occurrence is calculated (optional). Only meaningful
@@ -1001,7 +1002,9 @@ def get_tags() -> str:
     via get_tasks(tag_filter=[...]).
 
     Returns:
-        Each tag includes: id, name, status, childrenAreMutuallyExclusive.
+        Each tag includes: id, name, status, parentTagId, childrenAreMutuallyExclusive.
+        `parentTagId` is the parent tag's ID (empty string if top-level). Note: create_tag()
+        and update_tag() accept parent_tag by NAME, not by this ID.
         `childrenAreMutuallyExclusive` (boolean) — when true, child tags are mutually
         exclusive: assigning one child tag to a task silently removes any other child
         from the same group. Read via OmniAutomation (defaults to false if unavailable).
@@ -1038,7 +1041,7 @@ def create_tag(
 
     Args:
         name: The name of the tag to create
-        parent_tag: Optional parent tag name for nesting (e.g., "Energy" to create
+        parent_tag: Optional parent tag by NAME (not ID) for nesting (e.g., "Energy" to create
             "Energy : High"). Parent tag must already exist.
         children_are_mutually_exclusive: If True, child tags of this tag will be
             mutually exclusive — assigning one child tag to a task silently removes
@@ -1092,8 +1095,9 @@ def update_tag(
         children_are_mutually_exclusive: If True, child tags of this tag will be
             mutually exclusive — assigning one child tag to a task silently removes
             any other child from the same group. Set via OmniAutomation. (optional)
-        parent_tag: Move this tag under a different parent tag (by name), or empty
-            string to move to top level. Preserves all task associations. (optional)
+        parent_tag: Move this tag under a different parent tag by NAME (not ID), or empty
+            string to move to top level. Preserves all task associations. Note: get_tags()
+            returns parentTagId by ID, but this parameter accepts the tag's name. (optional)
 
     Returns:
         Success message with updated fields, or error message
@@ -1349,8 +1353,10 @@ def reorder_task(task_id: str, before_task_id: Optional[str] = None, after_task_
 
     Args:
         task_id: The ID of the task to move
-        before_task_id: Move the task before this task (provide either this OR after_task_id)
-        after_task_id: Move the task after this task (provide either this OR before_task_id)
+        before_task_id: Place task immediately BEFORE this reference task (provide either this OR after_task_id).
+            Example: reorder_task("C", before_task_id="A") results in [..., C, A, ...]
+        after_task_id: Place task immediately AFTER this reference task (provide either this OR before_task_id).
+            Example: reorder_task("C", after_task_id="A") results in [..., A, C, ...]
 
     Returns:
         Success message confirming the task was reordered
@@ -1383,8 +1389,10 @@ def reorder_project(project_id: str, before_project_id: Optional[str] = None, af
 
     Args:
         project_id: The ID of the project to move
-        before_project_id: Move the project before this project (provide either this OR after_project_id)
-        after_project_id: Move the project after this project (provide either this OR before_project_id)
+        before_project_id: Place project immediately BEFORE this reference project (provide either this OR after_project_id).
+            Example: reorder_project("C", before_project_id="A") results in [..., C, A, ...]
+        after_project_id: Place project immediately AFTER this reference project (provide either this OR before_project_id).
+            Example: reorder_project("C", after_project_id="A") results in [..., A, C, ...]
 
     Returns:
         Success message confirming the project was reordered
