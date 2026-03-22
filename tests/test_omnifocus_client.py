@@ -1033,7 +1033,7 @@ class TestUpdateTask:
         """Test updating task name (LEGACY TEST - updated for new API return format)."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "true"
-            result = client.update_task("task-001", name="Updated Task Name")
+            result = client.update_task("task-001", task_name="Updated Task Name")
             # NEW API: Returns dict instead of bool
             assert result["success"] is True
             assert result["task_id"] == "task-001"
@@ -1127,7 +1127,7 @@ class TestUpdateTask:
             mock_run.return_value = "true"
             result = client.update_task(
                 "task-001",
-                name="New Name",
+                task_name="New Name",
                 note="New note",
                 due_date="2025-12-25T17:00:00",
                 flagged=True
@@ -1150,7 +1150,7 @@ class TestUpdateTask:
     def test_update_task_empty_id(self, client):
         """Test updating task with empty ID raises error."""
         with pytest.raises(ValueError) as exc_info:
-            client.update_task("", name="New Name")
+            client.update_task("", task_name="New Name")
         assert "task_id is required" in str(exc_info.value)
 
     def test_update_task_failure(self, client):
@@ -1158,7 +1158,7 @@ class TestUpdateTask:
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "false: Task not found"
             # NEW API: Returns error dict instead of raising exception
-            result = client.update_task("invalid-id", name="New Name")
+            result = client.update_task("invalid-id", task_name="New Name")
             assert result["success"] is False
             assert "error" in result
 
@@ -1167,7 +1167,7 @@ class TestUpdateTask:
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(1, 'osascript', stderr="error")
             # NEW API: Returns error dict instead of raising exception
-            result = client.update_task("task-001", name="New Name")
+            result = client.update_task("task-001", task_name="New Name")
             assert result["success"] is False
             assert "error" in result
 

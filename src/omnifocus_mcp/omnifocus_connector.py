@@ -3224,7 +3224,6 @@ class OmniFocusConnector:
         *,
         task_id: str,
         task_name: Optional[str],
-        name: Optional[str],
         project_id: Optional[str],
         parent_task_id: Optional[str],
         tags: Optional[list[str]],
@@ -3245,15 +3244,10 @@ class OmniFocusConnector:
     ) -> tuple[Optional[str], Optional[TaskStatus]]:
         """Validate update_task parameters, raising ValueError for invalid values.
 
-        Returns (resolved_task_name, resolved_status) after legacy name support
-        and status enum normalization.
+        Returns (resolved_task_name, resolved_status) after status enum normalization.
         """
         if not task_id:
             raise ValueError("task_id is required")
-
-        # Support legacy 'name' parameter
-        if name is not None and task_name is None:
-            task_name = name
 
         if project_id is not None and parent_task_id is not None:
             raise ValueError("Cannot specify both parent_task_id and project_id - parent task already determines the project.")
@@ -3525,7 +3519,6 @@ class OmniFocusConnector:
         status: Optional[Union[TaskStatus, str]] = None,
         recurrence: Optional[str] = None,
         repetition_method: Optional[str] = None,
-        name: Optional[str] = None  # Deprecated: use task_name
     ) -> dict:
         """Update properties of an existing task (NEW API - Redesign).
 
@@ -3579,7 +3572,7 @@ class OmniFocusConnector:
 
         # Validate parameters
         task_name, status = self._validate_update_task_params(
-            task_id=task_id, task_name=task_name, name=name,
+            task_id=task_id, task_name=task_name,
             project_id=project_id, parent_task_id=parent_task_id,
             tags=tags, add_tags=add_tags, remove_tags=remove_tags,
             status=status, repetition_method=repetition_method,
@@ -3680,7 +3673,7 @@ class OmniFocusConnector:
         kwargs: dict,
     ) -> list[str]:
         """Validate update_tasks parameters. Returns normalized ids_list."""
-        if 'task_name' in kwargs or 'name' in kwargs:
+        if 'task_name' in kwargs:
             raise ValueError("task_name is not allowed in batch updates (requires unique values per task)")
         if 'note' in kwargs:
             raise ValueError("note is not allowed in batch updates (requires unique values per task)")

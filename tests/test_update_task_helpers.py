@@ -20,7 +20,7 @@ class TestValidateUpdateTaskParams:
 
     def _call(self, client, **overrides):
         defaults = dict(
-            task_id="t1", task_name=None, name=None,
+            task_id="t1", task_name=None,
             project_id=None, parent_task_id=None,
             tags=None, add_tags=None, remove_tags=None,
             status=None, repetition_method=None,
@@ -35,14 +35,6 @@ class TestValidateUpdateTaskParams:
     def test_empty_task_id_raises(self, client):
         with pytest.raises(ValueError, match="task_id is required"):
             self._call(client, task_id="", flagged=True)
-
-    def test_legacy_name_resolved(self, client):
-        task_name, _ = self._call(client, name="legacy", task_name=None, flagged=True)
-        assert task_name == "legacy"
-
-    def test_task_name_takes_precedence_over_name(self, client):
-        task_name, _ = self._call(client, name="legacy", task_name="new", flagged=True)
-        assert task_name == "new"
 
     def test_project_and_parent_conflict(self, client):
         with pytest.raises(ValueError, match="Cannot specify both"):
