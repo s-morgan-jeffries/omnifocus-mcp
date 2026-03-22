@@ -216,8 +216,8 @@ def _format_project(proj: dict, truncate_notes: bool = True) -> str:
 
 @mcp.tool()
 def get_projects(
-    project_id: Optional[str] = None,  # NEW (Phase 3.2)
-    include_full_notes: bool = False,  # NEW (Phase 3.2)
+    project_id: Optional[str] = None,
+    include_full_notes: bool = False,
     on_hold_only: bool = False,
     query: Optional[str] = None,
     include_task_health: bool = False,
@@ -226,12 +226,9 @@ def get_projects(
 ) -> str:
     """Retrieve ALL active projects with full details and hierarchy, optionally filtered by search query.
 
-    NEW (Phase 3.2): Added project_id and include_full_notes parameters to consolidate
-    get_project() and get_note() functionality.
-
     Args:
-        project_id: NEW - Filter to specific project by ID (consolidates get_project())
-        include_full_notes: NEW - Return full note content (consolidates get_note())
+        project_id: Filter to specific project by ID (optional)
+        include_full_notes: Return full note content (default: False)
         on_hold_only: If True, only return projects with "on hold" status
         query: Optional search term to filter by name, note, or folder path (case-insensitive)
         include_task_health: If True, include per-project task health counts (remaining, available, overdue, deferred)
@@ -477,7 +474,7 @@ def update_projects(
     add_tags: Optional[list[str]] = None,
     remove_tags: Optional[list[str]] = None,
 ) -> str:
-    """Update multiple projects with the same properties (NEW API - Phase 2, Batch Function).
+    """Update multiple projects with the same properties.
 
     This is the BATCH version of update_project(). It updates multiple projects
     with the same values. This is more efficient than calling update_project()
@@ -564,9 +561,9 @@ def update_projects(
 
 @mcp.tool()
 def get_tasks(
-    task_id: Optional[str] = None,  # NEW (Phase 3.1)
-    parent_task_id: Optional[str] = None,  # NEW (Phase 3.1)
-    include_full_notes: bool = False,  # NEW (Phase 3.1)
+    task_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
+    include_full_notes: bool = False,
     project_id: Optional[str] = None,
     flagged_only: bool = False,
     include_completed: bool = False,
@@ -579,15 +576,12 @@ def get_tasks(
     query: Optional[str] = None,
     inbox_only: bool = False
 ) -> str:
-    """Get tasks from OmniFocus with optional filtering (Enhanced - Phase 3.1).
-
-    NEW (Phase 3.1): Added task_id, parent_task_id, include_full_notes parameters
-    to consolidate get_task(), get_subtasks(), and get_note() functionality.
+    """Get tasks from OmniFocus with optional filtering.
 
     Args:
-        task_id: NEW - Filter to specific task by ID (consolidates get_task())
-        parent_task_id: NEW - Filter to subtasks of parent (consolidates get_subtasks())
-        include_full_notes: NEW - Return full note content (consolidates get_note())
+        task_id: Filter to specific task by ID (optional)
+        parent_task_id: Filter to subtasks of this parent task (optional)
+        include_full_notes: Return full note content (default: False)
         project_id: Optional project ID to filter tasks (ignored if inbox_only=True)
         flagged_only: If True, only return flagged tasks
         include_completed: If True, include completed tasks (default: False)
@@ -682,7 +676,7 @@ def create_task(
     sequential: bool = False,
     completed_by_children: bool = False
 ) -> str:
-    """Create a new task in OmniFocus (NEW API - consolidates add_task and create_inbox_task).
+    """Create a new task in OmniFocus.
 
     This is the redesigned create function that unifies task creation across all contexts:
     - If project_id is provided: Create task in that project
@@ -793,15 +787,7 @@ def update_task(
     # Legacy parameters (backward compatibility)
     name: Optional[str] = None
 ) -> str:
-    """Update an existing task in OmniFocus (NEW API - Redesign).
-
-    This comprehensive update function consolidates multiple specialized functions:
-    - complete_task() -> update_task(task_id, completed=True)
-    - drop_task() -> update_task(task_id, status="dropped")
-    - move_task() -> update_task(task_id, project_id=X)
-    - set_parent_task() -> update_task(task_id, parent_task_id=X)
-    - set_estimated_minutes() -> update_task(task_id, estimated_minutes=X)
-    - add_tag_to_task() -> update_task(task_id, add_tags=[...])
+    """Update an existing task in OmniFocus.
 
     Args:
         task_id: The ID of the task to update
@@ -921,7 +907,7 @@ def update_tasks(
     planned_date: Optional[str] = None,
     estimated_minutes: Optional[int] = None
 ) -> str:
-    """Update multiple tasks with the same field values (batch operation - NEW API).
+    """Update multiple tasks with the same field values.
 
     This is the batch version of update_task(). It applies uniform changes to
     multiple tasks simultaneously.
@@ -1180,11 +1166,9 @@ def delete_tags(tag_ids: Union[str, list[str]]) -> str:
 
 @mcp.tool()
 def delete_tasks(task_ids: Union[str, list[str]]) -> str:
-    """Delete multiple tasks from OmniFocus in a single operation (NEW API - Enhanced).
+    """Delete one or more tasks from OmniFocus.
 
     WARNING: This permanently deletes the tasks and cannot be undone.
-
-    NEW API (Redesign): Now accepts Union[str, list[str]] and handles dict return from client.
 
     Args:
         task_ids: Single task ID (str) or list of task IDs to delete
@@ -1200,7 +1184,7 @@ def delete_tasks(task_ids: Union[str, list[str]]) -> str:
     try:
         result = client.delete_tasks(task_ids)
 
-        # Handle dict return from client (NEW API)
+
         deleted_count = result["deleted_count"]
         failed_count = result["failed_count"]
 
@@ -1228,13 +1212,9 @@ def delete_tasks(task_ids: Union[str, list[str]]) -> str:
 
 @mcp.tool()
 def delete_projects(project_ids: Union[str, list[str]]) -> str:
-    """Delete one or more projects from OmniFocus (NEW API - Enhanced with Union type).
+    """Delete one or more projects from OmniFocus.
 
     WARNING: This permanently deletes the projects and all their tasks. Cannot be undone.
-
-    NEW API changes:
-    - Accepts Union[str, list[str]] for project_ids (single or multiple)
-    - Returns detailed summary with success/failure counts
 
     Args:
         project_ids: Single project ID (str) or list of project IDs to delete
