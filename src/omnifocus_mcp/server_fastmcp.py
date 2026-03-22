@@ -222,9 +222,10 @@ def get_projects(
     query: Optional[str] = None,
     include_task_health: bool = False,
     include_last_activity: bool = False,
-    stalled_only: bool = False
+    stalled_only: bool = False,
+    include_dropped: bool = False
 ) -> str:
-    """Retrieve ALL active projects with full details and hierarchy, optionally filtered by search query.
+    """Retrieve projects from OmniFocus with optional filtering.
 
     Args:
         project_id: Filter to specific project by ID (optional)
@@ -234,6 +235,7 @@ def get_projects(
         include_task_health: If True, include per-project task health counts (remaining, available, overdue, deferred)
         include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
         stalled_only: If True, only return active projects with no available actions — projects that need attention (implies include_task_health=True)
+        include_dropped: If True, include dropped projects in results (default: False — dropped projects are hidden)
 
     Returns:
         Each project includes: id, name, folderPath, status, projectType, sequential,
@@ -256,6 +258,7 @@ def get_projects(
             include_task_health=include_task_health,
             include_last_activity=include_last_activity,
             stalled_only=stalled_only,
+            include_dropped=include_dropped,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -267,6 +270,8 @@ def get_projects(
         descriptor = "on-hold projects"
     elif stalled_only:
         descriptor = "stalled projects"
+    elif include_dropped:
+        descriptor = "projects (including dropped)"
     else:
         descriptor = "active projects"
 

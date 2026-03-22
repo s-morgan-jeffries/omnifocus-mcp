@@ -910,14 +910,16 @@ class OmniFocusConnector:
         include_task_health: bool = False,
         include_last_activity: bool = False,
         stalled_only: bool = False,
+        include_dropped: bool = False,
         timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
 
         Args:
-            project_id: NEW (Phase 3.2) - Filter to specific project by ID (consolidates get_project())
-            include_full_notes: NEW (Phase 3.2) - Return full note content (consolidates get_note())
+            project_id: Filter to specific project by ID (optional)
+            include_full_notes: Return full note content (default: False)
             on_hold_only: Only return projects with "on hold" status (default: False)
+            include_dropped: Include dropped projects in results (default: False)
             modified_after: Only return projects modified after this ISO date
             modified_before: Only return projects modified before this ISO date
             min_task_count: Only return projects with at least this many tasks
@@ -956,10 +958,18 @@ class OmniFocusConnector:
         task_ops_preamble, task_ops_block, health_init, task_health_json_fields = \
             self._build_task_ops_blocks(include_task_health, include_last_activity)
 
-        # Build on_hold filter condition
-        on_hold_condition = ""
+        # Build status filter condition
+        # Default: skip dropped projects. on_hold_only also skips non-on-hold.
+        # include_dropped removes the dropped filter.
+        skip_conditions = []
+        if not include_dropped:
+            skip_conditions.append('projStatus is "dropped status"')
         if on_hold_only:
-            on_hold_condition = ' or projStatus is not "on hold status"'
+            skip_conditions.append('projStatus is not "on hold status"')
+        if skip_conditions:
+            status_filter_condition = f'if {" or ".join(skip_conditions)} then\n                            error "skip project"\n                        end if'
+        else:
+            status_filter_condition = ""
 
         script = '''
         use AppleScript version "2.4"
@@ -1028,10 +1038,8 @@ class OmniFocusConnector:
                     try
                         set projStatus to item i of statuses as text
 
-                        -- Skip dropped projects (and on_hold filter)
-                        if projStatus is "dropped status"{on_hold_condition} then
-                            error "skip project"
-                        end if
+                        -- Status filter (skip dropped/non-matching projects)
+                        {status_filter_condition}
 
                         -- Look up folder path from cache
                         set folderPath to ""
@@ -1154,7 +1162,7 @@ class OmniFocusConnector:
 
         script = script.format(
             project_source=project_source,
-            on_hold_condition=on_hold_condition,
+            status_filter_condition=status_filter_condition,
             task_ops_preamble=task_ops_preamble,
             health_init=health_init,
             task_ops_block=task_ops_block,
