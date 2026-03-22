@@ -128,7 +128,7 @@ class TestGetProjectsEdgeCases:
     def test_query_no_results(self, mock_gc):
         mock_gc.return_value.get_projects.return_value = []
         result = server.get_projects(query="nonexistent")
-        assert "No projects found matching 'nonexistent'" in result
+        assert "No active projects found matching 'nonexistent'" in result
         mock_gc.return_value.get_projects.assert_called_once()
         call_kwargs = mock_gc.return_value.get_projects.call_args[1]
         assert call_kwargs["query"] == "nonexistent"
@@ -139,7 +139,7 @@ class TestGetProjectsEdgeCases:
             {"id": "p1", "name": "Match", "status": "active"},
         ]
         result = server.get_projects(query="Match")
-        assert "Found 1 projects matching 'Match':" in result
+        assert "Found 1 active projects matching 'Match':" in result
         mock_gc.return_value.get_projects.assert_called_once()
         call_kwargs = mock_gc.return_value.get_projects.call_args[1]
         assert call_kwargs["query"] == "Match"

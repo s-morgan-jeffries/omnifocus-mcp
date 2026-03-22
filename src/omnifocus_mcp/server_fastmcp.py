@@ -263,16 +263,26 @@ def get_projects(
     except ValueError as e:
         return f"Error: {str(e)}"
 
+    # Build descriptor based on filter
+    if project_id:
+        descriptor = "project"
+    elif on_hold_only:
+        descriptor = "on-hold projects"
+    elif stalled_only:
+        descriptor = "stalled projects"
+    else:
+        descriptor = "active projects"
+
     if not projects:
         if query:
-            return f"No projects found matching '{query}'"
-        return "Found 0 active projects"
+            return f"No {descriptor} found matching '{query}'"
+        return f"Found 0 {descriptor}"
 
     # Format projects for display
     if query:
-        result = f"Found {len(projects)} projects matching '{query}':\n\n"
+        result = f"Found {len(projects)} {descriptor} matching '{query}':\n\n"
     else:
-        result = f"Found {len(projects)} active projects:\n\n"
+        result = f"Found {len(projects)} {descriptor}:\n\n"
     for proj in projects:
         result += _format_project(proj, truncate_notes=(not include_full_notes))
         result += "\n"
