@@ -729,7 +729,7 @@ class TestHierarchyFieldFormatting:
             }
             mock_get_client.return_value = mock_client
 
-            result = update_project("proj-001", sequential="true")
+            result = update_project("proj-001", sequential=True)
 
             # Verify the client was called with boolean True
             call_kwargs = mock_client.update_project.call_args[1]
@@ -737,11 +737,10 @@ class TestHierarchyFieldFormatting:
             assert call_kwargs['sequential'] is True
             assert "Successfully updated project" in result
 
-    def test_update_project_sequential_with_string_false(self):
-        """Test that update_project accepts string 'false' for sequential parameter."""
+    def test_update_project_sequential_with_bool_false(self):
+        """Test that update_project accepts bool False for sequential parameter."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            # NEW API returns dict, not boolean
             mock_client.update_project.return_value = {
                 "success": True,
                 "project_id": "proj-001",
@@ -750,25 +749,12 @@ class TestHierarchyFieldFormatting:
             }
             mock_get_client.return_value = mock_client
 
-            result = update_project("proj-001", sequential="false")
+            result = update_project("proj-001", sequential=False)
 
-            # Verify the client was called with boolean False
             call_kwargs = mock_client.update_project.call_args[1]
             assert call_kwargs['project_id'] == "proj-001"
             assert call_kwargs['sequential'] is False
             assert "Successfully updated project" in result
-
-    def test_update_project_sequential_with_invalid_string(self):
-        """Test that update_project rejects invalid sequential values."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_get_client.return_value = mock_client
-
-            result = update_project("proj-001", sequential="maybe")
-
-            # Should return error without calling client
-            assert "Error: Invalid sequential value" in result
-            mock_client.update_project.assert_not_called()
 
     def test_update_project_sequential_omitted(self):
         """Test that update_project works when sequential parameter is omitted."""

@@ -85,7 +85,7 @@ Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_
 - `folder_path: str` (optional) — Folder path to move project to (e.g., "Work : Projects")
 - `note: str` (optional) — New note content. WARNING: Removes rich text formatting.
 - `project_type: str` (optional) — Change project type: "parallel", "sequential", or "single_actions"
-- `sequential: str` (optional, DEPRECATED) — Use project_type instead. Sequential setting - "true" or "false"
+- `sequential: bool` (optional, DEPRECATED) — Use project_type instead.
 - `status: str` (optional) — Project status - "active", "on_hold", "done", or "dropped"
 - `review_interval_weeks: int` (optional) — Review interval in weeks (0 to clear)
 - `last_reviewed: str` (optional) — Last reviewed date in ISO format or "now"
@@ -120,7 +120,7 @@ IMPORTANT: This function does NOT accept project_name or note parameters because
 **Parameters:**
 - `project_ids: str | list[str]` (required) — Single project ID or list of project IDs
 - `folder_path: str` (optional) — Folder path to move projects to
-- `sequential: str` (optional) — Sequential setting ("true" or "false")
+- `sequential: bool` (optional) — Sequential setting
 - `status: str` (optional) — Project status - "active", "on_hold", "done", "dropped"
 - `review_interval_weeks: int` (optional) — Review interval in weeks
 - `last_reviewed: str` (optional) — Last review date ("now" or ISO format)

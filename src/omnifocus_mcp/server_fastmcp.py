@@ -356,7 +356,7 @@ def update_project(
     project_name: Optional[str] = None,
     folder_path: Optional[str] = None,
     note: Optional[str] = None,
-    sequential: Optional[str] = None,
+    sequential: Optional[bool] = None,
     project_type: Optional[str] = None,
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
@@ -382,7 +382,7 @@ def update_project(
         folder_path: Folder path to move project to (e.g., "Work : Projects")
         note: New note content (optional). WARNING: Removes rich text formatting.
         project_type: Change project type — "parallel", "sequential", or "single_actions" (optional)
-        sequential: DEPRECATED — use project_type instead. Sequential setting - "true" or "false"
+        sequential: DEPRECATED — use project_type instead. (optional)
         status: Project status - "active", "on_hold", "done", or "dropped"
         review_interval_weeks: Review interval in weeks (0 to clear)
         last_reviewed: Last reviewed date in ISO format or "now"
@@ -406,19 +406,6 @@ def update_project(
     Returns:
         Success message with project ID and updated fields, or error message
     """
-    # Convert sequential parameter to boolean for client (handle both string and bool)
-    sequential_bool: Optional[bool] = None
-    if sequential is not None:
-        if isinstance(sequential, bool):
-            sequential_bool = sequential
-        elif isinstance(sequential, str):
-            if sequential.lower() == "true":
-                sequential_bool = True
-            elif sequential.lower() == "false":
-                sequential_bool = False
-            else:
-                return f"Error: Invalid sequential value '{sequential}'. Must be 'true' or 'false'."
-
     client = get_client()
     try:
         result = client.update_project(
@@ -426,7 +413,7 @@ def update_project(
             project_name=project_name,
             folder_path=folder_path,
             note=note,
-            sequential=sequential_bool,
+            sequential=sequential,
             project_type=project_type,
             status=status,
             review_interval_weeks=review_interval_weeks,
@@ -467,7 +454,7 @@ def update_project(
 def update_projects(
     project_ids: Union[str, list[str]],
     folder_path: Optional[str] = None,
-    sequential: Optional[str] = None,
+    sequential: Optional[bool] = None,
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
     last_reviewed: Optional[str] = None,
@@ -492,7 +479,7 @@ def update_projects(
     Args:
         project_ids: Single project ID (str) or list of project IDs to update
         folder_path: Folder path to move projects to (e.g., "Work > Projects")
-        sequential: Sequential setting as string ("true" or "false")
+        sequential: Sequential setting (optional)
         status: Project status - one of: "active", "on_hold", "done", "dropped"
         review_interval_weeks: Review interval in weeks
         last_reviewed: Last review date ("now" or ISO format like "2025-01-15")
@@ -515,27 +502,12 @@ def update_projects(
             status="dropped"
         )
     """
-    # Convert sequential parameter to boolean for client (handle both string and bool)
-    sequential_bool: Optional[bool] = None
-    if sequential is not None:
-        if isinstance(sequential, bool):
-            # Direct boolean (from tests or Python calls)
-            sequential_bool = sequential
-        elif isinstance(sequential, str):
-            # String from MCP (Claude passes strings)
-            if sequential.lower() == "true":
-                sequential_bool = True
-            elif sequential.lower() == "false":
-                sequential_bool = False
-            else:
-                return f"Error: Invalid sequential value '{sequential}'. Must be 'true' or 'false'."
-
     try:
         client = get_client()
         result = client.update_projects(
             project_ids=project_ids,
             folder_path=folder_path,
-            sequential=sequential_bool,
+            sequential=sequential,
             status=status,
             review_interval_weeks=review_interval_weeks,
             last_reviewed=last_reviewed,

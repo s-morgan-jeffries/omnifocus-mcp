@@ -171,11 +171,6 @@ class TestUpdateProjectsEdgeCases:
     """Cover error paths in update_projects()."""
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
-    def test_invalid_sequential_string(self, mock_gc):
-        result = server.update_projects(project_ids=["p1"], sequential="maybe")
-        assert "Invalid sequential value" in result
-
-    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_all_updates_failed(self, mock_gc):
         mock_gc.return_value.update_projects.return_value = {
             "updated_count": 0,

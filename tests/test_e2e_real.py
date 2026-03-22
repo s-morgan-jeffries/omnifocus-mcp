@@ -337,7 +337,7 @@ class TestUpdateProjectE2E:
             project_name="E2E Updated Project Name",
             status="active",
             review_interval_weeks=2,
-            sequential="true"
+            sequential=True
         )
 
         assert isinstance(result, str)
@@ -400,7 +400,7 @@ class TestUpdateProjectsE2E:
         proj_id = client.create_project("E2E Single ID")
 
         # Call MCP tool
-        result = server.update_projects(project_ids=proj_id, sequential="true")
+        result = server.update_projects(project_ids=proj_id, sequential=True)
 
         assert isinstance(result, str)
         assert "1" in result  # Should mention 1 project
