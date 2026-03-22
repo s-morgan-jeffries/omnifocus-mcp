@@ -5,6 +5,45 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-03-22
+
+API quality release — driven by adversarial API review (#451). Standardized types, cleaned up descriptions, added new features, and improved documentation clarity for LLM clients.
+
+### Added
+
+- **`include_dropped` parameter on `get_projects()`** (#460, #481)
+  - Dropped projects were previously always filtered out; now retrievable for verification and audits
+
+- **Per-method AppleScript tell/end-tell balance tests** (#459, #486)
+  - 28 parametrized tests checking balance per connector method (tolerance 2)
+
+- **Dropped project state verification** (#438, #485)
+  - Integration test now verifies dropped status via read-back using include_dropped
+
+### Changed
+
+- **Standardized `sequential` parameter to `bool`** across all functions (#470, #478)
+  - `update_project` and `update_projects` accepted `str`; now `bool` everywhere
+
+- **Stripped development-history noise from docstrings** (#467, #480)
+  - Removed ~300 tokens of "NEW (Phase X.Y)", "Redesign", consolidation lists
+
+- **Removed legacy `name` parameter from `update_task`** (#476, #483)
+  - Use `task_name` instead; `name` alias no longer in the MCP schema
+
+- **Improved reorder descriptions** with worked-order examples (#472, #487)
+  - `reorder_task("C", before_task_id="A") → [..., C, A, ...]`
+
+- **Clarified `parent_tag` is by-name, not by-ID** (#474, #487)
+  - Cross-references between `get_tags()` output (parentTagId) and set operations
+
+- **Strengthened `status="dropped"` one-way warning** (#475, #487)
+
+### Fixed
+
+- **`get_projects` response text** now reflects active filter (#471, #479)
+  - Was always "Found N active projects" even with `on_hold_only=True`
+
 ## [0.10.5] - 2026-03-21
 
 ### Added
