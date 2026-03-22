@@ -709,7 +709,7 @@ class TestHierarchyFieldFormatting:
             }
             mock_get_client.return_value = mock_client
 
-            result = update_task("task-001", name="New Name")
+            result = update_task("task-001", task_name="New Name")
 
             # Verify the client was called with flagged=None
             call_kwargs = mock_client.update_task.call_args.kwargs

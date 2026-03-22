@@ -789,8 +789,6 @@ def update_task(
     repetition_method: Optional[str] = None,
     sequential: Optional[bool] = None,
     completed_by_children: Optional[bool] = None,
-    # Legacy parameters (backward compatibility)
-    name: Optional[str] = None
 ) -> str:
     """Update an existing task in OmniFocus.
 
@@ -850,10 +848,6 @@ def update_task(
         update_task("task-123", recurrence="")  # Remove recurrence
         update_task("task-123", recurrence="", status="dropped")  # Drop entire recurring series
     """
-    # Support legacy 'name' parameter for backward compatibility
-    if name is not None and task_name is None:
-        task_name = name
-
     client = get_client()
     try:
         result = client.update_task(
@@ -876,7 +870,6 @@ def update_task(
             repetition_method=repetition_method,
             sequential=sequential,
             completed_by_children=completed_by_children,
-            name=name  # Pass to client for its own backward compat handling
         )
     except ValueError as e:
         return f"Error: {str(e)}"

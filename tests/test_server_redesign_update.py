@@ -278,31 +278,6 @@ class TestUpdateTaskServerRedesign:
             # Response should mention what was updated
             assert "task_name" in result or "3 fields" in result or "updated" in result.lower()
 
-    # ========================================================================
-    # Backward Compatibility (Legacy Parameters)
-    # ========================================================================
-
-    def test_update_task_accepts_legacy_name_parameter(self):
-        """NEW API: Server still accepts legacy 'name' parameter for backward compat."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_task.return_value = {
-                "success": True,
-                "task_id": "task-001",
-                "updated_fields": ["task_name"],
-                "error": None
-            }
-            mock_get_client.return_value = mock_client
-
-            # Use legacy 'name' parameter
-            result = update_task("task-001", name="Legacy Name")
-
-            # Should still work
-            call_kwargs = mock_client.update_task.call_args.kwargs
-            assert call_kwargs.get("name") == "Legacy Name" or call_kwargs.get("task_name") == "Legacy Name"
-            assert "Successfully updated task" in result
-
-
 class TestUpdateTasksServerRedesign:
     """Tests for new update_tasks() MCP tool (batch operations).
 
