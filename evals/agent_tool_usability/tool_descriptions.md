@@ -38,7 +38,7 @@ REVIEW: Projects have review intervals. Use get_projects() to find projects due 
 
 ### get_projects
 
-Retrieve ALL active projects with full details and hierarchy, optionally filtered by search query.
+Retrieve projects from OmniFocus with optional filtering.
 
 **Parameters:**
 - `project_id: str` (optional) — Filter to specific project by ID
@@ -48,6 +48,7 @@ Retrieve ALL active projects with full details and hierarchy, optionally filtere
 - `include_task_health: bool` (default: False) — Include per-project task health counts (remaining, available, overdue, deferred)
 - `include_last_activity: bool` (default: False) — Compute lastActivityDate (most recent task creation/completion)
 - `stalled_only: bool` (default: False) — Only return active projects with no available actions (implies include_task_health=True)
+- `include_dropped: bool` (default: False) — Include dropped projects in results (hidden by default)
 
 **Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, creationDate, modificationDate, completionDate (null if not completed), droppedDate (null if not dropped), dueDate, deferDate, plannedDate, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. `dueDate`, `deferDate`, `plannedDate` — project-level dates in ISO format (empty string if not set). Tasks inherit effective dates from their containing project. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
 
