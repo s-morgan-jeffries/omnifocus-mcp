@@ -687,8 +687,8 @@ class TestProjectCRUD:
         Validates the AppleScript patterns: mark dropped, set status to active status,
         mark complete, set status to on hold (#359, #370).
         """
-        def assert_status(expected_status):
-            projects = client.get_projects(project_id=test_project)
+        def assert_status(expected_status, include_dropped=False):
+            projects = client.get_projects(project_id=test_project, include_dropped=include_dropped)
             assert len(projects) == 1, f"Project not found after setting status to {expected_status}"
             actual = projects[0]['status']
             assert actual == expected_status, \
@@ -709,8 +709,8 @@ class TestProjectCRUD:
         # ACTIVE → DROPPED
         result = client.update_project(test_project, status="dropped")
         assert result["success"] is True
-        # Note: get_projects() skips dropped projects, so we verify via return value only
-        print("✓ ACTIVE → DROPPED")
+        assert_status('dropped status', include_dropped=True)
+        print("✓ ACTIVE → DROPPED (verified via read-back with include_dropped)")
 
         # DROPPED → ACTIVE
         result = client.update_project(test_project, status="active")
