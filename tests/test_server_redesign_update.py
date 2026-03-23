@@ -789,3 +789,35 @@ class TestUpdateTasksUnified:
             assert call_kwargs["task_id"] == "task-001"
             assert call_kwargs["flagged"] is True
             assert "Successfully updated task task-001" in result
+
+    # ========================================================================
+    # Conflict Validation (#534)
+    # ========================================================================
+
+    def test_update_tasks_rejects_tags_with_add_tags(self):
+        """tags + add_tags conflict detected at connector level, error returned."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_task.side_effect = ValueError(
+                "Cannot specify both tags and add_tags"
+            )
+            mock_get_client.return_value = mock_client
+
+            result = update_tasks([{"id": "t1", "tags": ["x"], "add_tags": ["y"]}])
+
+            assert "error" in result.lower() or "FAILED" in result
+            mock_client.update_task.assert_called_once()
+
+    def test_update_task_rejects_tags_with_add_tags(self):
+        """tags + add_tags conflict via single update_task path."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_task.side_effect = ValueError(
+                "Cannot specify both tags and add_tags"
+            )
+            mock_get_client.return_value = mock_client
+
+            result = update_task("t1", tags=["x"], add_tags=["y"])
+
+            assert "error" in result.lower() or "FAILED" in result
+            mock_client.update_task.assert_called_once()

@@ -266,6 +266,25 @@ class TestCreateTasksUnified:
             assert "1" in result  # 1 failed
             assert "Bad Task" in result or "failed" in result.lower()
 
+    def test_create_tasks_rejects_project_id_and_parent_task_id(self):
+        """create_tasks: single item with both project_id and parent_task_id returns error."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_task.side_effect = ValueError(
+                "Cannot specify both project_id and parent_task_id"
+            )
+            mock_get_client.return_value = mock_client
+
+            create_tasks = server.create_tasks
+            result = create_tasks(tasks=[{
+                "task_name": "Conflicting Task",
+                "project_id": "proj-1",
+                "parent_task_id": "task-parent",
+            }])
+
+            assert "error" in result.lower()
+            assert "project_id" in result.lower() or "parent_task_id" in result.lower()
+
     def test_create_tasks_with_all_fields(self):
         """create_tasks passes all fields through to connector."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
