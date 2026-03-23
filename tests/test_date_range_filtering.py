@@ -130,3 +130,63 @@ class TestProjectDateRangeFiltering:
 
             assert len(projects) == 1
             assert projects[0]['id'] == "p1"
+
+
+class TestItemPassesDateCheck:
+    """Tests for _item_passes_date_check helper."""
+
+    def test_no_filters_returns_true(self):
+        """No after/before filters means item always passes."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"creationDate": "2025-01-15T10:00:00Z"}, "creationDate", None, None
+        ) is True
+
+    def test_after_filter_passes(self):
+        """Item date after the threshold passes."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"creationDate": "2025-01-20T10:00:00Z"}, "creationDate", "2025-01-15T00:00:00Z", None
+        ) is True
+
+    def test_after_filter_fails(self):
+        """Item date before the threshold fails."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"creationDate": "2025-01-10T10:00:00Z"}, "creationDate", "2025-01-15T00:00:00Z", None
+        ) is False
+
+    def test_before_filter_passes(self):
+        """Item date before the threshold passes."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"creationDate": "2025-01-10T10:00:00Z"}, "creationDate", None, "2025-01-15T00:00:00Z"
+        ) is True
+
+    def test_before_filter_fails(self):
+        """Item date after the threshold fails."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"creationDate": "2025-01-20T10:00:00Z"}, "creationDate", None, "2025-01-15T00:00:00Z"
+        ) is False
+
+    def test_missing_date_field_excluded(self):
+        """Item without the date field is excluded when filter is active."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"id": "t1"}, "creationDate", "2025-01-15T00:00:00Z", None
+        ) is False
+
+    def test_empty_date_field_excluded(self):
+        """Item with empty string date is excluded when filter is active."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"creationDate": ""}, "creationDate", "2025-01-15T00:00:00Z", None
+        ) is False
+
+    def test_range_filter_both_bounds(self):
+        """Item within both bounds passes."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"modificationDate": "2025-01-15T10:00:00Z"}, "modificationDate",
+            "2025-01-10T00:00:00Z", "2025-01-20T00:00:00Z"
+        ) is True
+
+    def test_range_filter_outside_bounds(self):
+        """Item outside both bounds fails."""
+        assert OmniFocusConnector._item_passes_date_check(
+            {"modificationDate": "2025-01-25T10:00:00Z"}, "modificationDate",
+            "2025-01-10T00:00:00Z", "2025-01-20T00:00:00Z"
+        ) is False
