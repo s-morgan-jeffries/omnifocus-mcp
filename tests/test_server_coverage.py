@@ -261,16 +261,17 @@ class TestUpdateTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_failure(self, mock_gc):
-        mock_gc.return_value.update_tasks.return_value = {
-            "updated_count": 0,
-            "failed_count": 1,
-            "failures": [{"task_id": "t1", "error": "not found"}],
+        mock_gc.return_value.update_task.return_value = {
+            "success": False,
+            "task_id": "t1",
+            "updated_fields": [],
+            "error": "not found",
         }
-        result = server.update_tasks(task_ids="t1", flagged=True)
-        assert "Failed to update task: not found" in result
-        mock_gc.return_value.update_tasks.assert_called_once()
-        call_kwargs = mock_gc.return_value.update_tasks.call_args[1]
-        assert call_kwargs["task_ids"] == "t1"
+        result = server.update_tasks([{"id": "t1", "flagged": True}])
+        assert "Error updating task t1: not found" in result
+        mock_gc.return_value.update_task.assert_called_once()
+        call_kwargs = mock_gc.return_value.update_task.call_args.kwargs
+        assert call_kwargs["task_id"] == "t1"
         assert call_kwargs["flagged"] is True
 
 
