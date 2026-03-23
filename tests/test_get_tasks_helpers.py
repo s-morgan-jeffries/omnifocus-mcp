@@ -629,3 +629,64 @@ class TestPlannedDateFilter:
             planned_after=None, planned_before=None,
         )
         assert len(result) == 3
+
+
+# ── _post_process_projects tag filtering ─────────────────────────────────
+
+
+class TestProjectTagFilter:
+    """Tests for tag filtering in _post_process_projects."""
+
+    def test_filter_projects_by_single_tag(self, client):
+        """Projects with matching tag are returned."""
+        projects = [
+            {"id": "p1", "name": "P1", "tags": ["High Priority", "Work"]},
+            {"id": "p2", "name": "P2", "tags": ["Work"]},
+            {"id": "p3", "name": "P3", "tags": []},
+        ]
+        result = client._filter_tasks_by_tags(projects, ["High Priority"], "and")
+        assert len(result) == 1
+        assert result[0]["id"] == "p1"
+
+    def test_filter_projects_by_multiple_tags(self, client):
+        """Only projects with ALL specified tags are returned."""
+        projects = [
+            {"id": "p1", "name": "P1", "tags": ["High Priority", "Work"]},
+            {"id": "p2", "name": "P2", "tags": ["Work"]},
+            {"id": "p3", "name": "P3", "tags": ["High Priority"]},
+        ]
+        result = client._filter_tasks_by_tags(projects, ["High Priority", "Work"], "and")
+        assert len(result) == 1
+        assert result[0]["id"] == "p1"
+
+    def test_filter_projects_no_match(self, client):
+        """No projects match the tag filter."""
+        projects = [
+            {"id": "p1", "name": "P1", "tags": ["Work"]},
+            {"id": "p2", "name": "P2", "tags": []},
+        ]
+        result = client._filter_tasks_by_tags(projects, ["Nonexistent"], "and")
+        assert len(result) == 0
+
+    def test_post_process_projects_with_tag_filter(self, client):
+        """_post_process_projects applies tag_filter correctly."""
+        projects = [
+            {"id": "p1", "name": "P1", "tags": ["Work"], "sequential": False, "singletonActionHolder": False},
+            {"id": "p2", "name": "P2", "tags": ["Personal"], "sequential": False, "singletonActionHolder": False},
+        ]
+        result = client._post_process_projects(
+            projects,
+            modified_after=None,
+            modified_before=None,
+            min_task_count=None,
+            has_overdue_tasks=None,
+            has_no_due_dates=None,
+            query=None,
+            include_task_health=False,
+            stalled_only=False,
+            sort_by=None,
+            sort_order="asc",
+            tag_filter=["Work"],
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "p1"

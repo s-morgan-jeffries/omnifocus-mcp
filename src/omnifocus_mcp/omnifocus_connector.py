@@ -857,6 +857,7 @@ class OmniFocusConnector:
         stalled_only: bool,
         sort_by: Optional[str],
         sort_order: str,
+        tag_filter: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         """Post-process projects: compute types, apply filters, sort."""
         # Compute projectType from singleton and sequential flags
@@ -889,6 +890,10 @@ class OmniFocusConnector:
                 or query_lower in p.get('note', '').lower()
                 or query_lower in p.get('folderPath', '').lower()
             ]
+
+        # Apply tag filter
+        if tag_filter:
+            projects = self._filter_tasks_by_tags(projects, tag_filter, "and")
 
         # Compute stalled field when task health is available
         if include_task_health:
@@ -927,6 +932,7 @@ class OmniFocusConnector:
         include_last_activity: bool = False,
         stalled_only: bool = False,
         include_dropped: bool = False,
+        tag_filter: Optional[list[str]] = None,
         timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
@@ -944,6 +950,7 @@ class OmniFocusConnector:
             sort_by: Field to sort by - "name" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
             query: Optional search term to filter by name, note, or folder path (case-insensitive)
+            tag_filter: Only return projects with ALL specified tags (case-insensitive)
             timeout: Maximum seconds to wait for AppleScript (default: 90). Increase for large project lists (100+)
 
         Returns:
@@ -1046,6 +1053,7 @@ class OmniFocusConnector:
                 set projPlannedDates to planned date of fp
                 set containerIds to id of (container of fp)
                 set containerClasses to class of (container of fp)
+                set tagNameLists to name of (tags of fp)
 
                 {task_ops_preamble}
 
@@ -1142,6 +1150,19 @@ class OmniFocusConnector:
                         {health_init}
                         {task_ops_block}
 
+                        -- Build tags JSON
+                        set projTagNames to contents of (item i of tagNameLists)
+                        set tagsJSON to "[]"
+                        if (count of projTagNames) > 0 then
+                            set tagItems to {{}}
+                            repeat with tn in projTagNames
+                                set end of tagItems to "\\"" & my escapeJSON(tn as text) & "\\""
+                            end repeat
+                            set AppleScript's text item delimiters to ", "
+                            set tagsJSON to "[" & (tagItems as text) & "]"
+                            set AppleScript's text item delimiters to ""
+                        end if
+
                         -- Build JSON
                         set jsonLine to "{{" & ¬
                             "\\"id\\": \\"" & (item i of ids) & "\\", " & ¬
@@ -1161,7 +1182,8 @@ class OmniFocusConnector:
                             "\\"dueDate\\": \\"" & dueDateStr & "\\", " & ¬
                             "\\"deferDate\\": \\"" & deferDateStr & "\\", " & ¬
                             "\\"plannedDate\\": \\"" & plannedDateStr & "\\", " & ¬
-                            "\\"nextReviewDate\\": " & nextReviewDateStr{task_health_json_fields} & ¬
+                            "\\"nextReviewDate\\": " & nextReviewDateStr & ", " & ¬
+                            "\\"tags\\": " & tagsJSON{task_health_json_fields} & ¬
                             "}}"
 
                         if output is not "" then
@@ -1202,6 +1224,7 @@ class OmniFocusConnector:
                     stalled_only=stalled_only,
                     sort_by=sort_by,
                     sort_order=sort_order,
+                    tag_filter=tag_filter,
                 )
             else:
                 raise Exception("No output from OmniFocus AppleScript")

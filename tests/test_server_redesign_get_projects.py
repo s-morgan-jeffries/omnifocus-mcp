@@ -48,3 +48,19 @@ class TestGetProjectsServerEnhancements:
             assert isinstance(result, str)
             assert "error" in result.lower()
             assert "invalid date range" in result.lower()
+
+    def test_get_projects_with_tag_filter_parameter(self):
+        """Server: get_projects(tag_filter=["X"]) passes to client."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_projects.return_value = [
+                {"id": "proj-001", "name": "Tagged Project", "status": "active status", "tags": ["High Priority"]}
+            ]
+            mock_get_client.return_value = mock_client
+
+            result = server.get_projects(tag_filter=["High Priority"])
+
+            call_kwargs = mock_client.get_projects.call_args[1]
+            assert call_kwargs['tag_filter'] == ["High Priority"]
+            assert isinstance(result, str)
+            assert "Tagged Project" in result
