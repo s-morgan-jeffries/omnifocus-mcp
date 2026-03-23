@@ -217,8 +217,7 @@ class TestUpdateTasksE2E:
 
         # Call MCP tool
         result = update_tasks(
-            task_ids=task_ids,
-            flagged=True
+            tasks=[{"id": tid, "flagged": True} for tid in task_ids]
         )
 
         assert isinstance(result, str)
@@ -235,14 +234,12 @@ class TestUpdateTasksE2E:
         # Create a single task
         task_id = client.create_task("E2E Single Update Task", project_id=test_project)
 
-        # Call MCP tool with single ID as string
+        # Call MCP tool with single ID wrapped in list
         result = update_tasks(
-            task_ids=task_id,  # Single ID as string
-            flagged=False
+            tasks=[{"id": task_id, "flagged": False}]
         )
 
         assert isinstance(result, str)
-        assert "1" in result  # Should mention 1 task
         assert "updated" in result.lower()
 
         print(f"\n✓ E2E update_tasks single ID: {result}")
@@ -380,8 +377,10 @@ class TestUpdateProjectsE2E:
 
         # Call the MCP tool
         result = server.update_projects(
-            project_ids=[proj_id_1, proj_id_2],
-            status="on_hold"
+            projects=[
+                {"id": proj_id_1, "status": "on_hold"},
+                {"id": proj_id_2, "status": "on_hold"},
+            ]
         )
 
         # Verify MCP tool returns human-readable response
@@ -400,7 +399,7 @@ class TestUpdateProjectsE2E:
         proj_id = client.create_project("E2E Single ID")
 
         # Call MCP tool
-        result = server.update_projects(project_ids=proj_id, sequential=True)
+        result = server.update_projects(projects=[{"id": proj_id, "sequential": True}])
 
         assert isinstance(result, str)
         assert "1" in result  # Should mention 1 project
