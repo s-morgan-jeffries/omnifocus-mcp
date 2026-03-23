@@ -57,6 +57,12 @@ Retrieve projects from OmniFocus with optional filtering.
 - `planned_before: str` (optional) — Only return projects with planned date before this ISO date
 - `planned_on: str` (optional) — Only return projects planned for this specific date (e.g., "2026-03-23"). Convenience for planned_after=date + planned_before=next_day. Mutually exclusive with planned_after/planned_before.
 - `has_overdue_tasks: bool` (optional) — Only return projects with overdue tasks (implies include_task_health)
+- `sort_by: str` (optional) — Sort results by field — "name"
+- `sort_order: str` (default: "asc") — Sort direction — "asc" or "desc"
+- `modified_after: str` (optional) — Only return projects modified after this ISO date
+- `modified_before: str` (optional) — Only return projects modified before this ISO date
+- `min_task_count: int` (optional) — Only return projects with at least this many tasks
+- `has_no_due_dates: bool` (optional) — If True, only return projects where no tasks have due dates
 
 **Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, flagged, creationDate, modificationDate, completionDate (null if not completed), droppedDate (null if not dropped), dueDate, deferDate, plannedDate, tags, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. `dueDate`, `deferDate`, `plannedDate` — project-level dates in ISO format (empty string if not set). Tasks inherit effective dates from their containing project. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
 
@@ -181,6 +187,16 @@ Get tasks from OmniFocus with optional filtering.
 - `inbox_only: bool` (default: False) — Only return inbox tasks
 - `planned_after: str` (optional) — Only return tasks with planned date on or after this ISO date
 - `planned_before: str` (optional) — Only return tasks with planned date before this ISO date
+- `sort_by: str` (optional) — Sort results by field — "name", "due_date", or "defer_date"
+- `sort_order: str` (default: "asc") — Sort direction — "asc" or "desc"
+- `modified_after: str` (optional) — Only return tasks modified after this ISO date
+- `modified_before: str` (optional) — Only return tasks modified before this ISO date
+- `created_after: str` (optional) — Only return tasks created after this ISO date
+- `created_before: str` (optional) — Only return tasks created before this ISO date
+- `max_estimated_minutes: int` (optional) — Only return tasks with estimated time <= this value — "quick wins" filter
+- `has_estimate: bool` (optional) — If True, only return tasks with an estimate set; if False, only tasks without
+- `recurring_only: bool` (optional) — If True, only return recurring tasks; if False, only non-recurring
+- `tag_filter_mode: str` (default: "and") — How tag_filter matches — "and" (all tags), "or" (any tag), "not" (none of the tags)
 - `planned_on: str` (optional) — Only return tasks planned for this specific date (e.g., "2026-03-23"). Mutually exclusive with planned_after/planned_before.
 
 **Returns:** Each task includes: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless include_full_notes=True), parentTaskId, subtaskCount, sequential, isRecurring, recurrence, repetitionMethod, repeatSummary, nextDueDate, nextDeferDate, nextPlannedDate, catchUpAutomatically, creationDate, modificationDate, completionDate (null if not completed), droppedDate (null if not dropped).
