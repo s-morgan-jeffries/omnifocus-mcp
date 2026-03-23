@@ -97,7 +97,7 @@ class TestUpdateProjectRedesign:
             result = client.update_project("proj-001", review_interval_weeks=2)
 
             assert result["success"] is True
-            assert "review_interval_weeks" in result["updated_fields"]
+            assert "review_interval" in result["updated_fields"]
 
             call_args = mock_run.call_args[0][0]
             # Should convert weeks to days for OmniFocus
@@ -111,7 +111,7 @@ class TestUpdateProjectRedesign:
             result = client.update_project("proj-001", review_interval_weeks=0)
 
             assert result["success"] is True
-            assert "review_interval_weeks" in result["updated_fields"]
+            assert "review_interval" in result["updated_fields"]
 
     # ========================================================================
     # New Fields - Last Reviewed
@@ -223,7 +223,7 @@ class TestUpdateProjectRedesign:
             assert len(result["updated_fields"]) == 4
             assert "project_name" in result["updated_fields"]
             assert "status" in result["updated_fields"]
-            assert "review_interval_weeks" in result["updated_fields"]
+            assert "review_interval" in result["updated_fields"]
             assert "last_reviewed" in result["updated_fields"]
 
     # ========================================================================

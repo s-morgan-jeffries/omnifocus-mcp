@@ -35,7 +35,7 @@ PLANNING PATTERN: To plan a day, query: (1) overdue tasks, (2) flagged + availab
 
 INBOX: Unprocessed capture bucket. Tasks without a project land here. Non-empty inbox = items need organizing.
 
-REVIEW: Projects have review intervals. Use get_projects() to find projects due for review (check last_reviewed + review_interval_weeks).
+REVIEW: Projects have review intervals. Use get_projects() to find projects due for review (check lastReviewDate + reviewIntervalValue/reviewIntervalUnit).
 """)
 
 # Configuration
@@ -184,6 +184,8 @@ def _format_project(proj: dict, truncate_notes: bool = True) -> str:
         result += f"Last Review: {proj['lastReviewDate']}\n"
     if proj.get('nextReviewDate'):
         result += f"Next Review: {proj['nextReviewDate']}\n"
+    if proj.get('reviewIntervalValue') and proj.get('reviewIntervalUnit'):
+        result += f"Review Interval: Every {proj['reviewIntervalValue']} {proj['reviewIntervalUnit']}(s)\n"
     if proj.get('note'):
         note_text = proj['note'] if not truncate_notes else _truncate_note(proj['note'])
         result += f"Note: {note_text}\n"
@@ -398,6 +400,8 @@ class ProjectUpdate(BaseModel):
     project_type: Optional[str] = None
     status: Optional[str] = None
     review_interval_weeks: Optional[int] = None
+    review_interval_value: Optional[int] = None
+    review_interval_unit: Optional[str] = None
     last_reviewed: Optional[str] = None
     next_review_date: Optional[str] = None
     completed_by_children: Optional[bool] = None
@@ -423,6 +427,8 @@ def update_project(
     project_type: Optional[str] = None,
     status: Optional[str] = None,
     review_interval_weeks: Optional[int] = None,
+    review_interval_value: Optional[int] = None,
+    review_interval_unit: Optional[str] = None,
     last_reviewed: Optional[str] = None,
     next_review_date: Optional[str] = None,
     completed_by_children: Optional[bool] = None,
@@ -449,7 +455,9 @@ def update_project(
         project_type: Change project type — "parallel", "sequential", or "single_actions" (optional)
         sequential: DEPRECATED — use project_type instead. (optional)
         status: Project status - "active", "on_hold", "done", or "dropped"
-        review_interval_weeks: Review interval in weeks (0 to clear)
+        review_interval_weeks: DEPRECATED — use review_interval_value + review_interval_unit instead. Review interval in weeks (0 to clear)
+        review_interval_value: Review interval amount (e.g., 3 for "every 3 months"). Used with review_interval_unit.
+        review_interval_unit: Review interval unit — "day", "week", "month", or "year" (default: "week")
         last_reviewed: Last reviewed date in ISO format or "now"
         next_review_date: Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval. (optional)
         completed_by_children: Auto-complete the project when its last remaining action is completed. (optional)
@@ -491,6 +499,7 @@ def update_projects(projects: list[ProjectUpdate]) -> str:
         projects: List of project update objects. Each must have:
             id (required), plus any fields to update: project_name, folder_path,
             note, sequential, project_type, status, review_interval_weeks,
+            review_interval_value, review_interval_unit,
             last_reviewed, next_review_date, completed_by_children, due_date,
             defer_date, planned_date, flagged, estimated_minutes, tags,
             add_tags, remove_tags, recurrence, repetition_method.

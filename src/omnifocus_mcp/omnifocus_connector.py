@@ -1077,6 +1077,7 @@ class OmniFocusConnector:
                 set containerClasses to class of (container of fp)
                 set tagNameLists to name of (tags of fp)
                 set projFlaggeds to flagged of fp
+                set revIntervals to review interval of fp
 
                 {task_ops_preamble}
 
@@ -1169,6 +1170,15 @@ class OmniFocusConnector:
                             set plannedDateStr to (pVal as «class isot» as string)
                         end if
 
+                        -- Extract review interval record
+                        set revIntervalValue to 0
+                        set revIntervalUnit to ""
+                        try
+                            set ri to item i of revIntervals
+                            set revIntervalValue to steps of ri
+                            set revIntervalUnit to unit of ri as text
+                        end try
+
                         -- Per-project task operations (only when task_health/last_activity requested)
                         {health_init}
                         {task_ops_block}
@@ -1207,6 +1217,8 @@ class OmniFocusConnector:
                             "\\"deferDate\\": \\"" & deferDateStr & "\\", " & ¬
                             "\\"plannedDate\\": \\"" & plannedDateStr & "\\", " & ¬
                             "\\"nextReviewDate\\": " & nextReviewDateStr & ", " & ¬
+                            "\\"reviewIntervalValue\\": " & revIntervalValue & ", " & ¬
+                            "\\"reviewIntervalUnit\\": \\"" & revIntervalUnit & "\\", " & ¬
                             "\\"tags\\": " & tagsJSON{task_health_json_fields} & ¬
                             "}}"
 
@@ -1436,6 +1448,8 @@ class OmniFocusConnector:
         project_type: Optional[str] = None,
         status: Optional[Union[ProjectStatus, str]] = None,
         review_interval_weeks: Optional[int] = None,
+        review_interval_value: Optional[int] = None,
+        review_interval_unit: Optional[str] = None,
         last_reviewed: Optional[str] = None,
         next_review_date: Optional[str] = None,
         completed_by_children: Optional[bool] = None,
@@ -1459,7 +1473,9 @@ class OmniFocusConnector:
             note: New project note (optional)
             sequential: New sequential setting (optional)
             status: Project status (ProjectStatus enum or string: "active", "on_hold", "done", "dropped")
-            review_interval_weeks: Review interval in weeks (0 to clear)
+            review_interval_weeks: DEPRECATED — use review_interval_value + review_interval_unit instead. Review interval in weeks (0 to clear)
+            review_interval_value: Review interval amount (e.g., 3 for "every 3 months"). Used with review_interval_unit.
+            review_interval_unit: Review interval unit — "day", "week", "month", or "year" (default: "week")
             last_reviewed: Last reviewed date in ISO format or "now" - OmniFocus calculates next review automatically (optional)
             next_review_date: Next review date in ISO format - Explicit override of calculated date (optional)
             due_date: Due date in ISO 8601 format, or "" to clear (optional)
@@ -1505,6 +1521,8 @@ class OmniFocusConnector:
             "project_type": project_type,
             "status": status,
             "review_interval_weeks": review_interval_weeks,
+            "review_interval_value": review_interval_value,
+            "review_interval_unit": review_interval_unit,
             "last_reviewed": last_reviewed,
             "next_review_date": next_review_date,
             "completed_by_children": completed_by_children,
@@ -1592,10 +1610,17 @@ class OmniFocusConnector:
 
         # Build review interval command
         review_command = ""
-        if review_interval_weeks is not None:
-            # Use OmniFocus record format for review interval
-            review_command = f'set review interval of theProject to {{unit:week, steps:{review_interval_weeks}, fixed:true}}'
-            updated_fields.append("review_interval_weeks")
+        # Map deprecated review_interval_weeks to new parameters
+        if review_interval_weeks is not None and review_interval_value is None:
+            review_interval_value = review_interval_weeks
+            review_interval_unit = "week"
+        if review_interval_value is not None:
+            unit = review_interval_unit or "week"
+            valid_units = ["day", "week", "month", "year"]
+            if unit not in valid_units:
+                raise ValueError(f"Invalid review_interval_unit: {unit}. Must be one of: {', '.join(valid_units)}")
+            review_command = f'set review interval of theProject to {{unit:{unit}, steps:{review_interval_value}, fixed:true}}'
+            updated_fields.append("review_interval")
 
         # Build last reviewed command
         reviewed_command = ""
@@ -1836,6 +1861,8 @@ class OmniFocusConnector:
         sequential: Optional[bool] = None,
         status: Optional[Union[ProjectStatus, str]] = None,
         review_interval_weeks: Optional[int] = None,
+        review_interval_value: Optional[int] = None,
+        review_interval_unit: Optional[str] = None,
         last_reviewed: Optional[str] = None,
         next_review_date: Optional[str] = None,
         due_date: Optional[str] = None,
@@ -1861,7 +1888,9 @@ class OmniFocusConnector:
             folder_path: Folder path to move projects to (e.g., "Work > Projects")
             sequential: Sequential setting (optional)
             status: Project status (ProjectStatus enum or string: "active", "on_hold", "done", "dropped")
-            review_interval_weeks: Review interval in weeks (0 to clear)
+            review_interval_weeks: DEPRECATED — use review_interval_value + review_interval_unit instead. Review interval in weeks (0 to clear)
+            review_interval_value: Review interval amount (e.g., 3 for "every 3 months"). Used with review_interval_unit.
+            review_interval_unit: Review interval unit — "day", "week", "month", or "year" (default: "week")
             last_reviewed: Last reviewed date in ISO format or "now" - OmniFocus calculates next review automatically (optional)
             next_review_date: Next review date in ISO format - Explicit override of calculated date (optional)
             due_date: Due date in ISO 8601 format, or "" to clear (optional)
@@ -1914,7 +1943,8 @@ class OmniFocusConnector:
 
         # Validate at least one field is provided
         if (folder_path is None and sequential is None and status is None and
-                review_interval_weeks is None and last_reviewed is None and
+                review_interval_weeks is None and review_interval_value is None and
+                review_interval_unit is None and last_reviewed is None and
                 next_review_date is None and due_date is None and
                 defer_date is None and planned_date is None and
                 flagged is None and estimated_minutes is None and
@@ -1965,9 +1995,17 @@ class OmniFocusConnector:
                 bulk_commands.append(f"set status of ({or_chain_target}) to on hold")
             has_bulk = True
 
-        if review_interval_weeks is not None:
+        # Map deprecated review_interval_weeks to new parameters
+        if review_interval_weeks is not None and review_interval_value is None:
+            review_interval_value = review_interval_weeks
+            review_interval_unit = "week"
+        if review_interval_value is not None:
+            unit = review_interval_unit or "week"
+            valid_units = ["day", "week", "month", "year"]
+            if unit not in valid_units:
+                raise ValueError(f"Invalid review_interval_unit: {unit}. Must be one of: {', '.join(valid_units)}")
             bulk_commands.append(
-                f"set review interval of ({or_chain_target}) to {{unit:week, steps:{review_interval_weeks}, fixed:true}}"
+                f"set review interval of ({or_chain_target}) to {{unit:{unit}, steps:{review_interval_value}, fixed:true}}"
             )
             has_bulk = True
 
