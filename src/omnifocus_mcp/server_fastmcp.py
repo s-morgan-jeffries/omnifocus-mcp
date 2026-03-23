@@ -682,90 +682,25 @@ def create_task(
     sequential: bool = False,
     completed_by_children: bool = False
 ) -> str:
-    """Create a new task in OmniFocus.
+    """DEPRECATED: Use create_tasks instead. Creates a single task in OmniFocus.
 
-    This is the redesigned create function that unifies task creation across all contexts:
-    - If project_id is provided: Create task in that project
-    - If parent_task_id is provided: Create task as subtask under that parent
-    - If neither provided (or project_id=None): Create task in inbox
-
-    Args:
-        task_name: The name/title of the task (required)
-        project_id: Optional project ID. If None, creates in inbox (unless parent_task_id is set).
-            Mutually exclusive with parent_task_id — a subtask inherits its parent's project.
-        parent_task_id: Optional parent task ID to create as subtask.
-            Mutually exclusive with project_id — a subtask inherits its parent's project.
-        note: Optional note/description for the task (plain text only)
-        due_date: Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
-        defer_date: Defer date in ISO 8601 format (when task becomes available — hidden until then)
-        planned_date: Planned date in ISO 8601 format — when you plan to work on the task.
-            Unlike defer (controls availability) or due (controls overdue), planned date is
-            purely a scheduling signal with no behavioral constraints.
-        flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
-            Flagged tasks can be queried with get_tasks(flagged_only=True). (default: False)
-        tags: Optional list of tag names (e.g., ["Computer", "Work"]). Tags must already exist.
-        estimated_minutes: Estimated time in minutes to complete the task
-        sequential: If True, subtasks of this task (action group) must be completed in order —
-            only the first available subtask is actionable. (default: False = parallel)
-        completed_by_children: If True, this task (action group) is automatically marked complete
-            when all its subtasks are completed. (default: False)
-
-    Returns:
-        Success message with task ID and location (project/inbox/parent)
-
-    Note:
-        In sequential projects, tasks are ordered by creation time. Create tasks
-        in the desired dependency order.
-
-    Raises:
-        ValueError: If both project_id and parent_task_id are specified
+    This function is kept for backward compatibility. It delegates to
+    create_tasks([{...}]) internally. Prefer create_tasks for new code.
     """
-    client = get_client()
-
-    # Validate tags parameter
-    if tags is not None and not isinstance(tags, list):
-        return f"Error: tags must be a list of tag names, e.g., [\"Computer\", \"Work\"]. Got {type(tags).__name__}."
-
-    try:
-        task_id = client.create_task(
-            task_name=task_name,
-            project_id=project_id,
-            parent_task_id=parent_task_id,
-            note=note,
-            due_date=due_date,
-            defer_date=defer_date,
-            planned_date=planned_date,
-            flagged=flagged,
-            tags=tags,
-            estimated_minutes=estimated_minutes,
-            sequential=sequential,
-            completed_by_children=completed_by_children
-        )
-    except ValueError as e:
-        return f"Error: {str(e)}"
-
-    # Build human-readable response
-    if parent_task_id:
-        location = f"as subtask under {parent_task_id}"
-    elif project_id:
-        location = f"in project {project_id}"
-    else:
-        location = "in inbox"
-
-    result = f"Successfully created task '{task_name}' {location}\nTask ID: {task_id}"
-
-    if due_date:
-        result += f"\nDue date: {due_date}"
-    if defer_date:
-        result += f"\nDefer date: {defer_date}"
-    if flagged:
-        result += "\nFlagged: Yes"
-    if tags:
-        result += f"\nTags: {', '.join(tags)}"
-    if estimated_minutes:
-        result += f"\nEstimated time: {estimated_minutes} minutes"
-
-    return result
+    return create_tasks(tasks=[{
+        "task_name": task_name,
+        "project_id": project_id,
+        "parent_task_id": parent_task_id,
+        "note": note,
+        "due_date": due_date,
+        "defer_date": defer_date,
+        "planned_date": planned_date,
+        "flagged": flagged,
+        "tags": tags,
+        "estimated_minutes": estimated_minutes,
+        "sequential": sequential,
+        "completed_by_children": completed_by_children,
+    }])
 
 
 # ============================================================================
@@ -818,7 +753,10 @@ def create_tasks(tasks: list[TaskCreate]) -> str:
 
     # Coerce dicts to TaskCreate (MCP protocol does this automatically,
     # but direct Python calls from tests pass raw dicts)
-    tasks = [TaskCreate(**t) if isinstance(t, dict) else t for t in tasks]
+    try:
+        tasks = [TaskCreate(**t) if isinstance(t, dict) else t for t in tasks]
+    except Exception as e:
+        return f"Error: Invalid task input: {e}"
 
     for task in tasks:
         try:
