@@ -309,61 +309,23 @@ def create_project(
     defer_date: Optional[str] = None,
     planned_date: Optional[str] = None,
 ) -> str:
-    """Create a new project in OmniFocus.
+    """DEPRECATED: Use create_projects instead. Creates a single project in OmniFocus.
 
-    Args:
-        name: The name of the project
-        note: Optional note/description for the project (plain text only - rich text formatting is not supported via automation APIs)
-        folder_path: Optional folder path (e.g., "Work > Clients") - folder must exist in OmniFocus
-        project_type: Project type — "parallel" (default, all tasks available simultaneously),
-            "sequential" (tasks completed in order, only first available), or "single_actions"
-            (grab-bag list with no completion goal, cannot auto-complete). Overrides sequential
-            when provided.
-        sequential: DEPRECATED — use project_type instead. If True, creates a sequential project.
-            Ignored when project_type is provided. (default: False)
-        review_interval_weeks: Optional review interval in weeks for GTD review cycle
-        completed_by_children: Auto-complete the project when its last remaining action is completed. (optional)
-        due_date: Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00")
-        defer_date: Defer date in ISO 8601 format (when project becomes available)
-        planned_date: Planned date in ISO 8601 format (when you plan to work on the project)
-
-    Returns:
-        Success message with project ID and configuration details
+    This function is kept for backward compatibility. It delegates to
+    create_projects([{...}]) internally. Prefer create_projects for new code.
     """
-    client = get_client()
-    try:
-        project_id = client.create_project(
-            name=name,
-            note=note,
-            folder_path=folder_path,
-            sequential=sequential,
-            project_type=project_type,
-            review_interval_weeks=review_interval_weeks,
-            completed_by_children=completed_by_children,
-            due_date=due_date,
-            defer_date=defer_date,
-            planned_date=planned_date,
-        )
-    except ValueError as e:
-        return f"Error: {str(e)}"
-
-    effective_type = project_type or ("sequential" if sequential else "parallel")
-    type_labels = {
-        "sequential": "Sequential (tasks completed in order)",
-        "parallel": "Parallel (tasks can be done in any order)",
-        "single_actions": "Single Actions List (grab-bag, no completion goal)",
-    }
-    result = f"Successfully created project '{name}'"
-    result += f"\nProject ID: {project_id}"
-    if folder_path:
-        result += f"\nFolder: {folder_path}"
-    result += f"\nType: {type_labels.get(effective_type, effective_type)}"
-    if review_interval_weeks:
-        result += f"\nReview Interval: Every {review_interval_weeks} week(s)"
-    if note:
-        result += f"\nNote: {_truncate_note(note)}"
-
-    return result
+    return create_projects(projects=[{
+        "name": name,
+        "note": note,
+        "folder_path": folder_path,
+        "project_type": project_type,
+        "sequential": sequential,
+        "review_interval_weeks": review_interval_weeks,
+        "completed_by_children": completed_by_children,
+        "due_date": due_date,
+        "defer_date": defer_date,
+        "planned_date": planned_date,
+    }])
 
 
 @mcp.tool()
@@ -749,6 +711,20 @@ class TaskCreate(BaseModel):
     completed_by_children: bool = False
 
 
+class ProjectCreate(BaseModel):
+    """Input model for creating a project."""
+    name: str
+    note: Optional[str] = None
+    folder_path: Optional[str] = None
+    project_type: Optional[str] = None
+    sequential: bool = False
+    review_interval_weeks: Optional[int] = None
+    completed_by_children: Optional[bool] = None
+    due_date: Optional[str] = None
+    defer_date: Optional[str] = None
+    planned_date: Optional[str] = None
+
+
 class TaskUpdate(BaseModel):
     """Input model for updating a task."""
     id: str
@@ -849,6 +825,95 @@ def create_tasks(tasks: list[TaskCreate]) -> str:
         lines.append(f"  - {r['task_name']}: {r['task_id']}")
     for r in failed:
         lines.append(f"  - {r['task_name']}: FAILED — {r['error']}")
+    return "\n".join(lines)
+
+
+# ============================================================================
+# Unified Batch Create Projects (v0.11.0)
+# ============================================================================
+
+
+@mcp.tool()
+def create_projects(projects: list[ProjectCreate]) -> str:
+    """Create one or more projects in OmniFocus.
+
+    Pass a list of project objects. Each must have a name; all other fields optional.
+
+    Args:
+        projects: List of project objects to create. Each object supports:
+            name (required), note, folder_path, project_type, sequential,
+            review_interval_weeks, completed_by_children, due_date,
+            defer_date, planned_date.
+
+    Returns:
+        For single project: success message with project ID.
+        For multiple projects: summary with per-item results.
+
+    Examples:
+        create_projects([{"name": "Website Redesign"}])
+        create_projects([
+            {"name": "Project A", "folder_path": "Work", "project_type": "sequential"},
+            {"name": "Project B", "due_date": "2026-04-01"}
+        ])
+    """
+    client = get_client()
+
+    # Coerce dicts to ProjectCreate (MCP protocol does this automatically,
+    # but direct Python calls from tests pass raw dicts)
+    try:
+        projects = [ProjectCreate(**p) if isinstance(p, dict) else p for p in projects]
+    except Exception as e:
+        return f"Error: Invalid project input: {e}"
+
+    results = []
+    for project in projects:
+        try:
+            project_id = client.create_project(**project.model_dump())
+            results.append({
+                "name": project.name,
+                "project_id": project_id,
+                "success": True,
+            })
+        except (ValueError, Exception) as e:
+            results.append({
+                "name": project.name,
+                "success": False,
+                "error": str(e),
+            })
+
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single project: match old create_project format
+    if len(projects) == 1:
+        r = results[0]
+        if r["success"]:
+            proj = projects[0]
+            effective_type = proj.project_type or ("sequential" if proj.sequential else "parallel")
+            type_labels = {
+                "sequential": "Sequential (tasks completed in order)",
+                "parallel": "Parallel (tasks can be done in any order)",
+                "single_actions": "Single Actions List (grab-bag, no completion goal)",
+            }
+            result = f"Successfully created project '{proj.name}'"
+            result += f"\nProject ID: {r['project_id']}"
+            if proj.folder_path:
+                result += f"\nFolder: {proj.folder_path}"
+            result += f"\nType: {type_labels.get(effective_type, effective_type)}"
+            if proj.review_interval_weeks:
+                result += f"\nReview Interval: Every {proj.review_interval_weeks} week(s)"
+            if proj.note:
+                result += f"\nNote: {_truncate_note(proj.note)}"
+            return result
+        else:
+            return f"Error: {r['error']}"
+
+    # Multiple projects: summary
+    lines = [f"Created {len(succeeded)} of {len(projects)} projects:"]
+    for r in succeeded:
+        lines.append(f"  - {r['name']}: {r['project_id']}")
+    for r in failed:
+        lines.append(f"  - {r['name']}: FAILED — {r['error']}")
     return "\n".join(lines)
 
 
