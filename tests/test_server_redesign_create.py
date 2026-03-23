@@ -204,6 +204,97 @@ class TestCreateTaskServerRedesign:
             assert len(result) > len("task-new-id")
 
 
+class TestCreateTasksUnified:
+    """Tests for unified create_tasks() with Pydantic model input."""
+
+    def test_create_tasks_single_item(self):
+        """create_tasks with a single task returns same format as create_task."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_task.return_value = "task-001"
+            mock_get_client.return_value = mock_client
+
+            create_tasks = server.create_tasks
+            result = create_tasks(tasks=[{"task_name": "Test Task", "project_id": "proj-1"}])
+
+            assert isinstance(result, str)
+            assert "task-001" in result
+            assert "Successfully" in result
+            mock_client.create_task.assert_called_once()
+            call_kwargs = mock_client.create_task.call_args[1]
+            assert call_kwargs["task_name"] == "Test Task"
+            assert call_kwargs["project_id"] == "proj-1"
+
+    def test_create_tasks_multiple_items(self):
+        """create_tasks with multiple tasks returns summary."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_task.side_effect = ["task-001", "task-002", "task-003"]
+            mock_get_client.return_value = mock_client
+
+            create_tasks = server.create_tasks
+            result = create_tasks(tasks=[
+                {"task_name": "Task A"},
+                {"task_name": "Task B", "flagged": True},
+                {"task_name": "Task C", "tags": ["work"]},
+            ])
+
+            assert isinstance(result, str)
+            assert "3" in result
+            assert mock_client.create_task.call_count == 3
+
+    def test_create_tasks_partial_failure(self):
+        """create_tasks with one failure returns mixed results."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_task.side_effect = [
+                "task-001",
+                ValueError("Both project_id and parent_task_id"),
+                "task-003",
+            ]
+            mock_get_client.return_value = mock_client
+
+            create_tasks = server.create_tasks
+            result = create_tasks(tasks=[
+                {"task_name": "Good Task"},
+                {"task_name": "Bad Task", "project_id": "p1", "parent_task_id": "t1"},
+                {"task_name": "Also Good"},
+            ])
+
+            assert isinstance(result, str)
+            assert "2" in result  # 2 succeeded
+            assert "1" in result  # 1 failed
+            assert "Bad Task" in result or "failed" in result.lower()
+
+    def test_create_tasks_with_all_fields(self):
+        """create_tasks passes all fields through to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_task.return_value = "task-001"
+            mock_get_client.return_value = mock_client
+
+            create_tasks = server.create_tasks
+            result = create_tasks(tasks=[{
+                "task_name": "Full Task",
+                "project_id": "proj-1",
+                "note": "A note",
+                "due_date": "2026-04-01",
+                "defer_date": "2026-03-25",
+                "planned_date": "2026-03-28",
+                "flagged": True,
+                "tags": ["work", "urgent"],
+                "estimated_minutes": 30,
+                "sequential": True,
+                "completed_by_children": True,
+            }])
+
+            call_kwargs = mock_client.create_task.call_args[1]
+            assert call_kwargs["task_name"] == "Full Task"
+            assert call_kwargs["flagged"] is True
+            assert call_kwargs["tags"] == ["work", "urgent"]
+            assert call_kwargs["estimated_minutes"] == 30
+
+
 class TestCreateProjectServerRedesign:
     """Tests for create_project() MCP tool ValueError handling."""
 

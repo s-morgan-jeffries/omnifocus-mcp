@@ -4,6 +4,7 @@ import os
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from pydantic import BaseModel
 
 from .omnifocus_connector import OmniFocusConnector
 
@@ -766,6 +767,103 @@ def create_task(
 
     return result
 
+
+# ============================================================================
+# Unified Batch Create (v0.12.0)
+# ============================================================================
+
+
+class TaskCreate(BaseModel):
+    """Input model for creating a task."""
+    task_name: str
+    project_id: Optional[str] = None
+    parent_task_id: Optional[str] = None
+    note: Optional[str] = None
+    due_date: Optional[str] = None
+    defer_date: Optional[str] = None
+    planned_date: Optional[str] = None
+    flagged: bool = False
+    tags: Optional[list[str]] = None
+    estimated_minutes: Optional[int] = None
+    sequential: bool = False
+    completed_by_children: bool = False
+
+
+@mcp.tool()
+def create_tasks(tasks: list[TaskCreate]) -> str:
+    """Create one or more tasks in OmniFocus.
+
+    Pass a list of task objects. Each task must have a task_name; all other
+    fields are optional. For a single task, pass a list with one item.
+
+    Args:
+        tasks: List of task objects to create. Each object supports:
+            task_name (required), project_id, parent_task_id, note, due_date,
+            defer_date, planned_date, flagged, tags, estimated_minutes,
+            sequential, completed_by_children.
+
+    Returns:
+        For single task: success message with task ID.
+        For multiple tasks: summary with per-item results.
+
+    Examples:
+        create_tasks([{"task_name": "Buy groceries"}])
+        create_tasks([
+            {"task_name": "Task A", "project_id": "proj-1", "flagged": true},
+            {"task_name": "Task B", "tags": ["work"], "due_date": "2026-04-01"}
+        ])
+    """
+    client = get_client()
+    results = []
+
+    # Coerce dicts to TaskCreate (MCP protocol does this automatically,
+    # but direct Python calls from tests pass raw dicts)
+    tasks = [TaskCreate(**t) if isinstance(t, dict) else t for t in tasks]
+
+    for task in tasks:
+        try:
+            task_id = client.create_task(**task.model_dump())
+            results.append({
+                "task_name": task.task_name,
+                "task_id": task_id,
+                "success": True,
+            })
+        except (ValueError, Exception) as e:
+            results.append({
+                "task_name": task.task_name,
+                "success": False,
+                "error": str(e),
+            })
+
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single task: match old create_task format
+    if len(tasks) == 1:
+        r = results[0]
+        if r["success"]:
+            task = tasks[0]
+            location = f"in project {task.project_id}" if task.project_id else \
+                       f"as subtask of {task.parent_task_id}" if task.parent_task_id else \
+                       "in inbox"
+            result = f"Successfully created task '{task.task_name}' {location}\nTask ID: {r['task_id']}"
+            if task.due_date:
+                result += f"\nDue date: {task.due_date}"
+            if task.flagged:
+                result += "\nFlagged: Yes"
+            if task.tags:
+                result += f"\nTags: {', '.join(task.tags)}"
+            return result
+        else:
+            return f"Error: {r['error']}"
+
+    # Multiple tasks: summary
+    lines = [f"Created {len(succeeded)} of {len(tasks)} tasks:"]
+    for r in succeeded:
+        lines.append(f"  - {r['task_name']}: {r['task_id']}")
+    for r in failed:
+        lines.append(f"  - {r['task_name']}: FAILED — {r['error']}")
+    return "\n".join(lines)
 
 
 @mcp.tool()
