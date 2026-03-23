@@ -234,7 +234,13 @@ def get_projects(
     planned_after: Optional[str] = None,
     planned_before: Optional[str] = None,
     planned_on: Optional[str] = None,
-    has_overdue_tasks: Optional[bool] = None
+    has_overdue_tasks: Optional[bool] = None,
+    sort_by: Optional[str] = None,
+    sort_order: str = "asc",
+    modified_after: Optional[str] = None,
+    modified_before: Optional[str] = None,
+    min_task_count: Optional[int] = None,
+    has_no_due_dates: Optional[bool] = None,
 ) -> str:
     """Retrieve projects from OmniFocus with optional filtering.
 
@@ -257,6 +263,12 @@ def get_projects(
             Convenience for planned_after=date + planned_before=next_day. Mutually exclusive
             with planned_after/planned_before.
         has_overdue_tasks: If True, only return projects with overdue tasks (implies include_task_health=True). (optional)
+        sort_by: Sort results by field — "name" (optional)
+        sort_order: Sort direction — "asc" (default) or "desc"
+        modified_after: Only return projects modified after this ISO date (optional)
+        modified_before: Only return projects modified before this ISO date (optional)
+        min_task_count: Only return projects with at least this many tasks (optional)
+        has_no_due_dates: If True, only return projects where no tasks have due dates (optional)
 
     Returns:
         Each project includes: id, name, folderPath, status, projectType, sequential,
@@ -299,6 +311,12 @@ def get_projects(
             planned_after=planned_after,
             planned_before=planned_before,
             has_overdue_tasks=has_overdue_tasks,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            modified_after=modified_after,
+            modified_before=modified_before,
+            min_task_count=min_task_count,
+            has_no_due_dates=has_no_due_dates,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -560,6 +578,16 @@ def get_tasks(
     tag_filter: Optional[list[str]] = None,
     query: Optional[str] = None,
     inbox_only: bool = False,
+    sort_by: Optional[str] = None,
+    sort_order: str = "asc",
+    modified_after: Optional[str] = None,
+    modified_before: Optional[str] = None,
+    created_after: Optional[str] = None,
+    created_before: Optional[str] = None,
+    max_estimated_minutes: Optional[int] = None,
+    has_estimate: Optional[bool] = None,
+    recurring_only: Optional[bool] = None,
+    tag_filter_mode: str = "and",
     planned_after: Optional[str] = None,
     planned_before: Optional[str] = None,
     planned_on: Optional[str] = None,
@@ -581,6 +609,16 @@ def get_tasks(
         tag_filter: List of tag names to filter by, e.g., ["Errands", "Weekend"] (task must have ALL listed tags)
         query: Optional search term to filter by name or note (case-insensitive)
         inbox_only: If True, only return inbox tasks
+        sort_by: Sort results by field — "name", "due_date", or "defer_date" (optional)
+        sort_order: Sort direction — "asc" (default) or "desc"
+        modified_after: Only return tasks modified after this ISO date (optional)
+        modified_before: Only return tasks modified before this ISO date (optional)
+        created_after: Only return tasks created after this ISO date (optional)
+        created_before: Only return tasks created before this ISO date (optional)
+        max_estimated_minutes: Only return tasks with estimated time ≤ this value — "quick wins" filter (optional)
+        has_estimate: If True, only return tasks with an estimate set; if False, only tasks without (optional)
+        recurring_only: If True, only return recurring tasks; if False, only non-recurring (optional)
+        tag_filter_mode: How tag_filter matches — "and" (default: all tags), "or" (any tag), "not" (none of the tags)
         planned_after: Only return tasks with planned date on or after this ISO date (optional)
         planned_before: Only return tasks with planned date before this ISO date (optional)
         planned_on: Only return tasks planned for this specific date, e.g., "2026-03-23" (optional).
@@ -634,8 +672,18 @@ def get_tasks(
             blocked_only=blocked_only,
             next_only=next_only,
             tag_filter=tag_filter,
+            tag_filter_mode=tag_filter_mode,
             query=query,
             inbox_only=inbox_only,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            modified_after=modified_after,
+            modified_before=modified_before,
+            created_after=created_after,
+            created_before=created_before,
+            max_estimated_minutes=max_estimated_minutes,
+            has_estimate=has_estimate,
+            recurring_only=recurring_only,
             planned_after=planned_after,
             planned_before=planned_before,
         )
