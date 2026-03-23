@@ -34,12 +34,14 @@ import omnifocus_mcp.server_fastmcp as server
 
 # Extract tool functions (FastMCP @mcp.tool() returns the function directly)
 create_task = server.create_task
+create_tasks = server.create_tasks
 update_task = server.update_task
 update_tasks = server.update_tasks
 delete_tasks = server.delete_tasks
 get_tasks = server.get_tasks
 get_projects = server.get_projects
 create_project = server.create_project
+create_projects = server.create_projects
 delete_projects = server.delete_projects
 get_tags = server.get_tags
 create_tag = server.create_tag
@@ -736,3 +738,169 @@ class TestGetFocusE2E:
         assert "focus" in result.lower() or "No focus" in result
 
         print(f"\n✓ E2E get_focus: {result}")
+
+
+# ============================================================================
+# E2E Tests for create_tasks() batch — unified batch create (#533)
+# ============================================================================
+
+class TestCreateTasksBatchE2E:
+    """E2E tests for create_tasks() MCP tool with real OmniFocus.
+
+    Verifies Pydantic model_dump() → connector field mapping round-trips correctly.
+    """
+
+    def test_create_tasks_single_item_e2e(self, client, test_project):
+        """E2E: Create single task via create_tasks([{...}]), read back to verify."""
+        result = create_tasks(
+            tasks=[{"task_name": "E2E Batch Single Task", "project_id": test_project}]
+        )
+
+        assert isinstance(result, str)
+        assert "E2E Batch Single Task" in result
+        assert "Task ID:" in result
+
+        # Extract task ID and read back
+        match = re.search(r'Task ID:\s*(\S+)', result)
+        assert match, f"Could not extract task ID from: {result}"
+        task_id = match.group(1)
+
+        # Round-trip verification
+        tasks_result = get_tasks(task_id=task_id)
+        assert "E2E Batch Single Task" in tasks_result
+
+        print(f"\n✓ E2E create_tasks single item with read-back: {task_id}")
+        client.delete_tasks(task_id)
+
+    def test_create_tasks_batch_e2e(self, client, test_project):
+        """E2E: Create 3 tasks via create_tasks([...]), verify all exist."""
+        result = create_tasks(
+            tasks=[
+                {"task_name": "E2E Batch Task 1", "project_id": test_project},
+                {"task_name": "E2E Batch Task 2", "project_id": test_project},
+                {"task_name": "E2E Batch Task 3", "project_id": test_project},
+            ]
+        )
+
+        assert isinstance(result, str)
+        assert "3" in result
+        assert "E2E Batch Task 1" in result
+
+        # Read back all tasks in project to verify
+        tasks_result = get_tasks(project_id=test_project)
+        assert "E2E Batch Task 1" in tasks_result
+        assert "E2E Batch Task 2" in tasks_result
+        assert "E2E Batch Task 3" in tasks_result
+
+        print(f"\n✓ E2E create_tasks batch (3 tasks): verified via get_tasks")
+
+        # Cleanup (tasks cleaned up with test_project fixture)
+
+    def test_create_tasks_with_fields_roundtrip_e2e(self, client, test_project, ensure_test_tags):
+        """E2E: Create task with multiple fields, read back to verify round-trip."""
+        result = create_tasks(
+            tasks=[{
+                "task_name": "E2E Roundtrip Field Test",
+                "project_id": test_project,
+                "flagged": True,
+                "tags": ["work"],
+                "estimated_minutes": 45,
+                "note": "Round-trip verification test",
+            }]
+        )
+
+        assert isinstance(result, str)
+        assert "Task ID:" in result
+
+        match = re.search(r'Task ID:\s*(\S+)', result)
+        assert match
+        task_id = match.group(1)
+
+        # Read back and verify fields
+        tasks = client.get_tasks(task_id=task_id)
+        assert len(tasks) == 1
+        task = tasks[0]
+        assert task['name'] == "E2E Roundtrip Field Test"
+        assert task['flagged'] is True
+        assert 'work' in [t.lower() for t in task.get('tags', [])]
+        assert task.get('estimatedMinutes') == 45
+
+        print(f"\n✓ E2E create_tasks field round-trip: flagged, tags, estimated_minutes verified")
+        client.delete_tasks(task_id)
+
+
+# ============================================================================
+# E2E Tests for create_projects() batch (#533)
+# ============================================================================
+
+class TestCreateProjectsBatchE2E:
+    """E2E tests for create_projects() MCP tool with real OmniFocus."""
+
+    def test_create_projects_batch_e2e(self, client):
+        """E2E: Create 2 projects via create_projects([...]), read back to verify."""
+        result = create_projects(
+            projects=[
+                {"name": "E2E Batch Project Alpha"},
+                {"name": "E2E Batch Project Beta"},
+            ]
+        )
+
+        assert isinstance(result, str)
+        assert "2" in result
+        assert "E2E Batch Project Alpha" in result
+
+        # Read back to verify
+        projects_result = get_projects(query="E2E Batch Project", include_completed=True)
+        assert "E2E Batch Project Alpha" in projects_result
+        assert "E2E Batch Project Beta" in projects_result
+
+        print(f"\n✓ E2E create_projects batch (2 projects): verified via get_projects")
+
+        # Cleanup — extract project IDs from response
+        alpha_projects = client.get_projects(query="E2E Batch Project Alpha", include_completed=True)
+        beta_projects = client.get_projects(query="E2E Batch Project Beta", include_completed=True)
+        for p in alpha_projects + beta_projects:
+            try:
+                client.delete_projects(p['id'])
+            except Exception:
+                pass
+
+
+# ============================================================================
+# E2E Tests for update round-trip verification (#533)
+# ============================================================================
+
+class TestUpdateRoundTripE2E:
+    """E2E tests verifying updates actually change OmniFocus data (not just response strings)."""
+
+    def test_update_task_flagged_roundtrip_e2e(self, client, test_project):
+        """E2E: Flag a task, read back to verify flagged=True in OmniFocus."""
+        task_id = client.create_task("E2E Roundtrip Flag Test", project_id=test_project)
+
+        # Update via MCP tool
+        result = update_task(task_id=task_id, flagged=True)
+        assert "Successfully updated" in result or "success" in result.lower()
+
+        # Read back to verify
+        tasks = client.get_tasks(task_id=task_id)
+        assert len(tasks) == 1
+        assert tasks[0]['flagged'] is True
+
+        print(f"\n✓ E2E update flagged round-trip: verified flagged=True in OmniFocus")
+        client.delete_tasks(task_id)
+
+    def test_update_task_name_roundtrip_e2e(self, client, test_project):
+        """E2E: Rename a task, read back to verify name changed in OmniFocus."""
+        task_id = client.create_task("E2E Original Name", project_id=test_project)
+
+        # Update via MCP tool
+        result = update_task(task_id=task_id, task_name="E2E Renamed Task")
+        assert "Successfully updated" in result or "success" in result.lower()
+
+        # Read back to verify
+        tasks = client.get_tasks(task_id=task_id)
+        assert len(tasks) == 1
+        assert tasks[0]['name'] == "E2E Renamed Task"
+
+        print(f"\n✓ E2E update name round-trip: verified name='E2E Renamed Task' in OmniFocus")
+        client.delete_tasks(task_id)
