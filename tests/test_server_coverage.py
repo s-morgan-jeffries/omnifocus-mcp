@@ -207,6 +207,20 @@ class TestGetTasksEdgeCases:
         assert call_kwargs["query"] == "missing"
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_planned_on_expands_to_range(self, mock_gc):
+        mock_gc.return_value.get_tasks.return_value = []
+        server.get_tasks(planned_on="2026-03-23")
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["planned_after"] == "2026-03-23"
+        assert call_kwargs["planned_before"] == "2026-03-24"
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_planned_on_conflicts_with_planned_after(self, mock_gc):
+        result = server.get_tasks(planned_on="2026-03-23", planned_after="2026-03-20")
+        assert "Error" in result
+        assert "mutually exclusive" in result
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_inbox_no_results(self, mock_gc):
         mock_gc.return_value.get_tasks.return_value = []
         result = server.get_tasks(inbox_only=True)

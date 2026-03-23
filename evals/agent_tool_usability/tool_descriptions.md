@@ -170,6 +170,9 @@ Get tasks from OmniFocus with optional filtering.
 - `tag_filter: list[str]` (optional) — List of tag names to filter by, e.g., `["Errands", "Weekend"]` (task must have ALL listed tags)
 - `query: str` (optional) — Search term to filter by name or note (case-insensitive)
 - `inbox_only: bool` (default: False) — Only return inbox tasks
+- `planned_after: str` (optional) — Only return tasks with planned date on or after this ISO date
+- `planned_before: str` (optional) — Only return tasks with planned date before this ISO date
+- `planned_on: str` (optional) — Only return tasks planned for this specific date (e.g., "2026-03-23"). Mutually exclusive with planned_after/planned_before.
 
 **Returns:** Each task includes: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated unless include_full_notes=True), parentTaskId, subtaskCount, sequential, isRecurring, recurrence, repetitionMethod, repeatSummary, nextDueDate, nextDeferDate, nextPlannedDate, catchUpAutomatically, creationDate, modificationDate, completionDate (null if not completed), droppedDate (null if not dropped).
 `available` is true when the task is actionable — not completed, not dropped, not blocked, not deferred, and not inside a completed or dropped container (project or parent task). This accounts for inherited status: a task in a done project shows `completed: false` but `available: false` because its container is inactive. Use `available_only=True` to get only truly actionable tasks.

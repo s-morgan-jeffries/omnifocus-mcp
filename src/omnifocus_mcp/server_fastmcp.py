@@ -580,7 +580,10 @@ def get_tasks(
     next_only: bool = False,
     tag_filter: Optional[list[str]] = None,
     query: Optional[str] = None,
-    inbox_only: bool = False
+    inbox_only: bool = False,
+    planned_after: Optional[str] = None,
+    planned_before: Optional[str] = None,
+    planned_on: Optional[str] = None,
 ) -> str:
     """Get tasks from OmniFocus with optional filtering.
 
@@ -599,6 +602,11 @@ def get_tasks(
         tag_filter: List of tag names to filter by, e.g., ["Errands", "Weekend"] (task must have ALL listed tags)
         query: Optional search term to filter by name or note (case-insensitive)
         inbox_only: If True, only return inbox tasks
+        planned_after: Only return tasks with planned date on or after this ISO date (optional)
+        planned_before: Only return tasks with planned date before this ISO date (optional)
+        planned_on: Only return tasks planned for this specific date, e.g., "2026-03-23" (optional).
+            Convenience for planned_after=date + planned_before=next_day. Mutually exclusive
+            with planned_after/planned_before.
 
     Returns:
         Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
@@ -620,6 +628,18 @@ def get_tasks(
     non-recurring) controls missed-recurrence behavior: when true, only one catch-up
     occurrence is created; when false, each missed interval spawns its own occurrence.
     """
+    # Expand planned_on to planned_after + planned_before
+    if planned_on is not None:
+        if planned_after is not None or planned_before is not None:
+            return "Error: planned_on is mutually exclusive with planned_after/planned_before."
+        from datetime import date, timedelta
+        try:
+            d = date.fromisoformat(planned_on)
+            planned_after = planned_on
+            planned_before = (d + timedelta(days=1)).isoformat()
+        except ValueError:
+            return f"Error: Invalid date format for planned_on: '{planned_on}'. Use ISO 8601 (e.g., '2026-03-23')."
+
     client = get_client()
     try:
         tasks = client.get_tasks(
@@ -636,7 +656,9 @@ def get_tasks(
             next_only=next_only,
             tag_filter=tag_filter,
             query=query,
-            inbox_only=inbox_only
+            inbox_only=inbox_only,
+            planned_after=planned_after,
+            planned_before=planned_before,
         )
     except ValueError as e:
         return f"Error: {str(e)}"

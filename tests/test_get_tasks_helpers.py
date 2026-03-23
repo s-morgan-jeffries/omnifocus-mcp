@@ -560,3 +560,72 @@ class TestBatchModeInvariant:
         assert "a reference to" in source, (
             "get_folders MUST use 'a reference to' for batch property reads."
         )
+
+
+# ── _filter_by_date_range: planned date filtering ─────────────────────────
+
+
+class TestPlannedDateFilter:
+    """Tests for planned_after and planned_before parameters in _filter_by_date_range."""
+
+    def _make_tasks(self):
+        return [
+            {"id": "t1", "plannedDate": "2026-03-20T09:00:00", "name": "early"},
+            {"id": "t2", "plannedDate": "2026-03-25T09:00:00", "name": "late"},
+            {"id": "t3", "plannedDate": "", "name": "no planned date"},
+        ]
+
+    def test_planned_after_filters(self, client):
+        tasks = self._make_tasks()
+        result = client._filter_by_date_range(
+            tasks,
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            planned_after="2026-03-22T00:00:00", planned_before=None,
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t2"
+
+    def test_planned_before_filters(self, client):
+        tasks = self._make_tasks()
+        result = client._filter_by_date_range(
+            tasks,
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            planned_after=None, planned_before="2026-03-22T00:00:00",
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t1"
+
+    def test_planned_range_filters(self, client):
+        tasks = self._make_tasks()
+        result = client._filter_by_date_range(
+            tasks,
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            planned_after="2026-03-19T00:00:00",
+            planned_before="2026-03-22T00:00:00",
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t1"
+
+    def test_no_planned_date_excluded(self, client):
+        tasks = [{"id": "t3", "plannedDate": "", "name": "no planned date"}]
+        result = client._filter_by_date_range(
+            tasks,
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            planned_after="2026-03-01T00:00:00", planned_before=None,
+        )
+        assert len(result) == 0
+
+    def test_no_planned_filter_returns_all(self, client):
+        """When neither planned_after nor planned_before is set, all tasks pass."""
+        tasks = self._make_tasks()
+        result = client._filter_by_date_range(
+            tasks,
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            planned_after=None, planned_before=None,
+        )
+        assert len(result) == 3

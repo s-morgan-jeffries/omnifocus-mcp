@@ -206,7 +206,9 @@ class TestTaskTools:
                 next_only=False,
                 tag_filter=["urgent"],
                 query=None,
-                inbox_only=False
+                inbox_only=False,
+                planned_after=None,
+                planned_before=None,
             )
 
     def test_get_tasks_dropped_only(self):
@@ -244,7 +246,9 @@ class TestTaskTools:
                 next_only=False,
                 tag_filter=None,
                 query=None,
-                inbox_only=False
+                inbox_only=False,
+                planned_after=None,
+                planned_before=None,
             )
 
 
