@@ -409,7 +409,9 @@ class OmniFocusConnector:
         created_after: Optional[str],
         created_before: Optional[str],
         modified_after: Optional[str],
-        modified_before: Optional[str]
+        modified_before: Optional[str],
+        planned_after: Optional[str] = None,
+        planned_before: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """Filter items by date ranges.
 
@@ -419,6 +421,8 @@ class OmniFocusConnector:
             created_before: Only include items created before this date
             modified_after: Only include items modified after this date
             modified_before: Only include items modified before this date
+            planned_after: Only include items with planned date on or after this date
+            planned_before: Only include items with planned date before this date
 
         Returns:
             Filtered list of items
@@ -450,6 +454,18 @@ class OmniFocusConnector:
                         include = False
                 else:
                     # No modification date - exclude if filtering by modification date
+                    include = False
+
+            # Check planned date filters
+            if include and (planned_after or planned_before):
+                planned_date = item.get('plannedDate', '')
+                if planned_date:
+                    if planned_after and planned_date < planned_after:
+                        include = False
+                    if planned_before and planned_date > planned_before:
+                        include = False
+                else:
+                    # No planned date - exclude if filtering by planned date
                     include = False
 
             if include:
@@ -2363,6 +2379,8 @@ class OmniFocusConnector:
         created_before: Optional[str],
         modified_after: Optional[str],
         modified_before: Optional[str],
+        planned_after: Optional[str] = None,
+        planned_before: Optional[str] = None,
         recurring_only: Optional[bool],
         sort_by: Optional[str],
         sort_order: str,
@@ -2405,10 +2423,11 @@ class OmniFocusConnector:
                 tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
 
         # Apply date range filtering
-        if created_after or created_before or modified_after or modified_before:
+        if created_after or created_before or modified_after or modified_before or planned_after or planned_before:
             tasks = self._filter_by_date_range(
                 tasks, created_after, created_before,
-                modified_after, modified_before
+                modified_after, modified_before,
+                planned_after, planned_before
             )
 
         # Apply recurring filter
@@ -3058,6 +3077,8 @@ class OmniFocusConnector:
         created_before: Optional[str] = None,
         modified_after: Optional[str] = None,
         modified_before: Optional[str] = None,
+        planned_after: Optional[str] = None,
+        planned_before: Optional[str] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
         recurring_only: Optional[bool] = None,
@@ -3096,6 +3117,8 @@ class OmniFocusConnector:
             created_before: Only return tasks created before this ISO date
             modified_after: Only return tasks modified after this ISO date
             modified_before: Only return tasks modified before this ISO date
+            planned_after: Only return tasks with planned date on or after this ISO date
+            planned_before: Only return tasks with planned date before this ISO date
             sort_by: Field to sort by - "name", "due_date", "defer_date" (default: None - OmniFocus order)
             sort_order: Sort order - "asc" or "desc" (default: "asc")
             recurring_only: If True, only return recurring tasks; if False, only non-recurring tasks; if None, return all (default: None)
@@ -3207,6 +3230,8 @@ class OmniFocusConnector:
                     created_before=created_before,
                     modified_after=modified_after,
                     modified_before=modified_before,
+                    planned_after=planned_after,
+                    planned_before=planned_before,
                     recurring_only=recurring_only,
                     sort_by=sort_by,
                     sort_order=sort_order,

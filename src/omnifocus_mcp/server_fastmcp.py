@@ -580,7 +580,9 @@ def get_tasks(
     next_only: bool = False,
     tag_filter: Optional[list[str]] = None,
     query: Optional[str] = None,
-    inbox_only: bool = False
+    inbox_only: bool = False,
+    planned_after: Optional[str] = None,
+    planned_before: Optional[str] = None,
 ) -> str:
     """Get tasks from OmniFocus with optional filtering.
 
@@ -599,6 +601,8 @@ def get_tasks(
         tag_filter: List of tag names to filter by, e.g., ["Errands", "Weekend"] (task must have ALL listed tags)
         query: Optional search term to filter by name or note (case-insensitive)
         inbox_only: If True, only return inbox tasks
+        planned_after: Only return tasks with planned date on or after this ISO date (optional)
+        planned_before: Only return tasks with planned date before this ISO date (optional)
 
     Returns:
         Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
@@ -636,7 +640,9 @@ def get_tasks(
             next_only=next_only,
             tag_filter=tag_filter,
             query=query,
-            inbox_only=inbox_only
+            inbox_only=inbox_only,
+            planned_after=planned_after,
+            planned_before=planned_before,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
