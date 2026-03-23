@@ -359,8 +359,8 @@ for task in tasks:
 for task_id in task_ids:
     update_task(task_id, flagged=True)  # N AppleScript calls
 
-# GOOD: Batch update
-update_tasks(task_ids, flagged=True)  # 1 AppleScript call
+# GOOD: Batch update with Pydantic models
+update_tasks(tasks=[TaskUpdate(id=tid, flagged=True) for tid in task_ids])
 ```
 
 ### 3. Consider Timeouts

@@ -138,7 +138,7 @@ New functionality needed?
 
 **Pattern:**
 - Single update: `update_task(task_id: str, ...)` - ALL fields
-- Batch update: `update_tasks(task_ids: Union[str, list[str]], ...)` - LIMITED fields
+- Batch update: `update_tasks(tasks: list[TaskUpdate])` - per-item values via Pydantic model
 
 ### When to Use Enum vs String
 
