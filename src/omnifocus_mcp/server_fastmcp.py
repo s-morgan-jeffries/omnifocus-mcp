@@ -724,6 +724,29 @@ class TaskCreate(BaseModel):
     completed_by_children: bool = False
 
 
+class TaskUpdate(BaseModel):
+    """Input model for updating a task."""
+    id: str
+    task_name: Optional[str] = None
+    project_id: Optional[str] = None
+    parent_task_id: Optional[str] = None
+    note: Optional[str] = None
+    due_date: Optional[str] = None
+    defer_date: Optional[str] = None
+    planned_date: Optional[str] = None
+    flagged: Optional[bool] = None
+    tags: Optional[list[str]] = None
+    add_tags: Optional[list[str]] = None
+    remove_tags: Optional[list[str]] = None
+    estimated_minutes: Optional[int] = None
+    completed: Optional[bool] = None
+    status: Optional[str] = None
+    recurrence: Optional[str] = None
+    repetition_method: Optional[str] = None
+    sequential: Optional[bool] = None
+    completed_by_children: Optional[bool] = None
+
+
 @mcp.tool()
 def create_tasks(tasks: list[TaskCreate]) -> str:
     """Create one or more tasks in OmniFocus.
@@ -826,203 +849,120 @@ def update_task(
     sequential: Optional[bool] = None,
     completed_by_children: Optional[bool] = None,
 ) -> str:
-    """Update an existing task in OmniFocus.
+    """DEPRECATED: Use update_tasks instead. Update a single task in OmniFocus.
+
+    Delegates to update_tasks with a single-item list.
 
     Args:
         task_id: The ID of the task to update
         task_name: New task name (optional)
-        project_id: Move task to this project (optional). Mutually exclusive with
-            parent_task_id — a subtask inherits its parent's project.
-        parent_task_id: Make task a subtask of this parent (optional). Mutually exclusive
-            with project_id — a subtask inherits its parent's project.
-        note: New note content (optional). WARNING: Removes rich text formatting
-        due_date: New due date in ISO 8601 format, or empty string to clear.
-            Omitting means no change. (optional)
-        defer_date: New defer date in ISO 8601 format (when task becomes available), or
-            empty string to clear. Omitting means no change. (optional)
-        planned_date: Planned date in ISO 8601 format, or empty string to clear.
-            When you plan to work on the task — purely a scheduling signal, no behavioral
-            constraints (unlike defer/due). Omitting means no change. (optional)
-        flagged: Flag marks a task as a priority — typically 'I want to work on this today.'
-            Pass True to flag, False to unflag. (optional)
-        tags: Full replacement — set exact tag list as a native list (optional, conflicts
-            with add_tags/remove_tags).
-        add_tags: Add these tags incrementally (optional, conflicts with tags)
-        remove_tags: Remove these tags (optional, conflicts with tags)
+        project_id: Move task to this project (optional)
+        parent_task_id: Make task a subtask of this parent (optional)
+        note: New note content (optional)
+        due_date: New due date in ISO 8601 format, or empty string to clear (optional)
+        defer_date: New defer date in ISO 8601 format, or empty string to clear (optional)
+        planned_date: Planned date in ISO 8601 format, or empty string to clear (optional)
+        flagged: Flag/unflag the task (optional)
+        tags: Full replacement tag list (optional)
+        add_tags: Add these tags incrementally (optional)
+        remove_tags: Remove these tags (optional)
         estimated_minutes: Estimated time in minutes (optional)
-        completed: Mark task complete/incomplete (optional). Uses `mark complete` internally,
-            which correctly handles recurring tasks by spawning the next occurrence.
-        status: Task status — "active" or "dropped" (optional). WARNING: Dropping is
-            one-way via the API — dropped tasks cannot be undropped through automation,
-            only through the OmniFocus UI. To drop an entire recurring series (not just
-            the current occurrence), pass both recurrence="" and status="dropped".
-        recurrence: iCalendar RRULE string (e.g., "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR"),
-            or empty string to remove recurrence. Omitting means no change. (optional)
-        repetition_method: How the next occurrence is calculated (optional). Only meaningful
-            when recurrence is set. Values: "fixed" (next occurrence on the original schedule
-            regardless of when completed), "start_after_completion" (next defer date =
-            completion date + interval), "due_after_completion" (next due date = completion
-            date + interval). Use due_after_completion when you want the deadline to shift
-            based on completion; use start_after_completion when you want the availability
-            window (defer date) to shift instead.
-        sequential: If True, subtasks of this task (action group) must be completed in order.
-            If False, subtasks are parallel (all available). Omitting means no change. (optional)
-        completed_by_children: If True, this task (action group) is automatically marked complete
-            when all its subtasks are completed. If False, requires manual completion. Omitting
-            means no change. (optional)
-        name: DEPRECATED - Use task_name instead (optional, for backward compatibility)
+        completed: Mark task complete/incomplete (optional)
+        status: Task status — "active" or "dropped" (optional)
+        recurrence: iCalendar RRULE string, or empty string to remove (optional)
+        repetition_method: "fixed", "start_after_completion", or "due_after_completion" (optional)
+        sequential: If True, subtasks must be completed in order (optional)
+        completed_by_children: If True, auto-complete when subtasks done (optional)
 
     Returns:
         Success message with updated fields, or error message
-
-    Examples:
-        update_task("task-123", completed=True)  # Mark complete
-        update_task("task-123", status="dropped")  # Drop task
-        update_task("task-123", project_id="proj-456")  # Move to project
-        update_task("task-123", add_tags=["urgent"])  # Add tag
-        update_task("task-123", task_name="New Name", flagged=True, due_date="2025-12-31")
-        update_task("task-123", recurrence="FREQ=WEEKLY;BYDAY=MO,WE,FR", repetition_method="fixed")
-        update_task("task-123", recurrence="")  # Remove recurrence
-        update_task("task-123", recurrence="", status="dropped")  # Drop entire recurring series
     """
-    client = get_client()
-    try:
-        result = client.update_task(
-            task_id=task_id,
-            task_name=task_name,
-            project_id=project_id,
-            parent_task_id=parent_task_id,
-            note=note,
-            due_date=due_date,
-            defer_date=defer_date,
-            planned_date=planned_date,
-            flagged=flagged,
-            tags=tags,
-            add_tags=add_tags,
-            remove_tags=remove_tags,
-            estimated_minutes=estimated_minutes,
-            completed=completed,
-            status=status,
-            recurrence=recurrence,
-            repetition_method=repetition_method,
-            sequential=sequential,
-            completed_by_children=completed_by_children,
-        )
-    except ValueError as e:
-        return f"Error: {str(e)}"
-
-    # Handle dict return from client (NEW API)
-    if result["success"]:
-        fields = result["updated_fields"]
-        if len(fields) == 0:
-            return f"Successfully updated task {task_id} (no changes detected)"
-        elif len(fields) == 1:
-            return f"Successfully updated task {task_id}: {fields[0]}"
-        else:
-            fields_str = ", ".join(fields)
-            return f"Successfully updated task {task_id}: {fields_str}"
-    else:
-        error_msg = result.get("error", "Unknown error")
-        return f"Error updating task {task_id}: {error_msg}"
+    # Build task dict from non-None params
+    params = locals()
+    task_dict = {"id": params.pop("task_id")}
+    for k, v in params.items():
+        if v is not None:
+            task_dict[k] = v
+    return update_tasks(tasks=[task_dict])
 
 
 @mcp.tool()
-def update_tasks(
-    task_ids: Union[str, list[str]],
-    flagged: Optional[bool] = None,
-    status: Optional[str] = None,
-    completed: Optional[bool] = None,
-    project_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-    add_tags: Optional[list[str]] = None,
-    remove_tags: Optional[list[str]] = None,
-    due_date: Optional[str] = None,
-    defer_date: Optional[str] = None,
-    planned_date: Optional[str] = None,
-    estimated_minutes: Optional[int] = None
-) -> str:
-    """Update multiple tasks with the same field values.
+def update_tasks(tasks: list[TaskUpdate]) -> str:
+    """Update one or more tasks in OmniFocus.
 
-    This is the batch version of update_task(). It applies uniform changes to
-    multiple tasks simultaneously.
-
-    Key differences from update_task():
-    - Accepts Union[str, list[str]] for task_ids (single or multiple)
-    - Does NOT accept task_name or note (require unique values per task)
-    - Returns count-based summary instead of single success/failure
-    - Continues processing when individual tasks fail
+    Pass a list of task update objects. Each must have an id field.
+    Only the specified fields will be updated — omitted fields are unchanged.
 
     Args:
-        task_ids: Single task ID (str) or list of task IDs to update
-        flagged: Flag/unflag all tasks (optional)
-        status: Set status for all tasks - "active" or "dropped" (optional)
-        completed: Mark all tasks complete/incomplete (optional)
-        project_id: Move all tasks to this project (optional). Mutually exclusive with
-            parent_task_id — a subtask inherits its parent's project.
-        parent_task_id: Make all tasks subtasks of this parent (optional). Mutually exclusive
-            with project_id — a subtask inherits its parent's project.
-        tags: Full replacement - set exact tag list for all tasks (optional, conflicts with add_tags)
-        add_tags: Add these tags to all tasks (optional, conflicts with tags)
-        remove_tags: Remove these tags from all tasks (optional)
-        due_date: Set due date for all tasks in ISO 8601 format, or empty string to clear.
-            Omitting means no change. (optional)
-        defer_date: Set defer date for all tasks in ISO 8601 format, or empty string to clear.
-            Omitting means no change. (optional)
-        planned_date: Set planned date for all tasks in ISO 8601 format, or empty string to clear.
-            When you plan to work on the tasks — purely a scheduling signal. (optional)
-        estimated_minutes: Set estimated time in minutes for all tasks (optional)
+        tasks: List of task update objects. Each must have:
+            id (required), plus any fields to update: task_name, project_id,
+            parent_task_id, note, due_date, defer_date, planned_date, flagged,
+            tags, add_tags, remove_tags, estimated_minutes, completed, status,
+            recurrence, repetition_method, sequential, completed_by_children.
 
     Returns:
-        Summary message with counts of successful/failed updates
+        For single task: success message with updated fields.
+        For multiple tasks: summary with per-item results.
 
     Examples:
-        update_tasks(["task-001", "task-002"], flagged=True)  # Flag multiple tasks
-        update_tasks("task-123", completed=True)  # Complete single task (Union type)
-        update_tasks(["task-001", "task-002", "task-003"], status="dropped")  # Drop multiple
+        update_tasks([{"id": "t1", "flagged": true}])
+        update_tasks([
+            {"id": "t1", "flagged": true},
+            {"id": "t2", "task_name": "Renamed", "due_date": "2026-04-01"}
+        ])
     """
     client = get_client()
+
+    # Coerce dicts to TaskUpdate
     try:
-        result = client.update_tasks(
-            task_ids=task_ids,
-            flagged=flagged,
-            status=status,
-            completed=completed,
-            project_id=project_id,
-            parent_task_id=parent_task_id,
-            tags=tags,
-            add_tags=add_tags,
-            remove_tags=remove_tags,
-            due_date=due_date,
-            defer_date=defer_date,
-            planned_date=planned_date,
-            estimated_minutes=estimated_minutes
-        )
-    except ValueError as e:
-        return f"Error: {str(e)}"
+        tasks = [TaskUpdate(**t) if isinstance(t, dict) else t for t in tasks]
+    except Exception as e:
+        return f"Error: Invalid task input: {e}"
 
-    # Handle dict return with counts
-    updated_count = result["updated_count"]
-    failed_count = result["failed_count"]
+    results = []
+    for task in tasks:
+        try:
+            # Build kwargs, excluding None values and the id field
+            kwargs = task.model_dump(exclude_none=True, exclude={"id"})
+            result = client.update_task(task_id=task.id, **kwargs)
+            results.append({
+                "id": task.id,
+                "success": result["success"],
+                "updated_fields": result.get("updated_fields", []),
+                "error": result.get("error"),
+            })
+        except (ValueError, Exception) as e:
+            results.append({
+                "id": task.id,
+                "success": False,
+                "updated_fields": [],
+                "error": str(e),
+            })
 
-    # Build response message
-    if failed_count == 0:
-        # All succeeded
-        if updated_count == 1:
-            return f"Successfully updated 1 task"
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single task: match old update_task format
+    if len(tasks) == 1:
+        r = results[0]
+        if r["success"]:
+            fields = r["updated_fields"]
+            if len(fields) == 0:
+                return f"Successfully updated task {r['id']} (no changes detected)"
+            elif len(fields) == 1:
+                return f"Successfully updated task {r['id']}: {fields[0]}"
+            else:
+                return f"Successfully updated task {r['id']}: {', '.join(fields)}"
         else:
-            return f"Successfully updated {updated_count} tasks"
-    elif updated_count == 0:
-        # All failed
-        failures = result.get("failures", [])
-        if len(failures) == 1:
-            error = failures[0].get("error", "Unknown error")
-            return f"Failed to update task: {error}"
-        else:
-            return f"Failed to update all {failed_count} tasks"
-    else:
-        # Partial success
-        return f"Updated {updated_count} tasks successfully, {failed_count} failed"
+            return f"Error updating task {r['id']}: {r['error']}"
+
+    # Multiple tasks: summary
+    lines = [f"Updated {len(succeeded)} of {len(tasks)} tasks:"]
+    for r in succeeded:
+        lines.append(f"  - {r['id']}: {', '.join(r['updated_fields'])}")
+    for r in failed:
+        lines.append(f"  - {r['id']}: FAILED — {r['error']}")
+    return "\n".join(lines)
 
 
 

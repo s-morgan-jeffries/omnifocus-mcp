@@ -711,9 +711,9 @@ class TestHierarchyFieldFormatting:
 
             result = update_task("task-001", task_name="New Name")
 
-            # Verify the client was called with flagged=None
+            # Verify the client was called without flagged (excluded as None)
             call_kwargs = mock_client.update_task.call_args.kwargs
-            assert call_kwargs["flagged"] is None
+            assert "flagged" not in call_kwargs
             assert "Successfully updated task" in result
 
     def test_update_project_sequential_with_string_true(self):
