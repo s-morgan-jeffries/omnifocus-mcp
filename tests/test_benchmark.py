@@ -263,6 +263,17 @@ class TestReadBenchmarks:
         br = _benchmark("get_perspectives", lambda: client.get_perspectives())
         assert br.mean < 5.0, f"get_perspectives() regression: {br.mean:.2f}s (baseline: 0.96s, threshold: 5.0s)"
 
+    def test_get_projects_compound_filters(self, client):
+        """get_projects() with multiple filters stacked."""
+        br = _benchmark(
+            "get_projects (compound filters)",
+            lambda: client.get_projects(
+                flagged_only=True, include_task_health=True,
+                planned_after="2026-01-01"
+            ),
+        )
+        assert br.mean < 5.0, f"get_projects compound filter regression: {br.mean:.2f}s (threshold: 5.0s)"
+
 
 class TestWriteBenchmarks:
     """Benchmark write operations (creates and cleans up test data)."""
@@ -282,7 +293,8 @@ class TestWriteBenchmarks:
             task_ids.append(tid)
             return tid
 
-        _benchmark("create_task", create, iterations=WRITE_ITERATIONS)
+        br = _benchmark("create_task", create, iterations=WRITE_ITERATIONS)
+        assert br.mean < 5.0, f"create_task regression: {br.mean:.2f}s (baseline: ~0.9s, threshold: 5.0s)"
         for tid in task_ids:
             try:
                 client.delete_tasks(tid)
@@ -303,7 +315,8 @@ class TestWriteBenchmarks:
                 client.update_task(task_id, flagged=toggle[idx % len(toggle)])
                 idx += 1
 
-            _benchmark("update_task", update, iterations=WRITE_ITERATIONS)
+            br = _benchmark("update_task", update, iterations=WRITE_ITERATIONS)
+            assert br.mean < 5.0, f"update_task regression: {br.mean:.2f}s (baseline: ~0.9s, threshold: 5.0s)"
         finally:
             try:
                 client.delete_tasks(task_id)
@@ -320,7 +333,9 @@ class TestWriteBenchmarks:
             start = time.perf_counter()
             client.delete_tasks(task_id)
             times.append(time.perf_counter() - start)
-        BenchmarkResult("delete_tasks", times).report()
+        br = BenchmarkResult("delete_tasks", times)
+        br.report()
+        assert br.mean < 5.0, f"delete_tasks regression: {br.mean:.2f}s (threshold: 5.0s)"
 
     def test_create_project(self, client):
         """create_project() — single project creation."""
@@ -331,7 +346,8 @@ class TestWriteBenchmarks:
             project_ids.append(pid)
             return pid
 
-        _benchmark("create_project", create, iterations=WRITE_ITERATIONS)
+        br = _benchmark("create_project", create, iterations=WRITE_ITERATIONS)
+        assert br.mean < 5.0, f"create_project regression: {br.mean:.2f}s (baseline: ~0.9s, threshold: 5.0s)"
         for pid in project_ids:
             try:
                 client.delete_projects(pid)
@@ -348,7 +364,8 @@ class TestWriteBenchmarks:
             client.update_project(test_project, sequential=toggle[idx % len(toggle)])
             idx += 1
 
-        _benchmark("update_project", update, iterations=WRITE_ITERATIONS)
+        br = _benchmark("update_project", update, iterations=WRITE_ITERATIONS)
+        assert br.mean < 5.0, f"update_project regression: {br.mean:.2f}s (baseline: ~0.9s, threshold: 5.0s)"
 
     def test_delete_project(self, client):
         """delete_projects() — single project deletion."""
@@ -358,7 +375,9 @@ class TestWriteBenchmarks:
             start = time.perf_counter()
             client.delete_projects(pid)
             times.append(time.perf_counter() - start)
-        BenchmarkResult("delete_projects", times).report()
+        br = BenchmarkResult("delete_projects", times)
+        br.report()
+        assert br.mean < 5.0, f"delete_projects regression: {br.mean:.2f}s (threshold: 5.0s)"
 
     def test_reorder_project(self, client):
         """reorder_project() — move project before another."""
@@ -377,7 +396,8 @@ class TestWriteBenchmarks:
                     client.reorder_project(p1, after_project_id=p2)
                 idx += 1
 
-            _benchmark("reorder_project", reorder, iterations=WRITE_ITERATIONS)
+            br = _benchmark("reorder_project", reorder, iterations=WRITE_ITERATIONS)
+            assert br.mean < 5.0, f"reorder_project regression: {br.mean:.2f}s (threshold: 5.0s)"
         finally:
             try:
                 client.delete_projects([p1, p2])
@@ -403,11 +423,12 @@ class TestWriteBenchmarks:
                 client.update_tasks(task_ids, flagged=toggle[idx % len(toggle)])
                 idx += 1
 
-            _benchmark(
+            br = _benchmark(
                 f"update_tasks ({batch_size} tasks)",
                 batch_update,
                 iterations=WRITE_ITERATIONS,
             )
+            assert br.mean < 15.0, f"update_tasks batch regression: {br.mean:.2f}s (threshold: 15.0s)"
         finally:
             try:
                 client.delete_tasks(task_ids)
@@ -433,11 +454,12 @@ class TestWriteBenchmarks:
                 )
                 idx += 1
 
-            _benchmark(
+            br = _benchmark(
                 f"update_projects ({batch_size} projects)",
                 batch_update,
                 iterations=WRITE_ITERATIONS,
             )
+            assert br.mean < 15.0, f"update_projects batch regression: {br.mean:.2f}s (threshold: 15.0s)"
         finally:
             try:
                 client.delete_projects(project_ids)
@@ -458,7 +480,9 @@ class TestWriteBenchmarks:
                 client.delete_tasks(tid)
             except Exception:
                 pass
-        BenchmarkResult("mark_complete (single)", times).report()
+        br = BenchmarkResult("mark_complete (single)", times)
+        br.report()
+        assert br.mean < 5.0, f"mark_complete regression: {br.mean:.2f}s (threshold: 5.0s)"
 
     def test_mark_complete_batch(self, client, test_project):
         """update_tasks(completed=True) — batch mark complete."""
@@ -474,7 +498,9 @@ class TestWriteBenchmarks:
         start = time.perf_counter()
         client.update_tasks(task_ids, completed=True)
         elapsed = time.perf_counter() - start
-        BenchmarkResult(f"mark_complete (batch {batch_size})", [elapsed]).report()
+        br = BenchmarkResult(f"mark_complete (batch {batch_size})", [elapsed])
+        br.report()
+        assert br.mean < 15.0, f"mark_complete batch regression: {br.mean:.2f}s (threshold: 15.0s)"
 
         try:
             client.delete_tasks(task_ids)
