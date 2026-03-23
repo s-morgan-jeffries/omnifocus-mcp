@@ -859,6 +859,8 @@ class OmniFocusConnector:
         sort_by: Optional[str],
         sort_order: str,
         tag_filter: Optional[list[str]] = None,
+        planned_after: Optional[str] = None,
+        planned_before: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """Post-process projects: compute types, apply filters, sort."""
         # Compute projectType from singleton and sequential flags
@@ -871,9 +873,10 @@ class OmniFocusConnector:
                 p["projectType"] = "parallel"
 
         # Apply date range filtering
-        if modified_after or modified_before:
+        if modified_after or modified_before or planned_after or planned_before:
             projects = self._filter_by_date_range(
-                projects, None, None, modified_after, modified_before
+                projects, None, None, modified_after, modified_before,
+                planned_after, planned_before
             )
 
         # Apply conditional filters
@@ -941,6 +944,8 @@ class OmniFocusConnector:
         include_completed: bool = False,
         completed_only: bool = False,
         tag_filter: Optional[list[str]] = None,
+        planned_after: Optional[str] = None,
+        planned_before: Optional[str] = None,
         timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
@@ -954,6 +959,8 @@ class OmniFocusConnector:
             completed_only: Only return completed projects (implies include_completed)
             modified_after: Only return projects modified after this ISO date
             modified_before: Only return projects modified before this ISO date
+            planned_after: Only return projects with planned date on or after this ISO date
+            planned_before: Only return projects with planned date before this ISO date
             min_task_count: Only return projects with at least this many tasks
             has_overdue_tasks: If True, only return projects with overdue tasks
             has_no_due_dates: If True, only return projects where no tasks have due dates
@@ -1243,6 +1250,8 @@ class OmniFocusConnector:
                     sort_by=sort_by,
                     sort_order=sort_order,
                     tag_filter=tag_filter,
+                    planned_after=planned_after,
+                    planned_before=planned_before,
                 )
             else:
                 raise Exception("No output from OmniFocus AppleScript")
