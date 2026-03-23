@@ -886,6 +886,8 @@ def create_tasks(tasks: list[TaskCreate]) -> str:
                 result += "\nFlagged: Yes"
             if task.tags:
                 result += f"\nTags: {', '.join(task.tags)}"
+            if task.estimated_minutes:
+                result += f"\nEstimated time: {task.estimated_minutes} minutes"
             return result
         else:
             return f"Error: {r['error']}"

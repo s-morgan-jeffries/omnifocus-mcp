@@ -506,7 +506,7 @@ class TestProjectCRUD:
         assert result["success"] is True
 
         # Verify actual status change
-        projects = client.get_projects(project_id=test_project)
+        projects = client.get_projects(project_id=test_project, include_completed=True)
         assert len(projects) == 1
         assert projects[0]['status'] == 'done status'
         print("\n✓ Marked project as done (verified)")
@@ -687,8 +687,8 @@ class TestProjectCRUD:
         Validates the AppleScript patterns: mark dropped, set status to active status,
         mark complete, set status to on hold (#359, #370).
         """
-        def assert_status(expected_status, include_dropped=False):
-            projects = client.get_projects(project_id=test_project, include_dropped=include_dropped)
+        def assert_status(expected_status, include_dropped=False, include_completed=False):
+            projects = client.get_projects(project_id=test_project, include_dropped=include_dropped, include_completed=include_completed)
             assert len(projects) == 1, f"Project not found after setting status to {expected_status}"
             actual = projects[0]['status']
             assert actual == expected_status, \
@@ -721,7 +721,7 @@ class TestProjectCRUD:
         # ACTIVE → DONE
         result = client.update_project(test_project, status="done")
         assert result["success"] is True
-        assert_status('done status')
+        assert_status('done status', include_completed=True)
         print("✓ ACTIVE → DONE")
 
     def test_update_project_set_review_interval_integration(self, client, test_project):
