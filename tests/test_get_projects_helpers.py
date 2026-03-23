@@ -62,6 +62,7 @@ class TestPostProcessProjects:
             has_no_due_dates=None, query=None,
             include_task_health=False, stalled_only=False,
             flagged_only=False, sort_by=None, sort_order="asc",
+            planned_after=None, planned_before=None,
         )
         defaults.update(overrides)
         return defaults
@@ -164,6 +165,29 @@ class TestPostProcessProjects:
         ]
         result = client._post_process_projects(projects, **self._default_params(flagged_only=False))
         assert len(result) == 2
+
+    def test_planned_after_filters_projects(self, client):
+        projects = [
+            self._sample_project(id="p1", plannedDate="2026-03-25T10:00:00"),
+            self._sample_project(id="p2", plannedDate="2026-03-20T10:00:00"),
+            self._sample_project(id="p3"),  # no planned date
+        ]
+        result = client._post_process_projects(
+            projects, **self._default_params(planned_after="2026-03-23")
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "p1"
+
+    def test_planned_before_filters_projects(self, client):
+        projects = [
+            self._sample_project(id="p1", plannedDate="2026-03-25T10:00:00"),
+            self._sample_project(id="p2", plannedDate="2026-03-20T10:00:00"),
+        ]
+        result = client._post_process_projects(
+            projects, **self._default_params(planned_before="2026-03-23")
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "p2"
 
     def test_passthrough_when_no_filters(self, client):
         projects = [self._sample_project()]

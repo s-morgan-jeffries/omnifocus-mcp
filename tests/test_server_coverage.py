@@ -145,6 +145,29 @@ class TestGetProjectsEdgeCases:
         assert call_kwargs["query"] == "Match"
 
 
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_planned_on_expands_to_range(self, mock_gc):
+        mock_gc.return_value.get_projects.return_value = []
+        server.get_projects(planned_on="2026-03-23")
+        call_kwargs = mock_gc.return_value.get_projects.call_args[1]
+        assert call_kwargs["planned_after"] == "2026-03-23"
+        assert call_kwargs["planned_before"] == "2026-03-24"
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_planned_on_conflicts_with_planned_after(self, mock_gc):
+        result = server.get_projects(planned_on="2026-03-23", planned_after="2026-03-20")
+        assert "Error" in result
+        assert "mutually exclusive" in result
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_planned_after_passed_to_client(self, mock_gc):
+        mock_gc.return_value.get_projects.return_value = []
+        server.get_projects(planned_after="2026-03-20", planned_before="2026-03-25")
+        call_kwargs = mock_gc.return_value.get_projects.call_args[1]
+        assert call_kwargs["planned_after"] == "2026-03-20"
+        assert call_kwargs["planned_before"] == "2026-03-25"
+
+
 class TestCreateProjectEdgeCases:
     """Cover review_interval and note branches in create_project()."""
 

@@ -53,6 +53,9 @@ Retrieve projects from OmniFocus with optional filtering.
 - `include_completed: bool` (default: False) — Include completed projects in results (hidden by default)
 - `completed_only: bool` (default: False) — Only return completed projects (implies include_completed)
 - `tag_filter: list[str]` (optional) — Filter projects by tags. Only returns projects with ALL specified tags.
+- `planned_after: str` (optional) — Only return projects with planned date on or after this ISO date
+- `planned_before: str` (optional) — Only return projects with planned date before this ISO date
+- `planned_on: str` (optional) — Only return projects planned for this specific date (e.g., "2026-03-23"). Convenience for planned_after=date + planned_before=next_day. Mutually exclusive with planned_after/planned_before.
 
 **Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, flagged, creationDate, modificationDate, completionDate (null if not completed), droppedDate (null if not dropped), dueDate, deferDate, plannedDate, tags, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. `dueDate`, `deferDate`, `plannedDate` — project-level dates in ISO format (empty string if not set). Tasks inherit effective dates from their containing project. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
 
