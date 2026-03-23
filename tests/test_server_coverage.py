@@ -172,26 +172,24 @@ class TestUpdateProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_all_updates_failed(self, mock_gc):
-        mock_gc.return_value.update_projects.return_value = {
-            "updated_count": 0,
-            "failed_count": 2,
-            "failures": [
-                {"project_id": "p1", "error": "not found"},
-                {"project_id": "p2", "error": "not found"},
-            ],
-        }
-        result = server.update_projects(project_ids=["p1", "p2"], status="active")
-        assert "Failed to update" in result
-        assert "p1: not found" in result
-        mock_gc.return_value.update_projects.assert_called_once()
-        call_kwargs = mock_gc.return_value.update_projects.call_args[1]
-        assert call_kwargs["status"] == "active"
+        mock_gc.return_value.update_project.side_effect = [
+            {"success": False, "project_id": "p1", "updated_fields": [], "error": "not found"},
+            {"success": False, "project_id": "p2", "updated_fields": [], "error": "not found"},
+        ]
+        result = server.update_projects(projects=[
+            {"id": "p1", "status": "active"},
+            {"id": "p2", "status": "active"},
+        ])
+        assert "FAILED" in result
+        assert "not found" in result
+        assert mock_gc.return_value.update_project.call_count == 2
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
-        mock_gc.return_value.update_projects.side_effect = RuntimeError("boom")
-        result = server.update_projects(project_ids=["p1"], status="active")
-        assert "Error updating projects:" in result
+        mock_gc.return_value.update_project.side_effect = RuntimeError("boom")
+        result = server.update_projects(projects=[{"id": "p1", "status": "active"}])
+        assert "Error" in result
+        assert "boom" in result
 
 
 class TestGetTasksEdgeCases:

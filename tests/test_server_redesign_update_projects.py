@@ -1,6 +1,7 @@
-"""Tests for update_projects() MCP tool (NEW API - Phase 2, Function 2.2, Server Layer).
+"""Tests for update_projects() MCP tool (unified Pydantic model, #513).
 
-Tests the MCP server layer that wraps the client update_projects() function.
+Tests the new unified update_projects() that accepts list[ProjectUpdate],
+replacing the old batch-same-values version.
 """
 import pytest
 from unittest import mock
@@ -9,279 +10,228 @@ from unittest import mock
 import omnifocus_mcp.server_fastmcp as server
 
 
-class TestUpdateProjectsServerRedesign:
-    """Tests for update_projects() MCP tool (NEW API - Phase 2, Server Layer)."""
+class TestUpdateProjectsUnified:
+    """Tests for unified update_projects() with list[ProjectUpdate] (#513)."""
 
-    def test_update_projects_batch_status(self):
-        """Server: update_projects() MCP tool can set status on multiple projects."""
+    def test_single_item(self):
+        """Single project update returns detailed format."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 3,
-                "failed_count": 0,
-                "updated_ids": ["proj-001", "proj-002", "proj-003"],
-                "failures": []
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "p1",
+                "updated_fields": ["status"]
             }
             mock_get_client.return_value = mock_client
 
-            # Get the actual MCP tool function
-            update_projects = server.update_projects
+            result = server.update_projects(projects=[{"id": "p1", "status": "on_hold"}])
 
-            result = update_projects(
-                project_ids=["proj-001", "proj-002", "proj-003"],
-                status="active"
+            mock_client.update_project.assert_called_once_with(
+                project_id="p1",
+                status="on_hold",
             )
-
-            # Verify client was called correctly
-            mock_client.update_projects.assert_called_once()
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["project_ids"] == ["proj-001", "proj-002", "proj-003"]
-            assert call_kwargs["status"] == "active"
-
-            # Verify human-readable response
             assert isinstance(result, str)
-            assert "3" in result  # Should mention count
+            assert "p1" in result
             assert "success" in result.lower() or "updated" in result.lower()
 
-    def test_update_projects_single_id_string(self):
-        """Server: update_projects() MCP tool accepts single ID as string (Union type)."""
+    def test_multiple_items_different_fields(self):
+        """Multiple projects with different fields each."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 1,
-                "failed_count": 0,
-                "updated_ids": ["proj-001"],
-                "failures": []
-            }
+            mock_client.update_project.side_effect = [
+                {
+                    "success": True,
+                    "project_id": "p1",
+                    "updated_fields": ["status"]
+                },
+                {
+                    "success": True,
+                    "project_id": "p2",
+                    "updated_fields": ["project_name"]
+                },
+            ]
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects
+            result = server.update_projects(projects=[
+                {"id": "p1", "status": "on_hold"},
+                {"id": "p2", "project_name": "Renamed"},
+            ])
 
-            result = update_projects(project_ids="proj-001", status="on_hold")
-
-            # Should pass single string to client
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["project_ids"] == "proj-001"
+            assert mock_client.update_project.call_count == 2
+            # First call: status on p1
+            first_call = mock_client.update_project.call_args_list[0]
+            assert first_call[1]["project_id"] == "p1"
+            assert first_call[1]["status"] == "on_hold"
+            # Second call: project_name on p2
+            second_call = mock_client.update_project.call_args_list[1]
+            assert second_call[1]["project_id"] == "p2"
+            assert second_call[1]["project_name"] == "Renamed"
 
             assert isinstance(result, str)
-            assert "1" in result
-
-    def test_update_projects_multiple_fields(self):
-        """Server: update_projects() MCP tool can update multiple fields."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 2,
-                "failed_count": 0,
-                "updated_ids": ["proj-001", "proj-002"],
-                "failures": []
-            }
-            mock_get_client.return_value = mock_client
-
-            update_projects = server.update_projects
-
-            result = update_projects(
-                project_ids=["proj-001", "proj-002"],
-                status="active",
-                sequential=True,
-                review_interval_weeks=4
-            )
-
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["status"] == "active"
-            assert call_kwargs["sequential"] is True
-            assert call_kwargs["review_interval_weeks"] == 4
-
-            assert "2" in result
-
-    def test_update_projects_partial_failures(self):
-        """Server: update_projects() MCP tool reports partial failures."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 2,
-                "failed_count": 1,
-                "updated_ids": ["proj-001", "proj-003"],
-                "failures": [{"project_id": "proj-002", "error": "Project not found"}]
-            }
-            mock_get_client.return_value = mock_client
-
-            update_projects = server.update_projects
-
-            result = update_projects(
-                project_ids=["proj-001", "proj-002", "proj-003"],
-                status="done"
-            )
-
-            assert isinstance(result, str)
-            # Should mention both successes and failures
             assert "2" in result  # Updated count
-            assert "1" in result  # Failed count
-            assert "proj-002" in result  # Failed project ID
+            assert "p1" in result
+            assert "p2" in result
 
-    def test_update_projects_handles_client_exception(self):
-        """Server: update_projects() MCP tool handles client exceptions gracefully."""
+    def test_partial_failure(self):
+        """One succeeds, one fails — reports both."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_projects.side_effect = ValueError("Invalid status")
+            mock_client.update_project.side_effect = [
+                {
+                    "success": True,
+                    "project_id": "p1",
+                    "updated_fields": ["status"]
+                },
+                {
+                    "success": False,
+                    "project_id": "p2",
+                    "updated_fields": [],
+                    "error": "Project not found"
+                },
+            ]
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects
+            result = server.update_projects(projects=[
+                {"id": "p1", "status": "on_hold"},
+                {"id": "p2", "status": "active"},
+            ])
 
-            result = update_projects(
-                project_ids=["proj-001"],
-                status="invalid-status"
-            )
+            assert isinstance(result, str)
+            assert "1" in result  # 1 succeeded
+            assert "p2" in result  # Failed ID mentioned
+            assert "FAILED" in result or "failed" in result.lower()
+
+    def test_all_fields_passthrough(self):
+        """Verify model_dump passes all fields to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "p1",
+                "updated_fields": ["project_name", "status", "flagged", "due_date",
+                                   "defer_date", "tags", "recurrence"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = server.update_projects(projects=[{
+                "id": "p1",
+                "project_name": "Test",
+                "folder_path": "Work",
+                "note": "A note",
+                "sequential": True,
+                "project_type": "sequential",
+                "status": "active",
+                "review_interval_weeks": 2,
+                "last_reviewed": "2026-03-01",
+                "next_review_date": "2026-03-15",
+                "completed_by_children": True,
+                "due_date": "2026-04-01",
+                "defer_date": "2026-03-20",
+                "planned_date": "2026-03-25",
+                "flagged": True,
+                "estimated_minutes": 60,
+                "tags": ["work"],
+                "recurrence": "FREQ=WEEKLY",
+                "repetition_method": "fixed",
+            }])
+
+            mock_client.update_project.assert_called_once()
+            kwargs = mock_client.update_project.call_args[1]
+            assert kwargs["project_id"] == "p1"
+            assert kwargs["project_name"] == "Test"
+            assert kwargs["folder_path"] == "Work"
+            assert kwargs["note"] == "A note"
+            assert kwargs["sequential"] is True
+            assert kwargs["project_type"] == "sequential"
+            assert kwargs["status"] == "active"
+            assert kwargs["review_interval_weeks"] == 2
+            assert kwargs["last_reviewed"] == "2026-03-01"
+            assert kwargs["next_review_date"] == "2026-03-15"
+            assert kwargs["completed_by_children"] is True
+            assert kwargs["due_date"] == "2026-04-01"
+            assert kwargs["defer_date"] == "2026-03-20"
+            assert kwargs["planned_date"] == "2026-03-25"
+            assert kwargs["flagged"] is True
+            assert kwargs["estimated_minutes"] == 60
+            assert kwargs["tags"] == ["work"]
+            assert kwargs["recurrence"] == "FREQ=WEEKLY"
+            assert kwargs["repetition_method"] == "fixed"
+            # id should NOT be in kwargs (excluded by model_dump)
+            assert "id" not in kwargs
+
+    def test_delegation_from_update_project(self):
+        """Old update_project delegates to update_projects correctly."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "p1",
+                "updated_fields": ["flagged"]
+            }
+            mock_get_client.return_value = mock_client
+
+            # Call the old update_project function
+            result = server.update_project(project_id="p1", flagged=True)
+
+            # Should still call client.update_project via delegation
+            mock_client.update_project.assert_called_once()
+            kwargs = mock_client.update_project.call_args[1]
+            assert kwargs["project_id"] == "p1"
+            assert kwargs["flagged"] is True
+            assert "success" in result.lower() or "updated" in result.lower()
+
+    def test_add_and_remove_tags(self):
+        """update_projects passes add_tags and remove_tags correctly."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "p1",
+                "updated_fields": ["add_tags", "remove_tags"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = server.update_projects(projects=[{
+                "id": "p1",
+                "add_tags": ["new-tag"],
+                "remove_tags": ["old-tag"],
+            }])
+
+            kwargs = mock_client.update_project.call_args[1]
+            assert kwargs["add_tags"] == ["new-tag"]
+            assert kwargs["remove_tags"] == ["old-tag"]
+
+    def test_exception_during_update(self):
+        """Exception from connector is caught and reported."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.side_effect = ValueError("Invalid status")
+            mock_get_client.return_value = mock_client
+
+            result = server.update_projects(projects=[{"id": "p1", "status": "bad"}])
 
             assert isinstance(result, str)
             assert "error" in result.lower()
-            assert "invalid status" in result.lower()
+            assert "Invalid status" in result
 
-    def test_update_projects_sequential_bool_conversion(self):
-        """Server: update_projects() MCP tool converts sequential string to bool."""
+    def test_invalid_input(self):
+        """Invalid project input returns error."""
+        result = server.update_projects(projects=[{"not_a_field": "bad"}])
+        assert isinstance(result, str)
+        assert "error" in result.lower()
+
+    def test_empty_update_no_fields(self):
+        """Project with only id and no fields still calls connector."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
             mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 1,
-                "failed_count": 0,
-                "updated_ids": ["proj-001"],
-                "failures": []
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "p1",
+                "updated_fields": []
             }
             mock_get_client.return_value = mock_client
 
-            update_projects = server.update_projects
+            result = server.update_projects(projects=[{"id": "p1"}])
 
-            # Test with True
-            result = update_projects(project_ids="proj-001", sequential=True)
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["sequential"] is True
-
-            # Test with False
-            result = update_projects(project_ids="proj-001", sequential=False)
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["sequential"] is False
-
-    def test_update_projects_returns_human_readable_response(self):
-        """Server: update_projects() MCP tool returns human-readable response."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 5,
-                "failed_count": 0,
-                "updated_ids": ["p1", "p2", "p3", "p4", "p5"],
-                "failures": []
-            }
-            mock_get_client.return_value = mock_client
-
-            update_projects = server.update_projects
-
-            result = update_projects(
-                project_ids=["p1", "p2", "p3", "p4", "p5"],
-                status="active"
-            )
-
+            mock_client.update_project.assert_called_once_with(project_id="p1")
             assert isinstance(result, str)
-            # Should be user-friendly, not raw JSON
-            assert "5" in result
-            assert "project" in result.lower()
-
-
-class TestUpdateProjectsNewParams:
-    """Tests for new parameters: flagged, estimated_minutes, add_tags, remove_tags."""
-
-    def test_update_projects_flagged(self):
-        """Server: update_projects() can set flagged on multiple projects."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 2,
-                "failed_count": 0,
-                "updated_ids": ["proj-1", "proj-2"],
-                "failures": []
-            }
-            mock_get_client.return_value = mock_client
-
-            update_projects = server.update_projects
-
-            result = update_projects(
-                project_ids=["proj-1", "proj-2"],
-                flagged=True
-            )
-
-            mock_client.update_projects.assert_called_once()
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["flagged"] is True
-            assert "2" in result
-            assert "success" in result.lower() or "updated" in result.lower()
-
-    def test_update_projects_estimated_minutes(self):
-        """Server: update_projects() can set estimated_minutes on multiple projects."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 2,
-                "failed_count": 0,
-                "updated_ids": ["proj-1", "proj-2"],
-                "failures": []
-            }
-            mock_get_client.return_value = mock_client
-
-            update_projects = server.update_projects
-
-            result = update_projects(
-                project_ids=["proj-1", "proj-2"],
-                estimated_minutes=60
-            )
-
-            mock_client.update_projects.assert_called_once()
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["estimated_minutes"] == 60
-            assert "2" in result
-
-    def test_update_projects_add_tags(self):
-        """Server: update_projects() can add tags to multiple projects."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 2,
-                "failed_count": 0,
-                "updated_ids": ["proj-1", "proj-2"],
-                "failures": []
-            }
-            mock_get_client.return_value = mock_client
-
-            update_projects = server.update_projects
-
-            result = update_projects(
-                project_ids=["proj-1", "proj-2"],
-                add_tags=["urgent"]
-            )
-
-            mock_client.update_projects.assert_called_once()
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["add_tags"] == ["urgent"]
-            assert "2" in result
-
-    def test_update_projects_remove_tags(self):
-        """Server: update_projects() can remove tags from multiple projects."""
-        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
-            mock_client = mock.Mock()
-            mock_client.update_projects.return_value = {
-                "updated_count": 2,
-                "failed_count": 0,
-                "updated_ids": ["proj-1", "proj-2"],
-                "failures": []
-            }
-            mock_get_client.return_value = mock_client
-
-            update_projects = server.update_projects
-
-            result = update_projects(
-                project_ids=["proj-1", "proj-2"],
-                remove_tags=["old-tag"]
-            )
-
-            mock_client.update_projects.assert_called_once()
-            call_kwargs = mock_client.update_projects.call_args[1]
-            assert call_kwargs["remove_tags"] == ["old-tag"]
-            assert "2" in result

@@ -328,6 +328,31 @@ def create_project(
     }])
 
 
+class ProjectUpdate(BaseModel):
+    """Input model for updating a project."""
+    id: str
+    project_name: Optional[str] = None
+    folder_path: Optional[str] = None
+    note: Optional[str] = None
+    sequential: Optional[bool] = None
+    project_type: Optional[str] = None
+    status: Optional[str] = None
+    review_interval_weeks: Optional[int] = None
+    last_reviewed: Optional[str] = None
+    next_review_date: Optional[str] = None
+    completed_by_children: Optional[bool] = None
+    due_date: Optional[str] = None
+    defer_date: Optional[str] = None
+    planned_date: Optional[str] = None
+    flagged: Optional[bool] = None
+    estimated_minutes: Optional[int] = None
+    tags: Optional[list[str]] = None
+    add_tags: Optional[list[str]] = None
+    remove_tags: Optional[list[str]] = None
+    recurrence: Optional[str] = None
+    repetition_method: Optional[str] = None
+
+
 @mcp.tool()
 def update_project(
     project_id: str,
@@ -352,7 +377,9 @@ def update_project(
     recurrence: Optional[str] = None,
     repetition_method: Optional[str] = None,
 ) -> str:
-    """Update an existing project in OmniFocus.
+    """DEPRECATED: Use update_projects instead. Update a single project in OmniFocus.
+
+    Delegates to update_projects with a single-item list.
 
     Args:
         project_id: The ID of the project to update
@@ -384,148 +411,93 @@ def update_project(
     Returns:
         Success message with project ID and updated fields, or error message
     """
-    client = get_client()
-    try:
-        result = client.update_project(
-            project_id=project_id,
-            project_name=project_name,
-            folder_path=folder_path,
-            note=note,
-            sequential=sequential,
-            project_type=project_type,
-            status=status,
-            review_interval_weeks=review_interval_weeks,
-            last_reviewed=last_reviewed,
-            next_review_date=next_review_date,
-            completed_by_children=completed_by_children,
-            due_date=due_date,
-            defer_date=defer_date,
-            planned_date=planned_date,
-            flagged=flagged,
-            estimated_minutes=estimated_minutes,
-            tags=tags,
-            add_tags=add_tags,
-            remove_tags=remove_tags,
-            recurrence=recurrence,
-            repetition_method=repetition_method,
-        )
-    except ValueError as e:
-        return f"Error: {str(e)}"
-
-    # Handle dict return from client
-    if result["success"]:
-        updated_fields = result["updated_fields"]
-        field_count = len(updated_fields)
-
-        if field_count == 1:
-            response = f"Successfully updated project {project_id}: {updated_fields[0]}"
-        else:
-            response = f"Successfully updated project {project_id}: {field_count} fields ({', '.join(updated_fields)})"
-
-        return response
-    else:
-        error_msg = result.get("error", "Unknown error")
-        return f"Error updating project {project_id}: {error_msg}"
+    # Build project dict from non-None params
+    params = locals()
+    project_dict = {"id": params.pop("project_id")}
+    for k, v in params.items():
+        if v is not None:
+            project_dict[k] = v
+    return update_projects(projects=[project_dict])
 
 
 @mcp.tool()
-def update_projects(
-    project_ids: Union[str, list[str]],
-    folder_path: Optional[str] = None,
-    sequential: Optional[bool] = None,
-    status: Optional[str] = None,
-    review_interval_weeks: Optional[int] = None,
-    last_reviewed: Optional[str] = None,
-    next_review_date: Optional[str] = None,
-    due_date: Optional[str] = None,
-    defer_date: Optional[str] = None,
-    planned_date: Optional[str] = None,
-    flagged: Optional[bool] = None,
-    estimated_minutes: Optional[int] = None,
-    add_tags: Optional[list[str]] = None,
-    remove_tags: Optional[list[str]] = None,
-) -> str:
-    """Update multiple projects with the same properties.
+def update_projects(projects: list[ProjectUpdate]) -> str:
+    """Update one or more projects in OmniFocus.
 
-    This is the BATCH version of update_project(). It updates multiple projects
-    with the same values. This is more efficient than calling update_project()
-    multiple times.
-
-    IMPORTANT: This function does NOT accept project_name or note parameters
-    because those require unique values for each project.
+    Pass a list of project update objects. Each must have an id field.
+    Only the specified fields will be updated — omitted fields are unchanged.
 
     Args:
-        project_ids: Single project ID (str) or list of project IDs to update
-        folder_path: Folder path to move projects to (e.g., "Work > Projects")
-        sequential: Sequential setting (optional)
-        status: Project status - one of: "active", "on_hold", "done", "dropped"
-        review_interval_weeks: Review interval in weeks
-        last_reviewed: Last review date ("now" or ISO format like "2025-01-15")
-        next_review_date: Explicit next review date in ISO format — overrides OmniFocus-calculated date (optional)
-        due_date: Due date in ISO 8601 format, or "" to clear (optional)
-        defer_date: Defer date in ISO 8601 format, or "" to clear (optional)
-        planned_date: Planned date in ISO 8601 format, or "" to clear (optional)
-        flagged: Flag marks projects as a priority — pass True to flag, False to unflag. (optional)
-        estimated_minutes: Estimated time in minutes (optional)
-        add_tags: Add these tags incrementally (optional)
-        remove_tags: Remove these tags (optional)
+        projects: List of project update objects. Each must have:
+            id (required), plus any fields to update: project_name, folder_path,
+            note, sequential, project_type, status, review_interval_weeks,
+            last_reviewed, next_review_date, completed_by_children, due_date,
+            defer_date, planned_date, flagged, estimated_minutes, tags,
+            add_tags, remove_tags, recurrence, repetition_method.
 
     Returns:
-        Success message with updated and failed counts, or error message
+        For single project: success message with updated fields.
+        For multiple projects: summary with per-item results.
 
-    Example:
-        # Drop multiple projects at once
-        update_projects(
-            project_ids=["proj-001", "proj-002", "proj-003"],
-            status="dropped"
-        )
+    Examples:
+        update_projects([{"id": "p1", "status": "on_hold"}])
+        update_projects([
+            {"id": "p1", "status": "on_hold"},
+            {"id": "p2", "project_name": "Renamed", "flagged": true}
+        ])
     """
+    client = get_client()
+
+    # Coerce dicts to ProjectUpdate
     try:
-        client = get_client()
-        result = client.update_projects(
-            project_ids=project_ids,
-            folder_path=folder_path,
-            sequential=sequential,
-            status=status,
-            review_interval_weeks=review_interval_weeks,
-            last_reviewed=last_reviewed,
-            next_review_date=next_review_date,
-            due_date=due_date,
-            defer_date=defer_date,
-            planned_date=planned_date,
-            flagged=flagged,
-            estimated_minutes=estimated_minutes,
-            add_tags=add_tags,
-            remove_tags=remove_tags,
-        )
-
-        # Handle dict return from client
-        updated_count = result["updated_count"]
-        failed_count = result["failed_count"]
-        failures = result["failures"]
-
-        if failed_count == 0:
-            # All succeeded
-            if updated_count == 1:
-                return f"Successfully updated 1 project"
-            else:
-                return f"Successfully updated {updated_count} projects"
-        elif updated_count == 0:
-            # All failed
-            error_details = "; ".join([f"{f['project_id']}: {f['error']}" for f in failures])
-            return f"Error: Failed to update {failed_count} projects. {error_details}"
-        else:
-            # Partial success
-            error_details = "; ".join([f"{f['project_id']}: {f['error']}" for f in failures])
-            return (f"Partially updated: {updated_count} succeeded, {failed_count} failed. "
-                   f"Failures: {error_details}")
-
-    except ValueError as e:
-        # Parameter validation errors
-        return f"Error: {str(e)}"
+        projects = [ProjectUpdate(**p) if isinstance(p, dict) else p for p in projects]
     except Exception as e:
-        # Other errors
-        return f"Error updating projects: {str(e)}"
+        return f"Error: Invalid project input: {e}"
+
+    results = []
+    for project in projects:
+        try:
+            # Build kwargs, excluding None values and the id field
+            kwargs = project.model_dump(exclude_none=True, exclude={"id"})
+            result = client.update_project(project_id=project.id, **kwargs)
+            results.append({
+                "id": project.id,
+                "success": result["success"],
+                "updated_fields": result.get("updated_fields", []),
+                "error": result.get("error"),
+            })
+        except (ValueError, Exception) as e:
+            results.append({
+                "id": project.id,
+                "success": False,
+                "updated_fields": [],
+                "error": str(e),
+            })
+
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single project: match old update_project format
+    if len(projects) == 1:
+        r = results[0]
+        if r["success"]:
+            fields = r["updated_fields"]
+            if len(fields) == 0:
+                return f"Successfully updated project {r['id']} (no changes detected)"
+            elif len(fields) == 1:
+                return f"Successfully updated project {r['id']}: {fields[0]}"
+            else:
+                return f"Successfully updated project {r['id']}: {len(fields)} fields ({', '.join(fields)})"
+        else:
+            return f"Error updating project {r['id']}: {r['error']}"
+
+    # Multiple projects: summary
+    lines = [f"Updated {len(succeeded)} of {len(projects)} projects:"]
+    for r in succeeded:
+        lines.append(f"  - {r['id']}: {', '.join(r['updated_fields'])}")
+    for r in failed:
+        lines.append(f"  - {r['id']}: FAILED — {r['error']}")
+    return "\n".join(lines)
 
 
 

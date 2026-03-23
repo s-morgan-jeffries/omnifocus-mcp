@@ -20,7 +20,7 @@ INHERITED STATUS: Task-level fields like `completed` and `dropped` reflect the t
 
 EFFECTIVE DATES: Date fields (dueDate, deferDate, plannedDate) returned by get_tasks are EFFECTIVE dates — they include dates inherited from the containing project. A task with no direct due date in a project with dueDate=April 15 will return dueDate="2026-04-15T17:00:00" (not empty). Do not assume an empty due date on a task means the project has no due date either. Write operations (update_task) set the task's own date directly.
 
-BATCH OPERATIONS: When applying the same change to multiple items, prefer the batch tools (update_tasks, update_projects) over multiple individual calls. Batch tools accept a list of IDs and are more efficient.
+BATCH OPERATIONS: When updating multiple items, prefer the unified tools (update_tasks, update_projects) which accept a list of update objects — each item can have different fields. More efficient than multiple individual calls.
 
 RECURRING TASKS: Setting completed=True on a recurring task uses OmniFocus's 'mark complete' command, which automatically creates the next occurrence. This is guaranteed behavior — do not hedge or warn that recurrence might stop.
 
@@ -95,65 +95,48 @@ create_projects([
 
 ### update_project
 
-Update an existing project in OmniFocus.
-
-Consolidates: set_project_status(), drop_project(), set_review_interval(), mark_project_reviewed()
-
-**Parameters:**
-- `project_id: str` (required) — The ID of the project to update
-- `project_name: str` (optional) — New project name
-- `folder_path: str` (optional) — Folder path to move project to (e.g., "Work : Projects")
-- `note: str` (optional) — New note content. WARNING: Removes rich text formatting.
-- `project_type: str` (optional) — Change project type: "parallel", "sequential", or "single_actions"
-- `sequential: bool` (optional, DEPRECATED) — Use project_type instead.
-- `status: str` (optional) — Project status - "active", "on_hold", "done", or "dropped"
-- `review_interval_weeks: int` (optional) — Review interval in weeks (0 to clear)
-- `last_reviewed: str` (optional) — Last reviewed date in ISO format or "now"
-- `next_review_date: str` (optional) — Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval
-- `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
-- `due_date: str` (optional) — Due date in ISO 8601 format, or "" to clear
-- `defer_date: str` (optional) — Defer date in ISO 8601 format, or "" to clear
-- `planned_date: str` (optional) — Planned date in ISO 8601 format, or "" to clear
-- `flagged: bool` (optional) — Flag marks a project as a priority. Pass True to flag, False to unflag.
-- `estimated_minutes: int` (optional) — Estimated time in minutes for the project
-- `tags: list[str]` (optional) — Full replacement — set exact tag list. Conflicts with add_tags/remove_tags.
-- `add_tags: list[str]` (optional) — Add these tags incrementally. Conflicts with tags.
-- `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
-- `recurrence: str` (optional) — iCalendar RRULE string, or empty string to remove recurrence.
-- `repetition_method: str` (optional) — "fixed", "start_after_completion", or "due_after_completion". Only meaningful when recurrence is set.
-
-**Returns:** Success message with project ID and updated fields, or error message
-
-**Examples:**
-- `update_project("proj-123", flagged=True)` — Flag project
-- `update_project("proj-123", add_tags=["High Priority"])` — Add tag to project
-- `update_project("proj-123", tags=[])` — Clear all tags from project
+DEPRECATED: Use update_projects instead. Delegates to update_projects with a single-item list.
 
 ---
 
 ### update_projects
 
-Update multiple projects with the same properties (batch version of update_project).
-
-IMPORTANT: This function does NOT accept project_name or note parameters because those require unique values for each project.
+Update one or more projects in OmniFocus. Pass a list of project update objects — each must have an `id` field, plus any fields to change. Each project can have different fields updated.
 
 **Parameters:**
-- `project_ids: str | list[str]` (required) — Single project ID or list of project IDs
-- `folder_path: str` (optional) — Folder path to move projects to
-- `sequential: bool` (optional) — Sequential setting
-- `status: str` (optional) — Project status - "active", "on_hold", "done", "dropped"
-- `review_interval_weeks: int` (optional) — Review interval in weeks
-- `last_reviewed: str` (optional) — Last review date ("now" or ISO format)
-- `next_review_date: str` (optional) — Explicit next review date in ISO format
-- `due_date: str` (optional) — Due date in ISO 8601 format, or "" to clear
-- `defer_date: str` (optional) — Defer date in ISO 8601 format, or "" to clear
-- `planned_date: str` (optional) — Planned date in ISO 8601 format, or "" to clear
-- `flagged: bool` (optional) — Flag/unflag all specified projects
-- `estimated_minutes: int` (optional) — Set estimated time for all specified projects
-- `add_tags: list[str]` (optional) — Add these tags to all specified projects
-- `remove_tags: list[str]` (optional) — Remove these tags from all specified projects
+- `projects: list[object]` (required) — List of project update objects. Each object has:
+  - `id: str` (required) — The project ID to update
+  - `project_name: str` (optional) — New project name
+  - `folder_path: str` (optional) — Folder path to move project to (e.g., "Work : Projects")
+  - `note: str` (optional) — New note content. WARNING: Removes rich text formatting.
+  - `project_type: str` (optional) — Change project type: "parallel", "sequential", or "single_actions"
+  - `sequential: bool` (optional, DEPRECATED) — Use project_type instead.
+  - `status: str` (optional) — Project status - "active", "on_hold", "done", or "dropped"
+  - `review_interval_weeks: int` (optional) — Review interval in weeks (0 to clear)
+  - `last_reviewed: str` (optional) — Last reviewed date in ISO format or "now"
+  - `next_review_date: str` (optional) — Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval
+  - `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
+  - `due_date: str` (optional) — Due date in ISO 8601 format, or "" to clear
+  - `defer_date: str` (optional) — Defer date in ISO 8601 format, or "" to clear
+  - `planned_date: str` (optional) — Planned date in ISO 8601 format, or "" to clear
+  - `flagged: bool` (optional) — Flag marks a project as a priority. Pass True to flag, False to unflag.
+  - `estimated_minutes: int` (optional) — Estimated time in minutes for the project
+  - `tags: list[str]` (optional) — Full replacement — set exact tag list. Conflicts with add_tags/remove_tags.
+  - `add_tags: list[str]` (optional) — Add these tags incrementally. Conflicts with tags.
+  - `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
+  - `recurrence: str` (optional) — iCalendar RRULE string, or empty string to remove recurrence.
+  - `repetition_method: str` (optional) — "fixed", "start_after_completion", or "due_after_completion". Only meaningful when recurrence is set.
 
-**Returns:** Success message with updated and failed counts
+**Returns:** For single project: success message with updated fields. For multiple: summary with per-item results.
+
+**Examples:**
+```
+update_projects([{"id": "proj-123", "flagged": true}])
+update_projects([
+    {"id": "proj-1", "status": "on_hold"},
+    {"id": "proj-2", "project_name": "Renamed", "flagged": true}
+])
+```
 
 ---
 
