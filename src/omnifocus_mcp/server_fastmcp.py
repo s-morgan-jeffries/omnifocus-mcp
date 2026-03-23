@@ -224,7 +224,8 @@ def get_projects(
     include_task_health: bool = False,
     include_last_activity: bool = False,
     stalled_only: bool = False,
-    include_dropped: bool = False
+    include_dropped: bool = False,
+    tag_filter: Optional[list[str]] = None
 ) -> str:
     """Retrieve projects from OmniFocus with optional filtering.
 
@@ -237,10 +238,11 @@ def get_projects(
         include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
         stalled_only: If True, only return active projects with no available actions — projects that need attention (implies include_task_health=True)
         include_dropped: If True, include dropped projects in results (default: False — dropped projects are hidden)
+        tag_filter: Only return projects with ALL specified tags (case-insensitive)
 
     Returns:
         Each project includes: id, name, folderPath, status, projectType, sequential,
-        completedByChildren, creationDate, note (truncated unless include_full_notes=True).
+        completedByChildren, creationDate, tags, note (truncated unless include_full_notes=True).
         `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List —
         a grab-bag list with no completion goal). `sequential` (boolean) is retained for
         backwards compatibility. `completedByChildren` (boolean) indicates whether the project
@@ -260,6 +262,7 @@ def get_projects(
             include_last_activity=include_last_activity,
             stalled_only=stalled_only,
             include_dropped=include_dropped,
+            tag_filter=tag_filter,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
