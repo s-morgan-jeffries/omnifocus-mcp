@@ -63,7 +63,7 @@ echo ""
 #   - _build_update_task_commands: CC ≤ 30 (29 current - 17 updatable fields)
 #   - _post_process_tasks: CC ≤ 29 (28 current - normalization + 6 filter steps)
 #   - _filter_projects_by_conditions: CC ≤ 25 (24 current - 3 conditions × pos/neg matching)
-#   - _filter_by_date_range: CC ≤ 27 (26 current - 3 date range checks: created, modified, planned)
+#   - _filter_by_date_range: CC ≤ 6 (5 current - delegates to _item_passes_date_check)
 #   - _post_process_projects: CC ≤ 29 (28 current - projectType + 9 filter steps incl. tags, planned dates, flagged, completed)
 #
 # Original functions not yet refactored:
@@ -93,7 +93,7 @@ try:
                     continue
                 elif name == '_filter_projects_by_conditions' and cc <= 25:
                     continue
-                elif name == '_filter_by_date_range' and cc <= 27:
+                elif name == '_filter_by_date_range' and cc <= 6:
                     continue
                 elif name == '_post_process_projects' and cc <= 29:
                     continue

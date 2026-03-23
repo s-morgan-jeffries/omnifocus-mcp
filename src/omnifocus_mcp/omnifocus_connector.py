@@ -403,6 +403,29 @@ class OmniFocusConnector:
 
         return filtered
 
+    @staticmethod
+    def _item_passes_date_check(
+        item: dict[str, Any],
+        field_key: str,
+        after_date: Optional[str],
+        before_date: Optional[str],
+    ) -> bool:
+        """Check if an item's date field passes after/before filters.
+
+        Returns True if no filters are active, or if the item's date is within bounds.
+        Returns False if the date is missing/empty when filters are active, or out of bounds.
+        """
+        if not after_date and not before_date:
+            return True
+        date_value = item.get(field_key, '')
+        if not date_value:
+            return False
+        if after_date and date_value < after_date:
+            return False
+        if before_date and date_value > before_date:
+            return False
+        return True
+
     def _filter_by_date_range(
         self,
         items: list[dict[str, Any]],
@@ -413,65 +436,13 @@ class OmniFocusConnector:
         planned_after: Optional[str] = None,
         planned_before: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        """Filter items by date ranges.
-
-        Args:
-            items: List of task or project dictionaries to filter
-            created_after: Only include items created after this date
-            created_before: Only include items created before this date
-            modified_after: Only include items modified after this date
-            modified_before: Only include items modified before this date
-            planned_after: Only include items with planned date on or after this date
-            planned_before: Only include items with planned date before this date
-
-        Returns:
-            Filtered list of items
-        """
-        filtered = []
-
-        for item in items:
-            include = True
-
-            # Check creation date filters
-            if created_after or created_before:
-                creation_date = item.get('creationDate', '')
-                if creation_date:
-                    if created_after and creation_date < created_after:
-                        include = False
-                    if created_before and creation_date > created_before:
-                        include = False
-                else:
-                    # No creation date - exclude if filtering by creation date
-                    include = False
-
-            # Check modification date filters
-            if include and (modified_after or modified_before):
-                mod_date = item.get('modificationDate', '')
-                if mod_date:
-                    if modified_after and mod_date < modified_after:
-                        include = False
-                    if modified_before and mod_date > modified_before:
-                        include = False
-                else:
-                    # No modification date - exclude if filtering by modification date
-                    include = False
-
-            # Check planned date filters
-            if include and (planned_after or planned_before):
-                planned_date = item.get('plannedDate', '')
-                if planned_date:
-                    if planned_after and planned_date < planned_after:
-                        include = False
-                    if planned_before and planned_date > planned_before:
-                        include = False
-                else:
-                    # No planned date - exclude if filtering by planned date
-                    include = False
-
-            if include:
-                filtered.append(item)
-
-        return filtered
+        """Filter items by date ranges (created, modified, planned)."""
+        return [
+            item for item in items
+            if (self._item_passes_date_check(item, 'creationDate', created_after, created_before)
+                and self._item_passes_date_check(item, 'modificationDate', modified_after, modified_before)
+                and self._item_passes_date_check(item, 'plannedDate', planned_after, planned_before))
+        ]
 
     def _filter_tasks_by_tags(self, tasks: list[dict[str, Any]], tag_filter: list[str], mode: str) -> list[dict[str, Any]]:
         """Filter tasks by tags using boolean logic.
