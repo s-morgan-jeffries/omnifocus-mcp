@@ -1629,4 +1629,129 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+
+    # =========================================================================
+    # Task dependency organization via action groups (#531)
+    # =========================================================================
+    {
+        "id": 66,
+        "category": "Dependencies",
+        "name": "Basic Sequential Action Group",
+        "prompt": (
+            "I need to do these in order: research venues, book venue, send invitations. "
+            "Create them as a sequential action group called 'Event Planning' in project proj-100."
+        ),
+        "expected": {
+            "tools": ["create_tasks"],
+            "key_params": {
+                "create_tasks": {
+                    "tasks": [
+                        {
+                            "task_name": "Event Planning",
+                            "project_id": "proj-100",
+                            "sequential": True,
+                        },
+                    ],
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Creates parent task 'Event Planning' with sequential=True in proj-100, "
+            "then 3 subtasks via parent_task_id in dependency order (research → book → send). "
+            "PARTIAL: Correct hierarchy but missing sequential=True on parent, or wrong order. "
+            "FAIL: Flat task list with no parent/subtask hierarchy, or creates a project instead of action group."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 67,
+        "category": "Dependencies",
+        "name": "Mixed Dependencies — Parallel Project with Sequential Chains",
+        "prompt": (
+            "Create a project 'Home Renovation'. These tasks can happen in parallel: "
+            "'Get contractor quotes' and 'Choose paint colors'. But 'Schedule contractor' "
+            "must wait for quotes, and 'Buy paint' must wait for colors chosen. "
+            "Organize with action groups to capture these dependency chains."
+        ),
+        "expected": {
+            "tools": ["create_project", "create_tasks"],
+            "key_params": {
+                "create_project": {
+                    "name": "Home Renovation",
+                    "sequential": False,
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Creates parallel project, then two sequential action groups — "
+            "one for quotes→schedule, one for colors→buy. Each action group parent has sequential=True "
+            "with subtasks in dependency order. The two groups are parallel to each other. "
+            "PARTIAL: Correct tools but makes entire project sequential (over-constrains), "
+            "or flat task list with no action groups. "
+            "FAIL: No hierarchy at all, or wrong dependency order."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 68,
+        "category": "Dependencies",
+        "name": "Nested Action Groups — Mixed Sequential and Parallel",
+        "prompt": (
+            "In project proj-200, create a task 'Prepare presentation' with these "
+            "sequential subtasks: 'Research topic', 'Write outline', 'Create slides'. "
+            "Under 'Create slides', add parallel subtasks: 'Design template', "
+            "'Add content', 'Add animations'."
+        ),
+        "expected": {
+            "tools": ["create_tasks"],
+            "key_params": {
+                "create_tasks": {
+                    "tasks": [
+                        {
+                            "task_name": "Prepare presentation",
+                            "project_id": "proj-200",
+                            "sequential": True,
+                        },
+                    ],
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Creates 'Prepare presentation' (sequential=True) in proj-200, "
+            "then 3 sequential subtasks. 'Create slides' itself becomes a parallel action group "
+            "(sequential=False or default) with 3 subtasks. Two levels of nesting with correct flags. "
+            "PARTIAL: Correct hierarchy but wrong sequential flags (e.g., both levels sequential). "
+            "FAIL: Flat task list, or only one level of nesting."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 69,
+        "category": "Dependencies",
+        "name": "Diamond Dependency — Converging Tasks",
+        "prompt": (
+            "I have tasks with dependencies: 'Draft report' and 'Collect data' are independent "
+            "and can happen at the same time. 'Review findings' depends on BOTH being done first. "
+            "Put these in project proj-300 and structure them so 'Review findings' only becomes "
+            "available after both prerequisites are complete."
+        ),
+        "expected": {
+            "tools": ["create_project", "create_tasks"],
+            "key_params": {
+                "create_project": {
+                    "name": None,
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Creates a sequential project (or sequential action group), with a parallel "
+            "action group containing 'Draft report' and 'Collect data', followed by 'Review findings'. "
+            "The parallel group ensures both can happen simultaneously; sequential container ensures "
+            "'Review findings' waits for the group to complete. "
+            "PARTIAL: Makes entire project sequential with all 3 tasks flat — over-constrains "
+            "(forces Draft before Collect). Or uses completed_by_children but misses the structure. "
+            "FAIL: All tasks parallel (Review available immediately), or no hierarchy."
+        ),
+        "safety_critical": False,
+    },
 ]
