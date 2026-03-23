@@ -308,3 +308,142 @@ class TestCreateProjectServerRedesign:
             result = server.create_project(name="")
             assert isinstance(result, str)
             assert "error" in result.lower()
+
+
+class TestCreateProjectsUnified:
+    """Tests for unified create_projects() with Pydantic model input."""
+
+    def test_create_projects_single_item(self):
+        """create_projects with a single project returns detailed format."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.return_value = "proj-001"
+            mock_get_client.return_value = mock_client
+
+            create_projects = server.create_projects
+            result = create_projects(projects=[{"name": "Test Project"}])
+
+            assert isinstance(result, str)
+            assert "proj-001" in result
+            assert "Successfully" in result
+            mock_client.create_project.assert_called_once()
+            call_kwargs = mock_client.create_project.call_args[1]
+            assert call_kwargs["name"] == "Test Project"
+
+    def test_create_projects_multiple_items(self):
+        """create_projects with multiple projects returns summary."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.side_effect = ["proj-001", "proj-002", "proj-003"]
+            mock_get_client.return_value = mock_client
+
+            create_projects = server.create_projects
+            result = create_projects(projects=[
+                {"name": "Project A"},
+                {"name": "Project B", "sequential": True},
+                {"name": "Project C", "folder_path": "Work"},
+            ])
+
+            assert isinstance(result, str)
+            assert "3" in result
+            assert mock_client.create_project.call_count == 3
+
+    def test_create_projects_partial_failure(self):
+        """create_projects with one failure returns mixed results."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.side_effect = [
+                "proj-001",
+                ValueError("Folder not found"),
+                "proj-003",
+            ]
+            mock_get_client.return_value = mock_client
+
+            create_projects = server.create_projects
+            result = create_projects(projects=[
+                {"name": "Good Project"},
+                {"name": "Bad Project", "folder_path": "Nonexistent"},
+                {"name": "Also Good"},
+            ])
+
+            assert isinstance(result, str)
+            assert "2" in result  # 2 succeeded
+            assert "Bad Project" in result
+            assert "FAILED" in result
+
+    def test_create_projects_with_all_fields(self):
+        """create_projects passes all fields through to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.return_value = "proj-001"
+            mock_get_client.return_value = mock_client
+
+            create_projects = server.create_projects
+            result = create_projects(projects=[{
+                "name": "Full Project",
+                "note": "A note",
+                "folder_path": "Work > Clients",
+                "project_type": "sequential",
+                "sequential": True,
+                "review_interval_weeks": 2,
+                "completed_by_children": True,
+                "due_date": "2026-04-01",
+                "defer_date": "2026-03-25",
+                "planned_date": "2026-03-28",
+            }])
+
+            call_kwargs = mock_client.create_project.call_args[1]
+            assert call_kwargs["name"] == "Full Project"
+            assert call_kwargs["note"] == "A note"
+            assert call_kwargs["folder_path"] == "Work > Clients"
+            assert call_kwargs["project_type"] == "sequential"
+            assert call_kwargs["sequential"] is True
+            assert call_kwargs["review_interval_weeks"] == 2
+            assert call_kwargs["completed_by_children"] is True
+            assert call_kwargs["due_date"] == "2026-04-01"
+            assert call_kwargs["defer_date"] == "2026-03-25"
+            assert call_kwargs["planned_date"] == "2026-03-28"
+
+    def test_create_project_delegates_to_create_projects(self):
+        """Old create_project should delegate to create_projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.return_value = "proj-delegated"
+            mock_get_client.return_value = mock_client
+
+            result = server.create_project(
+                name="Delegated Project",
+                folder_path="Work",
+                review_interval_weeks=4,
+            )
+
+            assert "proj-delegated" in result
+            assert "Successfully" in result
+            mock_client.create_project.assert_called_once()
+
+    def test_create_projects_single_shows_type_info(self):
+        """Single project creation shows type label in result."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.return_value = "proj-seq"
+            mock_get_client.return_value = mock_client
+
+            result = server.create_projects(projects=[{
+                "name": "Sequential Project",
+                "project_type": "sequential",
+            }])
+
+            assert "Sequential" in result
+            assert "tasks completed in order" in result.lower()
+
+    def test_create_projects_single_error(self):
+        """Single project failure returns error string."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_project.side_effect = ValueError("Bad input")
+            mock_get_client.return_value = mock_client
+
+            result = server.create_projects(projects=[{"name": "Bad"}])
+
+            assert "Error" in result
+            assert "Bad input" in result

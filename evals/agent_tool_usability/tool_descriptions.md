@@ -57,21 +57,39 @@ Retrieve projects from OmniFocus with optional filtering.
 
 ### create_project
 
-Create a new project in OmniFocus.
+DEPRECATED: Use create_projects instead. Creates a single project by delegating to create_projects.
+
+---
+
+### create_projects
+
+Create one or more projects in OmniFocus.
+
+Pass a list of project objects. Each must have a name; all other fields optional.
 
 **Parameters:**
-- `name: str` (required) — The name of the project
-- `note: str` (optional) — Note/description (plain text only - rich text not supported via automation APIs)
-- `folder_path: str` (optional) — Folder path (e.g., "Work > Clients") - folder must exist
-- `project_type: str` (optional) — Project type: "parallel" (default, all tasks available simultaneously), "sequential" (tasks completed in order, only first available), or "single_actions" (grab-bag list with no completion goal, cannot auto-complete). Overrides `sequential` when provided.
-- `sequential: bool` (default: False, DEPRECATED) — Use project_type instead. If True, creates a sequential project.
-- `review_interval_weeks: int` (optional) — Review interval in weeks for GTD review cycle
-- `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
-- `due_date: str` (optional) — Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00"). Tasks inherit this as their effective due date.
-- `defer_date: str` (optional) — Defer date in ISO 8601 format (when project becomes available)
-- `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on the project)
+- `projects: list[ProjectCreate]` (required) — List of project objects. Each supports:
+  - `name: str` (required) — The name of the project
+  - `note: str` (optional) — Note/description (plain text only - rich text not supported via automation APIs)
+  - `folder_path: str` (optional) — Folder path (e.g., "Work > Clients") - folder must exist
+  - `project_type: str` (optional) — Project type: "parallel" (default, all tasks available simultaneously), "sequential" (tasks completed in order, only first available), or "single_actions" (grab-bag list with no completion goal, cannot auto-complete). Overrides `sequential` when provided.
+  - `sequential: bool` (default: False, DEPRECATED) — Use project_type instead. If True, creates a sequential project.
+  - `review_interval_weeks: int` (optional) — Review interval in weeks for GTD review cycle
+  - `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed
+  - `due_date: str` (optional) — Due date in ISO 8601 format (e.g., "2025-10-15" or "2025-10-15T17:00:00"). Tasks inherit this as their effective due date.
+  - `defer_date: str` (optional) — Defer date in ISO 8601 format (when project becomes available)
+  - `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on the project)
 
-**Returns:** Success message with project ID and configuration details
+**Returns:** For single project: success message with project ID and configuration details. For multiple: summary with per-item results.
+
+**Examples:**
+```
+create_projects([{"name": "Website Redesign"}])
+create_projects([
+    {"name": "Project A", "folder_path": "Work", "project_type": "sequential"},
+    {"name": "Project B", "due_date": "2026-04-01"}
+])
+```
 
 ---
 
