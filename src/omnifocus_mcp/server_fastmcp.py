@@ -233,7 +233,8 @@ def get_projects(
     tag_filter: Optional[list[str]] = None,
     planned_after: Optional[str] = None,
     planned_before: Optional[str] = None,
-    planned_on: Optional[str] = None
+    planned_on: Optional[str] = None,
+    has_overdue_tasks: Optional[bool] = None
 ) -> str:
     """Retrieve projects from OmniFocus with optional filtering.
 
@@ -255,6 +256,7 @@ def get_projects(
         planned_on: Only return projects planned for this specific date, e.g., "2026-03-23" (optional).
             Convenience for planned_after=date + planned_before=next_day. Mutually exclusive
             with planned_after/planned_before.
+        has_overdue_tasks: If True, only return projects with overdue tasks (implies include_task_health=True). (optional)
 
     Returns:
         Each project includes: id, name, folderPath, status, projectType, sequential,
@@ -296,6 +298,7 @@ def get_projects(
             tag_filter=tag_filter,
             planned_after=planned_after,
             planned_before=planned_before,
+            has_overdue_tasks=has_overdue_tasks,
         )
     except ValueError as e:
         return f"Error: {str(e)}"
@@ -309,6 +312,8 @@ def get_projects(
         descriptor = "stalled projects"
     elif completed_only:
         descriptor = "completed projects"
+    elif has_overdue_tasks:
+        descriptor = "projects with overdue tasks"
     elif flagged_only:
         descriptor = "flagged projects"
     elif include_dropped:
