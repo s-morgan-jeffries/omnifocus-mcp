@@ -82,13 +82,16 @@ SCENARIOS = [
             "tools": ["update_tasks"],
             "key_params": {
                 "update_tasks": {
-                    "task_ids": ["task-001", "task-002", "task-003"],
-                    "flagged": True,
+                    "tasks": [
+                        {"id": "task-001", "flagged": True},
+                        {"id": "task-002", "flagged": True},
+                        {"id": "task-003", "flagged": True},
+                    ],
                 }
             },
         },
         "scoring_notes": (
-            "PASS: update_tasks with flagged=True, correct task IDs as list. "
+            "PASS: update_tasks with list of TaskUpdate objects, each with flagged=True. "
             "PARTIAL: Uses update_task 3x instead of batch. "
             "FAIL: Uses set_focus (focus is for projects/folders, not tasks)."
         ),
@@ -109,13 +112,18 @@ SCENARIOS = [
             "tools": ["update_task", "update_tasks"],
             "key_params": {
                 "update_task": {"task_id": "task-123", "task_name": "Buy groceries"},
-                "update_tasks": {"task_ids": ["task-456", "task-789"], "flagged": True},
+                "update_tasks": {
+                    "tasks": [
+                        {"id": "task-456", "flagged": True},
+                        {"id": "task-789", "flagged": True},
+                    ],
+                },
             },
         },
         "scoring_notes": (
             "PASS: update_task for rename (single), update_tasks for flag (batch). "
             "PARTIAL: Uses update_task 3x (works but misses batch). "
-            "FAIL: Tries to use update_tasks for rename (it doesn't accept task_name)."
+            "FAIL: Wrong tools or missing flag operation entirely."
         ),
         "safety_critical": False,
     },
@@ -387,11 +395,13 @@ SCENARIOS = [
             "tools": ["get_tasks", "update_tasks"],
             "key_params": {
                 "get_tasks": {"inbox_only": True},
-                "update_tasks": {"completed": True},
+                "update_tasks": {
+                    "tasks": [{"id": "<returned_id>", "completed": True}],
+                },
             },
         },
         "scoring_notes": (
-            "PASS: get_tasks(inbox_only=True) then update_tasks(task_ids=[...], completed=True). "
+            "PASS: get_tasks(inbox_only=True) then update_tasks(tasks=[{id: ..., completed: True}, ...]). "
             "Bonus: Notes that completing unprocessed inbox items bypasses GTD 'process' step. "
             "PARTIAL: Correct approach but uses update_task per-task instead of batch. "
             "FAIL: Wrong tool or tries to delete inbox tasks."
@@ -1183,13 +1193,16 @@ SCENARIOS = [
             "tools": ["update_projects"],
             "key_params": {
                 "update_projects": {
-                    "project_ids": ["proj-A", "proj-B", "proj-C"],
-                    "status": "dropped",
+                    "projects": [
+                        {"id": "proj-A", "status": "dropped"},
+                        {"id": "proj-B", "status": "dropped"},
+                        {"id": "proj-C", "status": "dropped"},
+                    ],
                 }
             },
         },
         "scoring_notes": (
-            "PASS: Uses update_projects (batch) with status='dropped'. "
+            "PASS: Uses update_projects with list of ProjectUpdate objects, each with status='dropped'. "
             "PARTIAL: Uses update_project 3 times individually instead of batch. "
             "FAIL: Uses delete_projects (destructive)."
         ),
@@ -1554,6 +1567,65 @@ SCENARIOS = [
             "with tags as a native list. "
             "PARTIAL: Correct tool but tags in wrong format (JSON string, single tag). "
             "FAIL: Uses update_task to add tags separately, or wrong tool."
+        ),
+        "safety_critical": False,
+    },
+
+    # =========================================================================
+    # Batch create discovery
+    # =========================================================================
+    {
+        "id": 64,
+        "category": "Tool Selection",
+        "name": "Batch Task Creation",
+        "prompt": (
+            "Add these 5 tasks to my inbox: buy groceries, do laundry, "
+            "wash dishes, vacuum living room, prep meals for the week."
+        ),
+        "expected": {
+            "tools": ["create_tasks"],
+            "key_params": {
+                "create_tasks": {
+                    "tasks": [
+                        {"task_name": "buy groceries"},
+                        {"task_name": "do laundry"},
+                        {"task_name": "wash dishes"},
+                        {"task_name": "vacuum living room"},
+                        {"task_name": "prep meals for the week"},
+                    ],
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses create_tasks with a list of 5 TaskCreate objects. "
+            "PARTIAL: Uses create_task 5 times individually (works but misses batch). "
+            "FAIL: Wrong tools or missing tasks."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 65,
+        "category": "Tool Selection",
+        "name": "Batch Project Creation with Options",
+        "prompt": (
+            "Create two new projects: 'Kitchen Renovation' (sequential, in folder Home) "
+            "and 'Garden Planning' (parallel, in folder Home)."
+        ),
+        "expected": {
+            "tools": ["create_projects"],
+            "key_params": {
+                "create_projects": {
+                    "projects": [
+                        {"name": "Kitchen Renovation", "sequential": True, "folder_path": "Home"},
+                        {"name": "Garden Planning", "sequential": False, "folder_path": "Home"},
+                    ],
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Uses create_projects with a list of 2 ProjectCreate objects, correct sequential flags. "
+            "PARTIAL: Uses create_project 2 times individually (works but misses batch). "
+            "FAIL: Wrong tools or missing sequential flag."
         ),
         "safety_critical": False,
     },

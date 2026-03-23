@@ -237,6 +237,35 @@ Create a new task in OmniFocus.
 
 ---
 
+### create_tasks
+
+Create one or more tasks in OmniFocus (unified batch operation).
+
+Pass a list of TaskCreate objects. Each task must have a `task_name`; all other fields are optional. For a single task, pass a list with one item. Prefer this over calling `create_task` multiple times.
+
+**Parameters:**
+- `tasks: list[TaskCreate]` (required) — List of task objects to create. Each supports:
+  - `task_name: str` (required) — The name/title of the task
+  - `project_id: str` (optional) — Project ID. Mutually exclusive with parent_task_id.
+  - `parent_task_id: str` (optional) — Parent task ID to create as subtask. Mutually exclusive with project_id.
+  - `note: str` (optional) — Note/description (plain text only)
+  - `due_date: str` (optional) — Due date in ISO 8601 format
+  - `defer_date: str` (optional) — Defer date in ISO 8601 format
+  - `planned_date: str` (optional) — Planned date in ISO 8601 format
+  - `flagged: bool` (default: False) — Flag as priority
+  - `tags: list[str]` (optional) — List of tag names. Tags must already exist.
+  - `estimated_minutes: int` (optional) — Estimated time in minutes
+  - `sequential: bool` (default: False) — If True, subtasks must be completed in order
+  - `completed_by_children: bool` (default: False) — Auto-complete when last subtask completes
+
+**Returns:** For single task: success message with task ID. For multiple: summary with per-item results.
+
+**Examples:**
+- `create_tasks([{"task_name": "Buy groceries"}])` — Single inbox task
+- `create_tasks([{"task_name": "A", "project_id": "p1"}, {"task_name": "B", "project_id": "p1"}])` — Two tasks in a project
+
+---
+
 ### update_task
 
 Update an existing task in OmniFocus.
@@ -278,31 +307,20 @@ Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_
 
 ### update_tasks
 
-Update multiple tasks with the same field values (batch version of update_task).
+Update multiple tasks with per-item values via a list of update objects (unified batch operation).
 
-Key differences from update_task():
-- Accepts str | list[str] for task_ids (single or multiple)
-- Does NOT accept task_name or note (require unique values per task)
-- Returns count-based summary
-- Continues processing when individual tasks fail
+Each item in the list is a TaskUpdate object with an `id` field (required) and any fields to change. Different items can have different fields — this is NOT limited to uniform updates.
 
 **Parameters:**
-- `task_ids: str | list[str]` (required) — Single task ID or list of task IDs
-- `flagged: bool` (optional) — Flag/unflag all tasks
-- `status: str` (optional) — "active" or "dropped"
-- `completed: bool` (optional) — Mark all tasks complete/incomplete
-- `project_id: str` (optional) — Move all tasks to this project. Mutually exclusive with parent_task_id.
-- `parent_task_id: str` (optional) — Make all tasks subtasks of this parent. Mutually exclusive with project_id.
-- `tags: list[str]` (optional) — Full replacement for all tasks. Conflicts with add_tags.
-- `add_tags: list[str]` (optional) — Add these tags to all tasks. Conflicts with tags.
-- `remove_tags: list[str]` (optional) — Remove these tags from all tasks.
-- `due_date: str` (optional) — Set due date for all, or empty string to clear.
-- `defer_date: str` (optional) — Set defer date for all, or empty string to clear.
-- `planned_date: str` (optional) — Set planned date for all, or empty string to clear.
-- `estimated_minutes: int` (optional) — Set estimated time for all tasks.
-- `sequential: bool` (optional) — If True, subtasks of these tasks (action groups) must be completed in order. If False, subtasks are parallel.
+- `tasks: list[TaskUpdate]` (required) — List of task update objects. Each must have:
+  - `id: str` (required) — The task ID to update
+  - All other fields from update_task are available per item: `task_name`, `project_id`, `parent_task_id`, `note`, `due_date`, `defer_date`, `planned_date`, `flagged`, `tags`, `add_tags`, `remove_tags`, `estimated_minutes`, `completed`, `status`, `recurrence`, `repetition_method`, `sequential`, `completed_by_children`
 
-**Returns:** Summary with counts of successful/failed updates
+**Returns:** Summary with counts of successful/failed updates. Continues processing when individual tasks fail.
+
+**Examples:**
+- `update_tasks([{"id": "t1", "flagged": true}, {"id": "t2", "flagged": true}])` — Flag two tasks
+- `update_tasks([{"id": "t1", "task_name": "Renamed"}, {"id": "t2", "completed": true}])` — Different fields per task
 
 ---
 
