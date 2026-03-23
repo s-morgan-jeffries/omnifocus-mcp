@@ -64,7 +64,7 @@ echo ""
 #   - _post_process_tasks: CC ≤ 29 (28 current - normalization + 6 filter steps)
 #   - _filter_projects_by_conditions: CC ≤ 25 (24 current - 3 conditions × pos/neg matching)
 #   - _filter_by_date_range: CC ≤ 6 (5 current - delegates to _item_passes_date_check)
-#   - _post_process_projects: CC ≤ 29 (28 current - projectType + 9 filter steps incl. tags, planned dates, flagged, completed)
+#   - _post_process_projects: CC ≤ 19 (18 current - delegates to _compute_project_types, _filter_projects_by_query, _compute_stalled_status)
 #
 # Original functions not yet refactored:
 #   - update_projects: CC ≤ 60 (59 current — #417 added flagged/estimated/tags, #506 added review_interval_value/unit)
@@ -95,7 +95,7 @@ try:
                     continue
                 elif name == '_filter_by_date_range' and cc <= 6:
                     continue
-                elif name == '_post_process_projects' and cc <= 29:
+                elif name == '_post_process_projects' and cc <= 19:
                     continue
                 # Original functions
                 elif name == 'update_projects' and cc <= 60:

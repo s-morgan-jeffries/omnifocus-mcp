@@ -814,6 +814,40 @@ class OmniFocusConnector:
         if sort_order not in valid_sort_order:
             raise ValueError(f"Invalid sort_order value: {sort_order}. Must be one of: {valid_sort_order}")
 
+    @staticmethod
+    def _compute_project_types(projects: list[dict[str, Any]]) -> None:
+        """Set projectType from singleton and sequential flags (mutates in place)."""
+        for p in projects:
+            if p.get("singletonActionHolder"):
+                p["projectType"] = "single_actions"
+            elif p.get("sequential"):
+                p["projectType"] = "sequential"
+            else:
+                p["projectType"] = "parallel"
+
+    @staticmethod
+    def _filter_projects_by_query(
+        projects: list[dict[str, Any]], query: str
+    ) -> list[dict[str, Any]]:
+        """Filter projects by case-insensitive text match on name, note, or folderPath."""
+        query_lower = query.lower()
+        return [
+            p for p in projects
+            if query_lower in p.get('name', '').lower()
+            or query_lower in p.get('note', '').lower()
+            or query_lower in p.get('folderPath', '').lower()
+        ]
+
+    @staticmethod
+    def _compute_stalled_status(projects: list[dict[str, Any]]) -> None:
+        """Compute stalled field from task health data (mutates in place)."""
+        for p in projects:
+            p["stalled"] = (
+                p.get("status") == "active status"
+                and p.get("availableCount", 1) == 0
+                and not p.get("hasDeferredOnly", False)
+            )
+
     def _post_process_projects(
         self,
         projects: list[dict[str, Any]],
@@ -834,60 +868,34 @@ class OmniFocusConnector:
         planned_before: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """Post-process projects: compute types, apply filters, sort."""
-        # Compute projectType from singleton and sequential flags
-        for p in projects:
-            if p.get("singletonActionHolder"):
-                p["projectType"] = "single_actions"
-            elif p.get("sequential"):
-                p["projectType"] = "sequential"
-            else:
-                p["projectType"] = "parallel"
+        self._compute_project_types(projects)
 
-        # Apply date range filtering
         if modified_after or modified_before or planned_after or planned_before:
             projects = self._filter_by_date_range(
                 projects, None, None, modified_after, modified_before,
                 planned_after, planned_before
             )
 
-        # Apply conditional filters
         if min_task_count is not None or has_overdue_tasks is not None or has_no_due_dates is not None:
             projects = self._filter_projects_by_conditions(
                 projects, min_task_count, has_overdue_tasks, has_no_due_dates
             )
 
-        # Apply query filter
         if query:
-            query_lower = query.lower()
-            projects = [
-                p for p in projects
-                if query_lower in p.get('name', '').lower()
-                or query_lower in p.get('note', '').lower()
-                or query_lower in p.get('folderPath', '').lower()
-            ]
+            projects = self._filter_projects_by_query(projects, query)
 
-        # Apply tag filter
         if tag_filter:
             projects = self._filter_tasks_by_tags(projects, tag_filter, "and")
 
-        # Compute stalled field when task health is available
         if include_task_health:
-            for p in projects:
-                p["stalled"] = (
-                    p.get("status") == "active status"
-                    and p.get("availableCount", 1) == 0
-                    and not p.get("hasDeferredOnly", False)
-                )
+            self._compute_stalled_status(projects)
 
-        # Filter to stalled projects only
         if stalled_only:
             projects = [p for p in projects if p.get("stalled", False)]
 
-        # Filter to flagged projects only
         if flagged_only:
             projects = [p for p in projects if p.get("flagged", False)]
 
-        # Apply sorting
         if sort_by:
             reverse = (sort_order == "desc")
             projects = sorted(projects, key=lambda p: p.get("name", "").lower(), reverse=reverse)

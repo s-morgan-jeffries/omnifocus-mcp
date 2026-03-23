@@ -193,3 +193,81 @@ class TestPostProcessProjects:
         projects = [self._sample_project()]
         result = client._post_process_projects(projects, **self._default_params())
         assert len(result) == 1
+
+
+# ── Extracted helpers ─────────────────────────────────────────────────────
+
+
+class TestComputeProjectTypes:
+
+    def test_parallel_default(self):
+        projects = [{"singletonActionHolder": False, "sequential": False}]
+        OmniFocusConnector._compute_project_types(projects)
+        assert projects[0]["projectType"] == "parallel"
+
+    def test_sequential(self):
+        projects = [{"singletonActionHolder": False, "sequential": True}]
+        OmniFocusConnector._compute_project_types(projects)
+        assert projects[0]["projectType"] == "sequential"
+
+    def test_single_actions(self):
+        projects = [{"singletonActionHolder": True, "sequential": False}]
+        OmniFocusConnector._compute_project_types(projects)
+        assert projects[0]["projectType"] == "single_actions"
+
+    def test_singleton_takes_precedence(self):
+        """singletonActionHolder checked first, even if sequential is also True."""
+        projects = [{"singletonActionHolder": True, "sequential": True}]
+        OmniFocusConnector._compute_project_types(projects)
+        assert projects[0]["projectType"] == "single_actions"
+
+
+class TestFilterProjectsByQuery:
+
+    def test_matches_name(self):
+        projects = [{"name": "Marketing Plan", "note": "", "folderPath": ""}]
+        result = OmniFocusConnector._filter_projects_by_query(projects, "marketing")
+        assert len(result) == 1
+
+    def test_matches_note(self):
+        projects = [{"name": "P1", "note": "Review marketing budget", "folderPath": ""}]
+        result = OmniFocusConnector._filter_projects_by_query(projects, "marketing")
+        assert len(result) == 1
+
+    def test_matches_folder_path(self):
+        projects = [{"name": "P1", "note": "", "folderPath": "Work/Marketing"}]
+        result = OmniFocusConnector._filter_projects_by_query(projects, "marketing")
+        assert len(result) == 1
+
+    def test_no_match(self):
+        projects = [{"name": "Engineering", "note": "Code review", "folderPath": "Work"}]
+        result = OmniFocusConnector._filter_projects_by_query(projects, "marketing")
+        assert len(result) == 0
+
+    def test_case_insensitive(self):
+        projects = [{"name": "MARKETING", "note": "", "folderPath": ""}]
+        result = OmniFocusConnector._filter_projects_by_query(projects, "marketing")
+        assert len(result) == 1
+
+
+class TestComputeStalledStatus:
+
+    def test_stalled_when_active_no_available(self):
+        projects = [{"status": "active status", "availableCount": 0, "hasDeferredOnly": False}]
+        OmniFocusConnector._compute_stalled_status(projects)
+        assert projects[0]["stalled"] is True
+
+    def test_not_stalled_when_has_available(self):
+        projects = [{"status": "active status", "availableCount": 3, "hasDeferredOnly": False}]
+        OmniFocusConnector._compute_stalled_status(projects)
+        assert projects[0]["stalled"] is False
+
+    def test_not_stalled_when_on_hold(self):
+        projects = [{"status": "on hold status", "availableCount": 0, "hasDeferredOnly": False}]
+        OmniFocusConnector._compute_stalled_status(projects)
+        assert projects[0]["stalled"] is False
+
+    def test_not_stalled_when_deferred_only(self):
+        projects = [{"status": "active status", "availableCount": 0, "hasDeferredOnly": True}]
+        OmniFocusConnector._compute_stalled_status(projects)
+        assert projects[0]["stalled"] is False
