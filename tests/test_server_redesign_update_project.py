@@ -2,6 +2,9 @@
 
 This file tests the MCP server layer for update_project().
 Tests are written FIRST (TDD) before implementing server changes.
+
+After the unified update_projects migration (#513), update_project delegates
+to update_projects with a single-item list.
 """
 import pytest
 from unittest import mock
@@ -14,7 +17,10 @@ update_project = server.update_project
 
 
 class TestUpdateProjectServerRedesign:
-    """Tests for update_project() MCP tool (NEW API - Phase 2, Server Layer)."""
+    """Tests for update_project() MCP tool (NEW API - Phase 2, Server Layer).
+
+    After #513, update_project delegates to update_projects.
+    """
 
     # ========================================================================
     # Status Updates
@@ -35,26 +41,7 @@ class TestUpdateProjectServerRedesign:
 
             mock_client.update_project.assert_called_once_with(
                 project_id="proj-001",
-                project_name=None,
-                folder_path=None,
-                note=None,
-                sequential=None,
-                project_type=None,
                 status="active",
-                review_interval_weeks=None,
-                last_reviewed=None,
-                next_review_date=None,
-                completed_by_children=None,
-                due_date=None,
-                defer_date=None,
-                planned_date=None,
-                flagged=None,
-                estimated_minutes=None,
-                tags=None,
-                add_tags=None,
-                remove_tags=None,
-                recurrence=None,
-                repetition_method=None,
             )
 
             assert isinstance(result, str)
@@ -445,3 +432,24 @@ class TestUpdateProjectNewParams:
 
             assert "error" in result.lower()
             assert "tags" in result.lower() or "add_tags" in result.lower()
+
+
+class TestUpdateProjectDelegation:
+    """Tests that update_project delegates to update_projects (#513)."""
+
+    def test_delegation_from_update_project(self):
+        """Old update_project still works by delegating to update_projects."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_project.return_value = {
+                "success": True,
+                "project_id": "proj-1",
+                "updated_fields": ["status"]
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_project(project_id="proj-1", status="on_hold")
+
+            # Should still call client.update_project (via update_projects delegation)
+            mock_client.update_project.assert_called_once()
+            assert "success" in result.lower() or "updated" in result.lower()
