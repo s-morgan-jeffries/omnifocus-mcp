@@ -228,6 +228,8 @@ def get_projects(
     stalled_only: bool = False,
     flagged_only: bool = False,
     include_dropped: bool = False,
+    include_completed: bool = False,
+    completed_only: bool = False,
     tag_filter: Optional[list[str]] = None
 ) -> str:
     """Retrieve projects from OmniFocus with optional filtering.
@@ -242,6 +244,8 @@ def get_projects(
         stalled_only: If True, only return active projects with no available actions — projects that need attention (implies include_task_health=True)
         flagged_only: If True, only return flagged projects
         include_dropped: If True, include dropped projects in results (default: False — dropped projects are hidden)
+        include_completed: If True, include completed projects (hidden by default)
+        completed_only: If True, only return completed projects (implies include_completed)
         tag_filter: Only return projects with ALL specified tags (case-insensitive)
 
     Returns:
@@ -267,6 +271,8 @@ def get_projects(
             stalled_only=stalled_only,
             flagged_only=flagged_only,
             include_dropped=include_dropped,
+            include_completed=include_completed,
+            completed_only=completed_only,
             tag_filter=tag_filter,
         )
     except ValueError as e:
@@ -279,6 +285,8 @@ def get_projects(
         descriptor = "on-hold projects"
     elif stalled_only:
         descriptor = "stalled projects"
+    elif completed_only:
+        descriptor = "completed projects"
     elif flagged_only:
         descriptor = "flagged projects"
     elif include_dropped:

@@ -80,3 +80,32 @@ class TestGetProjectsServerEnhancements:
             assert call_kwargs['tag_filter'] == ["High Priority"]
             assert isinstance(result, str)
             assert "Tagged Project" in result
+
+    def test_get_projects_with_include_completed_parameter(self):
+        """Server: get_projects(include_completed=True) passes to client."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_projects.return_value = []
+            mock_get_client.return_value = mock_client
+
+            result = server.get_projects(include_completed=True)
+
+            call_kwargs = mock_client.get_projects.call_args[1]
+            assert call_kwargs['include_completed'] is True
+            assert isinstance(result, str)
+
+    def test_get_projects_with_completed_only_parameter(self):
+        """Server: get_projects(completed_only=True) passes to client and uses descriptor."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_projects.return_value = [
+                {"id": "proj-001", "name": "Done Project", "status": "done status"}
+            ]
+            mock_get_client.return_value = mock_client
+
+            result = server.get_projects(completed_only=True)
+
+            call_kwargs = mock_client.get_projects.call_args[1]
+            assert call_kwargs['completed_only'] is True
+            assert isinstance(result, str)
+            assert "completed projects" in result.lower()

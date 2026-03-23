@@ -938,6 +938,8 @@ class OmniFocusConnector:
         stalled_only: bool = False,
         flagged_only: bool = False,
         include_dropped: bool = False,
+        include_completed: bool = False,
+        completed_only: bool = False,
         tag_filter: Optional[list[str]] = None,
         timeout: int = 90
     ) -> list[dict[str, Any]]:
@@ -948,6 +950,8 @@ class OmniFocusConnector:
             include_full_notes: Return full note content (default: False)
             on_hold_only: Only return projects with "on hold" status (default: False)
             include_dropped: Include dropped projects in results (default: False)
+            include_completed: Include completed projects in results (default: False)
+            completed_only: Only return completed projects (implies include_completed)
             modified_after: Only return projects modified after this ISO date
             modified_before: Only return projects modified before this ISO date
             min_task_count: Only return projects with at least this many tasks
@@ -994,6 +998,10 @@ class OmniFocusConnector:
         skip_conditions = []
         if not include_dropped:
             skip_conditions.append('projStatus is "dropped status"')
+        if not include_completed and not completed_only:
+            skip_conditions.append('projStatus is "done status"')
+        if completed_only:
+            skip_conditions.append('projStatus is not "done status"')
         if on_hold_only:
             skip_conditions.append('projStatus is not "on hold status"')
         if skip_conditions:
