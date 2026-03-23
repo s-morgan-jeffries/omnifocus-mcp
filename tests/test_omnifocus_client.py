@@ -2643,3 +2643,46 @@ class TestEffectiveDates:
             # Must NOT use bare "due date <" without "effective" prefix
             import re
             assert not re.search(r'(?<!effective )due date <', script)
+
+
+class TestGetProjectsCompletedFilter:
+    """Tests for include_completed and completed_only parameters on get_projects (#501)."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    @pytest.fixture
+    def sample_projects_json(self):
+        return json.dumps([{
+            "id": "proj-001", "name": "Test Project", "note": "",
+            "status": "active status", "sequential": False,
+            "singletonActionHolder": False, "completedByChildren": False,
+            "folderPath": "", "creationDate": None, "modificationDate": None,
+            "completionDate": None, "droppedDate": None,
+            "lastReviewDate": None, "nextReviewDate": None,
+        }])
+
+    def test_default_excludes_completed_projects(self, client, sample_projects_json):
+        """Default get_projects() should skip projects with done status."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects()
+            script = mock_run.call_args[0][0]
+            assert 'projStatus is "done status"' in script
+
+    def test_include_completed_removes_done_filter(self, client, sample_projects_json):
+        """include_completed=True should NOT skip done status projects."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects(include_completed=True)
+            script = mock_run.call_args[0][0]
+            assert 'projStatus is "done status"' not in script
+
+    def test_completed_only_filters_to_done(self, client, sample_projects_json):
+        """completed_only=True should skip projects that are NOT done status."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = sample_projects_json
+            client.get_projects(completed_only=True)
+            script = mock_run.call_args[0][0]
+            assert 'projStatus is not "done status"' in script
