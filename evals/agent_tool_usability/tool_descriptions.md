@@ -64,7 +64,7 @@ Retrieve projects from OmniFocus with optional filtering.
 - `min_task_count: int` (optional) — Only return projects with at least this many tasks
 - `has_no_due_dates: bool` (optional) — If True, only return projects where no tasks have due dates
 
-**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, flagged, creationDate, modificationDate, completionDate (null if not completed), droppedDate (null if not dropped), dueDate, deferDate, plannedDate, tags, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalWeeks. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. `dueDate`, `deferDate`, `plannedDate` — project-level dates in ISO format (empty string if not set). Tasks inherit effective dates from their containing project. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
+**Returns:** Each project includes: id, name, folderPath, status, projectType, sequential, completedByChildren, flagged, creationDate, modificationDate, completionDate (null if not completed), droppedDate (null if not dropped), dueDate, deferDate, plannedDate, tags, note (truncated unless include_full_notes=True), lastReviewDate, nextReviewDate, reviewIntervalValue, reviewIntervalUnit. `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List — grab-bag list with no completion goal, cannot auto-complete). `sequential` (boolean) is retained for backwards compatibility. `completedByChildren` (boolean) — true if the project auto-completes when its last remaining action is completed. `dueDate`, `deferDate`, `plannedDate` — project-level dates in ISO format (empty string if not set). Tasks inherit effective dates from their containing project. With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status. `stalled` (boolean) — true when availableCount=0 and tasks are not just deferred (project needs attention). With include_last_activity: lastActivityDate.
 
 ---
 
@@ -125,7 +125,9 @@ Update one or more projects in OmniFocus. Pass a list of project update objects 
   - `project_type: str` (optional) — Change project type: "parallel", "sequential", or "single_actions"
   - `sequential: bool` (optional, DEPRECATED) — Use project_type instead.
   - `status: str` (optional) — Project status - "active", "on_hold", "done", or "dropped"
-  - `review_interval_weeks: int` (optional) — Review interval in weeks (0 to clear)
+  - `review_interval_weeks: int` (optional, DEPRECATED) — Use review_interval_value + review_interval_unit instead. Review interval in weeks (0 to clear)
+  - `review_interval_value: int` (optional) — Review interval amount (e.g., 3 for "every 3 months"). Used with review_interval_unit.
+  - `review_interval_unit: str` (optional) — Review interval unit: "day", "week", "month", or "year" (default: "week")
   - `last_reviewed: str` (optional) — Last reviewed date in ISO format or "now"
   - `next_review_date: str` (optional) — Explicit next review date in ISO format — overrides the date OmniFocus calculates from last_reviewed + review_interval
   - `completed_by_children: bool` (optional) — Auto-complete the project when its last remaining action is completed

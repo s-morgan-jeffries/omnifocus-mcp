@@ -729,16 +729,20 @@ class TestProjectCRUD:
         # Set review interval to 2 weeks
         result = client.update_project(test_project, review_interval_weeks=2)
         assert result["success"] is True
-        assert "review_interval_weeks" in result["updated_fields"]
+        assert "review_interval" in result["updated_fields"]
         print(f"\n✓ Set review interval to 2 weeks: {result}")
 
-        # Verify read-back — reviewInterval retrieval has a known bug (returns None).
-        # The interval IS set correctly (verified manually), but get_projects()
-        # doesn't parse the {unit:week, steps:N, fixed:true} record format.
+        # Verify read-back — reviewInterval is now parsed as value + unit
         projects = client.get_projects(project_id=test_project)
         assert len(projects) == 1
-        if projects[0].get('reviewInterval') is None:
-            pytest.xfail("Known bug: get_projects() doesn't parse reviewInterval record format")
+        project = projects[0]
+        assert project.get('reviewIntervalValue') == 2, (
+            f"Expected reviewIntervalValue=2, got {project.get('reviewIntervalValue')}"
+        )
+        assert project.get('reviewIntervalUnit') == "week", (
+            f"Expected reviewIntervalUnit='week', got {project.get('reviewIntervalUnit')}"
+        )
+        print(f"\n✓ Read back review interval: {project.get('reviewIntervalValue')} {project.get('reviewIntervalUnit')}(s)")
 
     def test_update_project_next_review_date_integration(self, client, test_project):
         """Integration: update_project() can set next_review_date explicitly."""
@@ -799,7 +803,7 @@ class TestProjectCRUD:
         assert len(result["updated_fields"]) == 3
         assert "project_name" in result["updated_fields"]
         assert "status" in result["updated_fields"]
-        assert "review_interval_weeks" in result["updated_fields"]
+        assert "review_interval" in result["updated_fields"]
         print(f"\n✓ Updated {len(result['updated_fields'])} fields: {result['updated_fields']}")
 
         # Verify all changes
@@ -808,9 +812,13 @@ class TestProjectCRUD:
         project = projects[0]
         assert project['name'] == "Multi-field Test Updated"
         assert project['status'] == 'active status'
-        # reviewInterval retrieval has a known bug (returns None)
-        if project.get('reviewInterval') is None:
-            pytest.xfail("Known bug: get_projects() doesn't parse reviewInterval record format")
+        # Verify review interval read-back
+        assert project.get('reviewIntervalValue') == 4, (
+            f"Expected reviewIntervalValue=4, got {project.get('reviewIntervalValue')}"
+        )
+        assert project.get('reviewIntervalUnit') == "week", (
+            f"Expected reviewIntervalUnit='week', got {project.get('reviewIntervalUnit')}"
+        )
 
     def test_update_projects_batch_integration(self, client, test_projects):
         """Integration: update_projects() can update multiple projects at once."""

@@ -58,7 +58,7 @@ class TestUpdateProjectServerRedesign:
             mock_client.update_project.return_value = {
                 "success": True,
                 "project_id": "proj-001",
-                "updated_fields": ["review_interval_weeks"]
+                "updated_fields": ["review_interval"]
             }
             mock_get_client.return_value = mock_client
 
@@ -104,7 +104,7 @@ class TestUpdateProjectServerRedesign:
             mock_client.update_project.return_value = {
                 "success": True,
                 "project_id": "proj-001",
-                "updated_fields": ["project_name", "status", "review_interval_weeks"]
+                "updated_fields": ["project_name", "status", "review_interval"]
             }
             mock_get_client.return_value = mock_client
 
@@ -194,7 +194,7 @@ class TestUpdateProjectServerRedesign:
             mock_client.update_project.return_value = {
                 "success": True,
                 "project_id": "proj-001",
-                "updated_fields": ["status", "review_interval_weeks"]
+                "updated_fields": ["status", "review_interval"]
             }
             mock_get_client.return_value = mock_client
 
