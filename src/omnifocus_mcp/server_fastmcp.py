@@ -902,7 +902,7 @@ def create_tasks(tasks: list[TaskCreate]) -> str:
 
 
 # ============================================================================
-# Unified Batch Create Projects (v0.11.0)
+# Unified Batch Create Projects (v0.12.0)
 # ============================================================================
 
 

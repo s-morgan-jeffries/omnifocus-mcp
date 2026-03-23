@@ -3,7 +3,7 @@
 An MCP server bridging Claude and OmniFocus via AppleScript on macOS.
 
 **Stack:** Python 3.10+, FastMCP, AppleScript (via `osascript`)
-**Version:** v0.11.0 | **Tests:** 918 unit, 158 integration/E2E, 26 benchmark/profiling | **Coverage:** 93%
+**Version:** v0.12.0 | **Tests:** 979 unit, 221 integration/E2E, 46 benchmark/profiling | **Coverage:** 93%
 
 ## Commands
 
@@ -21,12 +21,12 @@ make test-prod             # Production DB tests (OmniAutomation, sandbox folder
 
 **Running the server:** `uv run python -m omnifocus_mcp.server_fastmcp` or via Claude Desktop config.
 
-## API Surface (23 functions: 21 core + UI navigation)
+## API Surface (25 tools: 21 core + 4 navigation/UI)
 
-The API was consolidated from 40+ functions to 16 in October 2025. This is intentional — resist adding new functions.
+The API was consolidated from 40+ functions to 16 in October 2025. v0.12.0 added unified batch CRUD with Pydantic models. Resist adding new functions.
 
-**Projects (6):** create_project, get_projects, update_project, update_projects, delete_projects, reorder_project
-**Tasks (6):** create_task, get_tasks, update_task, update_tasks, delete_tasks, reorder_task
+**Projects (7):** create_project, create_projects, get_projects, update_project, update_projects, delete_projects, reorder_project
+**Tasks (7):** create_task, create_tasks, get_tasks, update_task, update_tasks, delete_tasks, reorder_task
 **Folders (3):** create_folder, get_folders, update_folder
 **Tags (4):** get_tags, create_tag, update_tag, delete_tags
 **Perspectives (2):** get_perspectives, switch_perspective

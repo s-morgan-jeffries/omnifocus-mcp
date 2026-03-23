@@ -5,6 +5,54 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-03-23
+
+Unified batch CRUD release — Pydantic model inputs for create/update operations, full filter parity between `get_tasks` and `get_projects`, and project metadata enrichment.
+
+### Added
+
+- **Unified `create_tasks()` with Pydantic model input** (#489, #507)
+  - Accepts `list[TaskCreate]` for batch task creation with full per-item control
+  - Original `create_task()` now delegates to `create_tasks()` internally (#490, #508)
+
+- **Unified `update_tasks()` with Pydantic model input** (#492, #509)
+  - Accepts `list[TaskUpdate]` for batch updates with per-item values (not uniform fields)
+
+- **Unified `create_projects()` with Pydantic model input** (#513, #515)
+  - Accepts `list[ProjectCreate]` for batch project creation
+
+- **Unified `update_projects()` with Pydantic model input** (#513, #516)
+  - Accepts `list[ProjectUpdate]` for batch project updates with per-item values
+
+- **`planned_before`/`planned_after` date filters on `get_tasks()`** (#510)
+  - Filter tasks by planned date range, complementing existing due/defer filters
+
+- **Tags field and `tag_filter` on `get_projects()`** (#511)
+  - Projects now return their assigned tags; filterable by tag name
+
+- **`flagged` field and `flagged_only` filter on `get_projects()`** (#500, #517)
+  - Projects now return flagged status; filterable to show only flagged projects
+
+- **`include_completed` and `completed_only` filters on `get_projects()`** (#501, #519)
+  - Completed projects now hidden by default; retrievable with explicit filter
+
+- **`planned_before`/`planned_after`/`planned_on` on `get_projects()`** (#520)
+  - Filter projects by planned date range or specific day
+
+- **`has_overdue_tasks` filter on `get_projects()`** (#502, #522)
+
+- **16 connector-only filters exposed in server layer** (#503, #523)
+  - `modified_after`, `modified_before`, `created_after`, `created_before`, `context_filter`, `completed_after`, `completed_before`, `status_filter`, `folder_filter` for tasks
+  - `modified_after`, `modified_before`, `created_after`, `created_before`, `review_status`, `status_filter`, `folder_filter` for projects
+
+- **Review interval in `get_projects()` output + all time units** (#505, #506, #524)
+  - Projects return `review_interval_days`; `update_project` supports `review_interval_value` + `review_interval_unit` (days/weeks/months/years)
+
+### Fixed
+
+- **7 integration/E2E test failures** from API changes (#525, #526, #527)
+  - Updated tests to use new Pydantic model signatures and `include_completed` filter
+
 ## [0.11.0] - 2026-03-22
 
 API quality release — driven by adversarial API review (#451). Standardized types, cleaned up descriptions, added new features, and improved documentation clarity for LLM clients.

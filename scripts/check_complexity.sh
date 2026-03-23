@@ -67,9 +67,9 @@ echo ""
 #   - _post_process_projects: CC ≤ 29 (28 current - projectType + 9 filter steps incl. tags, planned dates, flagged, completed)
 #
 # Original functions not yet refactored:
-#   - update_projects: CC ≤ 54 (53 current — #417 added flagged/estimated/tags)
-#   - update_project: CC ≤ 57 (56 current — #417 added flagged/estimated/tags/recurrence)
-#   - _format_task: CC ≤ 26 (25 current)
+#   - update_projects: CC ≤ 60 (59 current — #417 added flagged/estimated/tags, #506 added review_interval_value/unit)
+#   - update_project: CC ≤ 61 (60 current — #417 added flagged/estimated/tags/recurrence, #506 added review_interval_value/unit)
+#   - _format_task: CC ≤ 32 (31 current)
 #   - create_task: CC ≤ 23 (22 current)
 #   - _validate_update_task_params: CC ≤ 19 (18 current)
 EXCESSIVE_COMPLEXITY=$($RADON cc src/omnifocus_mcp/ -n D -j | $PYTHON -c "
@@ -98,9 +98,9 @@ try:
                 elif name == '_post_process_projects' and cc <= 29:
                     continue
                 # Original functions
-                elif name == 'update_projects' and cc <= 54:
+                elif name == 'update_projects' and cc <= 60:
                     continue
-                elif name == 'update_project' and cc <= 57:
+                elif name == 'update_project' and cc <= 61:
                     continue
                 elif name == '_format_task' and cc <= 32:
                     continue
@@ -135,7 +135,7 @@ echo "✅ PASS: All functions within complexity limits"
 echo ""
 echo "Documented exceptions (see script comments for full list):"
 echo "  - Extracted helpers: _build_task_filter_checks (35), _build_update_task_commands (29), _post_process_tasks (28)"
-echo "  - Original functions: update_project (56), update_projects (53), _format_task (31), create_task (22)"
+echo "  - Original functions: update_project (60), update_projects (59), _format_task (31), create_task (22)"
 echo "  - All other functions: CC ≤ 20"
 echo ""
 echo "See inline documentation in omnifocus_connector.py for rationale."
