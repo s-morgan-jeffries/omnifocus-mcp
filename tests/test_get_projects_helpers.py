@@ -61,7 +61,7 @@ class TestPostProcessProjects:
             min_task_count=None, has_overdue_tasks=None,
             has_no_due_dates=None, query=None,
             include_task_health=False, stalled_only=False,
-            sort_by=None, sort_order="asc",
+            flagged_only=False, sort_by=None, sort_order="asc",
         )
         defaults.update(overrides)
         return defaults
@@ -147,6 +147,23 @@ class TestPostProcessProjects:
         ))
         assert len(result) == 1
         assert result[0]["id"] == "p1"
+
+    def test_flagged_only_filters(self, client):
+        projects = [
+            self._sample_project(id="p1", name="P1", flagged=True),
+            self._sample_project(id="p2", name="P2", flagged=False),
+        ]
+        result = client._post_process_projects(projects, **self._default_params(flagged_only=True))
+        assert len(result) == 1
+        assert result[0]["id"] == "p1"
+
+    def test_flagged_only_false_returns_all(self, client):
+        projects = [
+            self._sample_project(id="p1", flagged=True),
+            self._sample_project(id="p2", flagged=False),
+        ]
+        result = client._post_process_projects(projects, **self._default_params(flagged_only=False))
+        assert len(result) == 2
 
     def test_passthrough_when_no_filters(self, client):
         projects = [self._sample_project()]

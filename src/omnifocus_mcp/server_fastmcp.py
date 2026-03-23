@@ -168,6 +168,8 @@ def _format_project(proj: dict, truncate_notes: bool = True) -> str:
     if proj.get('folderPath'):
         result += f"Folder: {proj['folderPath']}\n"
     result += f"Status: {proj['status']}\n"
+    if proj.get('flagged'):
+        result += "Flagged: True\n"
     if 'sequential' in proj:
         result += f"Sequential: {proj['sequential']}\n"
     if proj.get('creationDate'):
@@ -224,6 +226,7 @@ def get_projects(
     include_task_health: bool = False,
     include_last_activity: bool = False,
     stalled_only: bool = False,
+    flagged_only: bool = False,
     include_dropped: bool = False,
     tag_filter: Optional[list[str]] = None
 ) -> str:
@@ -237,12 +240,13 @@ def get_projects(
         include_task_health: If True, include per-project task health counts (remaining, available, overdue, deferred)
         include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
         stalled_only: If True, only return active projects with no available actions — projects that need attention (implies include_task_health=True)
+        flagged_only: If True, only return flagged projects
         include_dropped: If True, include dropped projects in results (default: False — dropped projects are hidden)
         tag_filter: Only return projects with ALL specified tags (case-insensitive)
 
     Returns:
         Each project includes: id, name, folderPath, status, projectType, sequential,
-        completedByChildren, creationDate, tags, note (truncated unless include_full_notes=True).
+        completedByChildren, flagged, creationDate, tags, note (truncated unless include_full_notes=True).
         `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List —
         a grab-bag list with no completion goal). `sequential` (boolean) is retained for
         backwards compatibility. `completedByChildren` (boolean) indicates whether the project
@@ -261,6 +265,7 @@ def get_projects(
             include_task_health=include_task_health,
             include_last_activity=include_last_activity,
             stalled_only=stalled_only,
+            flagged_only=flagged_only,
             include_dropped=include_dropped,
             tag_filter=tag_filter,
         )
@@ -274,6 +279,8 @@ def get_projects(
         descriptor = "on-hold projects"
     elif stalled_only:
         descriptor = "stalled projects"
+    elif flagged_only:
+        descriptor = "flagged projects"
     elif include_dropped:
         descriptor = "projects (including dropped)"
     else:
