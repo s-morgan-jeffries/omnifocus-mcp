@@ -49,6 +49,22 @@ class TestGetProjectsServerEnhancements:
             assert "error" in result.lower()
             assert "invalid date range" in result.lower()
 
+    def test_get_projects_with_flagged_only_parameter(self):
+        """Server: get_projects(flagged_only=True) passes to client."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.get_projects.return_value = [
+                {"id": "proj-001", "name": "Flagged Project", "status": "active status", "flagged": True}
+            ]
+            mock_get_client.return_value = mock_client
+
+            result = server.get_projects(flagged_only=True)
+
+            call_kwargs = mock_client.get_projects.call_args[1]
+            assert call_kwargs['flagged_only'] is True
+            assert isinstance(result, str)
+            assert "flagged projects" in result.lower()
+
     def test_get_projects_with_tag_filter_parameter(self):
         """Server: get_projects(tag_filter=["X"]) passes to client."""
         with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:

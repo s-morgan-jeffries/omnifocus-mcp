@@ -855,6 +855,7 @@ class OmniFocusConnector:
         query: Optional[str],
         include_task_health: bool,
         stalled_only: bool,
+        flagged_only: bool,
         sort_by: Optional[str],
         sort_order: str,
         tag_filter: Optional[list[str]] = None,
@@ -908,6 +909,10 @@ class OmniFocusConnector:
         if stalled_only:
             projects = [p for p in projects if p.get("stalled", False)]
 
+        # Filter to flagged projects only
+        if flagged_only:
+            projects = [p for p in projects if p.get("flagged", False)]
+
         # Apply sorting
         if sort_by:
             reverse = (sort_order == "desc")
@@ -931,6 +936,7 @@ class OmniFocusConnector:
         include_task_health: bool = False,
         include_last_activity: bool = False,
         stalled_only: bool = False,
+        flagged_only: bool = False,
         include_dropped: bool = False,
         tag_filter: Optional[list[str]] = None,
         timeout: int = 90
@@ -951,6 +957,7 @@ class OmniFocusConnector:
             sort_order: Sort order - "asc" or "desc" (default: "asc")
             query: Optional search term to filter by name, note, or folder path (case-insensitive)
             tag_filter: Only return projects with ALL specified tags (case-insensitive)
+            flagged_only: Only return flagged projects (default: False)
             timeout: Maximum seconds to wait for AppleScript (default: 90). Increase for large project lists (100+)
 
         Returns:
@@ -1054,6 +1061,7 @@ class OmniFocusConnector:
                 set containerIds to id of (container of fp)
                 set containerClasses to class of (container of fp)
                 set tagNameLists to name of (tags of fp)
+                set projFlaggeds to flagged of fp
 
                 {task_ops_preamble}
 
@@ -1172,6 +1180,7 @@ class OmniFocusConnector:
                             "\\"sequential\\": " & ((item i of seqs) as text) & ", " & ¬
                             "\\"singletonActionHolder\\": " & ((item i of singletons) as text) & ", " & ¬
                             "\\"completedByChildren\\": " & ((item i of completionsByChildren) as text) & ", " & ¬
+                            "\\"flagged\\": " & ((item i of projFlaggeds) as text) & ", " & ¬
                             "\\"folderPath\\": \\"" & my escapeJSON(folderPath) & "\\", " & ¬
                             "\\"creationDate\\": " & creationDateStr & ", " & ¬
                             "\\"modificationDate\\": " & modDateStr & ", " & ¬
@@ -1222,6 +1231,7 @@ class OmniFocusConnector:
                     query=query,
                     include_task_health=include_task_health,
                     stalled_only=stalled_only,
+                    flagged_only=flagged_only,
                     sort_by=sort_by,
                     sort_order=sort_order,
                     tag_filter=tag_filter,

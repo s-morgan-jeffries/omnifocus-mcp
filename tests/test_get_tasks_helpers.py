@@ -684,6 +684,7 @@ class TestProjectTagFilter:
             query=None,
             include_task_health=False,
             stalled_only=False,
+            flagged_only=False,
             sort_by=None,
             sort_order="asc",
             tag_filter=["Work"],
