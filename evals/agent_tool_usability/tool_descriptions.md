@@ -68,12 +68,6 @@ Retrieve projects from OmniFocus with optional filtering.
 
 ---
 
-### create_project
-
-DEPRECATED: Use create_projects instead. Creates a single project by delegating to create_projects.
-
----
-
 ### create_projects
 
 Create one or more projects in OmniFocus.
@@ -103,12 +97,6 @@ create_projects([
     {"name": "Project B", "due_date": "2026-04-01"}
 ])
 ```
-
----
-
-### update_project
-
-DEPRECATED: Use update_projects instead. Delegates to update_projects with a single-item list.
 
 ---
 
@@ -210,33 +198,6 @@ Note: Date fields (dueDate, deferDate, plannedDate) reflect effective dates — 
 
 ---
 
-### create_task
-
-Create a new task in OmniFocus.
-
-- If project_id is provided: Create task in that project
-- If parent_task_id is provided: Create task as subtask under that parent
-- If neither provided: Create task in inbox
-
-**Parameters:**
-- `task_name: str` (required) — The name/title of the task
-- `project_id: str` (optional) — Project ID. If None, creates in inbox (unless parent_task_id is set). Mutually exclusive with parent_task_id — a subtask inherits its parent's project.
-- `parent_task_id: str` (optional) — Parent task ID to create as subtask. Mutually exclusive with project_id — a subtask inherits its parent's project.
-- `note: str` (optional) — Note/description (plain text only)
-- `due_date: str` (optional) — Due date in ISO 8601 format (e.g., '2025-10-15' or '2025-10-15T17:00:00')
-- `defer_date: str` (optional) — Defer date in ISO 8601 format (when task becomes available — hidden until then)
-- `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on this task — a scheduling signal with no availability or overdue constraints, unlike defer/due dates)
-- `flagged: bool` (default: False) — Flag marks a task as a priority — typically 'I want to work on this today.' Flagged tasks can be queried with get_tasks(flagged_only=True).
-- `tags: list[str]` (optional) — List of tag names (e.g., ["Computer", "Work"]). Tags must already exist.
-- `estimated_minutes: int` (optional) — Estimated time in minutes
-- `sequential: bool` (default: False) — If True, subtasks of this task (action group) must be completed in order — only the first available subtask is actionable.
-
-**Note:** In sequential projects, tasks are ordered by creation time. Create tasks in the desired dependency order.
-
-**Returns:** Success message with task ID and location (project/inbox/parent)
-
----
-
 ### create_tasks
 
 Create one or more tasks in OmniFocus (unified batch operation).
@@ -263,45 +224,6 @@ Pass a list of TaskCreate objects. Each task must have a `task_name`; all other 
 **Examples:**
 - `create_tasks([{"task_name": "Buy groceries"}])` — Single inbox task
 - `create_tasks([{"task_name": "A", "project_id": "p1"}, {"task_name": "B", "project_id": "p1"}])` — Two tasks in a project
-
----
-
-### update_task
-
-Update an existing task in OmniFocus.
-
-Consolidates: complete_task(), drop_task(), move_task(), set_parent_task(), set_estimated_minutes(), add_tag_to_task()
-
-**Parameters:**
-- `task_id: str` (required) — The ID of the task to update
-- `task_name: str` (optional) — New task name
-- `project_id: str` (optional) — Move task to this project. Mutually exclusive with parent_task_id.
-- `parent_task_id: str` (optional) — Make task a subtask of this parent. Mutually exclusive with project_id.
-- `note: str` (optional) — New note content. WARNING: Removes rich text formatting.
-- `due_date: str` (optional) — New due date in ISO 8601 format, or empty string to clear. Omitting means no change.
-- `defer_date: str` (optional) — New defer date in ISO 8601 format (when task becomes available), or empty string to clear. Omitting means no change.
-- `planned_date: str` (optional) — Planned date in ISO 8601 format (when you plan to work on this task), or empty string to clear. A scheduling signal with no availability or overdue constraints.
-- `flagged: bool` (optional) — Flag marks a task as a priority — typically 'I want to work on this today.' Pass True to flag, False to unflag.
-- `tags: list[str]` (optional) — Full replacement — set exact tag list. Conflicts with add_tags/remove_tags.
-- `add_tags: list[str]` (optional) — Add these tags incrementally. Conflicts with tags.
-- `remove_tags: list[str]` (optional) — Remove these tags. Conflicts with tags.
-- `estimated_minutes: int` (optional) — Estimated time in minutes
-- `completed: bool` (optional) — Mark task complete/incomplete. Uses `mark complete` internally, which correctly handles recurring tasks by spawning the next occurrence.
-- `status: str` (optional) — Task status - "active" or "dropped". WARNING: Dropping is one-way via the API — dropped tasks cannot be undropped through automation, only through the OmniFocus UI. To drop an entire recurring series, pass both recurrence="" and status="dropped".
-- `recurrence: str` (optional) — iCalendar RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR"), or empty string to remove recurrence. Omitting means no change.
-- `repetition_method: str` (optional) — How the next occurrence is calculated. Values: "fixed" (next occurrence on the original schedule regardless of when completed), "start_after_completion" (next defer date = completion date + interval), "due_after_completion" (next due date = completion date + interval). Only meaningful when recurrence is set.
-- `sequential: bool` (optional) — If True, subtasks of this task (action group) must be completed in order. If False, subtasks are parallel (all available). Omitting means no change.
-
-**Returns:** Success message with updated fields, or error message
-
-**Examples:**
-- `update_task("task-123", completed=True)` — Mark complete
-- `update_task("task-123", status="dropped")` — Drop task (one-way — dropped tasks cannot be undropped via the API, only through the OmniFocus UI)
-- `update_task("task-123", project_id="proj-456")` — Move to project
-- `update_task("task-123", add_tags=["urgent"])` — Add tag
-- `update_task("task-123", recurrence="FREQ=WEEKLY;BYDAY=MO,WE,FR", repetition_method="fixed")` — Set weekly recurrence
-- `update_task("task-123", recurrence="")` — Remove recurrence
-- `update_task("task-123", recurrence="", status="dropped")` — Drop entire recurring series
 
 ---
 
@@ -379,18 +301,6 @@ Get all folders from OmniFocus with their hierarchy.
 
 ---
 
-### create_folder
-
-Create a new folder in OmniFocus.
-
-**Parameters:**
-- `name: str` (required) — The name of the folder to create
-- `parent_path: str` (optional) — Parent folder path (e.g., "Work" or "Work > Clients")
-
-**Returns:** Success message with folder ID and full path
-
----
-
 ### create_folders
 
 Create one or more folders in OmniFocus (unified batch operation).
@@ -405,19 +315,6 @@ Create one or more folders in OmniFocus (unified batch operation).
 **Examples:**
 - `create_folders([{"name": "Clients"}])`
 - `create_folders([{"name": "Work"}, {"name": "Personal", "parent_path": "Home"}])`
-
----
-
-### update_folder
-
-Update an existing folder in OmniFocus.
-
-**Parameters:**
-- `folder_id: str` (required) — The ID of the folder to update
-- `name: str` (optional) — New folder name
-- `status: str` (optional) — Folder status: "active" or "dropped". Dropping a folder hides it and drops all contained projects.
-
-**Returns:** Success message with updated fields, or error message
 
 ---
 
@@ -451,21 +348,6 @@ Tags (formerly 'contexts') represent contexts for doing work — location (Offic
 
 ---
 
-### create_tag
-
-Create a new tag in OmniFocus.
-
-Tags can be nested (e.g., create "High" under parent "Energy" to get "Energy : High").
-
-**Parameters:**
-- `name: str` (required) — The name of the tag to create
-- `parent_tag: str` (optional) — Parent tag by NAME (not ID) for nesting. Parent tag must already exist.
-- `children_are_mutually_exclusive: bool` (default: False) — If True, child tags of this tag will be mutually exclusive — assigning one child tag to a task silently removes any other child from the same group.
-
-**Returns:** Success message with tag ID and name
-
----
-
 ### create_tags
 
 Create one or more tags in OmniFocus (unified batch operation).
@@ -483,28 +365,6 @@ Pass a list of TagCreate objects. Each tag must have a `name`; other fields are 
 **Examples:**
 - `create_tags([{"name": "Automation"}])` — Single tag
 - `create_tags([{"name": "High", "parent_tag": "Energy"}, {"name": "Low", "parent_tag": "Energy"}])` — Batch nested tags
-
----
-
-### update_tag
-
-Update properties of an existing tag in OmniFocus.
-
-Tags can be renamed, reparented, or have their status changed. Tags have three states: active (tasks are actionable), on_hold (tasks excluded from available queries), and dropped (tag hidden from most views).
-
-**Parameters:**
-- `tag_id: str` (required) — The ID of the tag to update (from get_tags)
-- `name: str` (optional) — New tag name
-- `status: str` (optional) — Tag status. Values: "active", "on_hold", "dropped". Active = tasks with this tag are actionable. On hold = tag is paused, **tasks with this tag become unavailable** (excluded from Available perspective) — use for temporary pauses. Dropped = tag is retired/archived, **tasks remain available** but the tag is hidden from most views — use for permanent retirement.
-- `children_are_mutually_exclusive: bool` (optional) — If True, child tags of this tag will be mutually exclusive. If False, children are independent (default behavior).
-- `parent_tag: str` (optional) — Move this tag under a different parent tag by NAME (not ID), or empty string to move to top level. Preserves all task associations. Note: get_tags() returns parentTagId by ID, but this parameter accepts the tag's name.
-
-**Returns:** Success message with updated fields, or error message
-
-**Examples:**
-- `update_tag("tag-123", parent_tag="People")` — Move tag under "People"
-- `update_tag("tag-123", parent_tag="")` — Move tag to top level
-- `update_tag("tag-123", name="Renamed", parent_tag="Work")` — Rename and reparent in one call
 
 ---
 

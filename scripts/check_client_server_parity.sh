@@ -21,9 +21,17 @@ SERVER_TOOLS=$(grep -A1 "@mcp.tool()" "$SERVER_FILE" | \
     sed 's/def \([a-z_]*\).*/\1/' | \
     sort | uniq)
 
+# Connector methods whose functionality is covered by batch MCP tools
+# (single-item methods delegate to batch versions internally)
+BATCH_COVERED="create_task create_project create_tag create_folder update_task update_project update_tag update_folder"
+
 # Find functions missing from server
 MISSING=()
 for func in $CLIENT_FUNCTIONS; do
+    # Skip functions covered by batch tools
+    if echo "$BATCH_COVERED" | grep -q "\b${func}\b"; then
+        continue
+    fi
     # Tool name might be exactly the same or have slight variations
     if ! echo "$SERVER_TOOLS" | grep -q "^${func}$"; then
         MISSING+=("$func")

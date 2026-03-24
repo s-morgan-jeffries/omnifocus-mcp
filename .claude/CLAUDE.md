@@ -21,14 +21,14 @@ make test-prod             # Production DB tests (OmniAutomation, sandbox folder
 
 **Running the server:** `uv run python -m omnifocus_mcp.server_fastmcp` or via Claude Desktop config.
 
-## API Surface (25 tools: 21 core + 4 navigation/UI)
+## API Surface (21 MCP tools)
 
-The API was consolidated from 40+ functions to 16 in October 2025. v0.12.0 added unified batch CRUD with Pydantic models. Resist adding new functions.
+The API was consolidated from 40+ functions to 16 in October 2025. v0.12.0 added unified batch CRUD with Pydantic models. v0.13.0 removed deprecated single-item wrappers. Resist adding new functions.
 
-**Projects (7):** create_project, create_projects, get_projects, update_project, update_projects, delete_projects, reorder_project
-**Tasks (7):** create_task, create_tasks, get_tasks, update_task, update_tasks, delete_tasks, reorder_task
-**Folders (3):** create_folder, get_folders, update_folder
-**Tags (4):** get_tags, create_tag, update_tag, delete_tags
+**Projects (5):** create_projects, get_projects, update_projects, delete_projects, reorder_project
+**Tasks (5):** create_tasks, get_tasks, update_tasks, delete_tasks, reorder_task
+**Folders (3):** create_folders, get_folders, update_folders
+**Tags (4):** create_tags, get_tags, update_tags, delete_tags
 **Perspectives (2):** get_perspectives, switch_perspective
 **Navigation (2):** set_focus, get_focus
 
