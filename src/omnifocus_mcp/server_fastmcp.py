@@ -1505,26 +1505,86 @@ def get_folders() -> str:
     return result
 
 
+# ============================================================================
+# Pydantic Models for Folder CRUD (v0.13.0)
+# ============================================================================
+
+class FolderCreate(BaseModel):
+    """Input model for creating a folder."""
+    name: str
+    parent_path: Optional[str] = None
+
+
+class FolderUpdate(BaseModel):
+    """Input model for updating a folder."""
+    id: str
+    name: Optional[str] = None
+    status: Optional[str] = None  # "active" or "dropped"
+
+
+# ============================================================================
+# Unified Batch Create/Update Folders (v0.13.0)
+# ============================================================================
+
 @mcp.tool()
 def create_folder(name: str, parent_path: Optional[str] = None) -> str:
-    """Create a new folder in OmniFocus.
+    """DEPRECATED: Use create_folders instead. Creates a single folder (delegates to create_folders)."""
+    return create_folders(folders=[{"name": name, "parent_path": parent_path}])
+
+
+@mcp.tool()
+def create_folders(folders: list[FolderCreate]) -> str:
+    """Create one or more folders in OmniFocus.
 
     Args:
-        name: The name of the folder to create
-        parent_path: Optional parent folder path (e.g., "Work" or "Work > Clients")
+        folders: List of folder objects to create. Each must have:
+            name (required), parent_path (optional, e.g., "Work" or "Work > Clients").
 
     Returns:
-        Success message with folder ID and full path
+        For single folder: success message with folder ID.
+        For multiple folders: summary with per-item results.
+
+    Examples:
+        create_folders([{"name": "Clients"}])
+        create_folders([{"name": "Work"}, {"name": "Personal"}])
     """
     client = get_client()
+    results = []
+
     try:
-        folder_id = client.create_folder(name, parent_path)
-        if parent_path:
-            return f"Successfully created folder '{name}' in '{parent_path}' (ID: {folder_id})"
-        else:
-            return f"Successfully created folder '{name}' at root level (ID: {folder_id})"
+        folders = [FolderCreate(**f) if isinstance(f, dict) else f for f in folders]
     except Exception as e:
-        return f"Error creating folder: {str(e)}"
+        return f"Error: Invalid folder input: {e}"
+
+    for folder in folders:
+        try:
+            folder_id = client.create_folder(**folder.model_dump())
+            results.append({"name": folder.name, "folder_id": folder_id, "success": True})
+        except (ValueError, Exception) as e:
+            results.append({"name": folder.name, "success": False, "error": str(e)})
+
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single folder: detailed format
+    if len(folders) == 1:
+        r = results[0]
+        if r["success"]:
+            folder = folders[0]
+            if folder.parent_path:
+                return f"Successfully created folder '{folder.name}' in '{folder.parent_path}'\nFolder ID: {r['folder_id']}"
+            else:
+                return f"Successfully created folder '{folder.name}' at root level\nFolder ID: {r['folder_id']}"
+        else:
+            return f"Error: {r['error']}"
+
+    # Multiple folders: summary
+    lines = [f"Created {len(succeeded)} of {len(folders)} folders:"]
+    for r in succeeded:
+        lines.append(f"  - {r['name']}: {r['folder_id']}")
+    for r in failed:
+        lines.append(f"  - {r['name']}: FAILED — {r['error']}")
+    return "\n".join(lines)
 
 
 @mcp.tool()
@@ -1533,31 +1593,72 @@ def update_folder(
     name: Optional[str] = None,
     status: Optional[str] = None,
 ) -> str:
-    """Update an existing folder in OmniFocus.
+    """DEPRECATED: Use update_folders instead. Updates a single folder (delegates to update_folders)."""
+    params = locals()
+    folder_dict = {"id": params.pop("folder_id")}
+    for k, v in params.items():
+        if v is not None:
+            folder_dict[k] = v
+    return update_folders(folders=[folder_dict])
+
+
+@mcp.tool()
+def update_folders(folders: list[FolderUpdate]) -> str:
+    """Update one or more folders in OmniFocus.
 
     Args:
-        folder_id: The ID of the folder to update
-        name: New folder name (optional)
-        status: Folder status — "active" or "dropped". Dropping a folder hides it
-            and drops all contained projects. (optional)
+        folders: List of folder update objects. Each must have:
+            id (required), name (optional), status (optional: "active" or "dropped").
 
     Returns:
-        Success message with updated fields, or error message
+        For single folder: success message with updated fields.
+        For multiple folders: summary with per-item results.
+
+    Examples:
+        update_folders([{"id": "folder-123", "name": "Renamed"}])
+        update_folders([{"id": "f1", "status": "dropped"}, {"id": "f2", "name": "New"}])
     """
     client = get_client()
-    try:
-        result = client.update_folder(folder_id=folder_id, name=name, status=status)
-    except ValueError as e:
-        return f"Error: {str(e)}"
+    results = []
 
-    if result["success"]:
-        updated_fields = result["updated_fields"]
-        if len(updated_fields) == 1:
-            return f"Successfully updated folder {folder_id}: {updated_fields[0]}"
-        return f"Successfully updated folder {folder_id}: {len(updated_fields)} fields ({', '.join(updated_fields)})"
-    else:
-        error_msg = result.get("error", "Unknown error")
-        return f"Error updating folder {folder_id}: {error_msg}"
+    try:
+        folders = [FolderUpdate(**f) if isinstance(f, dict) else f for f in folders]
+    except Exception as e:
+        return f"Error: Invalid folder update input: {e}"
+
+    for folder in folders:
+        try:
+            params = folder.model_dump(exclude_none=True, exclude={"id"})
+            result = client.update_folder(folder_id=folder.id, **params)
+            results.append({
+                "id": folder.id,
+                "success": result.get("success", True),
+                "updated_fields": result.get("updated_fields", []),
+                "error": result.get("error"),
+            })
+        except (ValueError, Exception) as e:
+            results.append({"id": folder.id, "success": False, "updated_fields": [], "error": str(e)})
+
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single folder: detailed format
+    if len(folders) == 1:
+        r = results[0]
+        if r["success"]:
+            fields = ", ".join(r["updated_fields"])
+            return f"Successfully updated folder {r['id']}\nUpdated fields: {fields}"
+        else:
+            return f"Error updating folder {r['id']}: {r['error']}"
+
+    # Multiple folders: summary
+    lines = [f"Updated {len(succeeded)} of {len(folders)} folders:"]
+    for r in succeeded:
+        fields = ", ".join(r["updated_fields"])
+        lines.append(f"  - {r['id']}: {fields}")
+    for r in failed:
+        lines.append(f"  - {r['id']}: FAILED — {r['error']}")
+    return "\n".join(lines)
 
 
 # ============================================================================

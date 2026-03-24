@@ -363,6 +363,159 @@ class TestFolderTools:
             assert "Successfully created folder 'Clients' in 'Work'" in result
 
 
+class TestCreateFoldersUnified:
+    """Tests for unified create_folders() with Pydantic model input."""
+
+    def test_create_folders_single_item(self):
+        """Single folder returns detailed format."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_folder.return_value = "folder-001"
+            mock_get_client.return_value = mock_client
+
+            result = server.create_folders(folders=[{"name": "Clients"}])
+
+            assert "Successfully created folder" in result
+            assert "folder-001" in result
+            assert "Clients" in result
+            mock_client.create_folder.assert_called_once()
+
+    def test_create_folders_batch(self):
+        """Multiple folders return summary with count."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_folder.side_effect = ["folder-001", "folder-002", "folder-003"]
+            mock_get_client.return_value = mock_client
+
+            result = server.create_folders(folders=[
+                {"name": "Work"},
+                {"name": "Personal"},
+                {"name": "Archive"},
+            ])
+
+            assert "3" in result
+            assert mock_client.create_folder.call_count == 3
+
+    def test_create_folders_partial_failure(self):
+        """One failure returns mixed results."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_folder.side_effect = [
+                "folder-001",
+                Exception("Parent path not found"),
+                "folder-003",
+            ]
+            mock_get_client.return_value = mock_client
+
+            result = server.create_folders(folders=[
+                {"name": "Good"},
+                {"name": "Bad", "parent_path": "Nonexistent"},
+                {"name": "Also Good"},
+            ])
+
+            assert "2" in result
+            assert "FAILED" in result
+
+    def test_create_folders_passes_parent_path(self):
+        """parent_path is passed through to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_folder.return_value = "folder-001"
+            mock_get_client.return_value = mock_client
+
+            result = server.create_folders(folders=[{
+                "name": "Clients",
+                "parent_path": "Work",
+            }])
+
+            call_kwargs = mock_client.create_folder.call_args[1]
+            assert call_kwargs["name"] == "Clients"
+            assert call_kwargs["parent_path"] == "Work"
+
+    def test_create_folder_delegates_to_create_folders(self):
+        """Old create_folder delegates to create_folders."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_folder.return_value = "folder-delegated"
+            mock_get_client.return_value = mock_client
+
+            result = create_folder("Delegated", parent_path="Work")
+
+            assert "folder-delegated" in result
+            assert "Successfully" in result
+            mock_client.create_folder.assert_called_once()
+
+
+class TestUpdateFoldersUnified:
+    """Tests for unified update_folders() with Pydantic model input."""
+
+    def test_update_folders_single_item(self):
+        """Single folder update returns detailed format."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_folder.return_value = {
+                "success": True, "folder_id": "folder-001",
+                "updated_fields": ["name"], "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            result = server.update_folders(folders=[{"id": "folder-001", "name": "Renamed"}])
+
+            assert "Successfully updated folder folder-001" in result
+            assert "name" in result
+            mock_client.update_folder.assert_called_once()
+
+    def test_update_folders_batch(self):
+        """Multiple folders return summary with count."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_folder.side_effect = [
+                {"success": True, "folder_id": "f1", "updated_fields": ["name"], "error": None},
+                {"success": True, "folder_id": "f2", "updated_fields": ["status"], "error": None},
+            ]
+            mock_get_client.return_value = mock_client
+
+            result = server.update_folders(folders=[
+                {"id": "f1", "name": "Renamed"},
+                {"id": "f2", "status": "dropped"},
+            ])
+
+            assert "Updated 2 of 2 folders" in result
+            assert mock_client.update_folder.call_count == 2
+
+    def test_update_folders_excludes_none_fields(self):
+        """Only set fields passed to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_folder.return_value = {
+                "success": True, "folder_id": "f1",
+                "updated_fields": ["status"], "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            result = server.update_folders(folders=[{"id": "f1", "status": "dropped"}])
+
+            call_kwargs = mock_client.update_folder.call_args[1]
+            assert call_kwargs["folder_id"] == "f1"
+            assert call_kwargs["status"] == "dropped"
+            assert "name" not in call_kwargs
+
+    def test_update_folder_delegates_to_update_folders(self):
+        """Old update_folder delegates to update_folders."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_folder.return_value = {
+                "success": True, "folder_id": "f1",
+                "updated_fields": ["name"], "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            result = server.update_folder(folder_id="f1", name="Renamed")
+
+            assert "Successfully updated folder f1" in result
+            mock_client.update_folder.assert_called_once()
+
+
 class TestPerspectiveTools:
     """Tests for perspective tools."""
 
