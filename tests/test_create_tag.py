@@ -1,4 +1,4 @@
-"""Tests for create_tag MCP tool and connector method.
+"""Tests for create_tag and create_tags MCP tools and connector method.
 
 Tests both the server layer (MCP tool) and the connector layer (AppleScript client).
 """
@@ -134,3 +134,93 @@ class TestCreateTagConnector:
             client = OmniFocusConnector()
             with pytest.raises(Exception, match="Parent tag"):
                 client.create_tag("Child", parent_tag="NonExistent")
+
+
+class TestCreateTagsUnified:
+    """Tests for unified create_tags() with Pydantic model input."""
+
+    def test_create_tags_single_item(self):
+        """Single tag returns detailed format matching old create_tag output."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_tag.return_value = "tag-001"
+            mock_get_client.return_value = mock_client
+
+            create_tags = server.create_tags
+            result = create_tags(tags=[{"name": "Automation"}])
+
+            assert "Successfully created tag" in result
+            assert "tag-001" in result
+            assert "Automation" in result
+            mock_client.create_tag.assert_called_once()
+
+    def test_create_tags_batch(self):
+        """Multiple tags return summary with count."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_tag.side_effect = ["tag-001", "tag-002", "tag-003"]
+            mock_get_client.return_value = mock_client
+
+            create_tags = server.create_tags
+            result = create_tags(tags=[
+                {"name": "Tag A"},
+                {"name": "Tag B"},
+                {"name": "Tag C"},
+            ])
+
+            assert "3" in result
+            assert mock_client.create_tag.call_count == 3
+
+    def test_create_tags_partial_failure(self):
+        """One failure in batch returns mixed results."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_tag.side_effect = [
+                "tag-001",
+                ValueError("Tag 'Duplicate' already exists"),
+                "tag-003",
+            ]
+            mock_get_client.return_value = mock_client
+
+            create_tags = server.create_tags
+            result = create_tags(tags=[
+                {"name": "Good Tag"},
+                {"name": "Duplicate"},
+                {"name": "Also Good"},
+            ])
+
+            assert "2" in result
+            assert "FAILED" in result
+            assert "already exists" in result
+
+    def test_create_tags_passes_all_fields(self):
+        """All TagCreate fields are passed through to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_tag.return_value = "tag-001"
+            mock_get_client.return_value = mock_client
+
+            create_tags = server.create_tags
+            result = create_tags(tags=[{
+                "name": "Priority",
+                "parent_tag": "Energy",
+                "children_are_mutually_exclusive": True,
+            }])
+
+            call_kwargs = mock_client.create_tag.call_args[1]
+            assert call_kwargs["name"] == "Priority"
+            assert call_kwargs["parent_tag"] == "Energy"
+            assert call_kwargs["children_are_mutually_exclusive"] is True
+
+    def test_create_tag_delegates_to_create_tags(self):
+        """Old create_tag should delegate to create_tags."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.create_tag.return_value = "tag-delegated"
+            mock_get_client.return_value = mock_client
+
+            result = create_tag(name="Delegated", parent_tag="Parent")
+
+            assert "tag-delegated" in result
+            assert "Successfully" in result
+            mock_client.create_tag.assert_called_once()

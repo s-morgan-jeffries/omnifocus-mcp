@@ -431,6 +431,26 @@ Tags can be nested (e.g., create "High" under parent "Energy" to get "Energy : H
 
 ---
 
+### create_tags
+
+Create one or more tags in OmniFocus (unified batch operation).
+
+Pass a list of TagCreate objects. Each tag must have a `name`; other fields are optional. Prefer this over calling `create_tag` multiple times.
+
+**Parameters:**
+- `tags: list[TagCreate]` (required) — List of tag objects to create. Each supports:
+  - `name: str` (required) — The name of the tag to create
+  - `parent_tag: str` (optional) — Parent tag by NAME for nesting
+  - `children_are_mutually_exclusive: bool` (default: False) — Mutually exclusive children
+
+**Returns:** For single tag: success message with tag ID. For multiple: summary with per-item results.
+
+**Examples:**
+- `create_tags([{"name": "Automation"}])` — Single tag
+- `create_tags([{"name": "High", "parent_tag": "Energy"}, {"name": "Low", "parent_tag": "Energy"}])` — Batch nested tags
+
+---
+
 ### update_tag
 
 Update properties of an existing tag in OmniFocus.
@@ -450,6 +470,28 @@ Tags can be renamed, reparented, or have their status changed. Tags have three s
 - `update_tag("tag-123", parent_tag="People")` — Move tag under "People"
 - `update_tag("tag-123", parent_tag="")` — Move tag to top level
 - `update_tag("tag-123", name="Renamed", parent_tag="Work")` — Rename and reparent in one call
+
+---
+
+### update_tags
+
+Update one or more tags in OmniFocus (unified batch operation).
+
+Each item in the list can update different fields. Prefer this over calling `update_tag` multiple times.
+
+**Parameters:**
+- `tags: list[TagUpdate]` (required) — List of tag update objects. Each must have:
+  - `id: str` (required) — The tag ID to update
+  - `name: str` (optional) — New tag name
+  - `status: str` (optional) — "active", "on_hold", or "dropped"
+  - `children_are_mutually_exclusive: bool` (optional) — Mutually exclusive children
+  - `parent_tag: str` (optional) — Move to parent by NAME, or empty string for top level
+
+**Returns:** For single tag: success message with updated fields. For multiple: summary with per-item results.
+
+**Examples:**
+- `update_tags([{"id": "tag-1", "name": "Renamed"}])` — Single update
+- `update_tags([{"id": "tag-1", "status": "on_hold"}, {"id": "tag-2", "parent_tag": "People"}])` — Batch with different fields
 
 ---
 
