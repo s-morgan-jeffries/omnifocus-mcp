@@ -358,7 +358,6 @@ def get_projects(
     return result
 
 
-@mcp.tool()
 def create_project(
     name: str,
     note: Optional[str] = None,
@@ -417,7 +416,6 @@ class ProjectUpdate(BaseModel):
     repetition_method: Optional[str] = None
 
 
-@mcp.tool()
 def update_project(
     project_id: str,
     project_name: Optional[str] = None,
@@ -725,7 +723,6 @@ def get_tasks(
 
 
 
-@mcp.tool()
 def create_task(
     task_name: str,
     project_id: Optional[str] = None,
@@ -990,7 +987,6 @@ def create_projects(projects: list[ProjectCreate]) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
 def update_task(
     task_id: str,
     task_name: Optional[str] = None,
@@ -1190,7 +1186,6 @@ class TagUpdate(BaseModel):
 # Unified Batch Create/Update Tags (v0.12.1)
 # ============================================================================
 
-@mcp.tool()
 def create_tag(
     name: str,
     parent_tag: Optional[str] = None,
@@ -1264,7 +1259,6 @@ def create_tags(tags: list[TagCreate]) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
 def update_tag(
     tag_id: str,
     name: Optional[str] = None,
@@ -1526,7 +1520,6 @@ class FolderUpdate(BaseModel):
 # Unified Batch Create/Update Folders (v0.13.0)
 # ============================================================================
 
-@mcp.tool()
 def create_folder(name: str, parent_path: Optional[str] = None) -> str:
     """DEPRECATED: Use create_folders instead. Creates a single folder (delegates to create_folders)."""
     return create_folders(folders=[{"name": name, "parent_path": parent_path}])
@@ -1587,7 +1580,6 @@ def create_folders(folders: list[FolderCreate]) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
 def update_folder(
     folder_id: str,
     name: Optional[str] = None,

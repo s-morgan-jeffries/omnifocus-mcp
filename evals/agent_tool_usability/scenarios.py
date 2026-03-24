@@ -17,9 +17,9 @@ SCENARIOS = [
             "The appointment itself is next Friday March 20."
         ),
         "expected": {
-            "tools": ["create_task"],
+            "tools": ["create_tasks"],
             "key_params": {
-                "create_task": {
+                "create_tasks": {
                     "task_name": "Call the dentist",
                     "defer_date": "2026-03-16",
                     "due_date": "2026-03-20",
@@ -42,10 +42,10 @@ SCENARIOS = [
             "get quotes, pick contractor, sign contract, demolition, installation."
         ),
         "expected": {
-            "tools": ["create_project", "create_task", "create_task", "create_task", "create_task", "create_task"],
+            "tools": ["create_projects", "create_tasks", "create_tasks", "create_tasks", "create_tasks", "create_tasks"],
             "key_params": {
-                "create_project": {"name": "Kitchen Renovation", "sequential": True},
-                "create_task": {"project_id": "<returned_id>"},
+                "create_projects": {"name": "Kitchen Renovation", "sequential": True},
+                "create_tasks": {"project_id": "<returned_id>"},
             },
         },
         "scoring_notes": (
@@ -109,9 +109,9 @@ SCENARIOS = [
             "Rename task task-123 to 'Buy groceries' and also flag tasks task-456 and task-789."
         ),
         "expected": {
-            "tools": ["update_task", "update_tasks"],
+            "tools": ["update_tasks", "update_tasks"],
             "key_params": {
-                "update_task": {"task_id": "task-123", "task_name": "Buy groceries"},
+                "update_tasks": {"task_id": "task-123", "task_name": "Buy groceries"},
                 "update_tasks": {
                     "tasks": [
                         {"id": "task-456", "flagged": True},
@@ -133,9 +133,9 @@ SCENARIOS = [
         "name": "Move Task via update_task",
         "prompt": "Move task task-100 from my inbox to the 'Home Repairs' project (proj-200).",
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {"task_id": "task-100", "project_id": "proj-200"}
+                "update_tasks": {"task_id": "task-100", "project_id": "proj-200"}
             },
         },
         "scoring_notes": (
@@ -153,9 +153,9 @@ SCENARIOS = [
             "but I want to keep it in my records."
         ),
         "expected": {
-            "tools": ["update_project"],
+            "tools": ["update_projects"],
             "key_params": {
-                "update_project": {"project_id": "proj-888", "status": "dropped"}
+                "update_projects": {"project_id": "proj-888", "status": "dropped"}
             },
         },
         "scoring_notes": (
@@ -199,10 +199,10 @@ SCENARIOS = [
             "then add the tag 'Urgent' to existing task task-555."
         ),
         "expected": {
-            "tools": ["create_task", "update_task"],
+            "tools": ["create_tasks", "update_tasks"],
             "key_params": {
-                "create_task": {"task_name": "Review PR", "tags": ["Computer", "Work"]},
-                "update_task": {"task_id": "task-555", "add_tags": ["Urgent"]},
+                "create_tasks": {"task_name": "Review PR", "tags": ["Computer", "Work"]},
+                "update_tasks": {"task_id": "task-555", "add_tags": ["Urgent"]},
             },
         },
         "scoring_notes": (
@@ -218,8 +218,8 @@ SCENARIOS = [
         "name": "Clear a Date",
         "prompt": "Remove the due date from task task-300.",
         "expected": {
-            "tools": ["update_task"],
-            "key_params": {"update_task": {"task_id": "task-300", "due_date": ""}},
+            "tools": ["update_tasks"],
+            "key_params": {"update_tasks": {"task_id": "task-300", "due_date": ""}},
         },
         "scoring_notes": (
             "PASS: update_task(due_date=''). Empty string to clear. "
@@ -236,9 +236,9 @@ SCENARIOS = [
             "Create a subtask 'Buy nails' under task task-400 in project proj-500."
         ),
         "expected": {
-            "tools": ["create_task"],
+            "tools": ["create_tasks"],
             "key_params": {
-                "create_task": {
+                "create_tasks": {
                     "task_name": "Buy nails",
                     "parent_task_id": "task-400",
                 }
@@ -306,15 +306,15 @@ SCENARIOS = [
             "Tag all tasks with 'Web Team'. Set review every 2 weeks."
         ),
         "expected": {
-            "tools": ["create_project"] + ["create_task"] * 6,
+            "tools": ["create_projects"] + ["create_tasks"] * 6,
             "key_params": {
-                "create_project": {
+                "create_projects": {
                     "name": "Website Redesign",
                     "folder_path": "Work",
                     "sequential": True,
                     "review_interval_weeks": 2,
                 },
-                "create_task": {
+                "create_tasks": {
                     "project_id": "<returned_id>",
                     "tags": ["Web Team"],
                 },
@@ -357,9 +357,9 @@ SCENARIOS = [
             "I finished the 'Q1 Report' project (proj-777) — all tasks are done."
         ),
         "expected": {
-            "tools": ["update_project"],
+            "tools": ["update_projects"],
             "key_params": {
-                "update_project": {"project_id": "proj-777", "status": "done"}
+                "update_projects": {"project_id": "proj-777", "status": "done"}
             },
         },
         "scoring_notes": (
@@ -540,9 +540,9 @@ SCENARIOS = [
             "but I could start it earlier if I have free time. It's due Friday March 20."
         ),
         "expected": {
-            "tools": ["create_task"],
+            "tools": ["create_tasks"],
             "key_params": {
-                "create_task": {
+                "create_tasks": {
                     "task_name": "Write blog post",
                     "planned_date": "2026-03-18",
                     "due_date": "2026-03-20",
@@ -567,9 +567,9 @@ SCENARIOS = [
             "It's due for the meeting on Friday March 20."
         ),
         "expected": {
-            "tools": ["create_task"],
+            "tools": ["create_tasks"],
             "key_params": {
-                "create_task": {
+                "create_tasks": {
                     "task_name": "Prepare presentation",
                     "defer_date": "2026-03-16",
                     "planned_date": "2026-03-18",
@@ -594,9 +594,9 @@ SCENARIOS = [
             "Remove the planned date — I'll figure out when to do it later."
         ),
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {"task_id": "task-600", "planned_date": ""}
+                "update_tasks": {"task_id": "task-600", "planned_date": ""}
             },
         },
         "scoring_notes": (
@@ -643,9 +643,9 @@ SCENARIOS = [
             "every 2 weeks instead?"
         ),
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {
+                "update_tasks": {
                     "task_id": "task-810",
                     "recurrence": "FREQ=WEEKLY;INTERVAL=2",
                 }
@@ -688,9 +688,9 @@ SCENARIOS = [
         "name": "Remove Recurrence",
         "prompt": "I want to stop task task-900 from repeating. How do I remove the recurrence?",
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {
+                "update_tasks": {
                     "task_id": "task-900",
                     "recurrence": "",
                 }
@@ -712,9 +712,9 @@ SCENARIOS = [
             "on when I actually complete it, not on a fixed schedule."
         ),
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {
+                "update_tasks": {
                     "task_id": "task-820",
                     "recurrence": "FREQ=DAILY",
                     "repetition_method": "due_after_completion",
@@ -738,9 +738,9 @@ SCENARIOS = [
             "on a fixed schedule."
         ),
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {
+                "update_tasks": {
                     "task_id": "task-830",
                     "recurrence": "FREQ=DAILY",
                     "repetition_method": "fixed",
@@ -769,9 +769,9 @@ SCENARIOS = [
             "Tag ID is tag-050."
         ),
         "expected": {
-            "tools": ["update_tag"],
+            "tools": ["update_tags"],
             "key_params": {
-                "update_tag": {
+                "update_tags": {
                     "tag_id": "tag-050",
                     "status": "dropped",
                 }
@@ -798,9 +798,9 @@ SCENARIOS = [
             "available. And 'Archive' should stay hidden."
         ),
         "expected": {
-            "tools": ["update_tag"],
+            "tools": ["update_tags"],
             "key_params": {
-                "update_tag": {
+                "update_tags": {
                     "tag_id": "tag-052",
                     "status": "active",
                 }
@@ -824,9 +824,9 @@ SCENARIOS = [
             "tick off items. How do I create it?"
         ),
         "expected": {
-            "tools": ["create_project"],
+            "tools": ["create_projects"],
             "key_params": {
-                "create_project": {"project_type": "single_actions"},
+                "create_projects": {"project_type": "single_actions"},
             },
         },
         "scoring_notes": (
@@ -849,9 +849,9 @@ SCENARIOS = [
             "to archive — hide it from view without deleting it. How do I do that?"
         ),
         "expected": {
-            "tools": ["update_folder"],
+            "tools": ["update_folders"],
             "key_params": {
-                "update_folder": {"folder_id": "folder-999", "status": "dropped"},
+                "update_folders": {"folder_id": "folder-999", "status": "dropped"},
             },
         },
         "scoring_notes": (
@@ -873,9 +873,9 @@ SCENARIOS = [
             "review interval is set to. How do I do that?"
         ),
         "expected": {
-            "tools": ["update_project"],
+            "tools": ["update_projects"],
             "key_params": {
-                "update_project": {"project_id": "proj-abc", "next_review_date": "2026-04-15"},
+                "update_projects": {"project_id": "proj-abc", "next_review_date": "2026-04-15"},
             },
         },
         "scoring_notes": (
@@ -895,9 +895,9 @@ SCENARIOS = [
             "as complete when I check off its last remaining task. How do I enable that?"
         ),
         "expected": {
-            "tools": ["update_project"],
+            "tools": ["update_projects"],
             "key_params": {
-                "update_project": {"project_id": "proj-xyz", "completed_by_children": True},
+                "update_projects": {"project_id": "proj-xyz", "completed_by_children": True},
             },
         },
         "scoring_notes": (
@@ -1009,9 +1009,9 @@ SCENARIOS = [
             "completed by July 15, 2026. It should become available starting June 1, 2026."
         ),
         "expected": {
-            "tools": ["create_project"],
+            "tools": ["create_projects"],
             "key_params": {
-                "create_project": {
+                "create_projects": {
                     "name": "Q3 Report",
                     "folder_path": "Work",
                     "due_date": "2026-07-15",
@@ -1038,9 +1038,9 @@ SCENARIOS = [
             "so it's no longer deadline-driven."
         ),
         "expected": {
-            "tools": ["update_project"],
+            "tools": ["update_projects"],
             "key_params": {
-                "update_project": {
+                "update_projects": {
                     "project_id": "proj-abc",
                     "due_date": "",
                 }
@@ -1091,9 +1091,9 @@ SCENARIOS = [
             "'Q3 Report' project."
         ),
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {
+                "update_tasks": {
                     "task_id": "task-101",
                     "parent_task_id": "task-200",
                 }
@@ -1166,9 +1166,9 @@ SCENARIOS = [
             "going to do. I don't want to delete it — I just want to abandon it."
         ),
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {
+                "update_tasks": {
                     "task_id": "task-500",
                     "status": "dropped",
                 }
@@ -1270,7 +1270,7 @@ SCENARIOS = [
             "parent tag with child tags High, Medium, and Low."
         ),
         "expected": {
-            "tools": ["create_tag", "create_tag", "create_tag", "create_tag"],
+            "tools": ["create_tags", "create_tags", "create_tags", "create_tags"],
             "key_params": {
                 "create_tag (parent)": {
                     "name": "Priority",
@@ -1301,9 +1301,9 @@ SCENARIOS = [
             "can be assigned at a time. How do I fix this?"
         ),
         "expected": {
-            "tools": ["update_tag"],
+            "tools": ["update_tags"],
             "key_params": {
-                "update_tag": {
+                "update_tags": {
                     "tag_id": "tag-energy-001",
                     "children_are_mutually_exclusive": True,
                 },
@@ -1325,9 +1325,9 @@ SCENARIOS = [
             "I don't want it anymore — drop the whole series so no more occurrences spawn."
         ),
         "expected": {
-            "tools": ["update_task"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_task": {
+                "update_tasks": {
                     "task_id": "task-weekly-123",
                     "recurrence": "",
                     "status": "dropped",
@@ -1353,9 +1353,9 @@ SCENARIOS = [
             "Make sure all existing task associations are preserved."
         ),
         "expected": {
-            "tools": ["update_tag"],
+            "tools": ["update_tags"],
             "key_params": {
-                "update_tag": {
+                "update_tags": {
                     "tag_id": "tag-aimee-001",
                     "parent_tag": "People",
                 },
@@ -1377,9 +1377,9 @@ SCENARIOS = [
             "Flag the project proj-website-001 as high priority and add the tag 'High Priority' to it."
         ),
         "expected": {
-            "tools": ["update_project"],
+            "tools": ["update_projects"],
             "key_params": {
-                "update_project": {
+                "update_projects": {
                     "project_id": "proj-website-001",
                     "flagged": True,
                     "add_tags": ["High Priority"],
@@ -1463,9 +1463,9 @@ SCENARIOS = [
         "name": "Create Nested Folder",
         "prompt": "Create a 'Q2' folder inside my 'Work' folder.",
         "expected": {
-            "tools": ["create_folder"],
+            "tools": ["create_folders"],
             "key_params": {
-                "create_folder": {"name": "Q2", "parent_path": "Work"},
+                "create_folders": {"name": "Q2", "parent_path": "Work"},
             },
         },
         "scoring_notes": (
@@ -1504,7 +1504,7 @@ SCENARIOS = [
             "so I can focus on them today."
         ),
         "expected": {
-            "tools": ["get_tasks", "update_task"],
+            "tools": ["get_tasks", "update_tasks"],
             "key_params": {
                 "get_tasks": {"overdue": True},
             },
@@ -1554,9 +1554,9 @@ SCENARIOS = [
             "tags Computer and Errands."
         ),
         "expected": {
-            "tools": ["create_task"],
+            "tools": ["create_tasks"],
             "key_params": {
-                "create_task": {
+                "create_tasks": {
                     "task_name": "Buy birthday gift",
                     "tags": ["Computer", "Errands"],
                 },
@@ -1674,9 +1674,9 @@ SCENARIOS = [
             "Organize with action groups to capture these dependency chains."
         ),
         "expected": {
-            "tools": ["create_project", "create_tasks"],
+            "tools": ["create_projects", "create_tasks"],
             "key_params": {
-                "create_project": {
+                "create_projects": {
                     "name": "Home Renovation",
                     "sequential": False,
                 },
@@ -1736,9 +1736,9 @@ SCENARIOS = [
             "available after both prerequisites are complete."
         ),
         "expected": {
-            "tools": ["create_project", "create_tasks"],
+            "tools": ["create_projects", "create_tasks"],
             "key_params": {
-                "create_project": {
+                "create_projects": {
                     "name": None,
                 },
             },
