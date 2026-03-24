@@ -391,6 +391,23 @@ Create a new folder in OmniFocus.
 
 ---
 
+### create_folders
+
+Create one or more folders in OmniFocus (unified batch operation).
+
+**Parameters:**
+- `folders: list[FolderCreate]` (required) — List of folder objects. Each supports:
+  - `name: str` (required) — The name of the folder
+  - `parent_path: str` (optional) — Parent folder path (e.g., "Work" or "Work > Clients")
+
+**Returns:** For single folder: success message with folder ID. For multiple: summary with per-item results.
+
+**Examples:**
+- `create_folders([{"name": "Clients"}])`
+- `create_folders([{"name": "Work"}, {"name": "Personal", "parent_path": "Home"}])`
+
+---
+
 ### update_folder
 
 Update an existing folder in OmniFocus.
@@ -401,6 +418,24 @@ Update an existing folder in OmniFocus.
 - `status: str` (optional) — Folder status: "active" or "dropped". Dropping a folder hides it and drops all contained projects.
 
 **Returns:** Success message with updated fields, or error message
+
+---
+
+### update_folders
+
+Update one or more folders in OmniFocus (unified batch operation).
+
+**Parameters:**
+- `folders: list[FolderUpdate]` (required) — List of folder update objects. Each must have:
+  - `id: str` (required) — The folder ID to update
+  - `name: str` (optional) — New folder name
+  - `status: str` (optional) — "active" or "dropped"
+
+**Returns:** For single folder: success message with updated fields. For multiple: summary with per-item results.
+
+**Examples:**
+- `update_folders([{"id": "f1", "name": "Renamed"}])`
+- `update_folders([{"id": "f1", "status": "dropped"}, {"id": "f2", "name": "New Name"}])`
 
 ---
 

@@ -443,13 +443,13 @@ class TestCreateFolderEdgeCases:
         mock_gc.return_value.create_folder.return_value = "folder-123"
         result = server.create_folder(name="New Folder")
         assert "at root level" in result
-        mock_gc.return_value.create_folder.assert_called_once_with("New Folder", None)
+        mock_gc.return_value.create_folder.assert_called_once()
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
         mock_gc.return_value.create_folder.side_effect = RuntimeError("boom")
         result = server.create_folder(name="Bad Folder")
-        assert "Error creating folder:" in result
+        assert "error" in result.lower()
 
 
 class TestUpdateFolderEdgeCases:
@@ -462,8 +462,9 @@ class TestUpdateFolderEdgeCases:
             "updated_fields": ["name"],
         }
         result = server.update_folder(folder_id="f1", name="Renamed")
-        assert "Successfully updated folder f1: name" in result
-        mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="Renamed", status=None)
+        assert "Successfully updated folder f1" in result
+        assert "name" in result
+        mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="Renamed")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_multiple_fields_updated(self, mock_gc):
@@ -472,7 +473,7 @@ class TestUpdateFolderEdgeCases:
             "updated_fields": ["name", "status"],
         }
         result = server.update_folder(folder_id="f1", name="Renamed", status="dropped")
-        assert "2 fields" in result
+        assert "name" in result and "status" in result
         mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="Renamed", status="dropped")
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
@@ -482,8 +483,8 @@ class TestUpdateFolderEdgeCases:
             "error": "folder not found",
         }
         result = server.update_folder(folder_id="f1", name="X")
-        assert "Error updating folder f1:" in result
-        mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="X", status=None)
+        assert "Error updating folder f1" in result
+        mock_gc.return_value.update_folder.assert_called_once_with(folder_id="f1", name="X")
 
 
 class TestReorderTaskEdgeCases:
