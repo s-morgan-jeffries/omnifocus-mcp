@@ -11,7 +11,7 @@ A comprehensive, fast, reliable, and agent-friendly MCP server for OmniFocus on 
 
 ### Comprehensive
 
-25 tools covering projects, tasks, folders, tags, perspectives, and focus. Full CRUD on projects and tasks with unified batch operations (Pydantic model inputs), 20+ filter types on task and project queries, and date management including recurrence (RRULE read/write).
+21 tools covering projects, tasks, folders, tags, perspectives, and focus. Full CRUD with unified batch operations (Pydantic model inputs), 20+ filter types on task and project queries, and date management including recurrence (RRULE read/write).
 
 ### Fast
 
@@ -32,7 +32,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 
 ### Reliable
 
-93% code coverage from 1004 unit tests. 227 integration and E2E tests run against real OmniFocus covering task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
+93% code coverage from 1023 unit tests. 227 integration and E2E tests run against real OmniFocus covering task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
 
 ### Agent-Friendly
 
@@ -86,7 +86,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 ```bash
 git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
-git checkout v0.12.1  # Latest stable release
+git checkout v0.13.0  # Latest stable release
 
 # Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh

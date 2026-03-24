@@ -5,6 +5,32 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-03-24
+
+Unified batch CRUD for all entity types — tags and folders join tasks and projects with Pydantic model inputs. Deprecated single-item wrappers removed from MCP surface.
+
+### Added
+
+- **Unified `create_tags()` and `update_tags()`** with `TagCreate`/`TagUpdate` Pydantic models (#493, #541)
+  - Batch tag creation and updates with per-item values
+  - `create_tag`/`update_tag` deprecated to delegate
+
+- **Unified `create_folders()` and `update_folders()`** with `FolderCreate`/`FolderUpdate` Pydantic models (#494, #542)
+  - Batch folder creation and updates with per-item values
+  - `create_folder`/`update_folder` deprecated to delegate
+
+### Removed
+
+- **8 deprecated single-item MCP tools** removed from agent-visible surface (#495, #543)
+  - `create_task`, `update_task`, `create_project`, `update_project`, `create_tag`, `update_tag`, `create_folder`, `update_folder`
+  - Functions remain as internal Python helpers; agents now use batch versions exclusively
+  - MCP tool count: 29 → 21
+
+### Changed
+
+- **Eval scenarios updated** to use batch tool names throughout (71 scenarios)
+- **tool_descriptions.md** cleaned up — removed 8 deprecated sections
+
 ## [0.12.1] - 2026-03-23
 
 Test quality and eval accuracy release — driven by adversarial test quality review (#518). Refactored high-complexity helpers, fixed stale eval scenarios, and added missing test coverage.
