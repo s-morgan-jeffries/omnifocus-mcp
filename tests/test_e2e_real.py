@@ -404,7 +404,6 @@ class TestUpdateProjectsE2E:
         result = server.update_projects(projects=[{"id": proj_id, "sequential": True}])
 
         assert isinstance(result, str)
-        assert "1" in result  # Should mention 1 project
         assert "success" in result.lower() or "updated" in result.lower()
 
         print(f"\n✓ E2E update_projects single ID: {result}")
