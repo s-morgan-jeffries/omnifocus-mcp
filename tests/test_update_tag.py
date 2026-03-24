@@ -30,9 +30,7 @@ class TestUpdateTagServer:
             result = update_tag(tag_id="tag-001", name="Renamed")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-001", name="Renamed", status=None,
-                children_are_mutually_exclusive=None,
-                parent_tag=None
+                tag_id="tag-001", name="Renamed"
             )
             assert "tag-001" in result
             assert "Successfully" in result
@@ -52,9 +50,7 @@ class TestUpdateTagServer:
             result = update_tag(tag_id="tag-002", status="on_hold")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-002", name=None, status="on_hold",
-                children_are_mutually_exclusive=None,
-                parent_tag=None
+                tag_id="tag-002", status="on_hold",
             )
             assert "tag-002" in result
             assert "Successfully" in result
@@ -121,9 +117,7 @@ class TestUpdateTagReparenting:
             result = update_tag(tag_id="tag-001", parent_tag="People")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-001", name=None, status=None,
-                children_are_mutually_exclusive=None,
-                parent_tag="People"
+                tag_id="tag-001", parent_tag="People"
             )
             assert "Successfully" in result
 
@@ -325,9 +319,7 @@ class TestUpdateTagStatus:
             result = update_tag(tag_id="tag-001", status="dropped")
 
             mock_client.update_tag.assert_called_once_with(
-                tag_id="tag-001", name=None, status="dropped",
-                children_are_mutually_exclusive=None,
-                parent_tag=None
+                tag_id="tag-001", status="dropped",
             )
             assert "Successfully" in result
 
@@ -410,3 +402,97 @@ class TestTagExclusivity:
 
         assert result == 'tag-new-456'
         assert mock_run.call_count == 1  # Only AppleScript, no OmniAutomation
+
+
+class TestUpdateTagsUnified:
+    """Tests for unified update_tags() with Pydantic model input."""
+
+    def test_update_tags_single_item(self):
+        """Single tag update returns detailed format."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tag.return_value = {
+                "success": True,
+                "tag_id": "tag-001",
+                "updated_fields": ["name"],
+                "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            update_tags = server.update_tags
+            result = update_tags(tags=[{"id": "tag-001", "name": "Renamed"}])
+
+            assert "Successfully updated tag tag-001" in result
+            assert "name" in result
+            mock_client.update_tag.assert_called_once()
+
+    def test_update_tags_batch_different_fields(self):
+        """Multiple tags with different fields per item."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tag.side_effect = [
+                {"success": True, "tag_id": "tag-001", "updated_fields": ["name"], "error": None},
+                {"success": True, "tag_id": "tag-002", "updated_fields": ["status"], "error": None},
+            ]
+            mock_get_client.return_value = mock_client
+
+            update_tags = server.update_tags
+            result = update_tags(tags=[
+                {"id": "tag-001", "name": "Renamed"},
+                {"id": "tag-002", "status": "on_hold"},
+            ])
+
+            assert "Updated 2 of 2 tags" in result
+            assert mock_client.update_tag.call_count == 2
+
+    def test_update_tags_partial_failure(self):
+        """One failure in batch returns mixed results."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tag.side_effect = [
+                {"success": True, "tag_id": "tag-001", "updated_fields": ["name"], "error": None},
+                ValueError("Tag not found"),
+            ]
+            mock_get_client.return_value = mock_client
+
+            update_tags = server.update_tags
+            result = update_tags(tags=[
+                {"id": "tag-001", "name": "Good"},
+                {"id": "tag-bad", "name": "Bad"},
+            ])
+
+            assert "Updated 1 of 2 tags" in result
+            assert "FAILED" in result
+
+    def test_update_tags_excludes_none_fields(self):
+        """Only set fields are passed to connector."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tag.return_value = {
+                "success": True, "tag_id": "tag-001",
+                "updated_fields": ["status"], "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            update_tags = server.update_tags
+            result = update_tags(tags=[{"id": "tag-001", "status": "on_hold"}])
+
+            call_kwargs = mock_client.update_tag.call_args[1]
+            assert call_kwargs["tag_id"] == "tag-001"
+            assert call_kwargs["status"] == "on_hold"
+            assert "name" not in call_kwargs
+
+    def test_update_tag_delegates_to_update_tags(self):
+        """Old update_tag should delegate to update_tags."""
+        with mock.patch('omnifocus_mcp.server_fastmcp.get_client') as mock_get_client:
+            mock_client = mock.Mock()
+            mock_client.update_tag.return_value = {
+                "success": True, "tag_id": "tag-001",
+                "updated_fields": ["name"], "error": None,
+            }
+            mock_get_client.return_value = mock_client
+
+            result = update_tag(tag_id="tag-001", name="Renamed")
+
+            assert "Successfully updated tag tag-001" in result
+            mock_client.update_tag.assert_called_once()

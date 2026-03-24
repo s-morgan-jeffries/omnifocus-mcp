@@ -1166,47 +1166,102 @@ def get_tags() -> str:
     return result
 
 
+# ============================================================================
+# Pydantic Models for Tag CRUD (v0.12.1)
+# ============================================================================
+
+class TagCreate(BaseModel):
+    """Input model for creating a tag."""
+    name: str
+    parent_tag: Optional[str] = None
+    children_are_mutually_exclusive: bool = False
+
+
+class TagUpdate(BaseModel):
+    """Input model for updating a tag."""
+    id: str
+    name: Optional[str] = None
+    status: Optional[str] = None
+    children_are_mutually_exclusive: Optional[bool] = None
+    parent_tag: Optional[str] = None
+
+
+# ============================================================================
+# Unified Batch Create/Update Tags (v0.12.1)
+# ============================================================================
+
 @mcp.tool()
 def create_tag(
     name: str,
     parent_tag: Optional[str] = None,
     children_are_mutually_exclusive: bool = False
 ) -> str:
-    """Create a new tag in OmniFocus.
+    """DEPRECATED: Use create_tags instead. Creates a single tag (delegates to create_tags)."""
+    return create_tags(tags=[{
+        "name": name,
+        "parent_tag": parent_tag,
+        "children_are_mutually_exclusive": children_are_mutually_exclusive,
+    }])
+
+
+@mcp.tool()
+def create_tags(tags: list[TagCreate]) -> str:
+    """Create one or more tags in OmniFocus.
 
     Tags (formerly 'contexts') represent contexts for doing work — location, tools,
     energy level, people, or workflow states. Tags can be nested (e.g., create "High"
     under parent "Energy" to get "Energy : High").
 
     Args:
-        name: The name of the tag to create
-        parent_tag: Optional parent tag by NAME (not ID) for nesting (e.g., "Energy" to create
-            "Energy : High"). Parent tag must already exist.
-        children_are_mutually_exclusive: If True, child tags of this tag will be
-            mutually exclusive — assigning one child tag to a task silently removes
-            any other child from the same group. Set via OmniAutomation.
+        tags: List of tag objects to create. Each must have:
+            name (required), parent_tag (optional, by NAME not ID),
+            children_are_mutually_exclusive (optional, default False).
 
     Returns:
-        Success message with tag ID and name
+        For single tag: success message with tag ID.
+        For multiple tags: summary with per-item results.
 
-    Raises:
-        ValueError: If a tag with the same name already exists
+    Examples:
+        create_tags([{"name": "Automation"}])
+        create_tags([{"name": "High", "parent_tag": "Energy"}, {"name": "Low", "parent_tag": "Energy"}])
     """
     client = get_client()
+    results = []
+
     try:
-        tag_id = client.create_tag(
-            name=name,
-            parent_tag=parent_tag,
-            children_are_mutually_exclusive=children_are_mutually_exclusive
-        )
-    except ValueError as e:
-        return f"Error: {str(e)}"
+        tags = [TagCreate(**t) if isinstance(t, dict) else t for t in tags]
+    except Exception as e:
+        return f"Error: Invalid tag input: {e}"
 
-    result = f"Successfully created tag '{name}'\nTag ID: {tag_id}"
-    if parent_tag:
-        result += f"\nParent: {parent_tag}"
+    for tag in tags:
+        try:
+            tag_id = client.create_tag(**tag.model_dump())
+            results.append({"name": tag.name, "tag_id": tag_id, "success": True})
+        except (ValueError, Exception) as e:
+            results.append({"name": tag.name, "success": False, "error": str(e)})
 
-    return result
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single tag: detailed format
+    if len(tags) == 1:
+        r = results[0]
+        if r["success"]:
+            tag = tags[0]
+            result = f"Successfully created tag '{tag.name}'\nTag ID: {r['tag_id']}"
+            if tag.parent_tag:
+                result += f"\nParent: {tag.parent_tag}"
+            return result
+        else:
+            return f"Error: {r['error']}"
+
+    # Multiple tags: summary
+    lines = [f"Created {len(succeeded)} of {len(tags)} tags:"]
+    for r in succeeded:
+        lines.append(f"  - {r['name']}: {r['tag_id']}")
+    for r in failed:
+        lines.append(f"  - {r['name']}: FAILED — {r['error']}")
+    return "\n".join(lines)
 
 
 @mcp.tool()
@@ -1217,50 +1272,77 @@ def update_tag(
     children_are_mutually_exclusive: Optional[bool] = None,
     parent_tag: Optional[str] = None
 ) -> str:
-    """Update properties of an existing tag in OmniFocus.
+    """DEPRECATED: Use update_tags instead. Updates a single tag (delegates to update_tags)."""
+    params = locals()
+    tag_dict = {"id": params.pop("tag_id")}
+    for k, v in params.items():
+        if v is not None:
+            tag_dict[k] = v
+    return update_tags(tags=[tag_dict])
 
-    Tags can be renamed, reparented, or have their status changed. Tags have three
-    states: active (tasks are actionable), on_hold (tasks excluded from available
-    queries), and dropped (tag hidden from most views).
+
+@mcp.tool()
+def update_tags(tags: list[TagUpdate]) -> str:
+    """Update one or more tags in OmniFocus.
+
+    Tags can be renamed, reparented, or have their status changed. Each item
+    in the list can update different fields.
 
     Args:
-        tag_id: The ID of the tag to update (from get_tags)
-        name: New tag name (optional)
-        status: Tag status (optional). Values: "active", "on_hold", "dropped".
-            Active = tasks with this tag are actionable. On hold = tag is paused,
-            tasks with this tag become unavailable (excluded from Available perspective)
-            — use for temporary pauses. Dropped = tag is retired/archived, tasks remain
-            available but the tag is hidden from most views — use for permanent retirement.
-        children_are_mutually_exclusive: If True, child tags of this tag will be
-            mutually exclusive — assigning one child tag to a task silently removes
-            any other child from the same group. Set via OmniAutomation. (optional)
-        parent_tag: Move this tag under a different parent tag by NAME (not ID), or empty
-            string to move to top level. Preserves all task associations. Note: get_tags()
-            returns parentTagId by ID, but this parameter accepts the tag's name. (optional)
+        tags: List of tag update objects. Each must have:
+            id (required), name (optional), status (optional: "active", "on_hold",
+            "dropped"), children_are_mutually_exclusive (optional),
+            parent_tag (optional, by NAME or empty string to move to top level).
 
     Returns:
-        Success message with updated fields, or error message
+        For single tag: success message with updated fields.
+        For multiple tags: summary with per-item results.
 
     Examples:
-        update_tag("tag-123", parent_tag="People")  # Move under "People"
-        update_tag("tag-123", parent_tag="")  # Move to top level
+        update_tags([{"id": "tag-123", "name": "Renamed"}])
+        update_tags([{"id": "tag-1", "status": "on_hold"}, {"id": "tag-2", "parent_tag": "People"}])
     """
     client = get_client()
-    try:
-        result = client.update_tag(
-            tag_id=tag_id,
-            name=name,
-            status=status,
-            children_are_mutually_exclusive=children_are_mutually_exclusive,
-            parent_tag=parent_tag
-        )
+    results = []
 
-        fields = ", ".join(result["updated_fields"])
-        return f"Successfully updated tag {tag_id}\nUpdated fields: {fields}"
-    except ValueError as e:
-        return f"Error: {str(e)}"
+    try:
+        tags = [TagUpdate(**t) if isinstance(t, dict) else t for t in tags]
     except Exception as e:
-        return f"Error updating tag: {str(e)}"
+        return f"Error: Invalid tag update input: {e}"
+
+    for tag in tags:
+        try:
+            params = tag.model_dump(exclude_none=True, exclude={"id"})
+            result = client.update_tag(tag_id=tag.id, **params)
+            results.append({
+                "id": tag.id,
+                "success": result.get("success", True),
+                "updated_fields": result.get("updated_fields", []),
+                "error": result.get("error"),
+            })
+        except (ValueError, Exception) as e:
+            results.append({"id": tag.id, "success": False, "updated_fields": [], "error": str(e)})
+
+    succeeded = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+
+    # Single tag: detailed format
+    if len(tags) == 1:
+        r = results[0]
+        if r["success"]:
+            fields = ", ".join(r["updated_fields"])
+            return f"Successfully updated tag {r['id']}\nUpdated fields: {fields}"
+        else:
+            return f"Error updating tag {r['id']}: {r['error']}"
+
+    # Multiple tags: summary
+    lines = [f"Updated {len(succeeded)} of {len(tags)} tags:"]
+    for r in succeeded:
+        fields = ", ".join(r["updated_fields"])
+        lines.append(f"  - {r['id']}: {fields}")
+    for r in failed:
+        lines.append(f"  - {r['id']}: FAILED — {r['error']}")
+    return "\n".join(lines)
 
 
 @mcp.tool()
