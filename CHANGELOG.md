@@ -5,6 +5,45 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2026-03-23
+
+Test quality and eval accuracy release — driven by adversarial test quality review (#518). Refactored high-complexity helpers, fixed stale eval scenarios, and added missing test coverage.
+
+### Added
+
+- **4 dependency organization eval scenarios** (#531, #536)
+  - Sequential action groups, mixed parallel/sequential chains, nested action groups, diamond dependencies
+
+- **2 batch create eval scenarios** (#532, #535)
+  - Tests whether agents discover `create_tasks` and `create_projects` for batch operations
+
+- **6 E2E tests for batch create and round-trip update verification** (#533, #537)
+  - `create_tasks` single/batch/field round-trip, `create_projects` batch, update flagged/name read-back
+
+- **3 Pydantic conflict validation tests** (#534, #538)
+  - `tags`+`add_tags` on `update_tasks`/`update_task`, `project_id`+`parent_task_id` on `create_tasks`
+
+- **11 write benchmark assertions** (#534, #538)
+  - All write operations now have regression thresholds (5.0s single, 15.0s batch)
+
+- **Compound filter benchmark** for `get_projects` with stacked filters (#534, #538)
+
+### Changed
+
+- **Refactored `_filter_by_date_range`** — CC 26 → 5 via `_item_passes_date_check` helper (#512, #529)
+
+- **Refactored `_post_process_projects`** — CC 28 → 18 via `_compute_project_types`, `_filter_projects_by_query`, `_compute_stalled_status` helpers (#521, #530)
+
+- **Updated stale eval scenarios** (4, 5, 18, 50) to use new `list[TaskUpdate]`/`list[ProjectUpdate]` format (#532, #535)
+
+- **Rewrote `update_tasks` in tool_descriptions.md** — was documenting old `task_ids` API (#532, #535)
+
+- **Added `create_tasks` to tool_descriptions.md** — was missing entirely (#532, #535)
+
+### Fixed
+
+- **Brittle E2E assertion** in `update_projects` single-item test (#539)
+
 ## [0.12.0] - 2026-03-23
 
 Unified batch CRUD release — Pydantic model inputs for create/update operations, full filter parity between `get_tasks` and `get_projects`, and project metadata enrichment.
