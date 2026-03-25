@@ -261,6 +261,7 @@ class TestBatchWritePerformance:
     # --- Task benchmarks: bulk (or-chain) ---
 
     def test_update_tasks_bulk_flagged_n5(self, client, bench_tasks_5):
+        """Benchmark bulk flagged update via OR chain with 5 tasks."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
@@ -273,6 +274,7 @@ class TestBatchWritePerformance:
         assert mean < 10  # Sanity check
 
     def test_update_tasks_bulk_flagged_n10(self, client, bench_tasks_10):
+        """Benchmark bulk flagged update via OR chain with 10 tasks."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
@@ -287,6 +289,7 @@ class TestBatchWritePerformance:
     # --- Task benchmarks: per-task (repeat loop) ---
 
     def test_update_tasks_per_task_tags_n5(self, client, bench_tasks_5, ensure_bench_tag):
+        """Benchmark per-task tag assignment via repeat loop with 5 tasks."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
@@ -299,6 +302,7 @@ class TestBatchWritePerformance:
         assert mean < 30
 
     def test_update_tasks_per_task_tags_n10(self, client, bench_tasks_10, ensure_bench_tag):
+        """Benchmark per-task tag assignment via repeat loop with 10 tasks."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
@@ -313,6 +317,7 @@ class TestBatchWritePerformance:
     # --- Project benchmarks: bulk (or-chain) ---
 
     def test_update_projects_bulk_status_n5(self, client, bench_projects_5):
+        """Benchmark bulk project status update via OR chain with 5 projects."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
@@ -325,6 +330,7 @@ class TestBatchWritePerformance:
         assert mean < 10
 
     def test_update_projects_bulk_status_n10(self, client, bench_projects_10):
+        """Benchmark bulk project status update via OR chain with 10 projects."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
@@ -337,6 +343,7 @@ class TestBatchWritePerformance:
         assert mean < 10
 
     def test_update_projects_bulk_sequential_n5(self, client, bench_projects_5):
+        """Benchmark bulk sequential update via OR chain with 5 projects."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
@@ -349,6 +356,7 @@ class TestBatchWritePerformance:
         assert mean < 10
 
     def test_update_projects_bulk_sequential_n10(self, client, bench_projects_10):
+        """Benchmark bulk sequential update via OR chain with 10 projects."""
         times = []
         for _ in range(3):
             start = time.perf_counter()
