@@ -1682,6 +1682,7 @@ class TestBatchUpdateTasks:
             assert "repeat with" not in script
 
     def test_bulk_estimated_minutes_uses_or_chain(self, client):
+        """Batch estimated_minutes update uses OR chain for efficiency."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_tasks(["t1", "t2"], estimated_minutes=30)
@@ -1691,6 +1692,7 @@ class TestBatchUpdateTasks:
             assert "repeat with" not in script
 
     def test_bulk_due_date_uses_or_chain(self, client):
+        """Batch due_date update uses OR chain without repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_tasks(["t1", "t2"], due_date="2026-12-25")
@@ -1700,6 +1702,7 @@ class TestBatchUpdateTasks:
             assert "repeat with" not in script
 
     def test_bulk_clear_due_date_uses_or_chain(self, client):
+        """Clearing due_date in batch uses OR chain with missing value."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_tasks(["t1", "t2"], due_date="")
@@ -1708,6 +1711,7 @@ class TestBatchUpdateTasks:
             assert "repeat with" not in script
 
     def test_bulk_defer_date_uses_or_chain(self, client):
+        """Batch defer_date update uses OR chain without repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_tasks(["t1", "t2"], defer_date="2026-06-01")
@@ -1726,6 +1730,7 @@ class TestBatchUpdateTasks:
             assert "repeat with" not in script
 
     def test_bulk_mark_complete_uses_or_chain(self, client):
+        """Batch mark complete uses OR chain with whose clause."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "3"
             client.update_tasks(["t1", "t2", "t3"], completed=True)
@@ -1748,6 +1753,7 @@ class TestBatchUpdateTasks:
             assert "set completed" in script
 
     def test_per_task_tags_uses_repeat_loop(self, client):
+        """Batch add_tags requires per-task repeat loop for tag assignment."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_tasks(["t1", "t2"], add_tags=["urgent"])
@@ -1755,6 +1761,7 @@ class TestBatchUpdateTasks:
             assert "repeat with" in script
 
     def test_per_task_project_move_uses_repeat_loop(self, client):
+        """Batch project move requires per-task repeat loop for move command."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_tasks(["t1", "t2"], project_id="proj-1")
@@ -1763,6 +1770,7 @@ class TestBatchUpdateTasks:
             assert "move" in script
 
     def test_per_task_status_dropped_uses_repeat_loop(self, client):
+        """Batch status=dropped requires per-task repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_tasks(["t1", "t2"], status="dropped")
@@ -1849,6 +1857,7 @@ class TestBatchUpdateProjects:
     # ========================================================================
 
     def test_bulk_sequential_uses_or_chain(self, client):
+        """Batch sequential update uses OR chain without repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_projects(["p1", "p2"], sequential=True)
@@ -1858,6 +1867,7 @@ class TestBatchUpdateProjects:
             assert "repeat with" not in script
 
     def test_bulk_status_on_hold_uses_or_chain(self, client):
+        """Batch status=on_hold uses OR chain without repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_projects(["p1", "p2"], status="on_hold")
@@ -1867,6 +1877,7 @@ class TestBatchUpdateProjects:
             assert "repeat with" not in script
 
     def test_bulk_status_active_uses_or_chain(self, client):
+        """Batch status=active uses OR chain without repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_projects(["p1", "p2"], status="active")
@@ -1875,6 +1886,7 @@ class TestBatchUpdateProjects:
             assert "repeat with" not in script
 
     def test_bulk_status_done_uses_or_chain(self, client):
+        """Batch status=done uses mark complete with OR chain."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "1"
             client.update_projects(["p1"], status="done")
@@ -1884,6 +1896,7 @@ class TestBatchUpdateProjects:
             assert "repeat with" not in script
 
     def test_bulk_review_interval_uses_or_chain(self, client):
+        """Batch review_interval_weeks uses OR chain without repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_projects(["p1", "p2"], review_interval_weeks=2)
@@ -1897,6 +1910,7 @@ class TestBatchUpdateProjects:
     # ========================================================================
 
     def test_per_project_folder_uses_repeat_loop(self, client):
+        """Batch folder_path move requires per-project repeat loop."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_projects(["p1", "p2"], folder_path="Work")
@@ -1909,6 +1923,7 @@ class TestBatchUpdateProjects:
     # ========================================================================
 
     def test_mixed_fields_uses_hybrid(self, client):
+        """Mixed bulk and per-project fields produce hybrid script."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
             mock_run.return_value = "2"
             client.update_projects(["p1", "p2"], status="active", folder_path="Work")
@@ -1925,18 +1940,22 @@ class TestBuildWhoseOrChain:
         return OmniFocusConnector(enable_safety_checks=False)
 
     def test_single_id(self, client):
+        """Single ID produces a whose clause without OR."""
         result = client._build_whose_or_chain(["abc"], "flattened task")
         assert result == 'every flattened task whose id is "abc"'
 
     def test_multiple_ids(self, client):
+        """Multiple IDs produce an OR-chained whose clause."""
         result = client._build_whose_or_chain(["abc", "def", "ghi"], "flattened task")
         assert result == 'every flattened task whose id is "abc" or id is "def" or id is "ghi"'
 
     def test_project_entity(self, client):
+        """Entity name is correctly embedded in the whose clause."""
         result = client._build_whose_or_chain(["p1", "p2"], "flattened project")
         assert result == 'every flattened project whose id is "p1" or id is "p2"'
 
     def test_escapes_ids(self, client):
+        """IDs with special characters are escaped in the whose clause."""
         result = client._build_whose_or_chain(['a"b'], "flattened task")
         assert 'a\\"b' in result
 
@@ -2245,30 +2264,39 @@ class TestRruleToSummary:
     """Tests for _rrule_to_summary() RRULE parser."""
 
     def test_daily(self):
+        """FREQ=DAILY parses to 'Every day'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=DAILY") == "Every day"
 
     def test_daily_interval(self):
+        """FREQ=DAILY with INTERVAL=3 parses to 'Every 3 days'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=DAILY;INTERVAL=3") == "Every 3 days"
 
     def test_weekly(self):
+        """FREQ=WEEKLY parses to 'Every week'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=WEEKLY") == "Every week"
 
     def test_weekly_with_day(self):
+        """FREQ=WEEKLY with BYDAY=MO parses to 'Every week on Mon'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=WEEKLY;INTERVAL=1;BYDAY=MO") == "Every week on Mon"
 
     def test_weekly_interval_with_days(self):
+        """FREQ=WEEKLY with interval and multiple days parses correctly."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR") == "Every 2 weeks on Mon, Wed, Fri"
 
     def test_monthly(self):
+        """FREQ=MONTHLY parses to 'Every month'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=MONTHLY") == "Every month"
 
     def test_monthly_interval(self):
+        """FREQ=MONTHLY with INTERVAL=3 parses to 'Every 3 months'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=MONTHLY;INTERVAL=3") == "Every 3 months"
 
     def test_yearly(self):
+        """FREQ=YEARLY parses to 'Every year'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=YEARLY") == "Every year"
 
     def test_yearly_interval(self):
+        """FREQ=YEARLY with INTERVAL=2 parses to 'Every 2 years'."""
         assert OmniFocusConnector._rrule_to_summary("FREQ=YEARLY;INTERVAL=2") == "Every 2 years"
 
     def test_fallback_unparseable(self):

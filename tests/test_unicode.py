@@ -35,6 +35,7 @@ class TestEscapeAppleScriptUnicode:
 
     @pytest.mark.parametrize("name,text", UNICODE_SAMPLES)
     def test_unicode_preserved(self, client, name, text):
+        """Unicode characters survive AppleScript escaping unchanged."""
         escaped = client._escape_applescript_string(text)
         # Unicode chars should pass through — only quotes/backslashes are escaped
         for char in text:
@@ -42,14 +43,17 @@ class TestEscapeAppleScriptUnicode:
                 assert char in escaped, f"Unicode char {repr(char)} lost in escaping"
 
     def test_accented_chars_unchanged(self, client):
+        """Accented Latin characters pass through AppleScript escaping unchanged."""
         result = client._escape_applescript_string("Café résumé")
         assert result == "Café résumé"
 
     def test_emoji_unchanged(self, client):
+        """Emoji characters pass through AppleScript escaping unchanged."""
         result = client._escape_applescript_string("Task 🎯")
         assert result == "Task 🎯"
 
     def test_quotes_in_unicode_escaped(self, client):
+        """Double quotes are escaped while surrounding Unicode is preserved."""
         result = client._escape_applescript_string('Say "bonjour" à Aimée')
         assert '\\"' in result
         assert "Aimée" in result
@@ -64,6 +68,7 @@ class TestEscapeJsStringUnicode:
 
     @pytest.mark.parametrize("name,text", UNICODE_SAMPLES)
     def test_unicode_preserved(self, client, name, text):
+        """Unicode characters survive JS string escaping unchanged."""
         escaped = client._escape_js_string(text)
         for char in text:
             if char not in ("'", '"', '\\'):

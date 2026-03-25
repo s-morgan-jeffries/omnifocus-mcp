@@ -20,6 +20,7 @@ class TestBuildTaskSource:
     """Tests for _build_task_source — task source expression and whose clause building."""
 
     def test_task_id_returns_whose_id_filter(self, client):
+        """Task ID filter produces whose clause matching the given ID."""
         source, whose_active = client._build_task_source(
             task_id="abc-123", parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=False, flagged_only=False,
@@ -30,6 +31,7 @@ class TestBuildTaskSource:
         assert whose_active is False
 
     def test_parent_task_id_returns_tasks_of_parent(self, client):
+        """Parent task ID scopes source to child tasks of the specified parent."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id="parent-1", inbox_only=False,
             project_id=None, include_completed=False, flagged_only=False,
@@ -41,6 +43,7 @@ class TestBuildTaskSource:
         assert whose_active is False
 
     def test_inbox_only_returns_inbox_tasks(self, client):
+        """Inbox flag sets source to inbox tasks without whose clause."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=True,
             project_id=None, include_completed=False, flagged_only=False,
@@ -51,6 +54,7 @@ class TestBuildTaskSource:
         assert whose_active is False
 
     def test_project_id_returns_flattened_tasks_of_project(self, client):
+        """Project ID scopes source to flattened tasks of the specified project."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=False,
             project_id="proj-42", include_completed=False, flagged_only=False,
@@ -62,6 +66,7 @@ class TestBuildTaskSource:
         assert whose_active is False
 
     def test_flagged_only_adds_whose_condition(self, client):
+        """Flagged filter adds whose clause for flagged and not-completed conditions."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=False, flagged_only=True,
@@ -73,6 +78,7 @@ class TestBuildTaskSource:
         assert whose_active is True
 
     def test_multiple_whose_conditions_combined(self, client):
+        """Multiple filters combine into a single whose clause with 'and' conjunctions."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=False, flagged_only=True,
@@ -86,6 +92,7 @@ class TestBuildTaskSource:
         assert whose_active is True
 
     def test_no_filters_returns_plain_flattened_tasks(self, client):
+        """No filters with include_completed returns plain flattened tasks source."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=True, flagged_only=False,
@@ -96,6 +103,7 @@ class TestBuildTaskSource:
         assert whose_active is False
 
     def test_tag_prefiltered_ids_adds_id_whose_clause(self, client):
+        """Pre-filtered tag IDs produce an OR-chained whose clause matching each ID."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=False, flagged_only=False,
@@ -107,6 +115,7 @@ class TestBuildTaskSource:
         assert whose_active is True
 
     def test_query_adds_name_and_note_contains(self, client):
+        """Query string adds name-contains and note-contains conditions to whose clause."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=False, flagged_only=False,
@@ -118,6 +127,7 @@ class TestBuildTaskSource:
         assert whose_active is True
 
     def test_overdue_adds_due_date_condition(self, client):
+        """Overdue filter adds effective due date less-than current date condition."""
         source, whose_active = client._build_task_source(
             task_id=None, parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=False, flagged_only=False,
@@ -128,6 +138,7 @@ class TestBuildTaskSource:
         assert whose_active is True
 
     def test_task_id_escapes_special_characters(self, client):
+        """Task ID with special characters is escaped in the whose clause."""
         source, _ = client._build_task_source(
             task_id='id"with"quotes', parent_task_id=None, inbox_only=False,
             project_id=None, include_completed=False, flagged_only=False,
@@ -161,30 +172,37 @@ class TestBuildTaskFilterChecks:
     # -- Batch checks active when whose_active=False --
 
     def test_completion_check_active_when_not_include_completed(self, client):
+        """Completion check filters out completed tasks by default."""
         checks = client._build_task_filter_checks(**self._default_params())
         assert 'item i of taskComps' in checks['completion_check_batch']
 
     def test_completion_check_empty_when_include_completed(self, client):
+        """Completion check is skipped when include_completed is set."""
         checks = client._build_task_filter_checks(**self._default_params(include_completed=True))
         assert checks['completion_check_batch'] == ""
 
     def test_flagged_check_active_when_flagged_only(self, client):
+        """Flagged filter generates batch check using taskFlags array."""
         checks = client._build_task_filter_checks(**self._default_params(flagged_only=True))
         assert 'item i of taskFlags' in checks['flagged_check_batch']
 
     def test_dropped_check_active_when_dropped_only(self, client):
+        """Dropped filter generates batch check using taskDrops array."""
         checks = client._build_task_filter_checks(**self._default_params(dropped_only=True))
         assert 'item i of taskDrops' in checks['dropped_check_batch']
 
     def test_blocked_check_active_when_blocked_only(self, client):
+        """Blocked filter generates batch check using taskBlocks array."""
         checks = client._build_task_filter_checks(**self._default_params(blocked_only=True))
         assert 'item i of taskBlocks' in checks['blocked_check_batch']
 
     def test_next_check_active_when_next_only(self, client):
+        """Next filter generates batch check using taskNexts array."""
         checks = client._build_task_filter_checks(**self._default_params(next_only=True))
         assert 'item i of taskNexts' in checks['next_check_batch']
 
     def test_available_check_batch_uses_indexed_data(self, client):
+        """Available filter checks dropped, blocked, and defer date arrays."""
         checks = client._build_task_filter_checks(**self._default_params(available_only=True))
         batch = checks['available_check_batch']
         assert 'item i of taskDrops' in batch
@@ -192,10 +210,12 @@ class TestBuildTaskFilterChecks:
         assert 'item i of deferDates' in batch
 
     def test_overdue_check_active_when_overdue(self, client):
+        """Overdue filter generates batch check comparing dueDates to current date."""
         checks = client._build_task_filter_checks(**self._default_params(overdue=True))
         assert 'item i of dueDates' in checks['overdue_check_batch']
 
     def test_query_check_active_when_whose_not_active(self, client):
+        """Query generates batch check on taskNames and taskNotes when whose is inactive."""
         checks = client._build_task_filter_checks(**self._default_params(query="search"))
         assert 'item i of taskNames' in checks['query_check_batch']
         assert 'item i of taskNotes' in checks['query_check_batch']
@@ -203,6 +223,7 @@ class TestBuildTaskFilterChecks:
     # -- Batch checks suppressed when whose_active=True --
 
     def test_all_whose_gated_checks_empty_when_whose_active(self, client):
+        """All whose-gated batch checks are suppressed when whose clause is active."""
         checks = client._build_task_filter_checks(**self._default_params(
             flagged_only=True, dropped_only=True, blocked_only=True,
             next_only=True, overdue=True, query="search", whose_active=True,
@@ -218,62 +239,75 @@ class TestBuildTaskFilterChecks:
     # -- Due relative checks (batch) --
 
     def test_due_relative_today(self, client):
+        """Due relative 'today' produces batch check with todayStart and todayEnd bounds."""
         checks = client._build_task_filter_checks(**self._default_params(due_relative="today"))
         assert 'todayStart' in checks['due_relative_check_batch']
         assert 'todayEnd' in checks['due_relative_check_batch']
 
     def test_due_relative_tomorrow(self, client):
+        """Due relative 'tomorrow' produces batch check with tomorrowStart bound."""
         checks = client._build_task_filter_checks(**self._default_params(due_relative="tomorrow"))
         assert 'tomorrowStart' in checks['due_relative_check_batch']
 
     def test_due_relative_this_week(self, client):
+        """Due relative 'this_week' produces batch check with weekEnd bound."""
         checks = client._build_task_filter_checks(**self._default_params(due_relative="this_week"))
         assert 'weekEnd' in checks['due_relative_check_batch']
 
     def test_due_relative_next_week(self, client):
+        """Due relative 'next_week' produces batch check with nextWeekStart bound."""
         checks = client._build_task_filter_checks(**self._default_params(due_relative="next_week"))
         assert 'nextWeekStart' in checks['due_relative_check_batch']
 
     def test_due_relative_overdue(self, client):
+        """Due relative 'overdue' produces batch check comparing to current date."""
         checks = client._build_task_filter_checks(**self._default_params(due_relative="overdue"))
         assert 'current date' in checks['due_relative_check_batch']
 
     # -- Defer relative checks (batch) --
 
     def test_defer_relative_today(self, client):
+        """Defer relative 'today' produces batch check with todayStart bound."""
         checks = client._build_task_filter_checks(**self._default_params(defer_relative="today"))
         assert 'todayStart' in checks['defer_relative_check_batch']
 
     def test_defer_relative_tomorrow(self, client):
+        """Defer relative 'tomorrow' produces batch check with tomorrowStart bound."""
         checks = client._build_task_filter_checks(**self._default_params(defer_relative="tomorrow"))
         assert 'tomorrowStart' in checks['defer_relative_check_batch']
 
     def test_defer_relative_this_week(self, client):
+        """Defer relative 'this_week' produces batch check with weekEnd bound."""
         checks = client._build_task_filter_checks(**self._default_params(defer_relative="this_week"))
         assert 'weekEnd' in checks['defer_relative_check_batch']
 
     def test_defer_relative_next_week(self, client):
+        """Defer relative 'next_week' produces batch check with nextWeekStart bound."""
         checks = client._build_task_filter_checks(**self._default_params(defer_relative="next_week"))
         assert 'nextWeekStart' in checks['defer_relative_check_batch']
 
     # -- Estimate checks (batch) --
 
     def test_max_estimated_minutes(self, client):
+        """Max estimated minutes filter checks estMins array against threshold."""
         checks = client._build_task_filter_checks(**self._default_params(max_estimated_minutes=30))
         assert '30' in checks['estimate_check_batch']
         assert 'item i of estMins' in checks['estimate_check_batch']
 
     def test_has_estimate_true(self, client):
+        """Has-estimate true filter checks for non-missing-value estimates."""
         checks = client._build_task_filter_checks(**self._default_params(has_estimate=True))
         assert 'missing value' in checks['estimate_check_batch']
 
     def test_has_estimate_false(self, client):
+        """Has-estimate false filter checks for missing-value estimates."""
         checks = client._build_task_filter_checks(**self._default_params(has_estimate=False))
         assert 'is not missing value' in checks['estimate_check_batch']
 
     # -- Tag checks (batch) --
 
     def test_tag_check_batch_and_mode_generates_tag_loop(self, client):
+        """AND-mode tag filter generates AppleScript loop checking tagNameLists."""
         checks = client._build_task_filter_checks(**self._default_params(
             tag_filter=["urgent", "home"], tag_filter_mode="and",
         ))
@@ -304,6 +338,7 @@ class TestBuildTaskFilterChecks:
         assert checks['tag_check_batch'] == ""
 
     def test_tag_check_batch_active_without_prefilter(self, client):
+        """AND-mode tag filter generates tagNameLists check when not pre-filtered."""
         checks = client._build_task_filter_checks(**self._default_params(
             tag_filter=["urgent"], tag_filter_mode="and",
             tag_prefiltered_ids=None,
@@ -313,6 +348,7 @@ class TestBuildTaskFilterChecks:
     # -- Query check suppressed when whose_active --
 
     def test_query_check_empty_when_whose_active(self, client):
+        """Query batch check is suppressed when whose clause handles filtering."""
         checks = client._build_task_filter_checks(**self._default_params(
             query="search", whose_active=True,
         ))
@@ -321,6 +357,7 @@ class TestBuildTaskFilterChecks:
     # -- All keys present --
 
     def test_returns_all_expected_keys(self, client):
+        """Filter checks dict contains all 12 expected batch check keys."""
         checks = client._build_task_filter_checks(**self._default_params())
         expected_keys = {
             'completion_check_batch', 'flagged_check_batch', 'dropped_check_batch',
@@ -348,6 +385,7 @@ class TestValidateGetTasksParams:
         )
 
     def test_invalid_date_format_raises(self, client):
+        """Non-ISO date string raises ValueError with descriptive message."""
         with pytest.raises(ValueError, match="Invalid date format"):
             client._validate_get_tasks_params(
                 created_after="not-a-date", created_before=None,
@@ -357,6 +395,7 @@ class TestValidateGetTasksParams:
             )
 
     def test_invalid_tag_filter_mode_raises(self, client):
+        """Unrecognized tag_filter_mode raises ValueError."""
         with pytest.raises(ValueError, match="tag_filter_mode"):
             client._validate_get_tasks_params(
                 created_after=None, created_before=None,
@@ -366,6 +405,7 @@ class TestValidateGetTasksParams:
             )
 
     def test_invalid_sort_by_raises(self, client):
+        """Unrecognized sort_by field raises ValueError."""
         with pytest.raises(ValueError, match="sort_by"):
             client._validate_get_tasks_params(
                 created_after=None, created_before=None,
@@ -375,6 +415,7 @@ class TestValidateGetTasksParams:
             )
 
     def test_invalid_sort_order_raises(self, client):
+        """Sort order other than asc/desc raises ValueError."""
         with pytest.raises(ValueError, match="sort_order"):
             client._validate_get_tasks_params(
                 created_after=None, created_before=None,
@@ -384,6 +425,7 @@ class TestValidateGetTasksParams:
             )
 
     def test_invalid_due_relative_raises(self, client):
+        """Unrecognized due_relative value raises ValueError."""
         with pytest.raises(ValueError, match="due_relative"):
             client._validate_get_tasks_params(
                 created_after=None, created_before=None,
@@ -393,6 +435,7 @@ class TestValidateGetTasksParams:
             )
 
     def test_invalid_defer_relative_raises(self, client):
+        """Unrecognized defer_relative value raises ValueError."""
         with pytest.raises(ValueError, match="defer_relative"):
             client._validate_get_tasks_params(
                 created_after=None, created_before=None,
@@ -439,42 +482,50 @@ class TestPostProcessTasks:
         return task
 
     def test_normalizes_fixed_repetition(self, client):
+        """Normalizes 'fixed repetition' to 'fixed' in repetitionMethod."""
         tasks = [self._sample_task(repetitionMethod="fixed repetition", isRecurring=True)]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert result[0]['repetitionMethod'] == 'fixed'
 
     def test_normalizes_start_after_completion(self, client):
+        """Normalizes 'start after completion' to 'start_after_completion'."""
         tasks = [self._sample_task(repetitionMethod="start after completion", isRecurring=True)]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert result[0]['repetitionMethod'] == 'start_after_completion'
 
     def test_normalizes_due_after_completion(self, client):
+        """Normalizes 'due after completion' to 'due_after_completion'."""
         tasks = [self._sample_task(repetitionMethod="due after completion", isRecurring=True)]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert result[0]['repetitionMethod'] == 'due_after_completion'
 
     def test_normalizes_empty_repetition_method_to_none(self, client):
+        """Empty repetitionMethod string is normalized to None."""
         tasks = [self._sample_task(repetitionMethod="")]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert result[0]['repetitionMethod'] is None
 
     def test_normalizes_empty_recurrence_to_none(self, client):
+        """Empty recurrence string is normalized to None."""
         tasks = [self._sample_task(recurrence="")]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert result[0]['recurrence'] is None
 
     def test_computes_repeat_summary_from_rrule(self, client):
+        """RRULE recurrence string produces a human-readable repeatSummary."""
         tasks = [self._sample_task(recurrence="FREQ=WEEKLY;INTERVAL=1", isRecurring=True)]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert result[0]['repeatSummary'] is not None
         assert 'week' in result[0]['repeatSummary'].lower()
 
     def test_repeat_summary_none_when_no_recurrence(self, client):
+        """No recurrence produces None repeatSummary."""
         tasks = [self._sample_task(recurrence="")]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert result[0]['repeatSummary'] is None
 
     def test_recurring_only_true_filters(self, client):
+        """Recurring-only true keeps only tasks with isRecurring set."""
         tasks = [
             self._sample_task(id="t1", isRecurring=True, recurrence="FREQ=DAILY"),
             self._sample_task(id="t2", isRecurring=False),
@@ -484,6 +535,7 @@ class TestPostProcessTasks:
         assert result[0]['id'] == 't1'
 
     def test_recurring_only_false_filters(self, client):
+        """Recurring-only false keeps only non-recurring tasks."""
         tasks = [
             self._sample_task(id="t1", isRecurring=True, recurrence="FREQ=DAILY"),
             self._sample_task(id="t2", isRecurring=False),
@@ -493,6 +545,7 @@ class TestPostProcessTasks:
         assert result[0]['id'] == 't2'
 
     def test_sort_by_name(self, client):
+        """Sort by name orders tasks alphabetically ascending."""
         tasks = [
             self._sample_task(id="t1", name="Zebra"),
             self._sample_task(id="t2", name="Apple"),
@@ -502,6 +555,7 @@ class TestPostProcessTasks:
         assert result[1]['name'] == 'Zebra'
 
     def test_passthrough_when_no_filters(self, client):
+        """Tasks pass through unchanged when no post-processing filters are set."""
         tasks = [self._sample_task()]
         result = client._post_process_tasks(tasks, **self._default_params())
         assert len(result) == 1
@@ -576,6 +630,7 @@ class TestPlannedDateFilter:
         ]
 
     def test_planned_after_filters(self, client):
+        """Planned-after filter excludes tasks with planned date before cutoff."""
         tasks = self._make_tasks()
         result = client._filter_by_date_range(
             tasks,
@@ -587,6 +642,7 @@ class TestPlannedDateFilter:
         assert result[0]["id"] == "t2"
 
     def test_planned_before_filters(self, client):
+        """Planned-before filter excludes tasks with planned date after cutoff."""
         tasks = self._make_tasks()
         result = client._filter_by_date_range(
             tasks,
@@ -598,6 +654,7 @@ class TestPlannedDateFilter:
         assert result[0]["id"] == "t1"
 
     def test_planned_range_filters(self, client):
+        """Combined planned-after and planned-before narrows to date range."""
         tasks = self._make_tasks()
         result = client._filter_by_date_range(
             tasks,
@@ -610,6 +667,7 @@ class TestPlannedDateFilter:
         assert result[0]["id"] == "t1"
 
     def test_no_planned_date_excluded(self, client):
+        """Tasks without a planned date are excluded when planned filter is active."""
         tasks = [{"id": "t3", "plannedDate": "", "name": "no planned date"}]
         result = client._filter_by_date_range(
             tasks,

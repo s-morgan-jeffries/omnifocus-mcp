@@ -25,38 +25,47 @@ class TestFormatTaskBranches:
         return base
 
     def test_planned_date(self):
+        """Planned date field included in formatted output."""
         result = _format_task(self._task(plannedDate="2026-03-20"))
         assert "Planned: 2026-03-20" in result
 
     def test_next_due_date(self):
+        """Next due date field included in formatted output."""
         result = _format_task(self._task(nextDueDate="2026-04-01"))
         assert "Next Due: 2026-04-01" in result
 
     def test_next_defer_date(self):
+        """Next defer date field included in formatted output."""
         result = _format_task(self._task(nextDeferDate="2026-04-02"))
         assert "Next Defer: 2026-04-02" in result
 
     def test_next_planned_date(self):
+        """Next planned date field included in formatted output."""
         result = _format_task(self._task(nextPlannedDate="2026-04-03"))
         assert "Next Planned: 2026-04-03" in result
 
     def test_repeat_summary(self):
+        """Repeat summary field included in formatted output."""
         result = _format_task(self._task(repeatSummary="Every week"))
         assert "Repeats: Every week" in result
 
     def test_is_recurring_without_repeat_summary(self):
+        """Recurring task falls back to recurrence rule when no repeat summary."""
         result = _format_task(self._task(isRecurring=True, recurrence="FREQ=WEEKLY"))
         assert "Repeats: FREQ=WEEKLY" in result
 
     def test_is_recurring_without_repeat_summary_or_recurrence(self):
+        """Recurring task shows generic yes when no summary or recurrence rule."""
         result = _format_task(self._task(isRecurring=True))
         assert "Repeats: Yes" in result
 
     def test_catch_up_automatically(self):
+        """Catch up automatically true branch included in formatted output."""
         result = _format_task(self._task(catchUpAutomatically=True))
         assert "Catch Up Automatically: True" in result
 
     def test_catch_up_automatically_false(self):
+        """Catch up automatically false branch included in formatted output."""
         result = _format_task(self._task(catchUpAutomatically=False))
         assert "Catch Up Automatically: False" in result
 
@@ -70,10 +79,12 @@ class TestFormatProjectBranches:
         return proj
 
     def test_dropped_date(self):
+        """Dropped date field included in formatted project output."""
         result = _format_project(self._base_project(droppedDate="2026-01-15"))
         assert "Dropped Date: 2026-01-15" in result
 
     def test_health_appropriately_scheduled(self):
+        """Health shows appropriately scheduled when all tasks are deferred."""
         proj = self._base_project(
             remainingCount=2,
             availableCount=0,
@@ -85,6 +96,7 @@ class TestFormatProjectBranches:
         assert "Health: Appropriately Scheduled" in result
 
     def test_health_no_remaining_tasks(self):
+        """Health shows no remaining tasks when all counts are zero."""
         proj = self._base_project(
             remainingCount=0,
             availableCount=0,
@@ -95,6 +107,7 @@ class TestFormatProjectBranches:
         assert "Health: No Remaining Tasks" in result
 
     def test_health_stuck(self):
+        """Health shows stuck when remaining tasks exist but none are available or deferred."""
         proj = self._base_project(
             remainingCount=3,
             availableCount=0,
@@ -105,6 +118,7 @@ class TestFormatProjectBranches:
         assert "Health: Stuck" in result
 
     def test_stalled(self):
+        """Stalled status shown when project is stalled."""
         proj = self._base_project(
             remainingCount=1,
             availableCount=1,
@@ -126,6 +140,7 @@ class TestGetProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_no_results(self, mock_gc):
+        """Empty result message returned when project query matches nothing."""
         mock_gc.return_value.get_projects.return_value = []
         result = server.get_projects(query="nonexistent")
         assert "No active projects found matching 'nonexistent'" in result
@@ -135,6 +150,7 @@ class TestGetProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_with_results(self, mock_gc):
+        """Result count and query shown in header when projects match."""
         mock_gc.return_value.get_projects.return_value = [
             {"id": "p1", "name": "Match", "status": "active"},
         ]
@@ -147,6 +163,7 @@ class TestGetProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_planned_on_expands_to_range(self, mock_gc):
+        """Planned on date expands to planned_after and planned_before range."""
         mock_gc.return_value.get_projects.return_value = []
         server.get_projects(planned_on="2026-03-23")
         call_kwargs = mock_gc.return_value.get_projects.call_args[1]
@@ -155,12 +172,14 @@ class TestGetProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_planned_on_conflicts_with_planned_after(self, mock_gc):
+        """Error returned when planned_on used with planned_after."""
         result = server.get_projects(planned_on="2026-03-23", planned_after="2026-03-20")
         assert "Error" in result
         assert "mutually exclusive" in result
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_planned_after_passed_to_client(self, mock_gc):
+        """Planned after and before parameters forwarded to client."""
         mock_gc.return_value.get_projects.return_value = []
         server.get_projects(planned_after="2026-03-20", planned_before="2026-03-25")
         call_kwargs = mock_gc.return_value.get_projects.call_args[1]
@@ -173,6 +192,7 @@ class TestCreateProjectEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_review_interval_in_response(self, mock_gc):
+        """Review interval field included in create project response."""
         mock_gc.return_value.create_project.return_value = "proj-123"
         result = server.create_project(name="Test", review_interval_weeks=2)
         assert "Review Interval:" in result
@@ -182,6 +202,7 @@ class TestCreateProjectEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_note_in_response(self, mock_gc):
+        """Note field included in create project response."""
         mock_gc.return_value.create_project.return_value = "proj-123"
         result = server.create_project(name="Test", note="Some note")
         assert "Note:" in result
@@ -195,6 +216,7 @@ class TestUpdateProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_all_updates_failed(self, mock_gc):
+        """Failure details shown when all batch project updates fail."""
         mock_gc.return_value.update_project.side_effect = [
             {"success": False, "project_id": "p1", "updated_fields": [], "error": "not found"},
             {"success": False, "project_id": "p2", "updated_fields": [], "error": "not found"},
@@ -209,6 +231,7 @@ class TestUpdateProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during batch project update surfaces error message."""
         mock_gc.return_value.update_project.side_effect = RuntimeError("boom")
         result = server.update_projects(projects=[{"id": "p1", "status": "active"}])
         assert "Error" in result
@@ -220,6 +243,7 @@ class TestGetTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_no_results(self, mock_gc):
+        """Empty result message returned when task query matches nothing."""
         mock_gc.return_value.get_tasks.return_value = []
         result = server.get_tasks(query="missing")
         assert "No tasks found matching 'missing'" in result
@@ -229,6 +253,7 @@ class TestGetTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_planned_on_expands_to_range(self, mock_gc):
+        """Planned on date expands to planned_after and planned_before range for tasks."""
         mock_gc.return_value.get_tasks.return_value = []
         server.get_tasks(planned_on="2026-03-23")
         call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
@@ -237,12 +262,14 @@ class TestGetTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_planned_on_conflicts_with_planned_after(self, mock_gc):
+        """Error returned when planned_on used with planned_after for tasks."""
         result = server.get_tasks(planned_on="2026-03-23", planned_after="2026-03-20")
         assert "Error" in result
         assert "mutually exclusive" in result
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_inbox_no_results(self, mock_gc):
+        """Empty inbox message returned when no inbox tasks exist."""
         mock_gc.return_value.get_tasks.return_value = []
         result = server.get_tasks(inbox_only=True)
         assert "No tasks in inbox" in result
@@ -252,6 +279,7 @@ class TestGetTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_and_inbox_with_results(self, mock_gc):
+        """Combined query and inbox filter shows count with both labels."""
         mock_gc.return_value.get_tasks.return_value = [
             {"id": "t1", "name": "Buy milk", "completed": False},
         ]
@@ -264,6 +292,7 @@ class TestGetTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_query_with_results(self, mock_gc):
+        """Result count and query shown in header when tasks match."""
         mock_gc.return_value.get_tasks.return_value = [
             {"id": "t1", "name": "Report", "completed": False},
             {"id": "t2", "name": "Report v2", "completed": False},
@@ -280,6 +309,7 @@ class TestUpdateTaskEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_no_changes_detected(self, mock_gc):
+        """No-changes message returned when update_task has no fields to update."""
         mock_gc.return_value.update_task.return_value = {
             "success": True,
             "updated_fields": [],
@@ -296,6 +326,7 @@ class TestUpdateTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_failure(self, mock_gc):
+        """Error message includes task ID and reason when batch task update fails."""
         mock_gc.return_value.update_task.return_value = {
             "success": False,
             "task_id": "t1",
@@ -315,6 +346,7 @@ class TestGetTagsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_empty_tags(self, mock_gc):
+        """Zero count message returned when no tags exist."""
         mock_gc.return_value.get_tags.return_value = []
         result = server.get_tags()
         assert "Found 0 tags" in result
@@ -322,6 +354,7 @@ class TestGetTagsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_mutually_exclusive_tag(self, mock_gc):
+        """Mutually exclusive flag shown in formatted tag output."""
         mock_gc.return_value.get_tags.return_value = [
             {"id": "tag1", "name": "Priority", "status": "active", "childrenAreMutuallyExclusive": True},
         ]
@@ -340,6 +373,7 @@ class TestDeleteTagsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_tag_delete_failed(self, mock_gc):
+        """Failure message returned when single tag deletion fails."""
         mock_gc.return_value.delete_tags.return_value = {
             "deleted_count": 0,
             "failed_count": 1,
@@ -350,6 +384,7 @@ class TestDeleteTagsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_multiple_tags_all_failed(self, mock_gc):
+        """Failure message includes total count when all batch tag deletes fail."""
         mock_gc.return_value.delete_tags.return_value = {
             "deleted_count": 0,
             "failed_count": 3,
@@ -360,6 +395,7 @@ class TestDeleteTagsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during tag deletion surfaces error message."""
         mock_gc.return_value.delete_tags.side_effect = RuntimeError("boom")
         result = server.delete_tags(tag_ids="tag1")
         assert "Error deleting tags:" in result
@@ -370,6 +406,7 @@ class TestDeleteTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_task_delete_failed(self, mock_gc):
+        """Failure message returned when single task deletion fails."""
         mock_gc.return_value.delete_tasks.return_value = {
             "deleted_count": 0,
             "failed_count": 1,
@@ -380,6 +417,7 @@ class TestDeleteTasksEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during task deletion surfaces error message."""
         mock_gc.return_value.delete_tasks.side_effect = RuntimeError("boom")
         result = server.delete_tasks(task_ids="task1")
         assert "Error deleting tasks:" in result
@@ -390,6 +428,7 @@ class TestDeleteProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_project_deleted(self, mock_gc):
+        """Success message returned for single project deletion."""
         mock_gc.return_value.delete_projects.return_value = {
             "deleted_count": 1,
             "failed_count": 0,
@@ -400,6 +439,7 @@ class TestDeleteProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_multiple_projects_deleted(self, mock_gc):
+        """Success message with plural count for multiple project deletions."""
         mock_gc.return_value.delete_projects.return_value = {
             "deleted_count": 3,
             "failed_count": 0,
@@ -410,6 +450,7 @@ class TestDeleteProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_partial_failure(self, mock_gc):
+        """Partial failure message shows deleted and failed counts."""
         mock_gc.return_value.delete_projects.return_value = {
             "deleted_count": 1,
             "failed_count": 1,
@@ -420,6 +461,7 @@ class TestDeleteProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_project_id_total_count(self, mock_gc):
+        """Failure message computes total from string input as count of one."""
         mock_gc.return_value.delete_projects.return_value = {
             "deleted_count": 0,
             "failed_count": 1,
@@ -430,6 +472,7 @@ class TestDeleteProjectsEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during project deletion surfaces error message."""
         mock_gc.return_value.delete_projects.side_effect = RuntimeError("boom")
         result = server.delete_projects(project_ids="p1")
         assert "Error deleting projects:" in result
@@ -440,6 +483,7 @@ class TestCreateFolderEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_create_at_root(self, mock_gc):
+        """Root level location shown when folder created without parent."""
         mock_gc.return_value.create_folder.return_value = "folder-123"
         result = server.create_folder(name="New Folder")
         assert "at root level" in result
@@ -447,6 +491,7 @@ class TestCreateFolderEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during folder creation surfaces error message."""
         mock_gc.return_value.create_folder.side_effect = RuntimeError("boom")
         result = server.create_folder(name="Bad Folder")
         assert "error" in result.lower()
@@ -457,6 +502,7 @@ class TestUpdateFolderEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_single_field_updated(self, mock_gc):
+        """Success message lists the single updated field name."""
         mock_gc.return_value.update_folder.return_value = {
             "success": True,
             "updated_fields": ["name"],
@@ -468,6 +514,7 @@ class TestUpdateFolderEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_multiple_fields_updated(self, mock_gc):
+        """Success message lists all updated field names."""
         mock_gc.return_value.update_folder.return_value = {
             "success": True,
             "updated_fields": ["name", "status"],
@@ -478,6 +525,7 @@ class TestUpdateFolderEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_failure(self, mock_gc):
+        """Error message includes folder ID when update fails."""
         mock_gc.return_value.update_folder.return_value = {
             "success": False,
             "error": "folder not found",
@@ -492,6 +540,7 @@ class TestReorderTaskEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_success_before(self, mock_gc):
+        """Success message includes before-task reference."""
         mock_gc.return_value.reorder_task.return_value = True
         result = server.reorder_task(task_id="t1", before_task_id="t2")
         assert "before task t2" in result
@@ -499,6 +548,7 @@ class TestReorderTaskEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_success_after(self, mock_gc):
+        """Success message includes after-task reference."""
         mock_gc.return_value.reorder_task.return_value = True
         result = server.reorder_task(task_id="t1", after_task_id="t3")
         assert "after task t3" in result
@@ -506,18 +556,21 @@ class TestReorderTaskEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_failure(self, mock_gc):
+        """Failure message returned when task reorder returns false."""
         mock_gc.return_value.reorder_task.return_value = False
         result = server.reorder_task(task_id="t1", before_task_id="t2")
         assert "Failed to reorder task" in result
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_value_error(self, mock_gc):
+        """ValueError during task reorder surfaces validation message."""
         mock_gc.return_value.reorder_task.side_effect = ValueError("bad input")
         result = server.reorder_task(task_id="t1", before_task_id="t2")
         assert "Error: bad input" in result
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during task reorder surfaces error message."""
         mock_gc.return_value.reorder_task.side_effect = RuntimeError("boom")
         result = server.reorder_task(task_id="t1", before_task_id="t2")
         assert "Error reordering task:" in result
@@ -528,6 +581,7 @@ class TestReorderProjectEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_success_before(self, mock_gc):
+        """Success message includes before-project reference."""
         mock_gc.return_value.reorder_project.return_value = True
         result = server.reorder_project(project_id="p1", before_project_id="p2")
         assert "before project p2" in result
@@ -535,6 +589,7 @@ class TestReorderProjectEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_success_after(self, mock_gc):
+        """Success message includes after-project reference."""
         mock_gc.return_value.reorder_project.return_value = True
         result = server.reorder_project(project_id="p1", after_project_id="p3")
         assert "after project p3" in result
@@ -542,18 +597,21 @@ class TestReorderProjectEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_failure(self, mock_gc):
+        """Failure message returned when project reorder returns false."""
         mock_gc.return_value.reorder_project.return_value = False
         result = server.reorder_project(project_id="p1", before_project_id="p2")
         assert "Failed to reorder project" in result
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_value_error(self, mock_gc):
+        """ValueError during project reorder surfaces validation message."""
         mock_gc.return_value.reorder_project.side_effect = ValueError("bad input")
         result = server.reorder_project(project_id="p1", before_project_id="p2")
         assert "Error: bad input" in result
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during project reorder surfaces error message."""
         mock_gc.return_value.reorder_project.side_effect = RuntimeError("boom")
         result = server.reorder_project(project_id="p1", before_project_id="p2")
         assert "Error reordering project:" in result
@@ -564,6 +622,7 @@ class TestSwitchPerspectiveEdgeCases:
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_exception_handler(self, mock_gc):
+        """Exception during perspective switch surfaces error message."""
         mock_gc.return_value.switch_perspective.side_effect = RuntimeError("boom")
         result = server.switch_perspective(perspective_name="Custom")
         assert "Error switching perspective:" in result
