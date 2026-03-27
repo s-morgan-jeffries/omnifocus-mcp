@@ -9,33 +9,23 @@ from pydantic import BaseModel
 from .omnifocus_connector import OmniFocusConnector
 
 # Create FastMCP server
-mcp = FastMCP("omnifocus-mcp", instructions="""OmniFocus is a GTD (Getting Things Done) task manager. Key concepts:
+mcp = FastMCP("omnifocus-mcp", instructions="""OmniFocus is a GTD task manager. Hierarchy: Folders > Projects > Tasks > Subtasks.
 
-TASK STATES: Available (can work on now), Blocked (waiting on predecessor in sequential project), Deferred (has future defer date — hidden until then), Flagged (user marked as priority/today), Overdue (past due date), Completed, Dropped.
+TASK STATES: Available, Blocked, Deferred (future defer date), Flagged, Overdue, Completed, Dropped. Planned Date is a scheduling signal only — no availability/overdue constraints.
 
-PROJECT STATES: Active (tasks are actionable), On Hold (paused — tasks hidden), Dropped (abandoned), Completed.
+PROJECT TYPES: "sequential" (tasks in order; first incomplete = available, rest blocked; position = dependencies), "parallel" (all available), "single_actions" (no completion goal, cannot auto-complete). The `next` field is true for the first available action in a sequential project/action group; in parallel projects, all incomplete tasks have `next: true`.
 
-HIERARCHY: Folders → Projects → Tasks → Subtasks. Folders organize projects. Projects contain tasks. Tasks can have subtasks via parent_task_id.
+ACTION GROUPS: Task with subtasks. Parent shows `blocked: true` while subtasks are active — this is normal, not an error. Do not try to unblock it.
 
-SEQUENTIAL VS PARALLEL: Sequential projects release one task at a time (first incomplete = available, rest = blocked). Parallel projects make all tasks available. Dependencies are positional — reorder tasks to change dependency chains. There are no explicit task-to-task dependency links. The `next` field on a task is true when it is the first available action in a sequential project or action group. In parallel projects, all incomplete tasks have `next: true`.
+INHERITED STATUS: `completed`/`dropped` reflect the task's own state, not its container's. Task in completed project: `completed: false`, `available: false`. Use `available_only=True` for actionable tasks.
 
-ACTION GROUPS: A task with subtasks is an "action group." It can be parallel or sequential, just like a project. The parent task appears as `blocked: true` while its subtasks are active — this is normal behavior, not an error or a problem to fix. Check `subtaskCount > 0` to identify action groups. An action group parent cannot be completed until its subtasks are resolved. If you see a task with `blocked: true` and `subtaskCount > 0`, it means "work on the subtasks first" — do not try to unblock it.
+EFFECTIVE DATES: Dates returned by get_tasks include dates inherited from the project. A task with no direct due date shows its project's due date. You cannot clear an inherited date at the task level. Write operations set the task's own date.
 
-INHERITED STATUS: Task-level fields like `completed` and `dropped` reflect the task's own state, NOT its container's state. A task inside a completed project will show `completed: false` (because the task itself wasn't individually completed) but `available: false` (because its container is inactive). This is expected behavior. To find truly actionable tasks, always use `available` or `available_only=True` — do not rely on `completed` alone.
+RECURRING TASKS: `completed=True` uses `mark complete`, which creates the next occurrence. This is guaranteed. WARNING: Dropping a recurring task (status='dropped') without clearing recurrence first (recurrence='') spawns the next occurrence. To stop a series: update_tasks([{"id": "...", "recurrence": "", "status": "dropped"}]).
 
-EFFECTIVE DATES: Date fields (dueDate, deferDate, plannedDate) returned by get_tasks are EFFECTIVE dates — they include dates inherited from the containing project. A task with no direct due date in a project with dueDate=April 15 will return dueDate="2026-04-15T17:00:00" (not empty). Do not assume an empty due date on a task means the project has no due date either. Write operations (update_task) set the task's own date directly.
+TAGS: Represent work contexts. Tags can be Active or On Hold — tasks with On Hold tags are excluded from Available perspective.
 
-BATCH OPERATIONS: When applying the same change to multiple items, prefer the batch tools (update_tasks, update_projects) over multiple individual calls. Batch tools accept a list of IDs and are more efficient.
-
-RECURRING TASKS: Setting completed=True on a recurring task uses OmniFocus's 'mark complete' command, which automatically creates the next occurrence. This is guaranteed behavior — do not hedge or warn that recurrence might stop.
-
-TAGS: Formerly "contexts." Represent work contexts (location, tools, energy, people, workflow states like Waiting-for or Agenda). Cut across projects. Use for filtering. Tags can be Active or On Hold — tasks with On Hold tags are excluded from OmniFocus's native Available perspective.
-
-PLANNING PATTERN: To plan a day, query: (1) overdue tasks, (2) flagged + available tasks, (3) inbox items, (4) next actions. Prioritize overdue+flagged first.
-
-INBOX: Unprocessed capture bucket. Tasks without a project land here. Non-empty inbox = items need organizing.
-
-REVIEW: Projects have review intervals. Use get_projects() to find projects due for review (check lastReviewDate + reviewIntervalValue/reviewIntervalUnit).
+DEFER vs DUE: Defer = hidden until that date. Due = deadline.
 """)
 
 # Configuration
@@ -244,44 +234,25 @@ def get_projects(
     min_task_count: Optional[int] = None,
     has_no_due_dates: Optional[bool] = None,
 ) -> str:
-    """Retrieve projects from OmniFocus with optional filtering.
+    """Retrieve projects with optional filtering.
 
-    Args:
-        project_id: Filter to specific project by ID (optional)
-        include_full_notes: Return full note content (default: False)
-        on_hold_only: If True, only return projects with "on hold" status
-        query: Optional search term to filter by name, note, or folder path (case-insensitive)
-        include_task_health: If True, include per-project task health counts (remaining, available, overdue, deferred)
-        include_last_activity: If True, compute lastActivityDate (most recent task creation/completion)
-        stalled_only: If True, only return active projects with no available actions — projects that need attention (implies include_task_health=True)
-        flagged_only: If True, only return flagged projects
-        include_dropped: If True, include dropped projects in results (default: False — dropped projects are hidden)
-        include_completed: If True, include completed projects (hidden by default)
-        completed_only: If True, only return completed projects (implies include_completed)
-        tag_filter: Only return projects with ALL specified tags (case-insensitive)
-        planned_after: Only return projects with planned date on or after this ISO date (optional)
-        planned_before: Only return projects with planned date before this ISO date (optional)
-        planned_on: Only return projects planned for this specific date, e.g., "2026-03-23" (optional).
-            Convenience for planned_after=date + planned_before=next_day. Mutually exclusive
-            with planned_after/planned_before.
-        has_overdue_tasks: If True, only return projects with overdue tasks (implies include_task_health=True). (optional)
-        sort_by: Sort results by field — "name" (optional)
-        sort_order: Sort direction — "asc" (default) or "desc"
-        modified_after: Only return projects modified after this ISO date (optional)
-        modified_before: Only return projects modified before this ISO date (optional)
-        min_task_count: Only return projects with at least this many tasks (optional)
-        has_no_due_dates: If True, only return projects where no tasks have due dates (optional)
+    Parameters:
+    - project_id: str -- filter to specific project
+    - query: str -- search name/note/folder (case-insensitive)
+    - flagged_only, on_hold_only, stalled_only, completed_only: bool
+    - include_dropped, include_completed: bool -- include hidden states
+    - include_full_notes: bool
+    - include_task_health: bool -- adds remainingCount, availableCount, overdueCount, deferredCount, stalled, health
+    - include_last_activity: bool -- adds lastActivityDate
+    - has_overdue_tasks: bool -- implies include_task_health
+    - tag_filter: list[str] -- projects with ALL specified tags
+    - planned_after, planned_before, planned_on: str -- ISO date filters (planned_on is mutually exclusive)
+    - modified_after, modified_before: str
+    - min_task_count: int
+    - has_no_due_dates: bool
+    - sort_by: str -- "name"; sort_order: str -- "asc"/"desc"
 
-    Returns:
-        Each project includes: id, name, folderPath, status, projectType, sequential,
-        completedByChildren, flagged, creationDate, tags, note (truncated unless include_full_notes=True).
-        `projectType` is "sequential", "parallel", or "single_actions" (Single Actions List —
-        a grab-bag list with no completion goal). `sequential` (boolean) is retained for
-        backwards compatibility. `completedByChildren` (boolean) indicates whether the project
-        auto-completes when its last remaining action is completed.
-        With include_task_health: remainingCount, availableCount, overdueCount, deferredCount, stalled, health status.
-        `stalled` (boolean) — true when availableCount=0 and not all tasks are deferred (project needs attention).
-        With include_last_activity: lastActivityDate.
+    Returns: id, name, folderPath, status, projectType, sequential (deprecated), completedByChildren, flagged, creationDate, modificationDate, completionDate, droppedDate, dueDate, deferDate, plannedDate, tags, note, lastReviewDate, nextReviewDate, reviewIntervalValue, reviewIntervalUnit. Optional health/activity fields when requested.
     """
     # Expand planned_on to planned_after + planned_before
     if planned_on is not None:
@@ -488,30 +459,22 @@ def update_project(
 
 @mcp.tool()
 def update_projects(projects: list[ProjectUpdate]) -> str:
-    """Update one or more projects in OmniFocus.
+    """Update one or more projects. Each item has id (required) plus fields to change.
 
-    Pass a list of project update objects. Each must have an id field.
-    Only the specified fields will be updated — omitted fields are unchanged.
-
-    Args:
-        projects: List of project update objects. Each must have:
-            id (required), plus any fields to update: project_name, folder_path,
-            note, sequential, project_type, status, review_interval_weeks,
-            review_interval_value, review_interval_unit,
-            last_reviewed, next_review_date, completed_by_children, due_date,
-            defer_date, planned_date, flagged, estimated_minutes, tags,
-            add_tags, remove_tags, recurrence, repetition_method.
-
-    Returns:
-        For single project: success message with updated fields.
-        For multiple projects: summary with per-item results.
-
-    Examples:
-        update_projects([{"id": "p1", "status": "on_hold"}])
-        update_projects([
-            {"id": "p1", "status": "on_hold"},
-            {"id": "p2", "project_name": "Renamed", "flagged": true}
-        ])
+    Parameters (per item):
+    - id: str (required)
+    - project_name, note, folder_path: str -- note: replaces rich text
+    - project_type: str; sequential: bool (deprecated)
+    - status: str -- "active", "on_hold", "done", "dropped"
+    - review_interval_value: int + review_interval_unit: str ("day"/"week"/"month"/"year"); review_interval_weeks: int (deprecated)
+    - last_reviewed: str -- ISO or "now"; next_review_date: str
+    - completed_by_children: bool
+    - due_date, defer_date, planned_date: str -- ISO or "" to clear
+    - flagged: bool
+    - estimated_minutes: int
+    - tags: list[str] -- full replacement (conflicts with add_tags/remove_tags)
+    - add_tags, remove_tags: list[str]
+    - recurrence: str -- RRULE or "" to clear; repetition_method: str -- "fixed", "start_after_completion", "due_after_completion"
     """
     client = get_client()
 
@@ -599,58 +562,30 @@ def get_tasks(
     planned_before: Optional[str] = None,
     planned_on: Optional[str] = None,
 ) -> str:
-    """Get tasks from OmniFocus with optional filtering.
+    """Get tasks with optional filtering.
 
-    Args:
-        task_id: Filter to specific task by ID (optional)
-        parent_task_id: Filter to subtasks of this parent task (optional)
-        include_full_notes: Return full note content (default: False)
-        project_id: Optional project ID to filter tasks (ignored if inbox_only=True)
-        flagged_only: If True, only return flagged tasks
-        include_completed: If True, include completed tasks (default: False)
-        available_only: If True, only return available tasks (not completed, not dropped, not blocked, not deferred)
-        overdue: If True, only return overdue tasks
-        dropped_only: If True, only return dropped tasks
-        blocked_only: If True, only return blocked tasks
-        next_only: If True, only return next tasks
-        tag_filter: List of tag names to filter by, e.g., ["Errands", "Weekend"] (task must have ALL listed tags)
-        query: Optional search term to filter by name or note (case-insensitive)
-        inbox_only: If True, only return inbox tasks
-        sort_by: Sort results by field — "name", "due_date", or "defer_date" (optional)
-        sort_order: Sort direction — "asc" (default) or "desc"
-        modified_after: Only return tasks modified after this ISO date (optional)
-        modified_before: Only return tasks modified before this ISO date (optional)
-        created_after: Only return tasks created after this ISO date (optional)
-        created_before: Only return tasks created before this ISO date (optional)
-        max_estimated_minutes: Only return tasks with estimated time ≤ this value — "quick wins" filter (optional)
-        has_estimate: If True, only return tasks with an estimate set; if False, only tasks without (optional)
-        recurring_only: If True, only return recurring tasks; if False, only non-recurring (optional)
-        tag_filter_mode: How tag_filter matches — "and" (default: all tags), "or" (any tag), "not" (none of the tags)
-        planned_after: Only return tasks with planned date on or after this ISO date (optional)
-        planned_before: Only return tasks with planned date before this ISO date (optional)
-        planned_on: Only return tasks planned for this specific date, e.g., "2026-03-23" (optional).
-            Convenience for planned_after=date + planned_before=next_day. Mutually exclusive
-            with planned_after/planned_before.
+    Parameters:
+    - task_id, parent_task_id, project_id: str
+    - query: str -- search name/note
+    - flagged_only, available_only, overdue, dropped_only, blocked_only, next_only, inbox_only: bool
+    - include_completed: bool
+    - include_full_notes: bool
+    - tag_filter: list[str]; tag_filter_mode: str -- "and" (default), "or", "not"
+    - planned_after, planned_before, planned_on: str
+    - modified_after, modified_before, created_after, created_before: str
+    - max_estimated_minutes: int -- quick wins filter
+    - has_estimate: bool
+    - recurring_only: bool
+    - sort_by: str -- "name", "due_date", "defer_date"; sort_order: str
 
-    Returns:
-        Each task includes: id, name, projectName, completed, dropped, blocked, available, next,
-        flagged, inInbox, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note (truncated
-        unless include_full_notes=True), parentTaskId, subtaskCount, sequential, nextDueDate,
-        nextDeferDate, nextPlannedDate, catchUpAutomatically.
-        `available` is true when the task is not completed, not dropped, not blocked, and not
-        deferred (defer date is in the past or unset). Equivalent to OmniFocus's native Available
-        filter.
+    Returns: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note, parentTaskId, subtaskCount, sequential, isRecurring, recurrence, repetitionMethod, repeatSummary, nextDueDate, nextDeferDate, nextPlannedDate, catchUpAutomatically, creationDate, modificationDate, completionDate, droppedDate.
 
-    Note: Date fields (dueDate, deferDate, plannedDate) reflect effective dates — including
-    dates inherited from the containing project or action group. A task with no direct due
-    date will show its project's due date in dueDate. Example: if project "Q2 Report" has
-    dueDate=April 15, a task with no direct due date returns dueDate="2026-04-15T17:00:00"
-    (inherited, not empty). Write operations (update_task) still set the task's own date
-    directly. Next occurrence fields (nextDueDate, nextDeferDate,
-    nextPlannedDate) are populated only for recurring tasks and show the dates of the next
-    recurrence — empty for non-recurring tasks. `catchUpAutomatically` (boolean, null for
-    non-recurring) controls missed-recurrence behavior: when true, only one catch-up
-    occurrence is created; when false, each missed interval spawns its own occurrence.
+    Key fields:
+    - available -- true when actionable (accounts for inherited status from containers)
+    - repeatSummary -- human-readable recurrence; always use this for display, don't parse RRULE
+    - repetitionMethod -- "fixed" (original schedule), "start_after_completion" (defer shifts), "due_after_completion" (due shifts)
+    - catchUpAutomatically -- recurring only; true = one catch-up occurrence, false = each missed interval spawns its own
+    - Date fields are effective (include inherited from project). Next-occurrence fields populated only for recurring tasks.
     """
     # Expand planned_on to planned_after + planned_before
     if planned_on is not None:
@@ -818,27 +753,19 @@ class TaskUpdate(BaseModel):
 
 @mcp.tool()
 def create_tasks(tasks: list[TaskCreate]) -> str:
-    """Create one or more tasks in OmniFocus.
+    """Create one or more tasks.
 
-    Pass a list of task objects. Each task must have a task_name; all other
-    fields are optional. For a single task, pass a list with one item.
-
-    Args:
-        tasks: List of task objects to create. Each object supports:
-            task_name (required), project_id, parent_task_id, note, due_date,
-            defer_date, planned_date, flagged, tags, estimated_minutes,
-            sequential, completed_by_children.
-
-    Returns:
-        For single task: success message with task ID.
-        For multiple tasks: summary with per-item results.
-
-    Examples:
-        create_tasks([{"task_name": "Buy groceries"}])
-        create_tasks([
-            {"task_name": "Task A", "project_id": "proj-1", "flagged": true},
-            {"task_name": "Task B", "tags": ["work"], "due_date": "2026-04-01"}
-        ])
+    Parameters (per item):
+    - task_name: str (required)
+    - project_id: str -- mutually exclusive with parent_task_id
+    - parent_task_id: str -- creates subtask
+    - note: str (plain text only)
+    - due_date, defer_date, planned_date: str -- ISO 8601
+    - flagged: bool
+    - tags: list[str] -- must already exist
+    - estimated_minutes: int
+    - sequential: bool -- subtasks completed in order
+    - completed_by_children: bool
     """
     client = get_client()
     results = []
@@ -905,26 +832,16 @@ def create_tasks(tasks: list[TaskCreate]) -> str:
 
 @mcp.tool()
 def create_projects(projects: list[ProjectCreate]) -> str:
-    """Create one or more projects in OmniFocus.
+    """Create one or more projects.
 
-    Pass a list of project objects. Each must have a name; all other fields optional.
-
-    Args:
-        projects: List of project objects to create. Each object supports:
-            name (required), note, folder_path, project_type, sequential,
-            review_interval_weeks, completed_by_children, due_date,
-            defer_date, planned_date.
-
-    Returns:
-        For single project: success message with project ID.
-        For multiple projects: summary with per-item results.
-
-    Examples:
-        create_projects([{"name": "Website Redesign"}])
-        create_projects([
-            {"name": "Project A", "folder_path": "Work", "project_type": "sequential"},
-            {"name": "Project B", "due_date": "2026-04-01"}
-        ])
+    Parameters (per item):
+    - name: str (required)
+    - note, folder_path: str
+    - project_type: str -- "parallel" (default), "sequential", "single_actions"
+    - sequential: bool (deprecated, use project_type)
+    - review_interval_weeks: int
+    - completed_by_children: bool
+    - due_date, defer_date, planned_date: str -- ISO 8601
     """
     client = get_client()
 
@@ -1047,28 +964,19 @@ def update_task(
 
 @mcp.tool()
 def update_tasks(tasks: list[TaskUpdate]) -> str:
-    """Update one or more tasks in OmniFocus.
+    """Update one or more tasks. Each item has id (required) plus fields to change.
 
-    Pass a list of task update objects. Each must have an id field.
-    Only the specified fields will be updated — omitted fields are unchanged.
-
-    Args:
-        tasks: List of task update objects. Each must have:
-            id (required), plus any fields to update: task_name, project_id,
-            parent_task_id, note, due_date, defer_date, planned_date, flagged,
-            tags, add_tags, remove_tags, estimated_minutes, completed, status,
-            recurrence, repetition_method, sequential, completed_by_children.
-
-    Returns:
-        For single task: success message with updated fields.
-        For multiple tasks: summary with per-item results.
-
-    Examples:
-        update_tasks([{"id": "t1", "flagged": true}])
-        update_tasks([
-            {"id": "t1", "flagged": true},
-            {"id": "t2", "task_name": "Renamed", "due_date": "2026-04-01"}
-        ])
+    Parameters (per item):
+    - id: str (required)
+    - task_name, project_id, parent_task_id, note: str
+    - due_date, defer_date, planned_date: str -- ISO or "" to clear
+    - flagged, completed: bool -- completed=True on recurring task creates next occurrence
+    - status: str
+    - tags: list[str] -- full replacement (conflicts with add_tags/remove_tags)
+    - add_tags, remove_tags: list[str]
+    - estimated_minutes: int
+    - recurrence: str -- RRULE or "" to clear; repetition_method: str
+    - sequential: bool; completed_by_children: bool
     """
     client = get_client()
 
@@ -1129,20 +1037,9 @@ def update_tasks(tasks: list[TaskUpdate]) -> str:
 
 @mcp.tool()
 def get_tags() -> str:
-    """Retrieve all available tags from OmniFocus.
+    """Retrieve all tags.
 
-    Tags (formerly 'contexts') represent contexts for doing work — location (Office, Home),
-    tools (Computer, Phone), energy level (High, Low), people, or workflow states
-    (Waiting-for, Agenda). They cut across projects and are used for filtering tasks
-    via get_tasks(tag_filter=[...]).
-
-    Returns:
-        Each tag includes: id, name, status, parentTagId, childrenAreMutuallyExclusive.
-        `parentTagId` is the parent tag's ID (empty string if top-level). Note: create_tag()
-        and update_tag() accept parent_tag by NAME, not by this ID.
-        `childrenAreMutuallyExclusive` (boolean) — when true, child tags are mutually
-        exclusive: assigning one child tag to a task silently removes any other child
-        from the same group. Read via OmniAutomation (defaults to false if unavailable).
+    Returns: id, name, status ("active"/"on hold"/"dropped"), parentTagId (empty if top-level; create/update accept parent by NAME not ID), childrenAreMutuallyExclusive (assigning one child silently removes siblings).
     """
     client = get_client()
     tags = client.get_tags()
@@ -1201,24 +1098,12 @@ def create_tag(
 
 @mcp.tool()
 def create_tags(tags: list[TagCreate]) -> str:
-    """Create one or more tags in OmniFocus.
+    """Create one or more tags.
 
-    Tags (formerly 'contexts') represent contexts for doing work — location, tools,
-    energy level, people, or workflow states. Tags can be nested (e.g., create "High"
-    under parent "Energy" to get "Energy : High").
-
-    Args:
-        tags: List of tag objects to create. Each must have:
-            name (required), parent_tag (optional, by NAME not ID),
-            children_are_mutually_exclusive (optional, default False).
-
-    Returns:
-        For single tag: success message with tag ID.
-        For multiple tags: summary with per-item results.
-
-    Examples:
-        create_tags([{"name": "Automation"}])
-        create_tags([{"name": "High", "parent_tag": "Energy"}, {"name": "Low", "parent_tag": "Energy"}])
+    Parameters (per item):
+    - name: str (required)
+    - parent_tag: str -- parent by name
+    - children_are_mutually_exclusive: bool
     """
     client = get_client()
     results = []
@@ -1277,24 +1162,13 @@ def update_tag(
 
 @mcp.tool()
 def update_tags(tags: list[TagUpdate]) -> str:
-    """Update one or more tags in OmniFocus.
+    """Update one or more tags. Each item has id (required) plus fields to change.
 
-    Tags can be renamed, reparented, or have their status changed. Each item
-    in the list can update different fields.
-
-    Args:
-        tags: List of tag update objects. Each must have:
-            id (required), name (optional), status (optional: "active", "on_hold",
-            "dropped"), children_are_mutually_exclusive (optional),
-            parent_tag (optional, by NAME or empty string to move to top level).
-
-    Returns:
-        For single tag: success message with updated fields.
-        For multiple tags: summary with per-item results.
-
-    Examples:
-        update_tags([{"id": "tag-123", "name": "Renamed"}])
-        update_tags([{"id": "tag-1", "status": "on_hold"}, {"id": "tag-2", "parent_tag": "People"}])
+    Parameters (per item):
+    - id: str (required)
+    - name, status: str -- status: "active", "on_hold", "dropped"
+    - children_are_mutually_exclusive: bool
+    - parent_tag: str -- move to parent by name, "" for top level
     """
     client = get_client()
     results = []
@@ -1341,20 +1215,9 @@ def update_tags(tags: list[TagUpdate]) -> str:
 
 @mcp.tool()
 def delete_tags(tag_ids: Union[str, list[str]]) -> str:
-    """Delete one or more tags from OmniFocus.
+    """Delete tags. Tasks lose tag association but are not deleted.
 
-    WARNING: This permanently deletes the tags. Tasks that had these tags will
-    lose the tag association but are not themselves deleted.
-
-    Args:
-        tag_ids: Single tag ID (str) or list of tag IDs to delete
-
-    Returns:
-        Summary of deleted tags with count and any errors encountered
-
-    Examples:
-        delete_tags("tag-123")  # Delete single tag
-        delete_tags(["tag-001", "tag-002"])  # Delete multiple
+    - tag_ids: str | list[str] (required)
     """
     client = get_client()
     try:
@@ -1383,19 +1246,9 @@ def delete_tags(tag_ids: Union[str, list[str]]) -> str:
 
 @mcp.tool()
 def delete_tasks(task_ids: Union[str, list[str]]) -> str:
-    """Delete one or more tasks from OmniFocus.
+    """Permanently delete tasks. Cannot be undone.
 
-    WARNING: This permanently deletes the tasks and cannot be undone.
-
-    Args:
-        task_ids: Single task ID (str) or list of task IDs to delete
-
-    Returns:
-        Summary of deleted tasks with count and any errors encountered
-
-    Examples:
-        delete_tasks("task-123")  # Delete single task
-        delete_tasks(["task-001", "task-002", "task-003"])  # Delete multiple
+    - task_ids: str | list[str] (required)
     """
     client = get_client()
     try:
@@ -1429,15 +1282,9 @@ def delete_tasks(task_ids: Union[str, list[str]]) -> str:
 
 @mcp.tool()
 def delete_projects(project_ids: Union[str, list[str]]) -> str:
-    """Delete one or more projects from OmniFocus.
+    """Permanently delete projects and all their tasks. Cannot be undone.
 
-    WARNING: This permanently deletes the projects and all their tasks. Cannot be undone.
-
-    Args:
-        project_ids: Single project ID (str) or list of project IDs to delete
-
-    Returns:
-        Summary of deleted projects with count and any errors encountered
+    - project_ids: str | list[str] (required)
     """
     client = get_client()
     try:
@@ -1474,12 +1321,9 @@ def delete_projects(project_ids: Union[str, list[str]]) -> str:
 
 @mcp.tool()
 def get_folders() -> str:
-    """Get all folders from OmniFocus with their hierarchy.
+    """Get all folders with hierarchy.
 
-    Returns:
-        Each folder includes: id, name, path (hierarchical, e.g. "Work > Clients"),
-        status ("active" or "dropped"). Dropped folders and their contents are hidden
-        from most OmniFocus views.
+    Returns: id, name, path (e.g. "Work > Clients"), status ("active"/"dropped").
     """
     client = get_client()
     folders = client.get_folders()
@@ -1527,19 +1371,11 @@ def create_folder(name: str, parent_path: Optional[str] = None) -> str:
 
 @mcp.tool()
 def create_folders(folders: list[FolderCreate]) -> str:
-    """Create one or more folders in OmniFocus.
+    """Create one or more folders.
 
-    Args:
-        folders: List of folder objects to create. Each must have:
-            name (required), parent_path (optional, e.g., "Work" or "Work > Clients").
-
-    Returns:
-        For single folder: success message with folder ID.
-        For multiple folders: summary with per-item results.
-
-    Examples:
-        create_folders([{"name": "Clients"}])
-        create_folders([{"name": "Work"}, {"name": "Personal"}])
+    Parameters (per item):
+    - name: str (required)
+    - parent_path: str -- e.g. "Work > Clients"
     """
     client = get_client()
     results = []
@@ -1596,19 +1432,12 @@ def update_folder(
 
 @mcp.tool()
 def update_folders(folders: list[FolderUpdate]) -> str:
-    """Update one or more folders in OmniFocus.
+    """Update one or more folders. Each item has id (required) plus fields to change.
 
-    Args:
-        folders: List of folder update objects. Each must have:
-            id (required), name (optional), status (optional: "active" or "dropped").
-
-    Returns:
-        For single folder: success message with updated fields.
-        For multiple folders: summary with per-item results.
-
-    Examples:
-        update_folders([{"id": "folder-123", "name": "Renamed"}])
-        update_folders([{"id": "f1", "status": "dropped"}, {"id": "f2", "name": "New"}])
+    Parameters (per item):
+    - id: str (required)
+    - name: str
+    - status: str -- "active" or "dropped"
     """
     client = get_client()
     results = []
@@ -1659,25 +1488,13 @@ def update_folders(folders: list[FolderUpdate]) -> str:
 
 @mcp.tool()
 def reorder_task(task_id: str, before_task_id: Optional[str] = None, after_task_id: Optional[str] = None) -> str:
-    """Move a task before or after another task to change its position.
+    """Move a task before or after another task within the same project/level.
 
-    Use this to reorder tasks within a project or within a parent task's subtasks.
-    In sequential projects, task order determines dependencies — reordering changes
-    which task is available next (first incomplete = available, rest = blocked).
+    - task_id: str (required)
+    - before_task_id: str -- place before this task
+    - after_task_id: str -- place after this task
 
-    Args:
-        task_id: The ID of the task to move
-        before_task_id: Place task immediately BEFORE this reference task (provide either this OR after_task_id).
-            Example: reorder_task("C", before_task_id="A") results in [..., C, A, ...]
-        after_task_id: Place task immediately AFTER this reference task (provide either this OR before_task_id).
-            Example: reorder_task("C", after_task_id="A") results in [..., A, C, ...]
-
-    Returns:
-        Success message confirming the task was reordered
-
-    Note:
-        Both tasks must be in the same project and at the same level (both root-level or both subtasks of the same parent).
-        Exactly one of before_task_id or after_task_id must be provided.
+    Exactly one of before/after required. In sequential projects, order = dependencies.
     """
     client = get_client()
     try:
@@ -1697,23 +1514,13 @@ def reorder_task(task_id: str, before_task_id: Optional[str] = None, after_task_
 
 @mcp.tool()
 def reorder_project(project_id: str, before_project_id: Optional[str] = None, after_project_id: Optional[str] = None) -> str:
-    """Move a project before or after another project to change its position within a folder.
+    """Move a project before or after another project within the same folder.
 
-    Use this to reorder projects within a folder. Both projects must be in the same folder.
+    - project_id: str (required)
+    - before_project_id: str
+    - after_project_id: str
 
-    Args:
-        project_id: The ID of the project to move
-        before_project_id: Place project immediately BEFORE this reference project (provide either this OR after_project_id).
-            Example: reorder_project("C", before_project_id="A") results in [..., C, A, ...]
-        after_project_id: Place project immediately AFTER this reference project (provide either this OR before_project_id).
-            Example: reorder_project("C", after_project_id="A") results in [..., A, C, ...]
-
-    Returns:
-        Success message confirming the project was reordered
-
-    Note:
-        Both projects must be in the same folder.
-        Exactly one of before_project_id or after_project_id must be provided.
+    Exactly one of before/after required.
     """
     client = get_client()
     try:
@@ -1735,10 +1542,9 @@ def reorder_project(project_id: str, before_project_id: Optional[str] = None, af
 
 @mcp.tool()
 def get_perspectives() -> str:
-    """Get all perspectives from OmniFocus with type and ID information.
+    """Get all perspectives.
 
-    Returns:
-        Formatted list of perspectives with name, type (built-in/custom), and ID
+    Returns: name, type (built-in/custom), id
     """
     client = get_client()
     perspectives = client.get_perspectives()
@@ -1760,13 +1566,9 @@ def get_perspectives() -> str:
 
 @mcp.tool()
 def switch_perspective(perspective_name: str) -> str:
-    """Switch the front window to a different perspective.
+    """Switch front window to a perspective.
 
-    Args:
-        perspective_name: Name of the perspective to switch to
-
-    Returns:
-        Success message confirming perspective switch
+    - perspective_name: str (required)
     """
     client = get_client()
     try:
@@ -1781,17 +1583,10 @@ def set_focus(
     item_ids: str | list[str] = None,
     item_types: str | list[str] = None,
 ) -> str:
-    """Set focus on one or more items, or clear focus.
+    """Focus on projects/folders, or clear focus. Does not support tasks or tags.
 
-    OmniFocus supports focusing on projects and folders only (NOT tasks or tags). To highlight specific tasks, use update_task(flagged=True) instead.
-    Call with no arguments (or empty lists) to clear focus.
-
-    Args:
-        item_ids: Single ID or list of IDs to focus on. Omit or pass empty to clear.
-        item_types: Matching type(s) - each must be "project" or "folder".
-
-    Returns:
-        Success message confirming focus set or cleared
+    - item_ids: str | list[str] -- omit or empty to clear
+    - item_types: str | list[str] -- "project" or "folder"
     """
     client = get_client()
     try:
@@ -1812,10 +1607,7 @@ def set_focus(
 
 @mcp.tool()
 def get_focus() -> str:
-    """Get the currently focused items in OmniFocus.
-
-    Returns:
-        Formatted list of currently focused items, or a message if no focus is set
+    """Get currently focused items.
     """
     client = get_client()
     try:

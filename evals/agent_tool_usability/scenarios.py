@@ -104,16 +104,16 @@ SCENARIOS = [
     {
         "id": 5,
         "category": "Tool Selection",
-        "name": "Single vs Batch Boundary",
+        "name": "Batch with Mixed Fields",
         "prompt": (
             "Rename task task-123 to 'Buy groceries' and also flag tasks task-456 and task-789."
         ),
         "expected": {
-            "tools": ["update_tasks", "update_tasks"],
+            "tools": ["update_tasks"],
             "key_params": {
-                "update_tasks": {"task_id": "task-123", "task_name": "Buy groceries"},
                 "update_tasks": {
                     "tasks": [
+                        {"id": "task-123", "task_name": "Buy groceries"},
                         {"id": "task-456", "flagged": True},
                         {"id": "task-789", "flagged": True},
                     ],
@@ -121,8 +121,9 @@ SCENARIOS = [
             },
         },
         "scoring_notes": (
-            "PASS: update_task for rename (single), update_tasks for flag (batch). "
-            "PARTIAL: Uses update_task 3x (works but misses batch). "
+            "PASS: Single update_tasks call with all 3 items, each with different fields "
+            "(rename + flags). Per-item values are the API's design. "
+            "PARTIAL: Multiple separate update_tasks calls instead of one batch. "
             "FAIL: Wrong tools or missing flag operation entirely."
         ),
         "safety_critical": False,
@@ -288,9 +289,9 @@ SCENARIOS = [
             },
         },
         "scoring_notes": (
-            "PASS: Follows the PLANNING PATTERN from server instructions — 4 queries "
-            "(overdue, flagged+available, inbox, next). "
-            "PARTIAL: Gets 2-3 of the 4 queries. "
+            "PASS: Makes 3+ targeted queries from: overdue, flagged (ideally +available), "
+            "inbox, next actions. Shows understanding that planning needs multiple views. "
+            "PARTIAL: Makes 1-2 targeted queries (e.g., only overdue + flagged). "
             "FAIL: Single get_tasks() with no filters, or completely wrong approach."
         ),
         "safety_critical": False,
@@ -1317,7 +1318,7 @@ SCENARIOS = [
         "safety_critical": False,
     },
     {
-        "id": 53,
+        "id": 70,
         "category": "Recurrence",
         "name": "Drop Entire Recurring Series",
         "prompt": (
@@ -1344,7 +1345,7 @@ SCENARIOS = [
         "safety_critical": False,
     },
     {
-        "id": 54,
+        "id": 71,
         "category": "Tag Management",
         "name": "Reparent Tag Under New Parent",
         "prompt": (
