@@ -87,7 +87,7 @@ def run_scenario(client: OpenAI, model: str, scenario: dict, tool_descriptions: 
     }
 
 
-def run_model(client: OpenAI, model: str, scenarios: list, tool_descriptions: str, output_dir: Path) -> dict:
+def run_model(client: OpenAI, model: str, scenarios: list, tool_descriptions: str, output_dir: Path, label: str = "original") -> dict:
     """Run all scenarios for a single model. Returns summary dict."""
     model_short = model.split("/")[-1]
     results = []
@@ -113,7 +113,7 @@ def run_model(client: OpenAI, model: str, scenarios: list, tool_descriptions: st
 
     # Save results
     model_slug = model.replace("/", "_")
-    output_path = output_dir / f"raw_{model_slug}.json"
+    output_path = output_dir / f"raw_{model_slug}_{label}.json"
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
 
@@ -136,6 +136,10 @@ def main():
                         help="Comma-separated scenario IDs (default: all)")
     parser.add_argument("--output", default=str(SCRIPT_DIR / "results"),
                         help="Output directory")
+    parser.add_argument("--descriptions", default=str(TOOL_DESCRIPTIONS_PATH),
+                        help="Path to tool descriptions file (default: tool_descriptions.md)")
+    parser.add_argument("--label", default=None,
+                        help="Label for output files (e.g., 'trimmed'). Appended to filenames.")
     args = parser.parse_args()
 
     api_key = get_api_key()
@@ -149,7 +153,9 @@ def main():
         api_key=api_key,
     )
 
-    tool_descriptions = TOOL_DESCRIPTIONS_PATH.read_text()
+    descriptions_path = Path(args.descriptions)
+    tool_descriptions = descriptions_path.read_text()
+    label = args.label or descriptions_path.stem.replace("tool_descriptions", "").strip("_") or "original"
 
     scenarios = SCENARIOS
     if args.scenarios:
@@ -162,20 +168,21 @@ def main():
 
     print(f"Models: {', '.join(models)}")
     print(f"Scenarios: {len(scenarios)}")
+    print(f"Descriptions: {descriptions_path.name} (label: {label})")
     print(f"Output: {args.output}")
     if len(models) > 1:
         print(f"Running {len(models)} models in parallel")
     print()
 
     if len(models) == 1:
-        summary = run_model(client, models[0], scenarios, tool_descriptions, output_dir)
+        summary = run_model(client, models[0], scenarios, tool_descriptions, output_dir, label)
         print(f"\nResults saved to {summary['output_path']}")
         print(f"Total tokens: {summary['total_tokens']}")
     else:
         summaries = []
         with ThreadPoolExecutor(max_workers=len(models)) as executor:
             futures = {
-                executor.submit(run_model, client, model, scenarios, tool_descriptions, output_dir): model
+                executor.submit(run_model, client, model, scenarios, tool_descriptions, output_dir, label): model
                 for model in models
             }
             for future in as_completed(futures):
