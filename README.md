@@ -86,7 +86,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 ```bash
 git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
-git checkout v0.13.0  # Latest stable release
+git checkout v0.13.1  # Latest stable release
 
 # Using UV (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
