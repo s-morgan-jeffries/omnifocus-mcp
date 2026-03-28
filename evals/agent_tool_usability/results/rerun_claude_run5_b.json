@@ -1,0 +1,142 @@
+[
+  {
+    "id": 37,
+    "response": "Call update_projects with next_review_date set to the target date.\n\nupdate_projects([{\"id\": \"proj-abc\", \"next_review_date\": \"2026-04-15\"}])\n\nThis directly sets when the project next appears for review, independent of last_reviewed or the review interval."
+  },
+  {
+    "id": 38,
+    "response": "Call update_projects with completed_by_children=True.\n\nupdate_projects([{\"id\": \"proj-xyz\", \"completed_by_children\": true}])\n\nThis enables automatic project completion when all child tasks are completed."
+  },
+  {
+    "id": 39,
+    "response": "No tool call needed — the data is already available from get_tasks. The nextDueDate field on recurring tasks shows the next occurrence's due date without completing the current one.\n\nCall: get_tasks(query=\"Weekly team standup\", recurring_only=True)\n\nLook at the nextDueDate field in the returned task data."
+  },
+  {
+    "id": 40,
+    "response": "Use the stalled_only filter on get_projects.\n\nCall: get_projects(stalled_only=True)\n\nThis returns active projects with no available next actions — exactly what you need to review for stuck or empty projects."
+  },
+  {
+    "id": 41,
+    "response": "No tool call needed for the explanation — this depends on the catchUpAutomatically field. First, check the task:\n\nCall: get_tasks(query=\"Take vitamins\", recurring_only=True)\n\nLook at the catchUpAutomatically field:\n- If true: completing it spawns only one catch-up occurrence (not 5 separate overdue tasks)\n- If false: each missed interval spawns its own occurrence, so you may see multiple\n\nThe repetitionMethod also matters — \"fixed\" keeps the original schedule, while \"due_after_completion\" shifts from today."
+  },
+  {
+    "id": 42,
+    "response": "No tool call needed — this is a knowledge/explanation question.\n\nIf the 'Priority' parent tag has childrenAreMutuallyExclusive set to true, then assigning 'Low' via add_tags will silently remove 'High'. You won't get both — OmniFocus automatically removes the sibling.\n\nTo check, call: get_tags() and look at the Priority tag's childrenAreMutuallyExclusive field.\n\nIf it's true, update_tasks([{\"id\": \"<task-id>\", \"add_tags\": [\"Low\"]}]) will replace 'High' with 'Low' automatically. If it's false, both tags will coexist."
+  },
+  {
+    "id": 43,
+    "response": "Call create_projects with due_date and defer_date.\n\ncreate_projects([{\"name\": \"Q3 Report\", \"folder_path\": \"Work\", \"due_date\": \"2026-07-15\", \"defer_date\": \"2026-06-01\"}])"
+  },
+  {
+    "id": 44,
+    "response": "Call update_projects with due_date set to empty string to clear it.\n\nupdate_projects([{\"id\": \"proj-abc\", \"due_date\": \"\"}])"
+  },
+  {
+    "id": 45,
+    "response": "Call get_projects with the project ID.\n\nget_projects(project_id=\"proj-xyz\")\n\nThe returned data includes dueDate, deferDate, and plannedDate fields."
+  },
+  {
+    "id": 46,
+    "response": "Use update_tasks to move the task by setting parent_task_id.\n\nupdate_tasks([{\"id\": \"task-101\", \"parent_task_id\": \"task-200\"}])\n\nThis makes task-101 a subtask of task-200, moving it out of the inbox."
+  },
+  {
+    "id": 47,
+    "response": "Use get_tasks with a query search.\n\nget_tasks(query=\"mortgage\")\n\nThis searches task names and notes across all projects."
+  },
+  {
+    "id": 48,
+    "response": "Call get_tags to retrieve all tags with their hierarchy.\n\nget_tags()\n\nLook for the tag named 'High' in the results. The parentTagId field will show if it's nested under another tag. Cross-reference that parentTagId with the 'Energy' tag's id to confirm."
+  },
+  {
+    "id": 49,
+    "response": "Use update_tasks with status='dropped' to abandon the task without deleting it.\n\nupdate_tasks([{\"id\": \"task-500\", \"status\": \"dropped\"}])"
+  },
+  {
+    "id": 50,
+    "response": "Use update_projects with status='dropped' for all three.\n\nupdate_projects([{\"id\": \"proj-A\", \"status\": \"dropped\"}, {\"id\": \"proj-B\", \"status\": \"dropped\"}, {\"id\": \"proj-C\", \"status\": \"dropped\"}])"
+  },
+  {
+    "id": 51,
+    "response": "No tool call needed — this is expected behavior explained in the server instructions.\n\nTasks in a completed project still show completed=false because the completed field reflects the task's own state, not its container's. However, those tasks will have available=false because they inherit unavailability from the completed project.\n\nTo avoid seeing them, use get_tasks(available_only=True), which filters to only actionable tasks and excludes tasks in completed projects."
+  },
+  {
+    "id": 52,
+    "response": "Use reorder_project to move proj-C before proj-A.\n\nreorder_project(project_id=\"proj-C\", before_project_id=\"proj-A\")"
+  },
+  {
+    "id": 53,
+    "response": "Two steps: create the parent tag with mutual exclusivity, then create child tags.\n\n1. create_tags([{\"name\": \"Priority\", \"children_are_mutually_exclusive\": true}])\n2. create_tags([{\"name\": \"High\", \"parent_tag\": \"Priority\"}, {\"name\": \"Medium\", \"parent_tag\": \"Priority\"}, {\"name\": \"Low\", \"parent_tag\": \"Priority\"}])\n\nThe parent must exist before creating children that reference it by name."
+  },
+  {
+    "id": 54,
+    "response": "Use update_tags to enable mutual exclusivity on the existing parent tag.\n\nupdate_tags([{\"id\": \"tag-energy-001\", \"children_are_mutually_exclusive\": true}])\n\nThis makes it so assigning one child energy tag automatically removes any sibling energy tags from the task."
+  },
+  {
+    "id": 55,
+    "response": "Use update_projects to flag and tag the project in one call.\n\nupdate_projects([{\"id\": \"proj-website-001\", \"flagged\": true, \"add_tags\": [\"High Priority\"]}])"
+  },
+  {
+    "id": 56,
+    "response": "Use reorder_task to move QA testing before Frontend build.\n\nreorder_task(task_id=\"task-qa-001\", before_task_id=\"task-fe-001\")"
+  },
+  {
+    "id": 57,
+    "response": "Use delete_tags to permanently remove the tag. Tasks lose the tag association but are not deleted.\n\ndelete_tags(tag_ids=\"tag-errands-001\")"
+  },
+  {
+    "id": 58,
+    "response": "Call get_perspectives to list all perspectives.\n\nget_perspectives()\n\nThe results include a type field — filter for type='custom' to see only custom perspectives."
+  },
+  {
+    "id": 59,
+    "response": "Use create_folders with parent_path.\n\ncreate_folders([{\"name\": \"Q2\", \"parent_path\": \"Work\"}])"
+  },
+  {
+    "id": 60,
+    "response": "Use switch_perspective.\n\nswitch_perspective(perspective_name=\"Weekly Review\")"
+  },
+  {
+    "id": 61,
+    "response": "Two-step process:\n\n1. First, get all overdue tasks:\n   get_tasks(overdue=True)\n\n2. After reviewing the results and identifying the 3 most urgent task IDs, flag them:\n   update_tasks([{\"id\": \"<id1>\", \"flagged\": true}, {\"id\": \"<id2>\", \"flagged\": true}, {\"id\": \"<id3>\", \"flagged\": true}])"
+  },
+  {
+    "id": 62,
+    "response": "First, search for the project to confirm it exists:\n\nget_projects(query=\"Quantum Computing Research\")\n\nIf found, use the returned project_id to get its tasks:\nget_tasks(project_id=\"<returned_project_id>\")\n\nIf no project is found, inform the user that no matching project exists."
+  },
+  {
+    "id": 63,
+    "response": "Use create_tasks with tags as a list.\n\ncreate_tasks([{\"task_name\": \"Buy birthday gift\", \"tags\": [\"Computer\", \"Errands\"]}])\n\nNo project_id or parent_task_id means it goes to the inbox."
+  },
+  {
+    "id": 64,
+    "response": "Use create_tasks with all 5 tasks in one batch call (no project_id = inbox).\n\ncreate_tasks([{\"task_name\": \"Buy groceries\"}, {\"task_name\": \"Do laundry\"}, {\"task_name\": \"Wash dishes\"}, {\"task_name\": \"Vacuum living room\"}, {\"task_name\": \"Prep meals for the week\"}])"
+  },
+  {
+    "id": 65,
+    "response": "Use create_projects with both projects in one batch call.\n\ncreate_projects([{\"name\": \"Kitchen Renovation\", \"project_type\": \"sequential\", \"folder_path\": \"Home\"}, {\"name\": \"Garden Planning\", \"project_type\": \"parallel\", \"folder_path\": \"Home\"}])"
+  },
+  {
+    "id": 66,
+    "response": "Two steps: first create the parent task as a sequential action group, then add subtasks.\n\n1. create_tasks([{\"task_name\": \"Event Planning\", \"project_id\": \"proj-100\", \"sequential\": true}])\n\n2. Using the returned parent task ID:\n   create_tasks([{\"task_name\": \"Research venues\", \"parent_task_id\": \"<event-planning-id>\"}, {\"task_name\": \"Book venue\", \"parent_task_id\": \"<event-planning-id>\"}, {\"task_name\": \"Send invitations\", \"parent_task_id\": \"<event-planning-id>\"}])\n\nThe sequential flag on the parent ensures tasks must be done in order."
+  },
+  {
+    "id": 67,
+    "response": "This requires a parallel project with two sequential action groups to model the dependency chains.\n\n1. Create the parallel project:\n   create_projects([{\"name\": \"Home Renovation\", \"project_type\": \"parallel\"}])\n\n2. Create two sequential action group parent tasks in the project:\n   create_tasks([{\"task_name\": \"Contractor Track\", \"project_id\": \"<project-id>\", \"sequential\": true}, {\"task_name\": \"Paint Track\", \"project_id\": \"<project-id>\", \"sequential\": true}])\n\n3. Add subtasks to each action group:\n   create_tasks([{\"task_name\": \"Get contractor quotes\", \"parent_task_id\": \"<contractor-track-id>\"}, {\"task_name\": \"Schedule contractor\", \"parent_task_id\": \"<contractor-track-id>\"}, {\"task_name\": \"Choose paint colors\", \"parent_task_id\": \"<paint-track-id>\"}, {\"task_name\": \"Buy paint\", \"parent_task_id\": \"<paint-track-id>\"}])\n\nSince the project is parallel, both tracks run concurrently. Within each sequential action group, the second task is blocked until the first is complete."
+  },
+  {
+    "id": 68,
+    "response": "Three steps to build the nested structure:\n\n1. Create the top-level sequential action group:\n   create_tasks([{\"task_name\": \"Prepare presentation\", \"project_id\": \"proj-200\", \"sequential\": true}])\n\n2. Create the sequential subtasks, with 'Create slides' set as a parallel action group:\n   create_tasks([{\"task_name\": \"Research topic\", \"parent_task_id\": \"<prepare-id>\"}, {\"task_name\": \"Write outline\", \"parent_task_id\": \"<prepare-id>\"}, {\"task_name\": \"Create slides\", \"parent_task_id\": \"<prepare-id>\", \"sequential\": false}])\n\n3. Add parallel subtasks under 'Create slides':\n   create_tasks([{\"task_name\": \"Design template\", \"parent_task_id\": \"<create-slides-id>\"}, {\"task_name\": \"Add content\", \"parent_task_id\": \"<create-slides-id>\"}, {\"task_name\": \"Add animations\", \"parent_task_id\": \"<create-slides-id>\"}])\n\nNote: 'Create slides' has sequential=false so its subtasks are parallel, while the parent 'Prepare presentation' is sequential so Research → Outline → Create slides happen in order."
+  },
+  {
+    "id": 69,
+    "response": "OmniFocus does not support true diamond dependencies (multiple predecessors converging). The closest approximation uses a sequential action group.\n\nApproach: Create a sequential action group where the two independent tasks are in a parallel sub-group, followed by the dependent task.\n\n1. Create a sequential parent action group in the project:\n   create_tasks([{\"task_name\": \"Report Process\", \"project_id\": \"proj-300\", \"sequential\": true}])\n\n2. Create a parallel sub-group for the independent tasks:\n   create_tasks([{\"task_name\": \"Independent Work\", \"parent_task_id\": \"<report-process-id>\", \"sequential\": false}])\n\n3. Add the independent tasks as parallel subtasks, then the dependent task after the sub-group:\n   create_tasks([{\"task_name\": \"Draft report\", \"parent_task_id\": \"<independent-work-id>\"}, {\"task_name\": \"Collect data\", \"parent_task_id\": \"<independent-work-id>\"}])\n   create_tasks([{\"task_name\": \"Review findings\", \"parent_task_id\": \"<report-process-id>\"}])\n\nIn the sequential parent, 'Independent Work' (with its parallel subtasks) must complete before 'Review findings' becomes available. Set completed_by_children=true on 'Independent Work' so it auto-completes when both subtasks finish."
+  },
+  {
+    "id": 70,
+    "response": "Per the server instructions: dropping a recurring task without clearing recurrence first spawns the next occurrence. You must clear recurrence first, then drop.\n\nupdate_tasks([{\"id\": \"task-weekly-123\", \"recurrence\": \"\", \"status\": \"dropped\"}])\n\nThis clears the recurrence rule and drops the task in a single call, preventing any new occurrence from spawning."
+  },
+  {
+    "id": 71,
+    "response": "Use update_tags to move the tag under a new parent by name.\n\nupdate_tags([{\"id\": \"tag-aimee-001\", \"parent_tag\": \"People\"}])\n\nThis moves the tag under the 'People' parent. All existing task associations are preserved — only the tag's position in the hierarchy changes."
+  }
+]
