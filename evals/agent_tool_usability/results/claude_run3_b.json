@@ -1,0 +1,142 @@
+[
+  {
+    "id": 37,
+    "response": "Call update_projects with [{\"id\": \"proj-abc\", \"next_review_date\": \"2026-04-15\"}]. The next_review_date parameter directly sets when the project appears for review, overriding the calculated date from last_reviewed + review_interval."
+  },
+  {
+    "id": 38,
+    "response": "Call update_projects with [{\"id\": \"proj-xyz\", \"completed_by_children\": true}]. This enables auto-complete: when the last remaining task is completed, the project marks itself done."
+  },
+  {
+    "id": 39,
+    "response": "Call get_tasks with task_id for the recurring task (or filter to find it). The response includes nextDueDate, nextDeferDate, and nextPlannedDate fields which show the next occurrence dates without needing to complete the current one. Use the nextDueDate field from the returned task data."
+  },
+  {
+    "id": 40,
+    "response": "Call get_projects with include_task_health=true. This adds availableCount to each project. Filter the results for projects where availableCount is 0 (stalled projects). Alternatively, call get_projects with stalled_only=true to get projects that OmniFocus considers stalled (active projects with no available next actions)."
+  },
+  {
+    "id": 41,
+    "response": "No tool call needed for the explanation. The behavior depends on the catchUpAutomatically field on the task. Call get_tasks with the task's ID to check its catchUpAutomatically value. If catchUpAutomatically is true, completing it creates one catch-up occurrence (not 5 separate ones). If false, each missed interval spawns its own occurrence. Check the task data to determine which mode it's in before completing."
+  },
+  {
+    "id": 42,
+    "response": "This depends on whether the 'Priority' parent tag has childrenAreMutuallyExclusive set to true. Call get_tags to check. If childrenAreMutuallyExclusive is true on the Priority parent tag, assigning 'Low' will silently remove 'High' — only one child tag can be active at a time. If false, both tags will coexist. The tool description notes: 'assigning one child silently removes siblings' when mutually exclusive is enabled. So check get_tags first, and warn the user if exclusivity is on."
+  },
+  {
+    "id": 43,
+    "response": "Call create_projects with [{\"name\": \"Q3 Report\", \"folder_path\": \"Work\", \"due_date\": \"2026-07-15\", \"defer_date\": \"2026-06-01\"}]. The defer_date hides the project until June 1, and the due_date sets the July 15 deadline."
+  },
+  {
+    "id": 44,
+    "response": "Call update_projects with [{\"id\": \"proj-abc\", \"due_date\": \"\"}]. Passing an empty string clears the due date."
+  },
+  {
+    "id": 45,
+    "response": "Call get_projects with project_id=\"proj-xyz\". The returned object includes dueDate, deferDate, and plannedDate fields."
+  },
+  {
+    "id": 46,
+    "response": "Call update_tasks with [{\"id\": \"task-101\", \"parent_task_id\": \"task-200\"}]. This moves the task from the inbox to become a subtask of 'Draft report'. Note: project_id and parent_task_id are mutually exclusive on create, but update_tasks accepts parent_task_id to reparent a task."
+  },
+  {
+    "id": 47,
+    "response": "Call get_tasks with query=\"mortgage\". This searches task names and notes case-insensitively across all projects."
+  },
+  {
+    "id": 48,
+    "response": "Call get_tags (no parameters). The returned tag objects include parentTagId. Find the tag named 'High' and check its parentTagId. Then find the tag whose id matches that parentTagId to confirm it's named 'Energy'."
+  },
+  {
+    "id": 49,
+    "response": "Call update_tasks with [{\"id\": \"task-500\", \"status\": \"dropped\"}]. This marks the task as dropped/abandoned without deleting it. Note: this task is not recurring, so no need to clear recurrence first."
+  },
+  {
+    "id": 50,
+    "response": "Call update_projects with [{\"id\": \"proj-A\", \"status\": \"dropped\"}, {\"id\": \"proj-B\", \"status\": \"dropped\"}, {\"id\": \"proj-C\", \"status\": \"dropped\"}]. This marks all three as dropped without deleting them."
+  },
+  {
+    "id": 51,
+    "response": "No tool call needed — this is an explanation. Per the server instructions: 'completed/dropped reflect the task's own state, not its container's. Task in completed project: completed: false, available: false.' The tasks were never individually completed — the project was marked done but the tasks themselves still show completed: false. They show up in get_tasks because their own completed field is false. However, they should have available: false. Use get_tasks with available_only=true to exclude them, or use include_completed=false (default) — but note the tasks aren't completed, the project is. The fix is to filter by available_only=true to get only actionable tasks."
+  },
+  {
+    "id": 52,
+    "response": "Call reorder_project with project_id=\"proj-C\", before_project_id=\"proj-A\". This moves proj-C to appear before proj-A in the folder."
+  },
+  {
+    "id": 53,
+    "response": "Step 1: Call create_tags with [{\"name\": \"Priority\", \"children_are_mutually_exclusive\": true}].\nStep 2: Call create_tags with [{\"name\": \"High\", \"parent_tag\": \"Priority\"}, {\"name\": \"Medium\", \"parent_tag\": \"Priority\"}, {\"name\": \"Low\", \"parent_tag\": \"Priority\"}].\nThe parent tag's childrenAreMutuallyExclusive flag ensures assigning one child silently removes siblings."
+  },
+  {
+    "id": 54,
+    "response": "Call update_tags with [{\"id\": \"tag-energy-001\", \"children_are_mutually_exclusive\": true}]. This enables mutual exclusivity on the existing Energy parent tag so only one child energy level can be assigned at a time."
+  },
+  {
+    "id": 55,
+    "response": "Call update_projects with [{\"id\": \"proj-website-001\", \"flagged\": true, \"add_tags\": [\"High Priority\"]}]. This flags the project and adds the tag in a single call."
+  },
+  {
+    "id": 56,
+    "response": "Call reorder_task with task_id=\"task-qa-001\", before_task_id=\"task-fe-001\". This moves QA testing to appear before Frontend build."
+  },
+  {
+    "id": 57,
+    "response": "Call delete_tags with tag_ids=\"tag-errands-001\". This permanently deletes the tag. Tasks that had this tag will lose the association but are not deleted. This is different from dropping (update_tags with status='dropped'), which hides but preserves the tag."
+  },
+  {
+    "id": 58,
+    "response": "Call get_perspectives (no parameters). The response includes name, type (built-in or custom), and id. Filter the results for type='custom' to see only custom perspectives."
+  },
+  {
+    "id": 59,
+    "response": "Call create_folders with [{\"name\": \"Q2\", \"parent_path\": \"Work\"}]."
+  },
+  {
+    "id": 60,
+    "response": "Call switch_perspective with perspective_name=\"Weekly Review\"."
+  },
+  {
+    "id": 61,
+    "response": "Step 1: Call get_tasks with overdue=true to get all overdue tasks.\nStep 2: After reviewing the results and identifying the 3 most urgent task IDs (e.g., task-X, task-Y, task-Z), call update_tasks with [{\"id\": \"task-X\", \"flagged\": true}, {\"id\": \"task-Y\", \"flagged\": true}, {\"id\": \"task-Z\", \"flagged\": true}]."
+  },
+  {
+    "id": 62,
+    "response": "First, call get_projects with query=\"Quantum Computing Research\" to check if the project exists and get its ID. If it exists, call get_tasks with project_id=<returned project ID>. If no project is found, inform the user that no matching project exists."
+  },
+  {
+    "id": 63,
+    "response": "Call create_tasks with [{\"task_name\": \"Buy birthday gift\", \"tags\": [\"Computer\", \"Errands\"]}]. No project_id means it goes to inbox. Tags are passed as a list of strings."
+  },
+  {
+    "id": 64,
+    "response": "Call create_tasks with [{\"task_name\": \"Buy groceries\"}, {\"task_name\": \"Do laundry\"}, {\"task_name\": \"Wash dishes\"}, {\"task_name\": \"Vacuum living room\"}, {\"task_name\": \"Prep meals for the week\"}]. No project_id puts them in the inbox."
+  },
+  {
+    "id": 65,
+    "response": "Call create_projects with [{\"name\": \"Kitchen Renovation\", \"project_type\": \"sequential\", \"folder_path\": \"Home\"}, {\"name\": \"Garden Planning\", \"project_type\": \"parallel\", \"folder_path\": \"Home\"}]."
+  },
+  {
+    "id": 66,
+    "response": "Step 1: Call create_tasks with [{\"task_name\": \"Event Planning\", \"project_id\": \"proj-100\", \"sequential\": true}] to create the parent action group.\nStep 2: Using the returned task ID (e.g., task-ep), call create_tasks with [{\"task_name\": \"Research venues\", \"parent_task_id\": \"<task-ep>\"}, {\"task_name\": \"Book venue\", \"parent_task_id\": \"<task-ep>\"}, {\"task_name\": \"Send invitations\", \"parent_task_id\": \"<task-ep>\"}]. The sequential flag on the parent ensures they must be done in order."
+  },
+  {
+    "id": 67,
+    "response": "Step 1: Call create_projects with [{\"name\": \"Home Renovation\", \"project_type\": \"parallel\"}].\nStep 2: Using the project ID, create two sequential action groups as tasks:\n- create_tasks with [{\"task_name\": \"Contractor Chain\", \"project_id\": \"<proj-id>\", \"sequential\": true}, {\"task_name\": \"Paint Chain\", \"project_id\": \"<proj-id>\", \"sequential\": true}].\nStep 3: Using the returned action group IDs, create subtasks:\n- create_tasks with [{\"task_name\": \"Get contractor quotes\", \"parent_task_id\": \"<contractor-chain-id>\"}, {\"task_name\": \"Schedule contractor\", \"parent_task_id\": \"<contractor-chain-id>\"}, {\"task_name\": \"Choose paint colors\", \"parent_task_id\": \"<paint-chain-id>\"}, {\"task_name\": \"Buy paint\", \"parent_task_id\": \"<paint-chain-id>\"}].\nThe parallel project allows both chains to proceed simultaneously, while the sequential action groups enforce ordering within each chain."
+  },
+  {
+    "id": 68,
+    "response": "Step 1: Call create_tasks with [{\"task_name\": \"Prepare presentation\", \"project_id\": \"proj-200\", \"sequential\": true}].\nStep 2: Using the returned ID for 'Prepare presentation' (e.g., task-pp), call create_tasks with [{\"task_name\": \"Research topic\", \"parent_task_id\": \"<task-pp>\"}, {\"task_name\": \"Write outline\", \"parent_task_id\": \"<task-pp>\"}, {\"task_name\": \"Create slides\", \"parent_task_id\": \"<task-pp>\", \"sequential\": false}]. Note: 'Create slides' needs sequential=false (parallel) since its children can happen in parallel.\nStep 3: Using the returned ID for 'Create slides' (e.g., task-cs), call create_tasks with [{\"task_name\": \"Design template\", \"parent_task_id\": \"<task-cs>\"}, {\"task_name\": \"Add content\", \"parent_task_id\": \"<task-cs>\"}, {\"task_name\": \"Add animations\", \"parent_task_id\": \"<task-cs>\"}].\nThe parent 'Prepare presentation' is sequential (Research → Outline → Create slides in order), while 'Create slides' is parallel (Design/Content/Animations can happen simultaneously)."
+  },
+  {
+    "id": 69,
+    "response": "OmniFocus doesn't natively support diamond/converging dependencies (task waiting on multiple predecessors). The best approximation:\n\nStep 1: Create a sequential action group to hold the convergence point. Call create_tasks with [{\"task_name\": \"Report Workflow\", \"project_id\": \"proj-300\", \"sequential\": true}].\nStep 2: Create a parallel sub-group for the independent tasks, then the dependent task after it. Call create_tasks with [{\"task_name\": \"Parallel Work\", \"parent_task_id\": \"<workflow-id>\", \"sequential\": false, \"completed_by_children\": true}].\nStep 3: Add the independent tasks as subtasks of the parallel group: create_tasks with [{\"task_name\": \"Draft report\", \"parent_task_id\": \"<parallel-id>\"}, {\"task_name\": \"Collect data\", \"parent_task_id\": \"<parallel-id>\"}].\nStep 4: Add the dependent task as a sibling after the parallel group: create_tasks with [{\"task_name\": \"Review findings\", \"parent_task_id\": \"<workflow-id>\"}].\n\nBecause 'Report Workflow' is sequential, 'Review findings' won't become available until the 'Parallel Work' group completes (which auto-completes via completed_by_children when both Draft report and Collect data are done)."
+  },
+  {
+    "id": 70,
+    "response": "Per the server instructions: 'Dropping a recurring task without clearing recurrence first spawns the next occurrence.' To stop the series, call update_tasks with [{\"id\": \"task-weekly-123\", \"recurrence\": \"\", \"status\": \"dropped\"}]. This clears the recurrence first and drops the task in the same call, preventing a new occurrence from spawning."
+  },
+  {
+    "id": 71,
+    "response": "Call update_tags with [{\"id\": \"tag-aimee-001\", \"parent_tag\": \"People\"}]. This moves the tag under the 'People' parent. Task associations are preserved — only the tag's position in the hierarchy changes."
+  }
+]

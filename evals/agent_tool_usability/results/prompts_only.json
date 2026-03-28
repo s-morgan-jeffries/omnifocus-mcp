@@ -1,0 +1,357 @@
+[
+  {
+    "id": 1,
+    "name": "Defer vs Due Date",
+    "prompt": "I need to call the dentist, but not until next Monday March 16. The appointment itself is next Friday March 20."
+  },
+  {
+    "id": 2,
+    "name": "Sequential Project with Dependencies",
+    "prompt": "Create a project called 'Kitchen Renovation' where tasks must be done in order: get quotes, pick contractor, sign contract, demolition, installation."
+  },
+  {
+    "id": 3,
+    "name": "Available Tasks",
+    "prompt": "Show me only the tasks I can actually work on right now."
+  },
+  {
+    "id": 4,
+    "name": "Flagged Semantics",
+    "prompt": "I want to focus on these 3 tasks today: task-001, task-002, task-003."
+  },
+  {
+    "id": 5,
+    "name": "Batch with Mixed Fields",
+    "prompt": "Rename task task-123 to 'Buy groceries' and also flag tasks task-456 and task-789."
+  },
+  {
+    "id": 6,
+    "name": "Move Task via update_task",
+    "prompt": "Move task task-100 from my inbox to the 'Home Repairs' project (proj-200)."
+  },
+  {
+    "id": 7,
+    "name": "Drop vs Delete (SAFETY)",
+    "prompt": "I'm not going to do the 'Learn Mandarin' project (proj-888) anymore, but I want to keep it in my records."
+  },
+  {
+    "id": 8,
+    "name": "Reorder for Dependencies",
+    "prompt": "In my sequential project, task-B needs to happen before task-A. Currently task-A is first."
+  },
+  {
+    "id": 9,
+    "name": "Tags on Create vs Add Tags on Update",
+    "prompt": "Create a task 'Review PR' with tags Computer and Work, then add the tag 'Urgent' to existing task task-555."
+  },
+  {
+    "id": 10,
+    "name": "Clear a Date",
+    "prompt": "Remove the due date from task task-300."
+  },
+  {
+    "id": 11,
+    "name": "Mutual Exclusivity",
+    "prompt": "Create a subtask 'Buy nails' under task task-400 in project proj-500."
+  },
+  {
+    "id": 12,
+    "name": "Tag Filter AND Semantics",
+    "prompt": "Show me all tasks tagged with both 'Errands' and 'Weekend'."
+  },
+  {
+    "id": 13,
+    "name": "Daily Planning",
+    "prompt": "Help me plan my day. What should I focus on?"
+  },
+  {
+    "id": 14,
+    "name": "Project Creation with Phases",
+    "prompt": "Set up a 'Website Redesign' project under the 'Work' folder. It's sequential. Add these tasks in order: wireframes, design mockups, frontend build, backend API, QA testing, launch. Tag all tasks with 'Web Team'. Set review every 2 weeks."
+  },
+  {
+    "id": 15,
+    "name": "Project Review",
+    "prompt": "Which of my projects are overdue for review?"
+  },
+  {
+    "id": 16,
+    "name": "Done vs Dropped (SAFETY)",
+    "prompt": "I finished the 'Q1 Report' project (proj-777) \u2014 all tasks are done."
+  },
+  {
+    "id": 17,
+    "name": "Focus Limitations",
+    "prompt": "Focus on just task task-999 so I only see that one thing."
+  },
+  {
+    "id": 18,
+    "name": "Inbox Completion",
+    "prompt": "Complete all tasks in my inbox."
+  },
+  {
+    "id": 19,
+    "name": "Action Group \u2014 Blocked Parent Interpretation",
+    "prompt": "I ran get_tasks for my project and got back this task:\n{\"id\": \"task-700\", \"name\": \"Renovate bathroom\", \"blocked\": true, \"subtaskCount\": 3, \"sequential\": true}\nWhy is this task blocked? Is something wrong?"
+  },
+  {
+    "id": 20,
+    "name": "Next Task Semantics",
+    "prompt": "I have a parallel project with 5 tasks. When I call get_tasks, all 5 have next=true. But in my sequential project, only 1 task has next=true. Is that right? What does 'next' mean?"
+  },
+  {
+    "id": 21,
+    "name": "Inherited Dates \u2014 Empty Due Date",
+    "prompt": "My project 'Q2 Planning' has a due date of April 15. But when I get_tasks(project_id='proj-q2'), the tasks show dueDate as empty. The OmniFocus UI shows them as due April 15 though. What's going on?"
+  },
+  {
+    "id": 22,
+    "name": "Sequential Ambiguity \u2014 Parallel vs Single Actions List",
+    "prompt": "I see two projects with sequential=false in get_projects. One is my 'Home Repairs' project (tasks can be done in any order) and the other is 'Errands' (a grab-bag of unrelated tasks). Are they the same type?"
+  },
+  {
+    "id": 23,
+    "name": "Completing Recurring Tasks",
+    "prompt": "I have a recurring task 'Water plants' that repeats every week. If I use update_task(completed=True), will it create the next occurrence or just mark this one done and kill the recurrence?"
+  },
+  {
+    "id": 24,
+    "name": "Planned Date vs Defer Date",
+    "prompt": "I want to schedule 'Write blog post' for next Wednesday March 18, but I could start it earlier if I have free time. It's due Friday March 20."
+  },
+  {
+    "id": 25,
+    "name": "Three Dates Scenario",
+    "prompt": "Create a task 'Prepare presentation'. I can't start until Monday March 16 (I need materials from a colleague). I'm planning to work on it Wednesday March 18. It's due for the meeting on Friday March 20."
+  },
+  {
+    "id": 26,
+    "name": "Clear Planned Date",
+    "prompt": "I had task-600 planned for Wednesday but my schedule changed. Remove the planned date \u2014 I'll figure out when to do it later."
+  },
+  {
+    "id": 27,
+    "name": "Read Repeat Summary",
+    "prompt": "I ran get_tasks and got this task back:\n{\"id\": \"task-800\", \"name\": \"Team standup\", \"isRecurring\": true, \"recurrence\": \"FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE,FR\", \"repetitionMethod\": \"fixed\", \"repeatSummary\": \"Every week on Mon, Wed, Fri\"}\nHow often does this task repeat?"
+  },
+  {
+    "id": 28,
+    "name": "Modify Recurrence",
+    "prompt": "I have a task (task-810) that repeats every week. Can you change it to repeat every 2 weeks instead?"
+  },
+  {
+    "id": 29,
+    "name": "Repetition Method Semantics",
+    "prompt": "I completed 'Water plants' which repeats weekly. The task data shows repetitionMethod: \"due_after_completion\". When will the next occurrence be due \u2014 next Monday, or one week from today?"
+  },
+  {
+    "id": 30,
+    "name": "Remove Recurrence",
+    "prompt": "I want to stop task task-900 from repeating. How do I remove the recurrence?"
+  },
+  {
+    "id": 31,
+    "name": "Set Recurrence with Method",
+    "prompt": "Make task task-820 repeat daily, but I want the next due date to be based on when I actually complete it, not on a fixed schedule."
+  },
+  {
+    "id": 32,
+    "name": "Add Recurrence to Non-Recurring Task",
+    "prompt": "Task task-830 'Take vitamins' doesn't repeat yet. Make it repeat every day on a fixed schedule."
+  },
+  {
+    "id": 33,
+    "name": "Drop a Tag",
+    "prompt": "I'm no longer using the 'Low Energy' tag. I don't want to delete it (tasks still reference it), but I want it hidden from my tag picker. Tasks with this tag should still be available and actionable. Tag ID is tag-050."
+  },
+  {
+    "id": 34,
+    "name": "Distinguish Tag Statuses",
+    "prompt": "I ran get_tags and see three tags:\n- {\"id\": \"tag-051\", \"name\": \"Errands\", \"status\": \"active\"}\n- {\"id\": \"tag-052\", \"name\": \"Waiting\", \"status\": \"on hold\"}\n- {\"id\": \"tag-053\", \"name\": \"Archive\", \"status\": \"dropped\"}\nI want 'Waiting' to be usable again \u2014 tasks with this tag should be available. And 'Archive' should stay hidden."
+  },
+  {
+    "id": 35,
+    "name": "Create Single Actions List",
+    "prompt": "I want to create a new 'Someday/Maybe' list in OmniFocus \u2014 a grab-bag of ideas that has no completion goal and shouldn't auto-complete when I tick off items. How do I create it?"
+  },
+  {
+    "id": 36,
+    "name": "Drop Folder (Archive Without Deleting)",
+    "prompt": "I have a folder called 'Old Work' (folder ID: folder-999) that I want to archive \u2014 hide it from view without deleting it. How do I do that?"
+  },
+  {
+    "id": 37,
+    "name": "Force Project Review Date",
+    "prompt": "I have a project with ID proj-abc. I want to force it to come up for review on April 15th, 2026, regardless of when it was last reviewed or what the review interval is set to. How do I do that?"
+  },
+  {
+    "id": 38,
+    "name": "Enable Auto-Complete When Last Task Done",
+    "prompt": "I have a project with ID proj-xyz. I want it to automatically mark itself as complete when I check off its last remaining task. How do I enable that?"
+  },
+  {
+    "id": 39,
+    "name": "Read Next Occurrence Date",
+    "prompt": "I have a recurring task 'Weekly team standup' that repeats every Monday. When is the next occurrence due? I don't want to complete the current one just to find out."
+  },
+  {
+    "id": 40,
+    "name": "Find Projects With No Available Actions",
+    "prompt": "Which of my projects have no available actions right now? I want to review anything that might be stuck or needs new tasks added."
+  },
+  {
+    "id": 41,
+    "name": "Missed Recurrence Behavior",
+    "prompt": "I have a daily task 'Take vitamins' that I haven't completed in 5 days. When I complete it, will I get 5 overdue occurrences flooding my inbox, or just one catch-up? How can I tell?"
+  },
+  {
+    "id": 42,
+    "name": "Mutually Exclusive Tag Warning",
+    "prompt": "I have a 'Priority' tag group with child tags 'High', 'Medium', 'Low'. A task currently has the 'High' tag. If I use update_task(add_tags=['Low']), will it keep both 'High' and 'Low', or will something weird happen?"
+  },
+  {
+    "id": 43,
+    "name": "Create Project with Due Date",
+    "prompt": "Create a project called 'Q3 Report' in the 'Work' folder that must be completed by July 15, 2026. It should become available starting June 1, 2026."
+  },
+  {
+    "id": 44,
+    "name": "Clear Project Due Date",
+    "prompt": "Project 'proj-abc' currently has a due date. I want to remove the due date so it's no longer deadline-driven."
+  },
+  {
+    "id": 45,
+    "name": "Check Project Dates",
+    "prompt": "I want to see what dates are set on project 'proj-xyz' \u2014 specifically its due date, defer date, and planned date."
+  },
+  {
+    "id": 46,
+    "name": "Make Task a Subtask",
+    "prompt": "I have a task 'Write introduction' (task-101) that's currently in my inbox. I want to make it a subtask of 'Draft report' (task-200), which is in the 'Q3 Report' project."
+  },
+  {
+    "id": 47,
+    "name": "Search Tasks by Keyword",
+    "prompt": "Do I have any tasks related to 'mortgage'? I'm not sure which project they'd be in."
+  },
+  {
+    "id": 48,
+    "name": "Find Parent of Nested Tag",
+    "prompt": "I have a tag called 'High' that I think is nested under an 'Energy' parent tag. How can I confirm this?"
+  },
+  {
+    "id": 49,
+    "name": "Drop a Task",
+    "prompt": "I have a task 'Learn Esperanto' (task-500) that I've decided I'm never going to do. I don't want to delete it \u2014 I just want to abandon it."
+  },
+  {
+    "id": 50,
+    "name": "Drop Multiple Projects",
+    "prompt": "I want to abandon these three projects: proj-A, proj-B, proj-C. Don't delete them, just mark them as abandoned."
+  },
+  {
+    "id": 51,
+    "name": "Tasks in Completed Project",
+    "prompt": "I completed a project last month but now get_tasks is returning some tasks from it as active (completed=false). The project shows as done in OmniFocus. Why are these tasks showing up?"
+  },
+  {
+    "id": 52,
+    "name": "Reorder Project Within Folder",
+    "prompt": "I have three projects in my Work folder: proj-A, proj-B, proj-C (in that order). I want proj-C to appear first, before proj-A."
+  },
+  {
+    "id": 53,
+    "name": "Create Mutually Exclusive Tag Group",
+    "prompt": "I want to set up a 'Priority' tag group where each task can only have one priority level at a time. If a task has 'High' and I assign 'Low', the 'High' tag should be automatically removed. Create the Priority parent tag with child tags High, Medium, and Low."
+  },
+  {
+    "id": 54,
+    "name": "Toggle Exclusivity on Existing Tag",
+    "prompt": "I have an existing 'Energy' tag (ID: tag-energy-001) with child tags 'High Energy', 'Medium Energy', 'Low Energy'. Right now a task can have multiple energy levels, but I want to change it so only one energy level can be assigned at a time. How do I fix this?"
+  },
+  {
+    "id": 70,
+    "name": "Drop Entire Recurring Series",
+    "prompt": "I have a recurring task task-weekly-123 that repeats every week. I don't want it anymore \u2014 drop the whole series so no more occurrences spawn."
+  },
+  {
+    "id": 71,
+    "name": "Reparent Tag Under New Parent",
+    "prompt": "I have a tag 'Aimee' (ID: tag-aimee-001) that's currently at the top level. I want to move it under the 'People' tag to organize my tag hierarchy. Make sure all existing task associations are preserved."
+  },
+  {
+    "id": 55,
+    "name": "Tag and Flag a Project",
+    "prompt": "Flag the project proj-website-001 as high priority and add the tag 'High Priority' to it."
+  },
+  {
+    "id": 56,
+    "name": "Reorder Task Before Another",
+    "prompt": "In my 'Website Redesign' project, move the 'QA testing' task (task-qa-001) before the 'Frontend build' task (task-fe-001)."
+  },
+  {
+    "id": 57,
+    "name": "Delete Tag vs Drop Tag",
+    "prompt": "I don't need the 'Errands' tag (tag-errands-001) anymore. I want it completely gone, not just hidden."
+  },
+  {
+    "id": 58,
+    "name": "List Custom Perspectives",
+    "prompt": "What custom perspectives do I have set up?"
+  },
+  {
+    "id": 59,
+    "name": "Create Nested Folder",
+    "prompt": "Create a 'Q2' folder inside my 'Work' folder."
+  },
+  {
+    "id": 60,
+    "name": "Switch to Perspective",
+    "prompt": "Switch to my 'Weekly Review' perspective."
+  },
+  {
+    "id": 61,
+    "name": "Triage Overdue Tasks",
+    "prompt": "Show me all my overdue tasks. Then flag the 3 most urgent ones so I can focus on them today."
+  },
+  {
+    "id": 62,
+    "name": "Query Returns No Results",
+    "prompt": "Show me all tasks in the 'Quantum Computing Research' project. I'm not sure if that project exists."
+  },
+  {
+    "id": 63,
+    "name": "Create Task with Multiple Tags (Format Test)",
+    "prompt": "Create a task called 'Buy birthday gift' in my inbox with tags Computer and Errands."
+  },
+  {
+    "id": 64,
+    "name": "Batch Task Creation",
+    "prompt": "Add these 5 tasks to my inbox: buy groceries, do laundry, wash dishes, vacuum living room, prep meals for the week."
+  },
+  {
+    "id": 65,
+    "name": "Batch Project Creation with Options",
+    "prompt": "Create two new projects: 'Kitchen Renovation' (sequential, in folder Home) and 'Garden Planning' (parallel, in folder Home)."
+  },
+  {
+    "id": 66,
+    "name": "Basic Sequential Action Group",
+    "prompt": "I need to do these in order: research venues, book venue, send invitations. Create them as a sequential action group called 'Event Planning' in project proj-100."
+  },
+  {
+    "id": 67,
+    "name": "Mixed Dependencies \u2014 Parallel Project with Sequential Chains",
+    "prompt": "Create a project 'Home Renovation'. These tasks can happen in parallel: 'Get contractor quotes' and 'Choose paint colors'. But 'Schedule contractor' must wait for quotes, and 'Buy paint' must wait for colors chosen. Organize with action groups to capture these dependency chains."
+  },
+  {
+    "id": 68,
+    "name": "Nested Action Groups \u2014 Mixed Sequential and Parallel",
+    "prompt": "In project proj-200, create a task 'Prepare presentation' with these sequential subtasks: 'Research topic', 'Write outline', 'Create slides'. Under 'Create slides', add parallel subtasks: 'Design template', 'Add content', 'Add animations'."
+  },
+  {
+    "id": 69,
+    "name": "Diamond Dependency \u2014 Converging Tasks",
+    "prompt": "I have tasks with dependencies: 'Draft report' and 'Collect data' are independent and can happen at the same time. 'Review findings' depends on BOTH being done first. Put these in project proj-300 and structure them so 'Review findings' only becomes available after both prerequisites are complete."
+  }
+]
