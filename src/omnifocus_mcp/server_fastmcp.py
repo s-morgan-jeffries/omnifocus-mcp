@@ -23,7 +23,7 @@ EFFECTIVE DATES: Dates returned by get_tasks are always effective (inherited). A
 
 RECURRING TASKS: `completed=True` uses `mark complete`, which creates the next occurrence. This is guaranteed. WARNING: Dropping a recurring task (status='dropped') without clearing recurrence first (recurrence='') spawns the next occurrence. To stop a series: update_tasks([{"id": "...", "recurrence": "", "status": "dropped"}]).
 
-TAGS: Represent work contexts. Tags can be Active or On Hold — tasks with On Hold tags are excluded from Available perspective.
+TAGS: Represent work contexts. Tag statuses: Active (normal), On Hold (tasks excluded from Available perspective), Dropped (tag hidden from picker; does NOT affect task availability).
 
 DEFER vs DUE: Defer = hidden until that date. Due = deadline.
 """)
@@ -972,7 +972,7 @@ def update_tasks(tasks: list[TaskUpdate]) -> str:
     - task_name, project_id, parent_task_id, note: str
     - due_date, defer_date, planned_date: str -- ISO or "" to clear
     - flagged, completed: bool -- completed=True on recurring task creates next occurrence
-    - status: str
+    - status: str -- "dropped" (prefer completed: bool for completion)
     - tags: list[str] -- full replacement (conflicts with add_tags/remove_tags)
     - add_tags, remove_tags: list[str]
     - estimated_minutes: int
