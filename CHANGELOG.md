@@ -5,6 +5,52 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1] - 2026-03-28
+
+Tool description overhaul — trimmed by 67% after blind eval research showed descriptions were 10x the MCP community norm. Adversarial API critic review identified and fixed four description gaps.
+
+### Changed
+
+- **Server instructions and tool docstrings trimmed by 67%** — 29K → 10K chars (#550, #552)
+  - Server instructions: 3,580 → 1,400 chars (cut BATCH OPERATIONS, PLANNING PATTERN, INBOX, REVIEW)
+  - Tool docstrings: avg 900 → 355 chars (let parameter names/types self-document)
+  - Blind eval: trimmed version scores 98.6% vs 100% original on Claude
+
+- **Strengthened effective dates language** to prevent agent hedging (#556, #561)
+  - "include" → "always effective (inherited)", "WILL show", "not a bug"
+
+- **Documented all three tag statuses** with availability effects (#557, #561)
+  - Active (normal), On Hold (excludes from Available), Dropped (hidden, no availability effect)
+
+- **Annotated `stalled_only` parameter** — was the only undescribed boolean filter (#555, #560)
+
+- **Enumerated task `status` valid values** — was bare `status: str` (#558, #561)
+
+- **Added drop+recurrence warning** — dropping without clearing recurrence spawns next occurrence (#550)
+
+- **Added `next` field semantics** to server instructions (#550)
+
+### Fixed
+
+- **Duplicate scenario IDs** 53/54 → 70/71 in blind eval suite (#550)
+- **Stale scenario #5** PASS criteria updated for v0.13.0 API (no single-item wrappers) (#550)
+- **Scenario #13** relaxed from 4 queries to 3+ (removed PLANNING PATTERN dependency) (#550)
+
+### Added
+
+- **5x multi-run eval infrastructure** — `run_eval.py --runs 5` for variance analysis (#544, #559)
+- **Regex + LLM auto-scoring** — `--scorer-model` flag for semantic scoring of explanation scenarios (#544)
+- **macOS Keychain API key storage** for eval runner (#551, #554)
+- **`--descriptions` and `--label` flags** for A/B testing different description versions (#550)
+- **CI wait step** in `/merge-and-status` command — prevents confusing error when CI is pending (#553)
+- **Adversarial API critic** workflow — ranked findings by agent mistake likelihood × severity (#544)
+- **Post-fix eval rerun** confirming Claude at 100% and DeepSeek improved (#562, #563)
+
+### Documentation
+
+- **Blind eval results** — 5x runs across Claude (100%), DeepSeek (93.7%), Llama (89.7%)
+- **Test docstrings** added to all 474 previously undocumented test methods (#547, #549)
+
 ## [0.13.0] - 2026-03-24
 
 Unified batch CRUD for all entity types — tags and folders join tasks and projects with Pydantic model inputs. Deprecated single-item wrappers removed from MCP surface.
