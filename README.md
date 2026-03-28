@@ -79,7 +79,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 
 - macOS with OmniFocus installed
 - Python 3.10+
-- UV package manager (recommended) or pip
+- [uv](https://docs.astral.sh/uv/) package manager
 
 ## Installation
 
@@ -88,14 +88,11 @@ git clone https://github.com/s-morgan-jeffries/omnifocus-mcp.git
 cd omnifocus-mcp
 git checkout v0.13.1  # Latest stable release
 
-# Using UV (recommended)
+# Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-uv pip install -e .
 
-# Or using pip
-python3 -m venv venv
-source venv/bin/activate
-pip install -e ".[dev]"
+# Install dependencies
+uv sync --dev
 ```
 
 ## Configuration

@@ -12,8 +12,11 @@ echo "========================================="
 echo ""
 
 # Check if radon is installed
-# Use venv python if available, otherwise use system python
-if [ -f ./venv/bin/python ]; then
+# Prefer uv run, fall back to venv, then system
+if command -v uv &> /dev/null; then
+    PYTHON="uv run python"
+    RADON="uv run radon"
+elif [ -f ./venv/bin/python ]; then
     PYTHON=./venv/bin/python
     RADON=./venv/bin/radon
 else
@@ -23,7 +26,7 @@ fi
 
 if ! $PYTHON -c "import radon" 2>/dev/null; then
     echo "ERROR: radon not installed. Install with:"
-    echo "  pip install -e '.[dev]'"
+    echo "  uv sync --dev"
     exit 1
 fi
 

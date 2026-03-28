@@ -21,6 +21,15 @@ dev = [
     "pip-audit>=2.7.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "radon>=6.0.0",
+    "pip-audit>=2.7.0",
+]
+
 [project.scripts]
 omnifocus-mcp = "omnifocus_mcp.server_fastmcp:mcp.run"
 
@@ -62,4 +71,4 @@ reportArgumentType = false
 reportIndexIssue = false
 reportAttributeAccessIssue = false
 venvPath = "."
-venv = "venv"
+venv = ".venv"

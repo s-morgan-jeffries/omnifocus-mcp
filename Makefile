@@ -14,32 +14,31 @@ help:
 	@echo "  make clean            - Remove cache and build artifacts"
 
 install:
-	python3 -m venv venv
-	./venv/bin/pip install -e ".[dev]"
+	uv sync --dev
 
 test:
-	./venv/bin/pytest tests/
+	uv run pytest tests/
 
 test-unit:
-	./venv/bin/pytest tests/test_omnifocus_client.py tests/test_server_fastmcp.py
+	uv run pytest tests/test_omnifocus_client.py tests/test_server_fastmcp.py
 
 test-integration:
 	OMNIFOCUS_TEST_MODE=true OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus" \
-	./venv/bin/pytest tests/test_integration_real.py -v
+	uv run pytest tests/test_integration_real.py -v
 
 test-e2e:
 	OMNIFOCUS_TEST_MODE=true OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus" \
-	./venv/bin/pytest tests/test_e2e_real.py -v
+	uv run pytest tests/test_e2e_real.py -v
 
 test-prod:
 	OMNIFOCUS_PROD_TEST=true \
-	./venv/bin/pytest tests/test_prod_integration.py -v
+	uv run pytest tests/test_prod_integration.py -v
 
 test-verbose:
-	./venv/bin/pytest tests/ -v --tb=long
+	uv run pytest tests/ -v --tb=long
 
 coverage:
-	./venv/bin/pytest tests/ --cov=omnifocus_mcp --cov-report=term-missing -q
+	uv run pytest tests/ --cov=omnifocus_mcp --cov-report=term-missing -q
 
 complexity:
 	@./scripts/check_complexity.sh
