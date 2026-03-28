@@ -14,11 +14,11 @@ ACTION GROUPS: Task with subtasks. Parent shows `blocked: true` while subtasks a
 
 INHERITED STATUS: `completed`/`dropped` reflect the task's own state, not its container's. Task in completed project: `completed: false`, `available: false`. Use `available_only=True` for actionable tasks.
 
-EFFECTIVE DATES: Dates returned by get_tasks include dates inherited from the project. A task with no direct due date shows its project's due date. You cannot clear an inherited date at the task level. Write operations set the task's own date.
+EFFECTIVE DATES: Dates returned by get_tasks are always effective (inherited). A task with no direct due date WILL show its project's due date in the dueDate field — this is correct behavior, not a bug. You cannot clear an inherited date at the task level. Write operations set the task's own date.
 
 RECURRING TASKS: `completed=True` uses `mark complete`, which creates the next occurrence. This is guaranteed. WARNING: Dropping a recurring task (status='dropped') without clearing recurrence first (recurrence='') spawns the next occurrence. To stop a series: update_tasks([{"id": "...", "recurrence": "", "status": "dropped"}]).
 
-TAGS: Represent work contexts. Tags can be Active or On Hold — tasks with On Hold tags are excluded from Available perspective.
+TAGS: Represent work contexts. Tag statuses: Active (normal), On Hold (tasks excluded from Available perspective), Dropped (tag hidden from picker; does NOT affect task availability).
 
 DEFER vs DUE: Defer = hidden until that date. Due = deadline.
 
@@ -137,7 +137,7 @@ Update one or more tasks. Each item has `id` (required) plus fields to change.
 - `task_name, project_id, parent_task_id, note: str`
 - `due_date, defer_date, planned_date: str` — ISO or "" to clear
 - `flagged, completed: bool` — completed=True on recurring task creates next occurrence
-- `status: str`
+- `status: str` — "dropped" (prefer `completed: bool` for completion)
 - `tags: list[str]` — full replacement (conflicts with add_tags/remove_tags)
 - `add_tags, remove_tags: list[str]`
 - `estimated_minutes: int`
