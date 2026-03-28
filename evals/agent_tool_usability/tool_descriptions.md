@@ -31,7 +31,8 @@ Retrieve projects with optional filtering.
 **Parameters:**
 - `project_id: str` — filter to specific project
 - `query: str` — search name/note/folder (case-insensitive)
-- `flagged_only, on_hold_only, stalled_only, completed_only: bool`
+- `flagged_only, on_hold_only, completed_only: bool`
+- `stalled_only: bool` — active projects with no available next actions
 - `include_dropped, include_completed: bool` — include hidden states
 - `include_full_notes: bool`
 - `include_task_health: bool` — adds remainingCount, availableCount, overdueCount, deferredCount, stalled, health
