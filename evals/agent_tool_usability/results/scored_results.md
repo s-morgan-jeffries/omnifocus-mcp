@@ -132,6 +132,32 @@ Dropped (tag hidden from picker; does NOT affect task availability).
 
 **Fix:** `status: str — "dropped" (prefer completed: bool for completion)`
 
+## Post-Fix Rerun (2026-03-28)
+
+After applying critic fixes (#555-558), reran 5x evals on Claude and DeepSeek.
+
+### Post-Fix Scores
+
+| Model | Pre-fix mean | Post-fix mean | Change |
+|-------|-------------|---------------|--------|
+| **Claude Opus 4.6** | 98.9% | **100%** | +1.1pp |
+| DeepSeek v3-0324 | 93.4% | **93.7%** | +0.3pp |
+
+### Targeted Scenario Comparison
+
+| Scenario | Fix | Claude pre→post | DeepSeek pre→post |
+|----------|-----|----------------|-------------------|
+| #40 (stalled_only) | #555 annotated | 5/5 Pa → **5/5 PASS** | 4/5 Pa → **5/5 PASS** |
+| #21 (inherited dates) | #556 assertive language | 2/5 Pa → **5/5 PASS** | 5/5 F → 5/5 F (model limitation) |
+| #33 (tag dropped) | #557 documented | 1/5 Pa → **5/5 PASS** | n/a → 5/5 PASS |
+
+### Conclusions
+
+- **#555 (stalled_only)** fully resolved the universal weakness — both models now PASS 5/5
+- **#556 (effective dates)** resolved the Claude weakness; DeepSeek still FAILs because the model contradicts the description regardless of phrasing — this is a reasoning limitation, not a description gap
+- **#557 (tag dropped)** resolved the Claude intermittent — no longer hedges about dropped tag behavior
+- **No regressions** detected on either model across full 71-scenario suite
+
 ## Methodology
 
 - **Claude evals:** Via Claude Code subagents. Each agent receives `tool_descriptions.md` + scenario prompts (separated from scoring notes). Scored by independent scorer subagents against `scoring_notes_only.json`.
