@@ -1,0 +1,146 @@
+[
+  {
+    "id": 1,
+    "response": "Create a task with defer_date set to Monday (when you can start acting on it) and due_date set to Friday (the actual appointment deadline).\n\nCall: create_tasks([{\"task_name\": \"Call the dentist\", \"defer_date\": \"2026-03-16\", \"due_date\": \"2026-03-20\"}])\n\nDefer date hides the task until March 16 (next Monday), so it won't clutter your view before then. Due date is March 20 (next Friday), the appointment deadline."
+  },
+  {
+    "id": 2,
+    "response": "Two calls needed:\n\n1. create_projects([{\"name\": \"Kitchen Renovation\", \"project_type\": \"sequential\"}])\n2. After getting the project ID back (e.g. proj-id), create tasks in order:\n   create_tasks([\n     {\"task_name\": \"Get quotes\", \"project_id\": \"<proj-id>\"},\n     {\"task_name\": \"Pick contractor\", \"project_id\": \"<proj-id>\"},\n     {\"task_name\": \"Sign contract\", \"project_id\": \"<proj-id>\"},\n     {\"task_name\": \"Demolition\", \"project_id\": \"<proj-id>\"},\n     {\"task_name\": \"Installation\", \"project_id\": \"<proj-id>\"}\n   ])\n\nBecause the project is sequential, only 'Get quotes' will be available initially. Each subsequent task becomes available only after the previous one is completed. Task creation order determines dependency order."
+  },
+  {
+    "id": 3,
+    "response": "Call: get_tasks(available_only=True)\n\nThis returns only tasks that are currently actionable — filtering out deferred tasks (future defer date), blocked tasks (waiting on predecessors in sequential projects), and tasks in completed/dropped/on-hold projects."
+  },
+  {
+    "id": 4,
+    "response": "Flag the three tasks to mark them as today's focus:\n\nCall: update_tasks([{\"id\": \"task-001\", \"flagged\": true}, {\"id\": \"task-002\", \"flagged\": true}, {\"id\": \"task-003\", \"flagged\": true}])\n\nFlagged tasks appear in the Flagged perspective, making them easy to focus on throughout the day."
+  },
+  {
+    "id": 5,
+    "response": "A single update_tasks call handles both renaming and flagging:\n\nCall: update_tasks([\n  {\"id\": \"task-123\", \"task_name\": \"Buy groceries\"},\n  {\"id\": \"task-456\", \"flagged\": true},\n  {\"id\": \"task-789\", \"flagged\": true}\n])\n\nEach item in the batch can have different fields — one has task_name, the others have flagged."
+  },
+  {
+    "id": 6,
+    "response": "Call: update_tasks([{\"id\": \"task-100\", \"project_id\": \"proj-200\"}])\n\nSetting project_id moves the task from the inbox into the specified project."
+  },
+  {
+    "id": 7,
+    "response": "Do NOT delete — use update_projects to drop it:\n\nCall: update_projects([{\"id\": \"proj-888\", \"status\": \"dropped\"}])\n\nDropping the project marks it as abandoned while preserving all data. It will be hidden from default views but still accessible if you include dropped projects in a search. delete_projects would permanently destroy it."
+  },
+  {
+    "id": 8,
+    "response": "Call: reorder_task(task_id=\"task-B\", before_task_id=\"task-A\")\n\nThis moves task-B before task-A. In a sequential project, order determines dependencies, so task-B will now become available first, and task-A will be blocked until task-B is complete."
+  },
+  {
+    "id": 9,
+    "response": "Two calls needed:\n\n1. create_tasks([{\"task_name\": \"Review PR\", \"tags\": [\"Computer\", \"Work\"]}])\n2. update_tasks([{\"id\": \"task-555\", \"add_tags\": [\"Urgent\"]}])\n\nFor creation, use the `tags` parameter to set initial tags. For existing tasks, use `add_tags` to append without replacing existing tags. Using `tags` on the update would replace all existing tags with just ['Urgent']."
+  },
+  {
+    "id": 10,
+    "response": "Call: update_tasks([{\"id\": \"task-300\", \"due_date\": \"\"}])\n\nPassing an empty string for a date field clears it. Note: if the task's project has a due date, the task will still show the inherited project due date in the UI and in get_tasks results, but the task's own due date will be cleared."
+  },
+  {
+    "id": 11,
+    "response": "Call: create_tasks([{\"task_name\": \"Buy nails\", \"parent_task_id\": \"task-400\"}])\n\nUse parent_task_id to create a subtask under an existing task. Do NOT also set project_id — parent_task_id and project_id are mutually exclusive. The subtask inherits the project from its parent."
+  },
+  {
+    "id": 12,
+    "response": "Call: get_tasks(tag_filter=[\"Errands\", \"Weekend\"])\n\nBy default, tag_filter_mode is \"and\", so this returns only tasks that have BOTH tags. If you wanted tasks with either tag, you'd set tag_filter_mode=\"or\"."
+  },
+  {
+    "id": 13,
+    "response": "Multiple calls to gather a full picture for daily planning:\n\n1. get_tasks(overdue=True) — see what's past due and needs immediate attention\n2. get_tasks(flagged_only=True) — see what you've already flagged as important\n3. get_tasks(available_only=True, inbox_only=True) — check inbox for unprocessed items\n4. get_tasks(available_only=True, next_only=True) — see next available actions across sequential projects\n\nReview the results, then flag the tasks you want to focus on today using update_tasks with flagged=true."
+  },
+  {
+    "id": 14,
+    "response": "Three calls in sequence:\n\n1. create_projects([{\"name\": \"Website Redesign\", \"folder_path\": \"Work\", \"project_type\": \"sequential\", \"review_interval_weeks\": 2}])\n\n2. After getting the project ID (e.g. proj-id):\n   create_tasks([\n     {\"task_name\": \"Wireframes\", \"project_id\": \"<proj-id>\", \"tags\": [\"Web Team\"]},\n     {\"task_name\": \"Design mockups\", \"project_id\": \"<proj-id>\", \"tags\": [\"Web Team\"]},\n     {\"task_name\": \"Frontend build\", \"project_id\": \"<proj-id>\", \"tags\": [\"Web Team\"]},\n     {\"task_name\": \"Backend API\", \"project_id\": \"<proj-id>\", \"tags\": [\"Web Team\"]},\n     {\"task_name\": \"QA testing\", \"project_id\": \"<proj-id>\", \"tags\": [\"Web Team\"]},\n     {\"task_name\": \"Launch\", \"project_id\": \"<proj-id>\", \"tags\": [\"Web Team\"]}\n   ])\n\nBecause the project is sequential, tasks are completed in order. Only 'Wireframes' will be available initially. The 'Web Team' tag must already exist. review_interval_weeks=2 sets biweekly reviews."
+  },
+  {
+    "id": 15,
+    "response": "Call: get_projects()\n\nThen inspect the returned nextReviewDate field for each project. Projects whose nextReviewDate is in the past (before today's date) are overdue for review. There is no direct filter for 'overdue review' in get_projects, so you must fetch all active projects and compare nextReviewDate against today."
+  },
+  {
+    "id": 16,
+    "response": "Call: update_projects([{\"id\": \"proj-777\", \"status\": \"done\"}])\n\nThis marks the project as completed. Use status 'done', not 'dropped' — dropped means abandoned. Completing the project preserves the record and marks it as successfully finished."
+  },
+  {
+    "id": 17,
+    "response": "set_focus does not support tasks — it only works with projects and folders. You cannot focus on a single task.\n\nAlternative: Flag the task instead to highlight it.\n\nCall: update_tasks([{\"id\": \"task-999\", \"flagged\": true}])\n\nThen view your Flagged perspective to see just flagged tasks. Or, if you know the project containing task-999, you could focus on that project:\n\nCall: set_focus(item_ids=\"<project-id>\", item_types=\"project\")"
+  },
+  {
+    "id": 18,
+    "response": "Two calls:\n\n1. get_tasks(inbox_only=True) — retrieve all inbox tasks and their IDs\n2. Then: update_tasks([{\"id\": \"<id1>\", \"completed\": true}, {\"id\": \"<id2>\", \"completed\": true}, ...]) for each task returned\n\nNote: if any inbox tasks are recurring, setting completed=true will create the next occurrence (which is correct behavior). The new occurrence will appear back in the inbox."
+  },
+  {
+    "id": 19,
+    "response": "Nothing is wrong. This is an action group — a task with subtasks (subtaskCount: 3). The parent task shows blocked=true because its subtasks are still active. This is normal OmniFocus behavior.\n\nSince sequential=true, the subtasks must be completed in order. The first incomplete subtask is the one that's actually available/actionable.\n\nTo see the actionable subtask, call: get_tasks(parent_task_id=\"task-700\", available_only=True)\n\nDo not try to unblock the parent — it will automatically become unblocked when all subtasks are completed."
+  },
+  {
+    "id": 20,
+    "response": "No tool call needed — this is an explanation question.\n\nYes, that's correct. The `next` field indicates the first available action in a project:\n\n- In a sequential project, only the first incomplete task has next=true. The rest are blocked and waiting their turn.\n- In a parallel project, ALL incomplete tasks are available simultaneously, so all have next=true.\n\nThis matches OmniFocus's 'Next' filter, which shows one action per sequential project but all actions in parallel projects."
+  },
+  {
+    "id": 21,
+    "response": "No tool call needed — this is an explanation of how effective dates work.\n\nActually, per the tool description, get_tasks returns *effective* dates that include dates inherited from the project. So if the tasks show dueDate as empty, it means the API is returning empty for those tasks.\n\nHowever, the server instructions say: 'Date fields are effective (include inherited from project).' So the tasks SHOULD show the inherited April 15 due date. If they're showing empty, that's unexpected.\n\nNote: 'You cannot clear an inherited date at the task level. Write operations set the task's own date.' The dates returned by get_tasks should already include inherited dates. If the UI shows April 15 but the API returns empty, this may be a discrepancy worth investigating.\n\nTo verify, call: get_tasks(project_id=\"proj-q2\") and check the dueDate field."
+  },
+  {
+    "id": 22,
+    "response": "No tool call needed — this is an explanation question.\n\nThey may not be the same type. Check the `projectType` field in get_projects results:\n\n- **parallel**: Tasks can be done in any order, but the project has a completion goal. Completing all tasks completes the project. This is likely 'Home Repairs'.\n- **single_actions**: A grab-bag of unrelated tasks with no completion goal. The project cannot auto-complete. This is likely 'Errands'.\n\nBoth show sequential=false (the deprecated field), but projectType distinguishes them. Call get_projects(project_id=\"<home-repairs-id>\") and get_projects(project_id=\"<errands-id>\") to check their projectType fields."
+  },
+  {
+    "id": 23,
+    "response": "No tool call needed — this is an explanation question.\n\nYes, update_tasks with completed=True on a recurring task WILL create the next occurrence. The server instructions state: 'completed=True on recurring task creates next occurrence.' This is guaranteed.\n\nThe recurrence is preserved — a new task instance is spawned with the next date based on the repetition_method (fixed, start_after_completion, or due_after_completion).\n\nCall when ready: update_tasks([{\"id\": \"<water-plants-id>\", \"completed\": true}])"
+  },
+  {
+    "id": 24,
+    "response": "Use planned_date for the scheduling signal and due_date for the deadline:\n\nCall: update_tasks([{\"id\": \"<task-id>\", \"planned_date\": \"2026-03-18\", \"due_date\": \"2026-03-20\"}])\n\nOr if creating new: create_tasks([{\"task_name\": \"Write blog post\", \"planned_date\": \"2026-03-18\", \"due_date\": \"2026-03-20\"}])\n\nPlanned date is a scheduling signal only — it doesn't affect availability or create overdue warnings. The task remains available before Wednesday (no defer date is set, so you can start earlier if you have free time). Due date is Friday March 20 — the hard deadline."
+  },
+  {
+    "id": 25,
+    "response": "Use all three date fields:\n\nCall: create_tasks([{\"task_name\": \"Prepare presentation\", \"defer_date\": \"2026-03-16\", \"planned_date\": \"2026-03-18\", \"due_date\": \"2026-03-20\"}])\n\n- defer_date (March 16): Task is hidden until Monday — you can't start without the materials.\n- planned_date (March 18): Wednesday is when you plan to work on it — a scheduling signal, no hard constraint.\n- due_date (March 20): Friday meeting deadline — triggers overdue warnings if missed."
+  },
+  {
+    "id": 26,
+    "response": "Call: update_tasks([{\"id\": \"task-600\", \"planned_date\": \"\"}])\n\nPassing an empty string clears the planned date. The task's defer and due dates (if any) are unaffected."
+  },
+  {
+    "id": 27,
+    "response": "No tool call needed — the answer is in the data.\n\nUse the repeatSummary field for display: 'Every week on Mon, Wed, Fri'. This task repeats three times per week on Monday, Wednesday, and Friday.\n\nThe repetitionMethod is 'fixed', meaning it follows the original schedule regardless of when you complete it. Always use repeatSummary for human-readable display rather than parsing the RRULE."
+  },
+  {
+    "id": 28,
+    "response": "Call: update_tasks([{\"id\": \"task-810\", \"recurrence\": \"FREQ=WEEKLY;INTERVAL=2\"}])\n\nThis changes the recurrence rule from every 1 week to every 2 weeks. The repetition_method remains unchanged (whatever it was set to before)."
+  },
+  {
+    "id": 29,
+    "response": "No tool call needed — this is an explanation question.\n\nWith repetitionMethod 'due_after_completion', the next due date is calculated relative to when you actually complete the task, NOT the original schedule. So if the task was due Monday but you completed it on Wednesday, the next occurrence will be due one week from Wednesday (next Wednesday), not next Monday.\n\nThis is different from 'fixed' (which would keep the Monday schedule regardless) and 'start_after_completion' (which shifts the defer/start date based on completion)."
+  },
+  {
+    "id": 30,
+    "response": "Call: update_tasks([{\"id\": \"task-900\", \"recurrence\": \"\"}])\n\nPassing an empty string for recurrence clears it. The task becomes a normal non-recurring task."
+  },
+  {
+    "id": 31,
+    "response": "Call: update_tasks([{\"id\": \"task-820\", \"recurrence\": \"FREQ=DAILY;INTERVAL=1\", \"repetition_method\": \"due_after_completion\"}])\n\nFREQ=DAILY makes it repeat daily. repetition_method='due_after_completion' means the next due date is calculated from when you actually complete the task, not from the original fixed schedule."
+  },
+  {
+    "id": 32,
+    "response": "Call: update_tasks([{\"id\": \"task-830\", \"recurrence\": \"FREQ=DAILY;INTERVAL=1\", \"repetition_method\": \"fixed\"}])\n\nThis adds a daily recurrence with a fixed schedule — the task repeats every day on the same time regardless of when you complete each occurrence."
+  },
+  {
+    "id": 33,
+    "response": "Be careful here. Dropping a tag (status='dropped') hides it from the tag picker, but per the server instructions, tasks with an 'on hold' tag are excluded from the Available perspective. The 'dropped' status behavior for tags isn't explicitly documented regarding task availability.\n\nHowever, the user wants the tag hidden but tasks still available. The safest approach:\n\nCall: update_tags([{\"id\": \"tag-050\", \"status\": \"dropped\"}])\n\nDropped status hides the tag. The server instructions only say 'on hold' tags exclude tasks from Available — dropped tags are not mentioned as affecting availability. If you used 'on_hold' instead, tasks with this tag would become unavailable, which the user explicitly does not want."
+  },
+  {
+    "id": 34,
+    "response": "To make 'Waiting' usable again (tasks with it should be available), change it from 'on hold' to 'active':\n\nCall: update_tags([{\"id\": \"tag-052\", \"status\": \"active\"}])\n\nExplanation of the three statuses:\n- **active** (Errands): Normal tag. Tasks with this tag can be available.\n- **on hold** (Waiting): Tasks with this tag are excluded from the Available perspective — they won't show as actionable.\n- **dropped** (Archive): Tag is hidden. Leave Archive as-is per the user's request.\n\nOnly the Waiting tag needs to be changed. No action needed for Archive."
+  },
+  {
+    "id": 35,
+    "response": "Call: create_projects([{\"name\": \"Someday/Maybe\", \"project_type\": \"single_actions\"}])\n\nThe 'single_actions' project type is exactly what you need:\n- No completion goal — the project won't auto-complete when tasks are checked off\n- Tasks are independent (no ordering/dependencies)\n- It's a grab-bag list for collecting ideas\n\nOptionally add a folder_path if you want it organized somewhere specific."
+  },
+  {
+    "id": 36,
+    "response": "Call: update_folders([{\"id\": \"folder-999\", \"status\": \"dropped\"}])\n\nSetting the folder status to 'dropped' hides it from default views without deleting it. All projects and tasks inside remain intact. You can restore it later by setting status back to 'active'."
+  }
+]
