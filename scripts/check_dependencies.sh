@@ -23,8 +23,11 @@ else
     exit 1
 fi
 
-# Run pip-audit on installed packages
-if $PIP_AUDIT 2>&1; then
+# Run pip-audit:
+#   --skip-editable: skip omnifocus-mcp (not on PyPI, causes false positive)
+#   --ignore-vuln: suppress CVEs with no fix available (dev-only deps)
+#     CVE-2026-4539: pygments ReDoS in ADL lexer, no fix released
+if $PIP_AUDIT --skip-editable --ignore-vuln CVE-2026-4539 2>&1; then
     echo ""
     echo "✅ Dependency audit PASSED — no known vulnerabilities found."
     exit 0
