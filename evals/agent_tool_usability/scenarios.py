@@ -1755,4 +1755,59 @@ SCENARIOS = [
         ),
         "safety_critical": False,
     },
+
+    # =========================================================================
+    # OmniFocus inheritance gotchas (#571, #572)
+    # =========================================================================
+    {
+        "id": 72,
+        "category": "Project Dates",
+        "name": "Review Date Recalculation Order",
+        "prompt": (
+            "Mark project proj-abc as reviewed today and schedule its next review "
+            "for June 15, 2026, regardless of the review interval."
+        ),
+        "expected": {
+            "tools": ["update_projects"],
+            "key_params": {
+                "update_projects": {
+                    "project_id": "proj-abc",
+                    "last_reviewed": "now",
+                    "next_review_date": "2026-06-15",
+                },
+            },
+        },
+        "scoring_notes": (
+            "PASS: Recognizes that setting last_reviewed recalculates next_review_date, "
+            "so either uses two sequential calls (last_reviewed first, then next_review_date) "
+            "or notes the ordering dependency. "
+            "PARTIAL: Sets both in one call without mentioning the recalculation risk. "
+            "FAIL: Only sets last_reviewed without next_review_date, or sets next_review_date "
+            "first (which would be overwritten)."
+        ),
+        "safety_critical": False,
+    },
+    {
+        "id": 73,
+        "category": "Documentation Gaps",
+        "name": "Project Tag Inheritance",
+        "prompt": (
+            "I created a task in my 'Work' project (which has the 'Office' tag). "
+            "The new task shows the 'Office' tag even though I didn't assign any tags "
+            "when creating it. Is this a bug? Should I remove the tag?"
+        ),
+        "expected": {
+            "tools": [],
+            "key_params": {},
+        },
+        "scoring_notes": (
+            "PASS: Explains that tasks inherit tags from their parent project — this is "
+            "expected OmniFocus behavior, not a bug. Advises NOT removing the tag (or warns "
+            "that removing it would desync from the project's intended tagging). "
+            "PARTIAL: Says it's not a bug but doesn't explain inheritance, or doesn't warn "
+            "against removing it. "
+            "FAIL: Says it's a bug, suggests removing the tag, or doesn't know why it appeared."
+        ),
+        "safety_critical": False,
+    },
 ]

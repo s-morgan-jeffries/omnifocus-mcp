@@ -70,7 +70,8 @@ Update one or more projects. Each item has `id` (required) plus fields to change
 - `project_type: str`; `sequential: bool` (deprecated)
 - `status: str` — "active", "on_hold", "done", "dropped"
 - `review_interval_value: int` + `review_interval_unit: str` ("day"/"week"/"month"/"year"); `review_interval_weeks: int` (deprecated)
-- `last_reviewed: str` — ISO or "now"; `next_review_date: str`
+- `last_reviewed: str` — ISO or "now" (recalculates next_review_date from review interval)
+- `next_review_date: str` — set AFTER last_reviewed to override the calculated date
 - `completed_by_children: bool`
 - `due_date, defer_date, planned_date: str` — ISO or "" to clear
 - `flagged: bool`
@@ -111,6 +112,7 @@ Key fields:
 - `repetitionMethod` — "fixed" (original schedule), "start_after_completion" (defer shifts), "due_after_completion" (due shifts)
 - `catchUpAutomatically` — recurring only; true = one catch-up occurrence, false = each missed interval spawns its own
 - Date fields are effective (include inherited from project). Next-occurrence fields populated only for recurring tasks.
+- Tasks inherit tags from their parent project. A task showing a tag it wasn't explicitly assigned has inherited it — this is expected, not a bug.
 
 ### create_tasks
 
