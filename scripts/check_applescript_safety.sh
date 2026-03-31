@@ -57,6 +57,27 @@ else
 fi
 echo ""
 
+# --- Check 2b: Reverse check — every _verify_database_safety call must use a registered operation ---
+echo "--- Check 2b: Reverse safety coverage (calls → set) ---"
+
+CALLED_OPS=$(grep -oE "_verify_database_safety\('[a-z_]+'\)" "$CONNECTOR" | \
+    grep -oE "'[a-z_]+'" | tr -d "'" | sort -u)
+
+MISSING_REGISTRATION=0
+for op in $CALLED_OPS; do
+    if ! echo "$DESTRUCTIVE_OPS" | grep -qw "$op"; then
+        echo "ERROR: _verify_database_safety('$op') called but '$op' not in DESTRUCTIVE_OPERATIONS set"
+        MISSING_REGISTRATION=$((MISSING_REGISTRATION + 1))
+    fi
+done
+
+if [ "$MISSING_REGISTRATION" -eq 0 ]; then
+    echo "OK: All safety calls use registered operations."
+else
+    ERRORS=$((ERRORS + MISSING_REGISTRATION))
+fi
+echo ""
+
 # --- Check 3: Unescaped string interpolation ---
 # Look for f-string interpolations of common user-input parameters
 # that don't use an _escaped suffix variable.
