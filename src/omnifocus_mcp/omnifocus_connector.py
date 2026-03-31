@@ -1,4 +1,5 @@
 """Client for interacting with OmniFocus app."""
+import re
 import subprocess
 import json
 import os
@@ -183,7 +184,7 @@ class OmniFocusConnector:
         except subprocess.CalledProcessError as e:
             raise DatabaseSafetyError(
                 f"Could not verify database name before operation '{operation_name}'. "
-                f"Blocking operation for safety. Error: {e.stderr}"
+                f"Blocking operation for safety. Error: {self._sanitize_error(e.stderr)}"
             )
 
     def _escape_applescript_string(self, text: str) -> str:
@@ -208,6 +209,26 @@ class OmniFocusConnector:
         text = text.replace("\n", "\\n")     # newline → \n
         text = text.replace("\r", "\\r")     # carriage return → \r
         text = text.replace("\t", "\\t")     # tab → \t
+        return text
+
+    def _sanitize_error(self, stderr: str) -> str:
+        """Sanitize AppleScript error messages before exposing to MCP clients.
+
+        Strips file paths, database names, and internal references while
+        preserving the core error message.
+        """
+        if not stderr:
+            return ""
+        text = stderr
+        # Strip file paths (/Users/..., /Library/...)
+        text = re.sub(r'/(?:Users|Library)/\S+', '[path]', text)
+        # Strip database filenames
+        text = re.sub(r'\S+\.ofocus\b', '[database]', text)
+        # Strip AppleScript class references
+        text = re.sub(r'«class \w+»', '[type]', text)
+        # Truncate
+        if len(text) > 500:
+            text = text[:500] + "..."
         return text
 
     def _build_whose_or_chain(self, ids_list: list[str], entity_type: str) -> str:
@@ -1249,7 +1270,7 @@ class OmniFocusConnector:
             else:
                 raise Exception("No output from OmniFocus AppleScript")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error querying OmniFocus: {e.stderr}")
+            raise Exception(f"Error querying OmniFocus: {self._sanitize_error(e.stderr)}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing OmniFocus output: {e}")
 
@@ -1417,7 +1438,7 @@ class OmniFocusConnector:
             else:
                 raise Exception("No project ID returned from OmniFocus")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error creating project: {e.stderr}")
+            raise Exception(f"Error creating project: {self._sanitize_error(e.stderr)}")
 
     def update_project(
         self,
@@ -1832,7 +1853,7 @@ class OmniFocusConnector:
                 "success": False,
                 "project_id": project_id,
                 "updated_fields": [],
-                "error": f"AppleScript error: {e.stderr}"
+                "error": f"AppleScript error: {self._sanitize_error(e.stderr)}"
             }
 
     def update_projects(
@@ -2167,7 +2188,7 @@ class OmniFocusConnector:
                 "failures": []  # Batch AppleScript doesn't provide per-project failure detail
             }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error batch updating projects: {e.stderr}")
+            raise Exception(f"Error batch updating projects: {self._sanitize_error(e.stderr)}")
 
 
 
@@ -2351,7 +2372,7 @@ class OmniFocusConnector:
             result = run_applescript(script)
             return result.strip()
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error creating task: {e.stderr}")
+            raise Exception(f"Error creating task: {self._sanitize_error(e.stderr)}")
 
     def _iso_to_applescript_date(self, iso_date: str) -> str:
         """Convert ISO 8601 date to AppleScript date format.
@@ -3308,7 +3329,7 @@ class OmniFocusConnector:
             else:
                 raise Exception("No output from OmniFocus AppleScript")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error querying OmniFocus tasks: {e.stderr}")
+            raise Exception(f"Error querying OmniFocus tasks: {self._sanitize_error(e.stderr)}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing OmniFocus task output: {e}")
 
@@ -3737,7 +3758,7 @@ class OmniFocusConnector:
                 "success": False,
                 "task_id": task_id,
                 "updated_fields": [],
-                "error": f"AppleScript error: {e.stderr}"
+                "error": f"AppleScript error: {self._sanitize_error(e.stderr)}"
             }
         except Exception as e:
             return {
@@ -4100,7 +4121,7 @@ class OmniFocusConnector:
                 "failures": []  # Batch AppleScript doesn't provide per-task failure detail
             }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error batch updating tasks: {e.stderr}")
+            raise Exception(f"Error batch updating tasks: {self._sanitize_error(e.stderr)}")
 
 
     def _get_tag_exclusivity_map(self) -> dict[str, bool]:
@@ -4232,7 +4253,7 @@ class OmniFocusConnector:
 
             return tags
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error querying tags: {e.stderr}")
+            raise Exception(f"Error querying tags: {self._sanitize_error(e.stderr)}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing tags output: {e}")
 
@@ -4324,7 +4345,7 @@ class OmniFocusConnector:
 
             return result
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error creating tag: {e.stderr}")
+            raise Exception(f"Error creating tag: {self._sanitize_error(e.stderr)}")
 
     def update_tag(
         self,
@@ -4453,7 +4474,7 @@ class OmniFocusConnector:
                     f"Error parsing update tag result: {result}"
                 )
             except subprocess.CalledProcessError as e:
-                raise Exception(f"Error updating tag: {e.stderr}")
+                raise Exception(f"Error updating tag: {self._sanitize_error(e.stderr)}")
         else:
             parsed = {"success": True, "updated_fields": []}
 
@@ -4534,7 +4555,7 @@ class OmniFocusConnector:
                 "failures": []
             }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error deleting tags: {e.stderr}")
+            raise Exception(f"Error deleting tags: {self._sanitize_error(e.stderr)}")
         except ValueError as e:
             raise Exception(f"Error parsing delete result: {e}")
 
@@ -4617,7 +4638,7 @@ class OmniFocusConnector:
                 "failures": []  # AppleScript doesn't provide detailed failure info
             }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error deleting tasks: {e.stderr}")
+            raise Exception(f"Error deleting tasks: {self._sanitize_error(e.stderr)}")
         except ValueError as e:
             raise Exception(f"Error parsing delete result: {e}")
 
@@ -4693,7 +4714,7 @@ class OmniFocusConnector:
                 "failures": []  # AppleScript doesn't track individual failures
             }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error deleting projects: {e.stderr}")
+            raise Exception(f"Error deleting projects: {self._sanitize_error(e.stderr)}")
         except ValueError as e:
             raise Exception(f"Error parsing delete result: {e}")
 
@@ -4772,7 +4793,7 @@ class OmniFocusConnector:
                 folder["status"] = "dropped" if folder.get("hidden") else "active"
             return folders
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error retrieving folders: {e.stderr}")
+            raise Exception(f"Error retrieving folders: {self._sanitize_error(e.stderr)}")
         except json.JSONDecodeError as e:
             raise Exception(f"Error parsing folder data: {e}")
 
@@ -4856,7 +4877,7 @@ class OmniFocusConnector:
                 raise Exception(f"Error creating folder: {result}")
             return result.strip()
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error creating folder: {e.stderr}")
+            raise Exception(f"Error creating folder: {self._sanitize_error(e.stderr)}")
 
 
     def update_folder(
@@ -4929,7 +4950,7 @@ class OmniFocusConnector:
                 return {"success": False, "folder_id": folder_id, "updated_fields": [], "error": result}
             return {"success": True, "folder_id": folder_id, "updated_fields": updated_fields}
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error updating folder: {e.stderr}")
+            raise Exception(f"Error updating folder: {self._sanitize_error(e.stderr)}")
 
     def reorder_task(self, task_id: str, before_task_id: Optional[str] = None, after_task_id: Optional[str] = None) -> bool:
         """Reorder a task by moving it before or after another task.
@@ -4986,7 +5007,7 @@ class OmniFocusConnector:
             else:
                 raise Exception(f"Error reordering task: {result}")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error reordering task: {e.stderr}")
+            raise Exception(f"Error reordering task: {self._sanitize_error(e.stderr)}")
 
     def reorder_project(self, project_id: str, before_project_id: Optional[str] = None, after_project_id: Optional[str] = None) -> bool:
         """Reorder a project by moving it before or after another project.
@@ -5046,7 +5067,7 @@ class OmniFocusConnector:
             else:
                 raise Exception(f"Error reordering project: {result}")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error reordering project: {e.stderr}")
+            raise Exception(f"Error reordering project: {self._sanitize_error(e.stderr)}")
 
 
 
@@ -5136,7 +5157,7 @@ class OmniFocusConnector:
             result = run_applescript(script)
             return json.loads(result)
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error retrieving perspectives: {e.stderr}")
+            raise Exception(f"Error retrieving perspectives: {self._sanitize_error(e.stderr)}")
 
     def switch_perspective(self, perspective_name: str) -> str:
         """Switch the front window to a different perspective.
@@ -5167,7 +5188,7 @@ class OmniFocusConnector:
             result = run_applescript(script)
             return result.strip()
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error switching perspective: {e.stderr}")
+            raise Exception(f"Error switching perspective: {self._sanitize_error(e.stderr)}")
 
     def set_focus(
         self,
@@ -5225,7 +5246,7 @@ class OmniFocusConnector:
                     "focused_items": [],
                 }
             except subprocess.CalledProcessError as e:
-                raise Exception(f"Error clearing focus: {e.stderr}")
+                raise Exception(f"Error clearing focus: {self._sanitize_error(e.stderr)}")
 
         # Validate lengths match
         if len(ids_list) != len(types_list):
@@ -5291,7 +5312,7 @@ class OmniFocusConnector:
                 "focused_items": focused_items,
             }
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error setting focus: {e.stderr}")
+            raise Exception(f"Error setting focus: {self._sanitize_error(e.stderr)}")
 
     def get_focus(self) -> list[dict]:
         """Get the currently focused items in the OmniFocus window.
@@ -5356,4 +5377,4 @@ class OmniFocusConnector:
             result = run_applescript(script)
             return json.loads(result)
         except subprocess.CalledProcessError as e:
-            raise Exception(f"Error getting focus: {e.stderr}")
+            raise Exception(f"Error getting focus: {self._sanitize_error(e.stderr)}")
