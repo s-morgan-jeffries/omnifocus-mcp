@@ -5148,8 +5148,7 @@ class OmniFocusConnector:
         Raises:
             Exception: If perspective not found or switch fails
         """
-        # Escape quotes in perspective name
-        perspective_escaped = perspective_name.replace('"', '\\"')
+        perspective_escaped = self._escape_applescript_string(perspective_name)
 
         script = f'''
         tell application "OmniFocus"
