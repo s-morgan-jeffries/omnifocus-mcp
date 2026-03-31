@@ -1457,6 +1457,21 @@ class TestSwitchPerspective:
                 client.switch_perspective("Invalid")
             assert "Error switching perspective" in str(exc_info.value)
 
+    def test_switch_perspective_escapes_backslash_quote_injection(self, client):
+        """Perspective name with backslash+quote cannot escape AppleScript string context."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "safe"
+            # This payload attempts to break out of the string via \" sequence
+            client.switch_perspective('test\\" & do shell script "whoami" & "')
+            script = mock_run.call_args[0][0]
+            # The backslash must be escaped BEFORE the quote, so the \" in the
+            # input becomes \\" in AppleScript (escaped backslash + escaped quote),
+            # keeping everything inside the string literal.
+            assert 'do shell script' not in script.split('"')[1] if 'do shell script' in script else True
+            # More directly: _escape_applescript_string escapes \ to \\, then " to \"
+            # So input \" becomes \\\" in the script (literal backslash + escaped quote)
+            assert '\\\\\\"' in script or 'do shell script' not in script
+
 
 class TestSetFocus:
     """Tests for set_focus method."""
