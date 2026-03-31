@@ -104,8 +104,10 @@ class OmniFocusConnector:
     DESTRUCTIVE_OPERATIONS = {
         'create_task', 'update_task', 'update_tasks',
         'create_project', 'update_project', 'update_projects',
-        'create_folder', 'create_tag', 'update_tag', 'delete_tasks',
-        'delete_projects', 'delete_tags', 'reorder_task',
+        'create_folder', 'update_folder',
+        'create_tag', 'update_tag',
+        'delete_tasks', 'delete_projects', 'delete_tags',
+        'reorder_task', 'reorder_project',
     }
 
     def __init__(self, enable_safety_checks: bool = True):

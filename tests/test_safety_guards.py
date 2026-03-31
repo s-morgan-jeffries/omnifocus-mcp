@@ -148,3 +148,26 @@ class TestSafetyGuardsDisabled:
 
             # All operations work without safety checks - no DatabaseSafetyError raised
             # Test passed - safety checks are disabled, operations succeed
+
+
+class TestDestructiveOperationsCompleteness:
+    """Verify DESTRUCTIVE_OPERATIONS set matches actual _verify_database_safety calls."""
+
+    def test_all_safety_calls_use_registered_operations(self):
+        """Every _verify_database_safety call must use an operation in DESTRUCTIVE_OPERATIONS."""
+        import re
+        from pathlib import Path
+
+        connector_path = Path(__file__).parent.parent / "src" / "omnifocus_mcp" / "omnifocus_connector.py"
+        source = connector_path.read_text()
+
+        # Extract operation names from _verify_database_safety calls
+        called_ops = set(re.findall(r"_verify_database_safety\(['\"](\w+)['\"]\)", source))
+
+        registered_ops = OmniFocusConnector.DESTRUCTIVE_OPERATIONS
+
+        missing = called_ops - registered_ops
+        assert not missing, (
+            f"Operations call _verify_database_safety but are not in DESTRUCTIVE_OPERATIONS: {missing}. "
+            f"Add them to the set or the safety check silently passes (early return at line 153)."
+        )
