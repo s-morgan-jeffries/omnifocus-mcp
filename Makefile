@@ -46,6 +46,7 @@ complexity:
 audit:
 	@./scripts/check_dependencies.sh
 	@./scripts/check_applescript_safety.sh
+	@./scripts/check_readme_claims.sh
 
 clean:
 	rm -rf __pycache__ .pytest_cache .coverage htmlcov/
