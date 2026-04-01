@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration test-e2e test-prod test-verbose install clean complexity audit coverage help
+.PHONY: test test-unit test-integration test-e2e test-prod test-protocol test-verbose install clean complexity audit coverage help
 
 help:
 	@echo "Available targets:"
@@ -33,6 +33,10 @@ test-e2e:
 test-prod:
 	OMNIFOCUS_PROD_TEST=true \
 	uv run pytest tests/test_prod_integration.py -v
+
+test-protocol:
+	OMNIFOCUS_TEST_MODE=true OMNIFOCUS_TEST_DATABASE="OmniFocus-TEST.ofocus" \
+	uv run pytest tests/test_protocol_stdio.py -v
 
 test-verbose:
 	uv run pytest tests/ -v --tb=long
