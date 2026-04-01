@@ -137,6 +137,42 @@ class TestBuildTaskSource:
         assert 'effective due date < (current date)' in source
         assert whose_active is True
 
+    def test_planned_after_adds_whose_condition(self, client):
+        """planned_after adds effective planned date >= condition to whose clause."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            planned_after="2026-04-01", planned_before=None,
+        )
+        assert 'effective planned date' in source
+        assert whose_active is True
+
+    def test_planned_before_adds_whose_condition(self, client):
+        """planned_before adds effective planned date < condition to whose clause."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            planned_after=None, planned_before="2026-04-02",
+        )
+        assert 'effective planned date' in source
+        assert whose_active is True
+
+    def test_planned_after_and_before_combines_conditions(self, client):
+        """Both planned date filters generate combined whose condition."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            planned_after="2026-04-01", planned_before="2026-04-02",
+        )
+        assert source.count('effective planned date') == 2
+        assert whose_active is True
+
     def test_task_id_escapes_special_characters(self, client):
         """Task ID with special characters is escaped in the whose clause."""
         source, _ = client._build_task_source(
