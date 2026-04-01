@@ -139,7 +139,7 @@ Essential guides for daily development work on the OmniFocus MCP Server.
 ### Running Tests
 
 ```bash
-# All unit tests (fast, ~0.53s)
+# All unit tests (fast, ~2.5s)
 make test
 
 # Integration tests (real OmniFocus, ~10-30s)

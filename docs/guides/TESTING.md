@@ -374,7 +374,7 @@ After running tests, verify in OmniFocus:
 
 ### Client Operations Coverage (v0.6.0 API)
 
-**Note:** All 16 core v0.6.0 MCP tools have comprehensive unit and integration test coverage. The table below represents test counts from the v0.5.0 era with 25+ functions. For detailed current test coverage, see test files in `tests/` directory.
+**Note:** All 21 MCP tools have comprehensive unit and integration test coverage. The table below represents test counts from an earlier era. For detailed current test coverage, see test files in `tests/` directory.
 
 **Current Test Summary (v0.7.2):**
 - **544 tests** (406 passing, 138 skipped) across all 16 MCP tools
@@ -549,12 +549,12 @@ Before running real integration tests:
 
 **If in doubt, run with safety checks enabled. The system will block operations if configuration is incorrect.**
 
-## Test Metrics (v0.10.0)
+## Test Metrics (v0.13.2)
 
-- **Total Tests**: 920 (782 unit + 138 integration)
-- **Passing**: 782 unit tests
-- **Skipped**: 237 (integration/benchmark tests skipped without test DB)
-- **Coverage**: 91% overall
-  - `omnifocus_connector.py`: 93%
-  - `server_fastmcp.py`: 83%
+- **Total Tests**: 1304 (1027 unit + 192 integration/E2E + 5 protocol + 47 benchmark + 33 other)
+- **Passing**: 1027 unit tests
+- **Skipped**: 277 (integration/E2E/protocol/benchmark tests skipped without test DB)
+- **Coverage**: 93% overall
+  - `omnifocus_connector.py`: 91%
+  - `server_fastmcp.py`: 97%
 - **Execution Time**: ~2.5s for all unit tests
