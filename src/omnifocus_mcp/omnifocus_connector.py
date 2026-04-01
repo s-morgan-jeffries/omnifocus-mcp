@@ -2580,6 +2580,8 @@ class OmniFocusConnector:
         overdue: bool,
         query: Optional[str],
         tag_prefiltered_ids: Optional[set],
+        planned_after: Optional[str] = None,
+        planned_before: Optional[str] = None,
     ) -> tuple[str, bool]:
         """Build AppleScript task source expression and whose conditions.
 
@@ -2614,6 +2616,12 @@ class OmniFocusConnector:
                 whose_conditions.append("blocked is true")
             if overdue:
                 whose_conditions.append("effective due date < (current date)")
+            if planned_after:
+                as_date = self._iso_to_applescript_date(planned_after)
+                whose_conditions.append(f'effective planned date ≥ date "{as_date}"')
+            if planned_before:
+                as_date = self._iso_to_applescript_date(planned_before)
+                whose_conditions.append(f'effective planned date < date "{as_date}"')
             if query:
                 query_escaped = self._escape_applescript_string(query)
                 whose_conditions.append(f'(name contains "{query_escaped}" or note contains "{query_escaped}")')
@@ -3265,6 +3273,8 @@ class OmniFocusConnector:
             overdue=overdue,
             query=query,
             tag_prefiltered_ids=tag_prefiltered_ids,
+            planned_after=planned_after,
+            planned_before=planned_before,
         )
 
         # Generate batch filter check strings
