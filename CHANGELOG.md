@@ -5,6 +5,31 @@ All notable changes to the OmniFocus MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.2] - 2026-04-01
+
+Security fixes, dependency modernization, protocol-level testing, and documentation accuracy improvements.
+
+### Fixed
+
+- **AppleScript injection in `switch_perspective`** — used manual escaping instead of `_escape_applescript_string()`, allowing command injection via backslash+quote sequences (#574, #577)
+- **Missing operations in `DESTRUCTIVE_OPERATIONS` safety set** — `update_folder` and `reorder_project` bypassed database safety guard (#575, #578)
+- **`create_projects` review_interval_weeks type error** — passed raw integer instead of OmniFocus record type `{unit:week, steps:N, fixed:true}`, causing -1700 error (#584, #585)
+- **Dependency audit false positive** — `--skip-editable` for self-package, `--ignore-vuln` for unfixed pygments CVE (#564, #570)
+
+### Added
+
+- **Protocol-level MCP smoke tests** over stdio transport — spawns server as subprocess, communicates via MCP SDK client, verifies JSON-RPC transport path that Claude Desktop uses (#581, #582)
+- **`review_interval_value` + `review_interval_unit` on `create_projects`** — parity with `update_projects`; `review_interval_weeks` now deprecated on both (#584)
+- **`DESTRUCTIVE_OPERATIONS` completeness meta-test** — verifies every `_verify_database_safety` call uses a registered operation, prevents future drift (#575)
+- **Reverse safety check in `check_applescript_safety.sh`** — Check 2b verifies calls → set (existing Check 2 only verified set → calls) (#575)
+- **`check_readme_claims.sh` validation script** — verifies tool count, unit test count, coverage badge, and docs/ test counts against live data (#568, #583)
+- **OmniFocus inheritance gotcha documentation** — `last_reviewed` recalculates `next_review_date`; tasks inherit tags from parent project (#571, #572, #573)
+
+### Changed
+
+- **Migrated from pip to uv** for dependency management — adds `uv.lock` for deterministic builds, ~50% faster CI (#566, #569)
+- **README and docs/ test counts updated** and automated validation added to prevent drift (#568, #580, #583, #586)
+
 ## [0.13.1] - 2026-03-28
 
 Tool description overhaul — trimmed by 67% after blind eval research showed descriptions were 10x the MCP community norm. Adversarial API critic review identified and fixed four description gaps.
