@@ -74,6 +74,7 @@ echo ""
 #   - update_project: CC ≤ 61 (60 current — #417 added flagged/estimated/tags/recurrence, #506 added review_interval_value/unit)
 #   - _format_task: CC ≤ 32 (31 current)
 #   - create_task: CC ≤ 23 (22 current)
+#   - create_project: CC ≤ 25 (24 current — #584 added review_interval_value/unit)
 #   - _validate_update_task_params: CC ≤ 19 (18 current)
 EXCESSIVE_COMPLEXITY=$($RADON cc src/omnifocus_mcp/ -n D -j | $PYTHON -c "
 import sys
@@ -108,6 +109,8 @@ try:
                 elif name == '_format_task' and cc <= 32:
                     continue
                 elif name == 'create_task' and cc <= 23:
+                    continue
+                elif name == 'create_project' and cc <= 25:
                     continue
                 # General functions: CC ≤ 20 (C rating or better)
                 elif cc <= 20:
