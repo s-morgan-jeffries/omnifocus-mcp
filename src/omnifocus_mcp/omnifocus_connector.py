@@ -1263,6 +1263,8 @@ class OmniFocusConnector:
         sequential: bool = False,
         project_type: Optional[str] = None,
         review_interval_weeks: Optional[int] = None,
+        review_interval_value: Optional[int] = None,
+        review_interval_unit: Optional[str] = None,
         completed_by_children: Optional[bool] = None,
         due_date: Optional[str] = None,
         defer_date: Optional[str] = None,
@@ -1315,10 +1317,16 @@ class OmniFocusConnector:
             properties.append('sequential:true')
         else:
             properties.append('sequential:false')
-        if review_interval_weeks is not None:
-            # Convert weeks to days for OmniFocus review interval
-            review_days = review_interval_weeks * 7
-            properties.append(f'review interval:{review_days}')
+        # Map deprecated review_interval_weeks to new parameters
+        if review_interval_weeks is not None and review_interval_value is None:
+            review_interval_value = review_interval_weeks
+            review_interval_unit = "week"
+        if review_interval_value is not None:
+            unit = review_interval_unit or "week"
+            valid_units = ["day", "week", "month", "year"]
+            if unit not in valid_units:
+                raise ValueError(f"Invalid review_interval_unit: {unit}. Must be one of: {', '.join(valid_units)}")
+            properties.append(f'review interval:{{unit:{unit}, steps:{review_interval_value}, fixed:true}}')
         if completed_by_children is not None:
             properties.append(f'completed by children:{str(completed_by_children).lower()}')
 

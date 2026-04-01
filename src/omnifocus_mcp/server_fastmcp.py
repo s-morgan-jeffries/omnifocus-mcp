@@ -725,6 +725,8 @@ class ProjectCreate(BaseModel):
     project_type: Optional[str] = None
     sequential: bool = False
     review_interval_weeks: Optional[int] = None
+    review_interval_value: Optional[int] = None
+    review_interval_unit: Optional[str] = None
     completed_by_children: Optional[bool] = None
     due_date: Optional[str] = None
     defer_date: Optional[str] = None
@@ -842,7 +844,7 @@ def create_projects(projects: list[ProjectCreate]) -> str:
     - note, folder_path: str
     - project_type: str -- "parallel" (default), "sequential", "single_actions"
     - sequential: bool (deprecated, use project_type)
-    - review_interval_weeks: int
+    - review_interval_value: int + review_interval_unit: str ("day"/"week"/"month"/"year"); review_interval_weeks: int (deprecated)
     - completed_by_children: bool
     - due_date, defer_date, planned_date: str -- ISO 8601
     """
