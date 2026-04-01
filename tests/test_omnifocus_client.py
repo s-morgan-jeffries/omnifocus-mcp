@@ -184,6 +184,32 @@ class TestOmniFocusConnector:
             assert "Complete description with details" in call_args
             assert "sequential:true" in call_args
 
+    def test_create_project_review_interval_weeks_uses_record_syntax(self, client):
+        """review_interval_weeks generates AppleScript record, not raw integer."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-001"
+            client.create_project("Test", review_interval_weeks=2)
+            script = mock_run.call_args[0][0]
+            # Must use record syntax, not raw integer
+            assert "{unit:week, steps:2, fixed:true}" in script
+            assert "review interval:14" not in script
+
+    def test_create_project_review_interval_value_and_unit(self, client):
+        """review_interval_value + review_interval_unit generates correct record."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-001"
+            client.create_project("Test", review_interval_value=3, review_interval_unit="month")
+            script = mock_run.call_args[0][0]
+            assert "{unit:month, steps:3, fixed:true}" in script
+
+    def test_create_project_review_interval_weeks_deprecated_maps_to_value(self, client):
+        """review_interval_weeks is treated as review_interval_value in weeks."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = "proj-001"
+            client.create_project("Test", review_interval_weeks=4)
+            script = mock_run.call_args[0][0]
+            assert "{unit:week, steps:4, fixed:true}" in script
+
     def test_create_project_no_output(self, client):
         """Test handling of no output from AppleScript."""
         with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
