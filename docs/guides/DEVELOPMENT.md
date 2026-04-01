@@ -466,7 +466,7 @@ Before running tests, you'll need to understand the three test types and their s
 1. **Unit Tests** (`make test`) - Fast, always run
    - Mock AppleScript execution
    - No OmniFocus required
-   - 782 unit tests, ~2.5 minutes
+   - 1027 unit tests, ~2.5 seconds
    - **Skips integration and E2E tests by default** (this is expected behavior)
 
 2. **Integration Tests** (`make test-integration`) - Real OmniFocus required

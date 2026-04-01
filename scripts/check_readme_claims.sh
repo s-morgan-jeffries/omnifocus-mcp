@@ -1,6 +1,7 @@
 #!/bin/bash
-# Verify README and CLAUDE.md claims against live data.
-# Catches stale test counts, tool counts, and coverage stats.
+# Verify documentation claims against live data.
+# Catches stale test counts, tool counts, and coverage stats across
+# README.md, CLAUDE.md, and docs/ guides.
 #
 # Usage: ./scripts/check_readme_claims.sh
 
@@ -11,7 +12,7 @@ README="README.md"
 CLAUDE_MD=".claude/CLAUDE.md"
 SERVER="src/omnifocus_mcp/server_fastmcp.py"
 
-echo "Checking README and CLAUDE.md claims..."
+echo "Checking documentation claims..."
 echo ""
 
 # --- Check 1: Tool count ---
@@ -69,11 +70,29 @@ else
 fi
 echo ""
 
+# --- Check 5: docs/ test count references ---
+echo "--- Check 5: Test counts in docs/ ---"
+
+# Scan docs/ for unit test count claims and flag mismatches
+DOC_COUNTS=$(grep -rn '[0-9]* unit test' docs/ 2>/dev/null | grep -oE '[0-9]+ unit' | grep -oE '[0-9]+' || true)
+for count in $DOC_COUNTS; do
+    if [ "$count" != "$ACTUAL_UNIT" ]; then
+        echo "ERROR: Found stale '$count unit tests' in docs/ (actual: $ACTUAL_UNIT)"
+        grep -rn "$count unit test" docs/ 2>/dev/null | head -3
+        ERRORS=$((ERRORS + 1))
+        break  # Only report once
+    fi
+done
+if [ "$ERRORS" -eq 0 ] || [ -z "$DOC_COUNTS" ]; then
+    echo "OK: No stale unit test counts in docs/"
+fi
+echo ""
+
 # --- Summary ---
 if [ "$ERRORS" -eq 0 ]; then
-    echo "✅ All README/CLAUDE.md claims verified!"
+    echo "✅ All documentation claims verified!"
     exit 0
 else
-    echo "❌ $ERRORS claim(s) out of date. Update README.md and/or .claude/CLAUDE.md."
+    echo "❌ $ERRORS claim(s) out of date. Update the affected files."
     exit 1
 fi

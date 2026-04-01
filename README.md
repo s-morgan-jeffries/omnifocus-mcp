@@ -32,7 +32,7 @@ Full profiling data: [PERFORMANCE_PROFILING.md](docs/reference/PERFORMANCE_PROFI
 
 ### Reliable
 
-93% code coverage from 1024 unit tests. 192 integration and E2E tests run against real OmniFocus, plus 5 protocol-level smoke tests verifying the full MCP JSON-RPC transport. Tests cover task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
+93% code coverage from 1027 unit tests. 192 integration and E2E tests run against real OmniFocus, plus 5 protocol-level smoke tests verifying the full MCP JSON-RPC transport. Tests cover task, project, and tag lifecycles, filtering, hierarchy, dates, recurrence, and review workflows.
 
 ### Agent-Friendly
 
