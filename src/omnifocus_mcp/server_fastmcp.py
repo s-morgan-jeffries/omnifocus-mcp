@@ -226,6 +226,22 @@ def get_projects(
     planned_after: Optional[str] = None,
     planned_before: Optional[str] = None,
     planned_on: Optional[str] = None,
+    due_after: Optional[str] = None,
+    due_before: Optional[str] = None,
+    due_on: Optional[str] = None,
+    defer_after: Optional[str] = None,
+    defer_before: Optional[str] = None,
+    defer_on: Optional[str] = None,
+    completion_after: Optional[str] = None,
+    completion_before: Optional[str] = None,
+    completion_on: Optional[str] = None,
+    dropped_after: Optional[str] = None,
+    dropped_before: Optional[str] = None,
+    dropped_on: Optional[str] = None,
+    created_after: Optional[str] = None,
+    created_before: Optional[str] = None,
+    created_on: Optional[str] = None,
+    modified_on: Optional[str] = None,
     has_overdue_tasks: Optional[bool] = None,
     sort_by: Optional[str] = None,
     sort_order: str = "asc",
@@ -247,25 +263,49 @@ def get_projects(
     - include_last_activity: bool -- adds lastActivityDate
     - has_overdue_tasks: bool -- implies include_task_health
     - tag_filter: list[str] -- projects with ALL specified tags
-    - planned_after, planned_before, planned_on: str -- ISO date filters (planned_on is mutually exclusive)
-    - modified_after, modified_before: str
+    - due_after, due_before, due_on: str -- ISO date filters for due date
+    - defer_after, defer_before, defer_on: str -- ISO date filters for defer date
+    - planned_after, planned_before, planned_on: str
+    - completion_after, completion_before, completion_on: str
+    - dropped_after, dropped_before, dropped_on: str
+    - created_after, created_before, created_on: str
+    - modified_after, modified_before, modified_on: str
     - min_task_count: int
     - has_no_due_dates: bool
-    - sort_by: str -- "name"; sort_order: str -- "asc"/"desc"
+    - sort_by: str -- "name", "due_date", "defer_date", "planned_date", "creation_date", "modification_date", "completion_date", "dropped_date"; sort_order: str -- "asc"/"desc"
 
     Returns: id, name, folderPath, status, projectType, sequential (deprecated), completedByChildren, flagged, creationDate, modificationDate, completionDate, droppedDate, dueDate, deferDate, plannedDate, tags, note, lastReviewDate, nextReviewDate, reviewIntervalValue, reviewIntervalUnit. Optional health/activity fields when requested.
     """
-    # Expand planned_on to planned_after + planned_before
-    if planned_on is not None:
-        if planned_after is not None or planned_before is not None:
-            return "Error: planned_on is mutually exclusive with planned_after/planned_before."
-        from datetime import date, timedelta
+    # Expand _on params to _after + _before (single-day range)
+    from datetime import date, timedelta
+
+    def _expand_on(on_name, on_val, after_val, before_val):
+        if on_val is None:
+            return after_val, before_val, None
+        if after_val is not None or before_val is not None:
+            after_name = on_name.replace("_on", "_after")
+            before_name = on_name.replace("_on", "_before")
+            return None, None, f"Error: {on_name} is mutually exclusive with {after_name}/{before_name}."
         try:
-            d = date.fromisoformat(planned_on)
-            planned_after = planned_on
-            planned_before = (d + timedelta(days=1)).isoformat()
+            d = date.fromisoformat(on_val)
+            return on_val, (d + timedelta(days=1)).isoformat(), None
         except ValueError:
-            return f"Error: Invalid date format for planned_on: '{planned_on}'. Use ISO 8601 (e.g., '2026-03-23')."
+            return None, None, f"Error: Invalid date format for {on_name}: '{on_val}'. Use ISO 8601 (e.g., '2026-03-23')."
+
+    planned_after, planned_before, err = _expand_on("planned_on", planned_on, planned_after, planned_before)
+    if err: return err
+    due_after, due_before, err = _expand_on("due_on", due_on, due_after, due_before)
+    if err: return err
+    defer_after, defer_before, err = _expand_on("defer_on", defer_on, defer_after, defer_before)
+    if err: return err
+    completion_after, completion_before, err = _expand_on("completion_on", completion_on, completion_after, completion_before)
+    if err: return err
+    dropped_after, dropped_before, err = _expand_on("dropped_on", dropped_on, dropped_after, dropped_before)
+    if err: return err
+    created_after, created_before, err = _expand_on("created_on", created_on, created_after, created_before)
+    if err: return err
+    modified_after, modified_before, err = _expand_on("modified_on", modified_on, modified_after, modified_before)
+    if err: return err
 
     client = get_client()
     try:
@@ -289,6 +329,16 @@ def get_projects(
             sort_order=sort_order,
             modified_after=modified_after,
             modified_before=modified_before,
+            created_after=created_after,
+            created_before=created_before,
+            due_after=due_after,
+            due_before=due_before,
+            defer_after=defer_after,
+            defer_before=defer_before,
+            completion_after=completion_after,
+            completion_before=completion_before,
+            dropped_after=dropped_after,
+            dropped_before=dropped_before,
             min_task_count=min_task_count,
             has_no_due_dates=has_no_due_dates,
         )
@@ -563,6 +613,20 @@ def get_tasks(
     planned_after: Optional[str] = None,
     planned_before: Optional[str] = None,
     planned_on: Optional[str] = None,
+    due_after: Optional[str] = None,
+    due_before: Optional[str] = None,
+    due_on: Optional[str] = None,
+    defer_after: Optional[str] = None,
+    defer_before: Optional[str] = None,
+    defer_on: Optional[str] = None,
+    completion_after: Optional[str] = None,
+    completion_before: Optional[str] = None,
+    completion_on: Optional[str] = None,
+    dropped_after: Optional[str] = None,
+    dropped_before: Optional[str] = None,
+    dropped_on: Optional[str] = None,
+    created_on: Optional[str] = None,
+    modified_on: Optional[str] = None,
 ) -> str:
     """Get tasks with optional filtering.
 
@@ -573,12 +637,16 @@ def get_tasks(
     - include_completed: bool
     - include_full_notes: bool
     - tag_filter: list[str]; tag_filter_mode: str -- "and" (default), "or", "not"
+    - due_after, due_before, due_on: str -- ISO date filters for due date
+    - defer_after, defer_before, defer_on: str -- ISO date filters for defer date
     - planned_after, planned_before, planned_on: str
-    - modified_after, modified_before, created_after, created_before: str
+    - completion_after, completion_before, completion_on: str -- requires include_completed
+    - dropped_after, dropped_before, dropped_on: str -- requires dropped_only or include_completed
+    - modified_after, modified_before, modified_on, created_after, created_before, created_on: str
     - max_estimated_minutes: int -- quick wins filter
     - has_estimate: bool
     - recurring_only: bool
-    - sort_by: str -- "name", "due_date", "defer_date"; sort_order: str
+    - sort_by: str -- "name", "due_date", "defer_date", "planned_date", "creation_date", "modification_date", "completion_date", "dropped_date"; sort_order: str
 
     Returns: id, name, projectName, completed, dropped, blocked, available, next, flagged, dueDate, deferDate, plannedDate, estimatedMinutes, tags, note, parentTaskId, subtaskCount, sequential, isRecurring, recurrence, repetitionMethod, repeatSummary, nextDueDate, nextDeferDate, nextPlannedDate, catchUpAutomatically, creationDate, modificationDate, completionDate, droppedDate.
 
@@ -590,17 +658,37 @@ def get_tasks(
     - Date fields are effective (include inherited from project). Next-occurrence fields populated only for recurring tasks.
     - Tasks inherit tags from their parent project. A task showing a tag it wasn't explicitly assigned has inherited it -- this is expected, not a bug.
     """
-    # Expand planned_on to planned_after + planned_before
-    if planned_on is not None:
-        if planned_after is not None or planned_before is not None:
-            return "Error: planned_on is mutually exclusive with planned_after/planned_before."
-        from datetime import date, timedelta
+    # Expand _on params to _after + _before (single-day range)
+    from datetime import date, timedelta
+
+    def _expand_on(on_name, on_val, after_val, before_val):
+        """Expand a date _on param to _after + _before range. Returns (after, before, error)."""
+        if on_val is None:
+            return after_val, before_val, None
+        if after_val is not None or before_val is not None:
+            after_name = on_name.replace("_on", "_after")
+            before_name = on_name.replace("_on", "_before")
+            return None, None, f"Error: {on_name} is mutually exclusive with {after_name}/{before_name}."
         try:
-            d = date.fromisoformat(planned_on)
-            planned_after = planned_on
-            planned_before = (d + timedelta(days=1)).isoformat()
+            d = date.fromisoformat(on_val)
+            return on_val, (d + timedelta(days=1)).isoformat(), None
         except ValueError:
-            return f"Error: Invalid date format for planned_on: '{planned_on}'. Use ISO 8601 (e.g., '2026-03-23')."
+            return None, None, f"Error: Invalid date format for {on_name}: '{on_val}'. Use ISO 8601 (e.g., '2026-03-23')."
+
+    planned_after, planned_before, err = _expand_on("planned_on", planned_on, planned_after, planned_before)
+    if err: return err
+    due_after, due_before, err = _expand_on("due_on", due_on, due_after, due_before)
+    if err: return err
+    defer_after, defer_before, err = _expand_on("defer_on", defer_on, defer_after, defer_before)
+    if err: return err
+    completion_after, completion_before, err = _expand_on("completion_on", completion_on, completion_after, completion_before)
+    if err: return err
+    dropped_after, dropped_before, err = _expand_on("dropped_on", dropped_on, dropped_after, dropped_before)
+    if err: return err
+    created_after, created_before, err = _expand_on("created_on", created_on, created_after, created_before)
+    if err: return err
+    modified_after, modified_before, err = _expand_on("modified_on", modified_on, modified_after, modified_before)
+    if err: return err
 
     client = get_client()
     try:
@@ -631,6 +719,14 @@ def get_tasks(
             recurring_only=recurring_only,
             planned_after=planned_after,
             planned_before=planned_before,
+            due_after=due_after,
+            due_before=due_before,
+            defer_after=defer_after,
+            defer_before=defer_before,
+            completion_after=completion_after,
+            completion_before=completion_before,
+            dropped_after=dropped_after,
+            dropped_before=dropped_before,
         )
     except ValueError as e:
         return f"Error: {str(e)}"

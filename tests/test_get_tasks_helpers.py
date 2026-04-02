@@ -173,6 +173,72 @@ class TestBuildTaskSource:
         assert source.count('effective planned date') == 2
         assert whose_active is True
 
+    def test_due_after_adds_whose_condition(self, client):
+        """due_after adds effective due date >= condition to whose clause."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            due_after="2026-04-01", due_before=None,
+        )
+        assert 'effective due date' in source
+        assert '≥' in source
+        assert whose_active is True
+
+    def test_due_before_adds_whose_condition(self, client):
+        """due_before adds effective due date < condition to whose clause."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            due_after=None, due_before="2026-04-08",
+        )
+        assert 'effective due date' in source
+        assert '<' in source
+        assert whose_active is True
+
+    def test_defer_after_adds_whose_condition(self, client):
+        """defer_after adds effective defer date >= condition to whose clause."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            defer_after="2026-04-01", defer_before=None,
+        )
+        assert 'effective defer date' in source
+        assert '≥' in source
+        assert whose_active is True
+
+    def test_defer_before_adds_whose_condition(self, client):
+        """defer_before adds effective defer date < condition to whose clause."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            defer_after=None, defer_before="2026-04-08",
+        )
+        assert 'effective defer date' in source
+        assert '<' in source
+        assert whose_active is True
+
+    def test_due_and_defer_combines_conditions(self, client):
+        """Both due and defer filters generate combined whose conditions."""
+        source, whose_active = client._build_task_source(
+            task_id=None, parent_task_id=None, inbox_only=False,
+            project_id=None, include_completed=False, flagged_only=False,
+            next_only=False, dropped_only=False, blocked_only=False,
+            overdue=False, query=None, tag_prefiltered_ids=None,
+            due_after="2026-04-01", due_before="2026-04-08",
+            defer_after="2026-03-01", defer_before=None,
+        )
+        assert 'effective due date' in source
+        assert 'effective defer date' in source
+        assert whose_active is True
+
     def test_task_id_escapes_special_characters(self, client):
         """Task ID with special characters is escaped in the whose clause."""
         source, _ = client._build_task_source(
@@ -480,6 +546,33 @@ class TestValidateGetTasksParams:
                 due_relative=None, defer_relative="yesterday",
             )
 
+    def test_invalid_due_after_raises(self, client):
+        """Non-ISO due_after raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid date format"):
+            client._validate_get_tasks_params(
+                created_after=None, created_before=None,
+                modified_after=None, modified_before=None,
+                tag_filter_mode="and", sort_by=None, sort_order="asc",
+                due_relative=None, defer_relative=None,
+                due_after="not-a-date", due_before=None,
+                defer_after=None, defer_before=None,
+                completion_after=None, completion_before=None,
+                dropped_after=None, dropped_before=None,
+            )
+
+    def test_valid_due_after_accepted(self, client):
+        """Valid ISO due_after is accepted."""
+        client._validate_get_tasks_params(
+            created_after=None, created_before=None,
+            modified_after=None, modified_before=None,
+            tag_filter_mode="and", sort_by=None, sort_order="asc",
+            due_relative=None, defer_relative=None,
+            due_after="2026-04-01T00:00:00Z", due_before=None,
+            defer_after=None, defer_before=None,
+            completion_after=None, completion_before=None,
+            dropped_after=None, dropped_before=None,
+        )
+
     def test_valid_iso_date_accepted(self, client):
         """ISO format dates should be accepted."""
         client._validate_get_tasks_params(
@@ -723,6 +816,107 @@ class TestPlannedDateFilter:
             planned_after=None, planned_before=None,
         )
         assert len(result) == 3
+
+
+# ── _filter_by_date_range: generalized tuple-list interface ────────────────
+
+
+class TestFilterByDateRangeGeneralized:
+    """Tests for the generalized _filter_by_date_range accepting date_filters tuples."""
+
+    def test_due_date_after_filters(self, client):
+        """due_after filter via date_filters tuple excludes tasks before cutoff."""
+        tasks = [
+            {"id": "t1", "dueDate": "2026-04-01T09:00:00", "name": "early"},
+            {"id": "t2", "dueDate": "2026-04-05T09:00:00", "name": "late"},
+            {"id": "t3", "dueDate": "", "name": "no due date"},
+        ]
+        result = client._filter_by_date_range(
+            tasks,
+            date_filters=[("dueDate", "2026-04-03T00:00:00", None)],
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t2"
+
+    def test_defer_date_before_filters(self, client):
+        """defer_before filter via date_filters tuple excludes tasks after cutoff."""
+        tasks = [
+            {"id": "t1", "deferDate": "2026-04-01T09:00:00", "name": "early"},
+            {"id": "t2", "deferDate": "2026-04-05T09:00:00", "name": "late"},
+        ]
+        result = client._filter_by_date_range(
+            tasks,
+            date_filters=[("deferDate", None, "2026-04-03T00:00:00")],
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t1"
+
+    def test_completion_date_range_filters(self, client):
+        """completion date range via date_filters tuple narrows results."""
+        tasks = [
+            {"id": "t1", "completionDate": "2026-03-28T09:00:00", "name": "old"},
+            {"id": "t2", "completionDate": "2026-04-02T09:00:00", "name": "recent"},
+            {"id": "t3", "completionDate": "2026-04-10T09:00:00", "name": "future"},
+        ]
+        result = client._filter_by_date_range(
+            tasks,
+            date_filters=[("completionDate", "2026-04-01T00:00:00", "2026-04-05T00:00:00")],
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t2"
+
+    def test_dropped_date_after_filters(self, client):
+        """dropped_after filter via date_filters tuple works correctly."""
+        tasks = [
+            {"id": "t1", "droppedDate": "2026-03-15T09:00:00", "name": "old drop"},
+            {"id": "t2", "droppedDate": "2026-04-01T09:00:00", "name": "recent drop"},
+        ]
+        result = client._filter_by_date_range(
+            tasks,
+            date_filters=[("droppedDate", "2026-03-20T00:00:00", None)],
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t2"
+
+    def test_multiple_date_filters_combined(self, client):
+        """Multiple date_filters tuples are ANDed together."""
+        tasks = [
+            {"id": "t1", "dueDate": "2026-04-05T09:00:00", "creationDate": "2026-03-01T09:00:00", "name": "match"},
+            {"id": "t2", "dueDate": "2026-04-05T09:00:00", "creationDate": "2026-04-01T09:00:00", "name": "too new"},
+            {"id": "t3", "dueDate": "2026-03-20T09:00:00", "creationDate": "2026-03-01T09:00:00", "name": "due too early"},
+        ]
+        result = client._filter_by_date_range(
+            tasks,
+            date_filters=[
+                ("dueDate", "2026-04-01T00:00:00", None),
+                ("creationDate", None, "2026-03-15T00:00:00"),
+            ],
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t1"
+
+    def test_empty_date_filters_returns_all(self, client):
+        """Empty date_filters list returns all items."""
+        tasks = [
+            {"id": "t1", "dueDate": "2026-04-01T09:00:00", "name": "a"},
+            {"id": "t2", "dueDate": "2026-04-05T09:00:00", "name": "b"},
+        ]
+        result = client._filter_by_date_range(tasks, date_filters=[])
+        assert len(result) == 2
+
+    def test_backward_compat_positional_args(self, client):
+        """Existing positional call pattern still works during migration."""
+        tasks = [
+            {"id": "t1", "creationDate": "2026-03-20T09:00:00", "modificationDate": "2026-03-25T09:00:00", "name": "a"},
+            {"id": "t2", "creationDate": "2026-04-01T09:00:00", "modificationDate": "2026-04-05T09:00:00", "name": "b"},
+        ]
+        result = client._filter_by_date_range(
+            tasks,
+            created_after="2026-03-25T00:00:00", created_before=None,
+            modified_after=None, modified_before=None,
+        )
+        assert len(result) == 1
+        assert result[0]["id"] == "t2"
 
 
 # ── _post_process_projects tag filtering ─────────────────────────────────

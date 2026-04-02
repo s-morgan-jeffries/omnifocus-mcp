@@ -219,6 +219,14 @@ class TestTaskTools:
                 recurring_only=None,
                 planned_after=None,
                 planned_before=None,
+                due_after=None,
+                due_before=None,
+                defer_after=None,
+                defer_before=None,
+                completion_after=None,
+                completion_before=None,
+                dropped_after=None,
+                dropped_before=None,
             )
 
     def test_get_tasks_dropped_only(self):
@@ -269,6 +277,14 @@ class TestTaskTools:
                 recurring_only=None,
                 planned_after=None,
                 planned_before=None,
+                due_after=None,
+                due_before=None,
+                defer_after=None,
+                defer_before=None,
+                completion_after=None,
+                completion_before=None,
+                dropped_after=None,
+                dropped_before=None,
             )
 
 
