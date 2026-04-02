@@ -64,10 +64,11 @@ echo ""
 # Extracted helpers (inherent complexity — CC maps 1:1 to parameter/filter count):
 #   - _build_task_filter_checks: CC ≤ 36 (35 current - 12 filter types, batch-only after #368)
 #   - _build_update_task_commands: CC ≤ 30 (29 current - 17 updatable fields)
-#   - _post_process_tasks: CC ≤ 29 (28 current - normalization + 6 filter steps)
+#   - _post_process_tasks: CC ≤ 32 (31 current - normalization + 10 filter steps incl. due/defer/completion/dropped)
 #   - _filter_projects_by_conditions: CC ≤ 25 (24 current - 3 conditions × pos/neg matching)
+#   - _build_task_source: CC ≤ 23 (22 current - 13 filter types as whose conditions incl. due/defer/planned dates)
 #   - _filter_by_date_range: CC ≤ 6 (5 current - delegates to _item_passes_date_check)
-#   - _post_process_projects: CC ≤ 19 (18 current - delegates to _compute_project_types, _filter_projects_by_query, _compute_stalled_status)
+#   - _post_process_projects: CC ≤ 27 (26 current - delegates to _compute_project_types, _filter_projects_by_query, _compute_stalled_status + date range filters)
 #
 # Original functions not yet refactored:
 #   - update_projects: CC ≤ 60 (59 current — #417 added flagged/estimated/tags, #506 added review_interval_value/unit)
@@ -93,13 +94,15 @@ try:
                     continue
                 elif name == '_build_update_task_commands' and cc <= 30:
                     continue
-                elif name == '_post_process_tasks' and cc <= 29:
+                elif name == '_post_process_tasks' and cc <= 32:
                     continue
                 elif name == '_filter_projects_by_conditions' and cc <= 25:
                     continue
+                elif name == '_build_task_source' and cc <= 23:
+                    continue
                 elif name == '_filter_by_date_range' and cc <= 6:
                     continue
-                elif name == '_post_process_projects' and cc <= 19:
+                elif name == '_post_process_projects' and cc <= 27:
                     continue
                 # Original functions
                 elif name == 'update_projects' and cc <= 60:
@@ -140,7 +143,7 @@ fi
 echo "✅ PASS: All functions within complexity limits"
 echo ""
 echo "Documented exceptions (see script comments for full list):"
-echo "  - Extracted helpers: _build_task_filter_checks (35), _build_update_task_commands (29), _post_process_tasks (28)"
+echo "  - Extracted helpers: _build_task_filter_checks (35), _build_update_task_commands (29), _post_process_tasks (31), _build_task_source (22), _post_process_projects (26)"
 echo "  - Original functions: update_project (60), update_projects (59), _format_task (31), create_task (22)"
 echo "  - All other functions: CC ≤ 20"
 echo ""

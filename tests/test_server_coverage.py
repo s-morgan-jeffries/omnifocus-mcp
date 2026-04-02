@@ -186,6 +186,39 @@ class TestGetProjectsEdgeCases:
         assert call_kwargs["planned_after"] == "2026-03-20"
         assert call_kwargs["planned_before"] == "2026-03-25"
 
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_due_on_expands_to_range(self, mock_gc):
+        """due_on date expands to due_after and due_before range for projects."""
+        mock_gc.return_value.get_projects.return_value = []
+        server.get_projects(due_on="2026-04-01")
+        call_kwargs = mock_gc.return_value.get_projects.call_args[1]
+        assert call_kwargs["due_after"] == "2026-04-01"
+        assert call_kwargs["due_before"] == "2026-04-02"
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_due_on_conflicts_with_due_before(self, mock_gc):
+        """Error returned when due_on used with due_before for projects."""
+        result = server.get_projects(due_on="2026-04-01", due_before="2026-04-10")
+        assert "Error" in result
+        assert "mutually exclusive" in result
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_due_after_passed_to_project_client(self, mock_gc):
+        """due_after is passed through to client.get_projects."""
+        mock_gc.return_value.get_projects.return_value = []
+        server.get_projects(due_after="2026-04-01")
+        call_kwargs = mock_gc.return_value.get_projects.call_args[1]
+        assert call_kwargs["due_after"] == "2026-04-01"
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_created_on_expands_to_range(self, mock_gc):
+        """created_on date expands to created_after and created_before range for projects."""
+        mock_gc.return_value.get_projects.return_value = []
+        server.get_projects(created_on="2026-04-01")
+        call_kwargs = mock_gc.return_value.get_projects.call_args[1]
+        assert call_kwargs["created_after"] == "2026-04-01"
+        assert call_kwargs["created_before"] == "2026-04-02"
+
 
 class TestCreateProjectEdgeCases:
     """Cover review_interval and note branches in create_project()."""
@@ -266,6 +299,54 @@ class TestGetTasksEdgeCases:
         result = server.get_tasks(planned_on="2026-03-23", planned_after="2026-03-20")
         assert "Error" in result
         assert "mutually exclusive" in result
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_due_on_expands_to_range(self, mock_gc):
+        """due_on date expands to due_after and due_before range for tasks."""
+        mock_gc.return_value.get_tasks.return_value = []
+        server.get_tasks(due_on="2026-04-01")
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["due_after"] == "2026-04-01"
+        assert call_kwargs["due_before"] == "2026-04-02"
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_due_on_conflicts_with_due_after(self, mock_gc):
+        """Error returned when due_on used with due_after for tasks."""
+        result = server.get_tasks(due_on="2026-04-01", due_after="2026-03-20")
+        assert "Error" in result
+        assert "mutually exclusive" in result
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_defer_on_expands_to_range(self, mock_gc):
+        """defer_on date expands to defer_after and defer_before range for tasks."""
+        mock_gc.return_value.get_tasks.return_value = []
+        server.get_tasks(defer_on="2026-04-01")
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["defer_after"] == "2026-04-01"
+        assert call_kwargs["defer_before"] == "2026-04-02"
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_defer_on_conflicts_with_defer_before(self, mock_gc):
+        """Error returned when defer_on used with defer_before for tasks."""
+        result = server.get_tasks(defer_on="2026-04-01", defer_before="2026-04-10")
+        assert "Error" in result
+        assert "mutually exclusive" in result
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_due_after_passed_to_client(self, mock_gc):
+        """due_after is passed through to client.get_tasks."""
+        mock_gc.return_value.get_tasks.return_value = []
+        server.get_tasks(due_after="2026-04-01")
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["due_after"] == "2026-04-01"
+
+    @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
+    def test_defer_before_passed_to_client(self, mock_gc):
+        """defer_before is passed through to client.get_tasks."""
+        mock_gc.return_value.get_tasks.return_value = []
+        server.get_tasks(defer_before="2026-04-10")
+        call_kwargs = mock_gc.return_value.get_tasks.call_args[1]
+        assert call_kwargs["defer_before"] == "2026-04-10"
 
     @mock.patch("omnifocus_mcp.server_fastmcp.get_client")
     def test_inbox_no_results(self, mock_gc):

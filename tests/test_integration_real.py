@@ -2928,3 +2928,109 @@ class TestEffectiveDates:
                     client.delete_projects(project_id)
                 except Exception as e:
                     warnings.warn(f"Failed to clean up project {project_id}: {e}")
+
+
+class TestDateRangeFilters:
+    """Integration tests for due_after/due_before and defer_after/defer_before whose clauses."""
+
+    def test_due_after_filters_tasks(self, client):
+        """due_after whose clause returns only tasks with due date on or after cutoff."""
+        from datetime import datetime, timedelta
+
+        future_due = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+        project_id = None
+        task_id = None
+        try:
+            project_id = client.create_project("test-due-after-project")
+            task_id = client.create_task(
+                "test-due-after-task",
+                project_id=project_id,
+                due_date=future_due,
+            )
+
+            today = datetime.now().strftime("%Y-%m-%d")
+            tasks = client.get_tasks(due_after=today)
+            task_ids = [t['id'] for t in tasks]
+            assert task_id in task_ids, (
+                f"Expected task {task_id} (due {future_due}) in due_after={today} results"
+            )
+            print(f"\n✓ due_after={today} returned {len(tasks)} tasks including test task")
+        finally:
+            if task_id:
+                try:
+                    client.delete_tasks(task_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up task {task_id}: {e}")
+            if project_id:
+                try:
+                    client.delete_projects(project_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up project {project_id}: {e}")
+
+    def test_due_before_excludes_future_tasks(self, client):
+        """due_before whose clause excludes tasks with due date after cutoff."""
+        from datetime import datetime, timedelta
+
+        far_future = (datetime.now() + timedelta(days=90)).strftime("%Y-%m-%d")
+        project_id = None
+        task_id = None
+        try:
+            project_id = client.create_project("test-due-before-project")
+            task_id = client.create_task(
+                "test-due-before-task",
+                project_id=project_id,
+                due_date=far_future,
+            )
+
+            cutoff = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+            tasks = client.get_tasks(due_before=cutoff)
+            task_ids = [t['id'] for t in tasks]
+            assert task_id not in task_ids, (
+                f"Task {task_id} (due {far_future}) should NOT be in due_before={cutoff} results"
+            )
+            print(f"\n✓ due_before={cutoff} correctly excluded far-future task")
+        finally:
+            if task_id:
+                try:
+                    client.delete_tasks(task_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up task {task_id}: {e}")
+            if project_id:
+                try:
+                    client.delete_projects(project_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up project {project_id}: {e}")
+
+    def test_defer_after_filters_tasks(self, client):
+        """defer_after whose clause returns only tasks with defer date on or after cutoff."""
+        from datetime import datetime, timedelta
+
+        future_defer = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+        project_id = None
+        task_id = None
+        try:
+            project_id = client.create_project("test-defer-after-project")
+            task_id = client.create_task(
+                "test-defer-after-task",
+                project_id=project_id,
+                defer_date=future_defer,
+            )
+
+            today = datetime.now().strftime("%Y-%m-%d")
+            tasks = client.get_tasks(defer_after=today)
+            task_ids = [t['id'] for t in tasks]
+            assert task_id in task_ids, (
+                f"Expected task {task_id} (deferred {future_defer}) in defer_after={today} results"
+            )
+            print(f"\n✓ defer_after={today} returned {len(tasks)} tasks including test task")
+        finally:
+            if task_id:
+                try:
+                    client.delete_tasks(task_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up task {task_id}: {e}")
+            if project_id:
+                try:
+                    client.delete_projects(project_id)
+                except Exception as e:
+                    warnings.warn(f"Failed to clean up project {project_id}: {e}")

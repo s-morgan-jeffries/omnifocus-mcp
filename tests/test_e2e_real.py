@@ -517,6 +517,131 @@ class TestGetTasksE2E:
         print(f"\n✓ E2E get_tasks (inbox): {result[:200]}")
 
 
+class TestGetTasksDateFiltersE2E:
+    """E2E tests for date range filters on get_tasks() MCP tool.
+
+    Tests the full stack including _on expansion and whose clauses:
+    MCP tool (due_on expansion) → client.get_tasks(due_after/before) → AppleScript whose clause → OmniFocus
+    """
+
+    def test_get_tasks_due_on_e2e(self, client, test_project):
+        """E2E: due_on returns tasks due on a specific day via MCP tool."""
+        from datetime import datetime, timedelta
+        target_date = (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d")
+        task_id = client.create_task(
+            "E2E Due On Test", project_id=test_project, due_date=target_date,
+        )
+        try:
+            result = get_tasks(due_on=target_date)
+            assert isinstance(result, str)
+            assert "E2E Due On Test" in result
+            print(f"\n✓ E2E get_tasks (due_on={target_date}): found test task")
+        finally:
+            client.delete_tasks(task_id)
+
+    def test_get_tasks_due_after_e2e(self, client, test_project):
+        """E2E: due_after whose clause filters tasks via MCP tool."""
+        from datetime import datetime, timedelta
+        future = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+        task_id = client.create_task(
+            "E2E Due After Test", project_id=test_project, due_date=future,
+        )
+        try:
+            today = datetime.now().strftime("%Y-%m-%d")
+            result = get_tasks(due_after=today)
+            assert isinstance(result, str)
+            assert "E2E Due After Test" in result
+            print(f"\n✓ E2E get_tasks (due_after={today}): found test task")
+        finally:
+            client.delete_tasks(task_id)
+
+    def test_get_tasks_due_before_e2e(self, client, test_project):
+        """E2E: due_before whose clause excludes far-future tasks via MCP tool."""
+        from datetime import datetime, timedelta
+        far_future = (datetime.now() + timedelta(days=90)).strftime("%Y-%m-%d")
+        task_id = client.create_task(
+            "E2E Due Before Exclude", project_id=test_project, due_date=far_future,
+        )
+        try:
+            cutoff = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+            result = get_tasks(due_before=cutoff)
+            assert isinstance(result, str)
+            assert "E2E Due Before Exclude" not in result
+            print(f"\n✓ E2E get_tasks (due_before={cutoff}): correctly excluded far-future task")
+        finally:
+            client.delete_tasks(task_id)
+
+    def test_get_tasks_defer_on_e2e(self, client, test_project):
+        """E2E: defer_on returns tasks deferred to a specific day via MCP tool."""
+        from datetime import datetime, timedelta
+        target_date = (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d")
+        task_id = client.create_task(
+            "E2E Defer On Test", project_id=test_project, defer_date=target_date,
+        )
+        try:
+            result = get_tasks(defer_on=target_date)
+            assert isinstance(result, str)
+            assert "E2E Defer On Test" in result
+            print(f"\n✓ E2E get_tasks (defer_on={target_date}): found test task")
+        finally:
+            client.delete_tasks(task_id)
+
+    def test_get_tasks_sort_by_due_date_e2e(self, client, test_project):
+        """E2E: sort_by=due_date orders tasks via MCP tool."""
+        from datetime import datetime, timedelta
+        early = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d")
+        late = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
+        t1 = client.create_task("E2E Sort Late", project_id=test_project, due_date=late)
+        t2 = client.create_task("E2E Sort Early", project_id=test_project, due_date=early)
+        try:
+            result = get_tasks(project_id=test_project, sort_by="due_date", sort_order="asc")
+            assert isinstance(result, str)
+            # Early should appear before Late in the output
+            early_pos = result.find("E2E Sort Early")
+            late_pos = result.find("E2E Sort Late")
+            assert early_pos < late_pos, "Expected early-due task before late-due task in ascending sort"
+            print(f"\n✓ E2E get_tasks (sort_by=due_date, asc): correct order")
+        finally:
+            client.delete_tasks(t1)
+            client.delete_tasks(t2)
+
+
+class TestGetProjectsDateFiltersE2E:
+    """E2E tests for date range filters on get_projects() MCP tool."""
+
+    def test_get_projects_due_on_e2e(self, client):
+        """E2E: due_on returns projects due on a specific day via MCP tool."""
+        from datetime import datetime, timedelta
+        target_date = (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d")
+        project_id = client.create_project("E2E Project Due On Test", due_date=target_date)
+        try:
+            result = get_projects(due_on=target_date)
+            assert isinstance(result, str)
+            assert "E2E Project Due On Test" in result
+            print(f"\n✓ E2E get_projects (due_on={target_date}): found test project")
+        finally:
+            client.delete_projects(project_id)
+
+    def test_get_projects_sort_by_due_date_e2e(self, client):
+        """E2E: sort_by=due_date orders projects via MCP tool."""
+        from datetime import datetime, timedelta
+        early = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d")
+        late = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
+        p1 = client.create_project("E2E PSort Late", due_date=late)
+        p2 = client.create_project("E2E PSort Early", due_date=early)
+        try:
+            result = get_projects(sort_by="due_date", sort_order="asc")
+            assert isinstance(result, str)
+            early_pos = result.find("E2E PSort Early")
+            late_pos = result.find("E2E PSort Late")
+            assert early_pos != -1 and late_pos != -1, "Both projects should appear in results"
+            assert early_pos < late_pos, "Expected early-due project before late-due in ascending sort"
+            print(f"\n✓ E2E get_projects (sort_by=due_date, asc): correct order")
+        finally:
+            client.delete_projects(p1)
+            client.delete_projects(p2)
+
+
 # ============================================================================
 # E2E Tests for get_projects()
 # ============================================================================

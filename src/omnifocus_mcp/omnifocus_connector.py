@@ -431,19 +431,33 @@ class OmniFocusConnector:
     def _filter_by_date_range(
         self,
         items: list[dict[str, Any]],
-        created_after: Optional[str],
-        created_before: Optional[str],
-        modified_after: Optional[str],
-        modified_before: Optional[str],
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
+        modified_after: Optional[str] = None,
+        modified_before: Optional[str] = None,
         planned_after: Optional[str] = None,
         planned_before: Optional[str] = None,
+        date_filters: Optional[list[tuple[str, Optional[str], Optional[str]]]] = None,
     ) -> list[dict[str, Any]]:
-        """Filter items by date ranges (created, modified, planned)."""
+        """Filter items by date ranges.
+
+        Accepts either legacy positional params (created/modified/planned)
+        or a date_filters list of (field_key, after_date, before_date) tuples.
+        Both can be used together — all checks are ANDed.
+        """
+        all_filters: list[tuple[str, Optional[str], Optional[str]]] = [
+            ('creationDate', created_after, created_before),
+            ('modificationDate', modified_after, modified_before),
+            ('plannedDate', planned_after, planned_before),
+        ]
+        if date_filters:
+            all_filters.extend(date_filters)
         return [
             item for item in items
-            if (self._item_passes_date_check(item, 'creationDate', created_after, created_before)
-                and self._item_passes_date_check(item, 'modificationDate', modified_after, modified_before)
-                and self._item_passes_date_check(item, 'plannedDate', planned_after, planned_before))
+            if all(
+                self._item_passes_date_check(item, field, after, before)
+                for field, after, before in all_filters
+            )
         ]
 
     def _filter_tasks_by_tags(self, tasks: list[dict[str, Any]], tag_filter: list[str], mode: str) -> list[dict[str, Any]]:
@@ -611,14 +625,19 @@ class OmniFocusConnector:
         field_map = {
             "name": "name",
             "due_date": "dueDate",
-            "defer_date": "deferDate"
+            "defer_date": "deferDate",
+            "planned_date": "plannedDate",
+            "creation_date": "creationDate",
+            "modification_date": "modificationDate",
+            "completion_date": "completionDate",
+            "dropped_date": "droppedDate",
         }
 
         field = field_map[sort_by]
         reverse = (sort_order == "desc")
 
         # For date fields, handle empty dates by putting them last
-        if field in ["dueDate", "deferDate"]:
+        if field != "name":
             def sort_key(task):
                 value = task.get(field, "")
                 # Empty dates sort to end regardless of asc/desc
@@ -794,6 +813,16 @@ class OmniFocusConnector:
         *,
         modified_after: Optional[str],
         modified_before: Optional[str],
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
+        due_after: Optional[str] = None,
+        due_before: Optional[str] = None,
+        defer_after: Optional[str] = None,
+        defer_before: Optional[str] = None,
+        completion_after: Optional[str] = None,
+        completion_before: Optional[str] = None,
+        dropped_after: Optional[str] = None,
+        dropped_before: Optional[str] = None,
         sort_by: Optional[str],
         sort_order: str,
     ) -> None:
@@ -801,7 +830,17 @@ class OmniFocusConnector:
         from datetime import datetime
         for date_param, date_value in [
             ("modified_after", modified_after),
-            ("modified_before", modified_before)
+            ("modified_before", modified_before),
+            ("created_after", created_after),
+            ("created_before", created_before),
+            ("due_after", due_after),
+            ("due_before", due_before),
+            ("defer_after", defer_after),
+            ("defer_before", defer_before),
+            ("completion_after", completion_after),
+            ("completion_before", completion_before),
+            ("dropped_after", dropped_after),
+            ("dropped_before", dropped_before),
         ]:
             if date_value:
                 try:
@@ -809,7 +848,9 @@ class OmniFocusConnector:
                 except ValueError:
                     raise ValueError(f"Invalid date format for {date_param}: {date_value}. Use ISO format (e.g., '2025-01-15T00:00:00Z')")
 
-        valid_sort_by = ["name", None]
+        valid_sort_by = ["name", "due_date", "defer_date", "planned_date",
+                         "creation_date", "modification_date", "completion_date",
+                         "dropped_date", None]
         valid_sort_order = ["asc", "desc"]
         if sort_by not in valid_sort_by:
             raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
@@ -856,6 +897,16 @@ class OmniFocusConnector:
         *,
         modified_after: Optional[str],
         modified_before: Optional[str],
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
+        due_after: Optional[str] = None,
+        due_before: Optional[str] = None,
+        defer_after: Optional[str] = None,
+        defer_before: Optional[str] = None,
+        completion_after: Optional[str] = None,
+        completion_before: Optional[str] = None,
+        dropped_after: Optional[str] = None,
+        dropped_before: Optional[str] = None,
         min_task_count: Optional[int],
         has_overdue_tasks: Optional[bool],
         has_no_due_dates: Optional[bool],
@@ -872,10 +923,18 @@ class OmniFocusConnector:
         """Post-process projects: compute types, apply filters, sort."""
         self._compute_project_types(projects)
 
-        if modified_after or modified_before or planned_after or planned_before:
+        extra_date_filters: list[tuple[str, Optional[str], Optional[str]]] = [
+            ('dueDate', due_after, due_before),
+            ('deferDate', defer_after, defer_before),
+            ('completionDate', completion_after, completion_before),
+            ('droppedDate', dropped_after, dropped_before),
+        ]
+        active_extra = [f for f in extra_date_filters if f[1] or f[2]]
+        if modified_after or modified_before or planned_after or planned_before or created_after or created_before or active_extra:
             projects = self._filter_by_date_range(
-                projects, None, None, modified_after, modified_before,
-                planned_after, planned_before
+                projects, created_after, created_before, modified_after, modified_before,
+                planned_after, planned_before,
+                date_filters=active_extra if active_extra else None,
             )
 
         if min_task_count is not None or has_overdue_tasks is not None or has_no_due_dates is not None:
@@ -900,7 +959,26 @@ class OmniFocusConnector:
 
         if sort_by:
             reverse = (sort_order == "desc")
-            projects = sorted(projects, key=lambda p: p.get("name", "").lower(), reverse=reverse)
+            sort_field_map = {
+                "name": "name",
+                "due_date": "dueDate",
+                "defer_date": "deferDate",
+                "planned_date": "plannedDate",
+                "creation_date": "creationDate",
+                "modification_date": "modificationDate",
+                "completion_date": "completionDate",
+                "dropped_date": "droppedDate",
+            }
+            field = sort_field_map[sort_by]
+            if field == "name":
+                projects = sorted(projects, key=lambda p: p.get("name", "").lower(), reverse=reverse)
+            else:
+                def sort_key(proj):
+                    value = proj.get(field, "")
+                    if not value:
+                        return ("9999" if not reverse else "")
+                    return value
+                projects = sorted(projects, key=sort_key, reverse=reverse)
 
         return projects
 
@@ -927,6 +1005,16 @@ class OmniFocusConnector:
         tag_filter: Optional[list[str]] = None,
         planned_after: Optional[str] = None,
         planned_before: Optional[str] = None,
+        due_after: Optional[str] = None,
+        due_before: Optional[str] = None,
+        defer_after: Optional[str] = None,
+        defer_before: Optional[str] = None,
+        completion_after: Optional[str] = None,
+        completion_before: Optional[str] = None,
+        dropped_after: Optional[str] = None,
+        dropped_before: Optional[str] = None,
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
         timeout: int = 90
     ) -> list[dict[str, Any]]:
         """Get projects with their folder/hierarchy information using AppleScript.
@@ -961,6 +1049,11 @@ class OmniFocusConnector:
         """
         self._validate_get_projects_params(
             modified_after=modified_after, modified_before=modified_before,
+            created_after=created_after, created_before=created_before,
+            due_after=due_after, due_before=due_before,
+            defer_after=defer_after, defer_before=defer_before,
+            completion_after=completion_after, completion_before=completion_before,
+            dropped_after=dropped_after, dropped_before=dropped_before,
             sort_by=sort_by, sort_order=sort_order,
         )
 
@@ -1233,6 +1326,16 @@ class OmniFocusConnector:
                     projects,
                     modified_after=modified_after,
                     modified_before=modified_before,
+                    created_after=created_after,
+                    created_before=created_before,
+                    due_after=due_after,
+                    due_before=due_before,
+                    defer_after=defer_after,
+                    defer_before=defer_before,
+                    completion_after=completion_after,
+                    completion_before=completion_before,
+                    dropped_after=dropped_after,
+                    dropped_before=dropped_before,
                     min_task_count=min_task_count,
                     has_overdue_tasks=has_overdue_tasks,
                     has_no_due_dates=has_no_due_dates,
@@ -2458,6 +2561,14 @@ class OmniFocusConnector:
         modified_before: Optional[str],
         planned_after: Optional[str] = None,
         planned_before: Optional[str] = None,
+        due_after: Optional[str] = None,
+        due_before: Optional[str] = None,
+        defer_after: Optional[str] = None,
+        defer_before: Optional[str] = None,
+        completion_after: Optional[str] = None,
+        completion_before: Optional[str] = None,
+        dropped_after: Optional[str] = None,
+        dropped_before: Optional[str] = None,
         recurring_only: Optional[bool],
         sort_by: Optional[str],
         sort_order: str,
@@ -2500,11 +2611,19 @@ class OmniFocusConnector:
                 tasks = self._filter_tasks_by_tags(tasks, tag_filter, tag_filter_mode)
 
         # Apply date range filtering
-        if created_after or created_before or modified_after or modified_before or planned_after or planned_before:
+        extra_date_filters: list[tuple[str, Optional[str], Optional[str]]] = [
+            ('dueDate', due_after, due_before),
+            ('deferDate', defer_after, defer_before),
+            ('completionDate', completion_after, completion_before),
+            ('droppedDate', dropped_after, dropped_before),
+        ]
+        active_extra = [f for f in extra_date_filters if f[1] or f[2]]
+        if created_after or created_before or modified_after or modified_before or planned_after or planned_before or active_extra:
             tasks = self._filter_by_date_range(
                 tasks, created_after, created_before,
                 modified_after, modified_before,
-                planned_after, planned_before
+                planned_after, planned_before,
+                date_filters=active_extra if active_extra else None,
             )
 
         # Apply recurring filter
@@ -2532,6 +2651,14 @@ class OmniFocusConnector:
         sort_order: str,
         due_relative: Optional[str],
         defer_relative: Optional[str],
+        due_after: Optional[str] = None,
+        due_before: Optional[str] = None,
+        defer_after: Optional[str] = None,
+        defer_before: Optional[str] = None,
+        completion_after: Optional[str] = None,
+        completion_before: Optional[str] = None,
+        dropped_after: Optional[str] = None,
+        dropped_before: Optional[str] = None,
     ) -> None:
         """Validate get_tasks parameters, raising ValueError for invalid values."""
         from datetime import datetime
@@ -2539,7 +2666,15 @@ class OmniFocusConnector:
             ("created_after", created_after),
             ("created_before", created_before),
             ("modified_after", modified_after),
-            ("modified_before", modified_before)
+            ("modified_before", modified_before),
+            ("due_after", due_after),
+            ("due_before", due_before),
+            ("defer_after", defer_after),
+            ("defer_before", defer_before),
+            ("completion_after", completion_after),
+            ("completion_before", completion_before),
+            ("dropped_after", dropped_after),
+            ("dropped_before", dropped_before),
         ]:
             if date_value:
                 try:
@@ -2551,7 +2686,9 @@ class OmniFocusConnector:
         if tag_filter_mode not in valid_tag_filter_modes:
             raise ValueError(f"Invalid tag_filter_mode value: {tag_filter_mode}. Must be one of: {valid_tag_filter_modes}")
 
-        valid_sort_by = ["name", "due_date", "defer_date", None]
+        valid_sort_by = ["name", "due_date", "defer_date", "planned_date",
+                         "creation_date", "modification_date", "completion_date",
+                         "dropped_date", None]
         valid_sort_order = ["asc", "desc"]
         if sort_by not in valid_sort_by:
             raise ValueError(f"Invalid sort_by value: {sort_by}. Must be one of: {[v for v in valid_sort_by if v is not None]}")
@@ -2582,6 +2719,10 @@ class OmniFocusConnector:
         tag_prefiltered_ids: Optional[set],
         planned_after: Optional[str] = None,
         planned_before: Optional[str] = None,
+        due_after: Optional[str] = None,
+        due_before: Optional[str] = None,
+        defer_after: Optional[str] = None,
+        defer_before: Optional[str] = None,
     ) -> tuple[str, bool]:
         """Build AppleScript task source expression and whose conditions.
 
@@ -2622,6 +2763,18 @@ class OmniFocusConnector:
             if planned_before:
                 as_date = self._iso_to_applescript_date(planned_before)
                 whose_conditions.append(f'effective planned date < date "{as_date}"')
+            if due_after:
+                as_date = self._iso_to_applescript_date(due_after)
+                whose_conditions.append(f'effective due date ≥ date "{as_date}"')
+            if due_before:
+                as_date = self._iso_to_applescript_date(due_before)
+                whose_conditions.append(f'effective due date < date "{as_date}"')
+            if defer_after:
+                as_date = self._iso_to_applescript_date(defer_after)
+                whose_conditions.append(f'effective defer date ≥ date "{as_date}"')
+            if defer_before:
+                as_date = self._iso_to_applescript_date(defer_before)
+                whose_conditions.append(f'effective defer date < date "{as_date}"')
             if query:
                 query_escaped = self._escape_applescript_string(query)
                 whose_conditions.append(f'(name contains "{query_escaped}" or note contains "{query_escaped}")')
@@ -3164,6 +3317,14 @@ class OmniFocusConnector:
         modified_before: Optional[str] = None,
         planned_after: Optional[str] = None,
         planned_before: Optional[str] = None,
+        due_after: Optional[str] = None,
+        due_before: Optional[str] = None,
+        defer_after: Optional[str] = None,
+        defer_before: Optional[str] = None,
+        completion_after: Optional[str] = None,
+        completion_before: Optional[str] = None,
+        dropped_after: Optional[str] = None,
+        dropped_before: Optional[str] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
         recurring_only: Optional[bool] = None,
@@ -3224,6 +3385,10 @@ class OmniFocusConnector:
             tag_filter_mode=tag_filter_mode, sort_by=sort_by,
             sort_order=sort_order, due_relative=due_relative,
             defer_relative=defer_relative,
+            due_after=due_after, due_before=due_before,
+            defer_after=defer_after, defer_before=defer_before,
+            completion_after=completion_after, completion_before=completion_before,
+            dropped_after=dropped_after, dropped_before=dropped_before,
         )
 
         # Tag-side pre-filter: query task IDs from tag objects instead of
@@ -3275,6 +3440,10 @@ class OmniFocusConnector:
             tag_prefiltered_ids=tag_prefiltered_ids,
             planned_after=planned_after,
             planned_before=planned_before,
+            due_after=due_after,
+            due_before=due_before,
+            defer_after=defer_after,
+            defer_before=defer_before,
         )
 
         # Generate batch filter check strings
@@ -3319,6 +3488,14 @@ class OmniFocusConnector:
                     modified_before=modified_before,
                     planned_after=planned_after,
                     planned_before=planned_before,
+                    due_after=due_after,
+                    due_before=due_before,
+                    defer_after=defer_after,
+                    defer_before=defer_before,
+                    completion_after=completion_after,
+                    completion_before=completion_before,
+                    dropped_after=dropped_after,
+                    dropped_before=dropped_before,
                     recurring_only=recurring_only,
                     sort_by=sort_by,
                     sort_order=sort_order,

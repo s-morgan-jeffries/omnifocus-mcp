@@ -101,6 +101,48 @@ class TestTaskSorting:
             assert tasks[1]['id'] == "t1"
 
 
+    def test_sort_by_planned_date_asc(self, client):
+        """Test sorting tasks by planned_date ascending with empty dates at end."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '''[
+                {"id": "t1", "name": "No plan", "plannedDate": "", "completed": false},
+                {"id": "t2", "name": "Later", "plannedDate": "2026-04-10T09:00:00", "completed": false},
+                {"id": "t3", "name": "Sooner", "plannedDate": "2026-04-01T09:00:00", "completed": false}
+            ]'''
+
+            tasks = client.get_tasks(sort_by="planned_date", sort_order="asc")
+
+            assert tasks[0]['id'] == "t3"
+            assert tasks[1]['id'] == "t2"
+            assert tasks[2]['id'] == "t1"  # empty date at end
+
+    def test_sort_by_creation_date_desc(self, client):
+        """Test sorting tasks by creation_date descending."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '''[
+                {"id": "t1", "name": "Old", "creationDate": "2026-03-01T09:00:00", "completed": false},
+                {"id": "t2", "name": "New", "creationDate": "2026-04-01T09:00:00", "completed": false}
+            ]'''
+
+            tasks = client.get_tasks(sort_by="creation_date", sort_order="desc")
+
+            assert tasks[0]['id'] == "t2"
+            assert tasks[1]['id'] == "t1"
+
+    def test_sort_by_modification_date_asc(self, client):
+        """Test sorting tasks by modification_date ascending."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '''[
+                {"id": "t1", "name": "Recent", "modificationDate": "2026-04-01T09:00:00", "completed": false},
+                {"id": "t2", "name": "Older", "modificationDate": "2026-03-01T09:00:00", "completed": false}
+            ]'''
+
+            tasks = client.get_tasks(sort_by="modification_date", sort_order="asc")
+
+            assert tasks[0]['id'] == "t2"
+            assert tasks[1]['id'] == "t1"
+
+
 class TestProjectSorting:
     """Tests for project sorting options."""
 
@@ -130,6 +172,34 @@ class TestProjectSorting:
 
             assert projects[0]['name'] == "Bravo Project"
             assert projects[1]['name'] == "Alpha Project"
+
+    def test_sort_projects_by_due_date_asc(self, client):
+        """Test sorting projects by due_date ascending with empty dates at end."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '''[
+                {"id": "p1", "name": "No Due", "dueDate": "", "status": "active"},
+                {"id": "p2", "name": "Later", "dueDate": "2026-04-10T09:00:00", "status": "active"},
+                {"id": "p3", "name": "Sooner", "dueDate": "2026-04-01T09:00:00", "status": "active"}
+            ]'''
+
+            projects = client.get_projects(sort_by="due_date", sort_order="asc")
+
+            assert projects[0]['id'] == "p3"
+            assert projects[1]['id'] == "p2"
+            assert projects[2]['id'] == "p1"  # empty date at end
+
+    def test_sort_projects_by_planned_date_desc(self, client):
+        """Test sorting projects by planned_date descending."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = '''[
+                {"id": "p1", "name": "Early", "plannedDate": "2026-03-01T09:00:00", "status": "active"},
+                {"id": "p2", "name": "Late", "plannedDate": "2026-04-01T09:00:00", "status": "active"}
+            ]'''
+
+            projects = client.get_projects(sort_by="planned_date", sort_order="desc")
+
+            assert projects[0]['id'] == "p2"
+            assert projects[1]['id'] == "p1"
 
     def test_sort_projects_invalid_field(self, client):
         """Test that invalid sort field raises ValueError."""
