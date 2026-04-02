@@ -3275,6 +3275,8 @@ class OmniFocusConnector:
                             "\\"position\\": " & (i as text) & ", " & ¬
                             "\\"numberOfAvailableTasks\\": " & (numAvailableTasks as text) & ", " & ¬
                             "\\"inInbox\\": " & (item i of taskInInbox as text) & ", " & ¬
+                            "\\"effectivelyCompleted\\": " & (effComp as text) & ", " & ¬
+                            "\\"effectivelyDropped\\": " & (effDrop as text) & ", " & ¬
                             "\\"available\\": " & (taskAvailable as text) & ¬
                             "}}"
 
