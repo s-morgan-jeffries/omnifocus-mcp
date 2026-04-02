@@ -17,7 +17,7 @@ PROJECT TYPES: "sequential" (tasks in order; first incomplete = available, rest 
 
 ACTION GROUPS: Task with subtasks. Parent shows `blocked: true` while subtasks are active — this is normal, not an error. Do not try to unblock it.
 
-INHERITED STATUS: `completed`/`dropped` reflect the task's own state, not its container's. Task in completed project: `completed: false`, `available: false`. Use `available_only=True` for actionable tasks.
+INHERITED STATUS: `completed`/`dropped` reflect the task's own state, not its container's. `effectivelyCompleted`/`effectivelyDropped` reflect the container's state — if true, the task's parent project or action group was completed/dropped. Task in completed project: `completed: false`, `effectivelyCompleted: true`, `available: false`. Use `available_only=True` for actionable tasks.
 
 EFFECTIVE DATES: Dates returned by get_tasks are always effective (inherited). A task with no direct due date WILL show its project's due date in the dueDate field — this is correct behavior, not a bug. You cannot clear an inherited date at the task level. Write operations set the task's own date.
 

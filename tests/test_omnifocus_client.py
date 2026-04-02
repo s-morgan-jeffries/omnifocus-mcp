@@ -520,6 +520,68 @@ class TestGetTasks:
             # Verify JSON output includes the field
             assert '\\"completedByChildren\\"' in call_args
 
+    def test_get_tasks_includes_effectively_completed_field(self, client):
+        """Test that get_tasks includes effectivelyCompleted in AppleScript and response."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Task in Completed Project",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "dropped": False,
+                "blocked": False,
+                "effectivelyCompleted": True,
+                "effectivelyDropped": False,
+                "projectId": "proj-001",
+                "projectName": "Done Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks()
+            # Verify field is in returned data
+            assert 'effectivelyCompleted' in tasks[0]
+            assert tasks[0]['effectivelyCompleted'] is True
+            # Verify AppleScript includes the field in JSON output
+            call_args = mock_run.call_args[0][0]
+            assert '\\"effectivelyCompleted\\"' in call_args
+
+    def test_get_tasks_includes_effectively_dropped_field(self, client):
+        """Test that get_tasks includes effectivelyDropped in AppleScript and response."""
+        tasks_json = json.dumps([
+            {
+                "id": "task-001",
+                "name": "Task in Dropped Project",
+                "note": "",
+                "completed": False,
+                "flagged": False,
+                "dropped": False,
+                "blocked": False,
+                "effectivelyCompleted": False,
+                "effectivelyDropped": True,
+                "projectId": "proj-001",
+                "projectName": "Dropped Project",
+                "dueDate": "",
+                "deferDate": "",
+                "completionDate": "",
+                "tags": ""
+            }
+        ])
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_run:
+            mock_run.return_value = tasks_json
+            tasks = client.get_tasks()
+            # Verify field is in returned data
+            assert 'effectivelyDropped' in tasks[0]
+            assert tasks[0]['effectivelyDropped'] is True
+            # Verify AppleScript includes the field in JSON output
+            call_args = mock_run.call_args[0][0]
+            assert '\\"effectivelyDropped\\"' in call_args
+
     def test_get_tasks_blocked_only(self, client):
         """Test filtering for only blocked tasks."""
         blocked_tasks_json = json.dumps([
