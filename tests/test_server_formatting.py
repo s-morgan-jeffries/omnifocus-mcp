@@ -219,6 +219,58 @@ class TestTaskFormatting:
         result = _format_task(task)
         assert "Completed By Children" not in result
 
+    def test_format_task_displays_effectively_completed(self):
+        """Test that _format_task shows Effectively Completed when true."""
+        task = {
+            "id": "task-eff-comp",
+            "name": "Task in Completed Project",
+            "projectName": "Done Project",
+            "completed": False,
+            "effectivelyCompleted": True,
+        }
+
+        result = _format_task(task)
+        assert "Effectively Completed: Yes" in result
+
+    def test_format_task_omits_effectively_completed_when_false(self):
+        """Test that _format_task omits Effectively Completed when false."""
+        task = {
+            "id": "task-active",
+            "name": "Active Task",
+            "projectName": "Active Project",
+            "completed": False,
+            "effectivelyCompleted": False,
+        }
+
+        result = _format_task(task)
+        assert "Effectively Completed" not in result
+
+    def test_format_task_displays_effectively_dropped(self):
+        """Test that _format_task shows Effectively Dropped when true."""
+        task = {
+            "id": "task-eff-drop",
+            "name": "Task in Dropped Project",
+            "projectName": "Dropped Project",
+            "completed": False,
+            "effectivelyDropped": True,
+        }
+
+        result = _format_task(task)
+        assert "Effectively Dropped: Yes" in result
+
+    def test_format_task_omits_effectively_dropped_when_false(self):
+        """Test that _format_task omits Effectively Dropped when false."""
+        task = {
+            "id": "task-active",
+            "name": "Active Task",
+            "projectName": "Active Project",
+            "completed": False,
+            "effectivelyDropped": False,
+        }
+
+        result = _format_task(task)
+        assert "Effectively Dropped" not in result
+
 
 class TestProjectFormatting:
     """Test project formatting function."""

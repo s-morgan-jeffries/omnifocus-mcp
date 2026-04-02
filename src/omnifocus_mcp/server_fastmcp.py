@@ -85,6 +85,10 @@ def _format_task(task: dict, truncate_notes: bool = True) -> str:
             result += f"Blocked: Yes\n"
     if task.get('available') is not None:
         result += f"Available: {task['available']}\n"
+    if task.get('effectivelyCompleted'):
+        result += f"Effectively Completed: Yes (parent project/action group is completed)\n"
+    if task.get('effectivelyDropped'):
+        result += f"Effectively Dropped: Yes (parent project/action group is dropped)\n"
     if task.get('next'):
         result += f"Next: Yes\n"
     if task.get('flagged'):
