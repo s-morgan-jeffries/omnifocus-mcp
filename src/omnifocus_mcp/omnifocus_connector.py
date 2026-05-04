@@ -1,9 +1,15 @@
 """Client for interacting with OmniFocus app."""
 import subprocess
 import json
+import logging
 import os
+import re
+import time
 from enum import Enum
 from typing import Any, Optional, Union
+
+
+logger = logging.getLogger(__name__)
 
 
 class TaskStatus(Enum):
@@ -45,6 +51,71 @@ def run_applescript(script: str, timeout: int = 60) -> str:
         timeout=timeout
     )
     return result.stdout.strip()
+
+
+# Apple Event Manager error codes that indicate a transient connection failure,
+# typically caused by OmniFocus crashing and auto-restarting.
+#   -609 connectionInvalid:  target app crashed or connection handle is stale
+#   -600 procNotFound:       target app is not running (e.g., mid-restart)
+#   -1712 errAETimeout:      Apple Event timed out
+_TRANSIENT_APPLESCRIPT_ERROR_CODES = frozenset({-609, -600, -1712})
+_APPLESCRIPT_ERROR_CODE_RE = re.compile(r'\((-?\d+)\)')
+
+
+def _is_transient_applescript_error(stderr: str) -> bool:
+    """True if osascript stderr contains a transient connection/timeout error code."""
+    if not stderr:
+        return False
+    for match in _APPLESCRIPT_ERROR_CODE_RE.finditer(stderr):
+        if int(match.group(1)) in _TRANSIENT_APPLESCRIPT_ERROR_CODES:
+            return True
+    return False
+
+
+def run_applescript_read(
+    script: str,
+    timeout: int = 60,
+    max_retries: int = 1,
+    retry_delay: float = 3.0,
+) -> str:
+    """Execute AppleScript with auto-retry on transient connection errors.
+
+    Wraps run_applescript() with a single retry for transient errors (e.g.,
+    -609 "Connection is invalid" when OmniFocus crashes and auto-restarts).
+    USE ONLY for read-only operations: a write that crashed mid-call may have
+    already been applied, and retrying could create duplicates.
+    """
+    last_exc = None
+    for attempt in range(max_retries + 1):
+        try:
+            return run_applescript(script, timeout=timeout)
+        except subprocess.CalledProcessError as e:
+            if not _is_transient_applescript_error(e.stderr):
+                raise
+            last_exc = e
+            if attempt < max_retries:
+                logger.warning(
+                    "OmniFocus transient AppleScript error (attempt %d/%d); "
+                    "retrying in %.1fs. stderr: %s",
+                    attempt + 1, max_retries + 1, retry_delay,
+                    (e.stderr or '').strip(),
+                )
+                time.sleep(retry_delay)
+            else:
+                logger.error(
+                    "OmniFocus transient AppleScript error after %d attempts; "
+                    "giving up. stderr: %s",
+                    max_retries + 1, (e.stderr or '').strip(),
+                )
+    hinted = (
+        "OmniFocus connection invalid or unavailable after retry. "
+        "OmniFocus may have crashed; if it auto-recovers, the call will "
+        f"succeed on the next attempt. Original error: {last_exc.stderr}"
+    )
+    raise subprocess.CalledProcessError(
+        last_exc.returncode, last_exc.cmd,
+        output=last_exc.output, stderr=hinted,
+    )
 
 
 # AppleScript helper functions for JSON escaping
@@ -1318,7 +1389,7 @@ class OmniFocusConnector:
         )
 
         try:
-            result = run_applescript(script, timeout=timeout)
+            result = run_applescript_read(script, timeout=timeout)
             if result:
                 projects = json.loads(result)
 
@@ -3475,7 +3546,7 @@ class OmniFocusConnector:
         )
 
         try:
-            result = run_applescript(script, timeout=timeout)
+            result = run_applescript_read(script, timeout=timeout)
             if result:
                 tasks = json.loads(result)
 
@@ -4405,7 +4476,7 @@ class OmniFocusConnector:
         ''' + APPLESCRIPT_JSON_HELPERS
 
         try:
-            result = run_applescript(script)
+            result = run_applescript_read(script)
             if result:
                 tags = json.loads(result)
             else:
@@ -4963,7 +5034,7 @@ class OmniFocusConnector:
         '''
 
         try:
-            result = run_applescript(script)
+            result = run_applescript_read(script)
             folders = json.loads(result)
             for folder in folders:
                 folder["status"] = "dropped" if folder.get("hidden") else "active"
@@ -5330,7 +5401,7 @@ class OmniFocusConnector:
         '''
 
         try:
-            result = run_applescript(script)
+            result = run_applescript_read(script)
             return json.loads(result)
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error retrieving perspectives: {e.stderr}")
@@ -5550,7 +5621,7 @@ class OmniFocusConnector:
         '''
 
         try:
-            result = run_applescript(script)
+            result = run_applescript_read(script)
             return json.loads(result)
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error getting focus: {e.stderr}")
