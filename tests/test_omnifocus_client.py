@@ -2817,3 +2817,156 @@ class TestGetProjectsCompletedFilter:
             client.get_projects(completed_only=True)
             script = mock_run.call_args[0][0]
             assert 'projStatus is not "done status"' in script
+
+
+class TestTransientAppleScriptErrorDetection:
+    """Tests for _is_transient_applescript_error helper."""
+
+    def test_recognizes_609_connection_invalid(self):
+        """The exact stderr from the bug report should be recognized as transient."""
+        from omnifocus_mcp.omnifocus_connector import _is_transient_applescript_error
+        stderr = "375:377: execution error: OmniFocus got an error: Connection is invalid. (-609)"
+        assert _is_transient_applescript_error(stderr) is True
+
+    def test_recognizes_600_proc_not_found(self):
+        """OmniFocus not running mid-restart (-600) is transient."""
+        from omnifocus_mcp.omnifocus_connector import _is_transient_applescript_error
+        stderr = "execution error: Application isn't running. (-600)"
+        assert _is_transient_applescript_error(stderr) is True
+
+    def test_recognizes_1712_apple_event_timeout(self):
+        """Apple Event timeout (-1712) is transient."""
+        from omnifocus_mcp.omnifocus_connector import _is_transient_applescript_error
+        stderr = "execution error: AppleEvent timed out. (-1712)"
+        assert _is_transient_applescript_error(stderr) is True
+
+    def test_ignores_unrelated_error_code(self):
+        """Non-transient error codes (e.g., -10000) must not be retried."""
+        from omnifocus_mcp.omnifocus_connector import _is_transient_applescript_error
+        stderr = "execution error: Some permanent failure. (-10000)"
+        assert _is_transient_applescript_error(stderr) is False
+
+    def test_ignores_empty_stderr(self):
+        """Empty or None stderr returns False (no error info to act on)."""
+        from omnifocus_mcp.omnifocus_connector import _is_transient_applescript_error
+        assert _is_transient_applescript_error("") is False
+        assert _is_transient_applescript_error(None) is False
+
+
+class TestRunAppleScriptRead:
+    """Tests for run_applescript_read — the retry wrapper for read-only ops."""
+
+    def test_retries_once_on_609_and_succeeds(self):
+        """First call raises -609, second succeeds — wrapper returns second result."""
+        from omnifocus_mcp.omnifocus_connector import run_applescript_read
+        transient_err = subprocess.CalledProcessError(
+            1, 'osascript',
+            stderr="execution error: OmniFocus got an error: Connection is invalid. (-609)",
+        )
+        with mock.patch('subprocess.run') as mock_run, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.time.sleep') as mock_sleep:
+            mock_run.side_effect = [transient_err, mock.Mock(stdout="recovered\n")]
+            result = run_applescript_read("tell application \"OmniFocus\" to return name")
+            assert result == "recovered"
+            assert mock_run.call_count == 2
+            mock_sleep.assert_called_once()
+
+    def test_no_retry_on_non_transient_error(self):
+        """Non-transient errors (e.g., -1728 object not found) propagate immediately."""
+        from omnifocus_mcp.omnifocus_connector import run_applescript_read
+        permanent_err = subprocess.CalledProcessError(
+            1, 'osascript',
+            stderr="execution error: Can't get object. (-1728)",
+        )
+        with mock.patch('subprocess.run') as mock_run, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.time.sleep') as mock_sleep:
+            mock_run.side_effect = permanent_err
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                run_applescript_read("some script")
+            assert "(-1728)" in exc_info.value.stderr
+            assert mock_run.call_count == 1
+            mock_sleep.assert_not_called()
+
+    def test_exhausted_retries_raise_with_recovery_hint(self):
+        """When all retries fail, raise with a helpful hint and original error preserved."""
+        from omnifocus_mcp.omnifocus_connector import run_applescript_read
+        transient_err = subprocess.CalledProcessError(
+            1, 'osascript',
+            stderr="execution error: Connection is invalid. (-609)",
+        )
+        with mock.patch('subprocess.run') as mock_run, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.time.sleep'):
+            mock_run.side_effect = [transient_err, transient_err]
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                run_applescript_read("some script")
+            assert "may have crashed" in exc_info.value.stderr
+            assert "(-609)" in exc_info.value.stderr  # original preserved
+            assert mock_run.call_count == 2
+
+    def test_timeout_propagates_without_retry(self):
+        """subprocess.TimeoutExpired is not a CalledProcessError — must NOT be retried."""
+        from omnifocus_mcp.omnifocus_connector import run_applescript_read
+        with mock.patch('subprocess.run') as mock_run, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.time.sleep') as mock_sleep:
+            mock_run.side_effect = subprocess.TimeoutExpired(cmd='osascript', timeout=60)
+            with pytest.raises(subprocess.TimeoutExpired):
+                run_applescript_read("some script")
+            assert mock_run.call_count == 1
+            mock_sleep.assert_not_called()
+
+
+class TestReadMethodsUseRetryWrapper:
+    """Verify each public read method routes through run_applescript_read (not run_applescript)."""
+
+    @pytest.fixture
+    def client(self):
+        return OmniFocusConnector(enable_safety_checks=False)
+
+    def test_get_tasks_uses_run_applescript_read(self, client):
+        """get_tasks must call run_applescript_read so transient errors auto-retry."""
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript_read') as mock_read, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_plain:
+            mock_read.return_value = "[]"
+            mock_plain.return_value = "[]"
+            client.get_tasks()
+            assert mock_read.called, "get_tasks must use run_applescript_read for auto-retry on -609"
+
+    def test_get_projects_uses_run_applescript_read(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript_read') as mock_read, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_plain:
+            mock_read.return_value = "[]"
+            mock_plain.return_value = "[]"
+            client.get_projects()
+            assert mock_read.called, "get_projects must use run_applescript_read"
+
+    def test_get_tags_uses_run_applescript_read(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript_read') as mock_read, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_plain:
+            mock_read.return_value = "[]"
+            mock_plain.return_value = "[]"
+            client.get_tags()
+            assert mock_read.called, "get_tags must use run_applescript_read"
+
+    def test_get_folders_uses_run_applescript_read(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript_read') as mock_read, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_plain:
+            mock_read.return_value = "[]"
+            mock_plain.return_value = "[]"
+            client.get_folders()
+            assert mock_read.called, "get_folders must use run_applescript_read"
+
+    def test_get_perspectives_uses_run_applescript_read(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript_read') as mock_read, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_plain:
+            mock_read.return_value = "[]"
+            mock_plain.return_value = "[]"
+            client.get_perspectives()
+            assert mock_read.called, "get_perspectives must use run_applescript_read"
+
+    def test_get_focus_uses_run_applescript_read(self, client):
+        with mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript_read') as mock_read, \
+             mock.patch('omnifocus_mcp.omnifocus_connector.run_applescript') as mock_plain:
+            mock_read.return_value = "[]"
+            mock_plain.return_value = "[]"
+            client.get_focus()
+            assert mock_read.called, "get_focus must use run_applescript_read"
